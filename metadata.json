@@ -1,0 +1,6 @@
+{
+  "name": "DeutschPath",
+  "description": "Nền tảng học tiếng Đức trực quan, thân thiện dành cho người Việt. Sách bài giảng, từ vựng, lộ trình học A1 đến B1 sinh động và bài kiểm tra tương tác.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

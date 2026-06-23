@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-50: #fff0f3;
+  --color-brand-100: #ffe5eb;
+  --color-brand-200: #ffd1dc;
+  --color-brand-500: #FF0033;
+  --color-brand-600: #cc0029;
+  --color-brand-700: #99001f;
+
+  --color-orange-50: #fff0f3;
+  --color-orange-100: #ffe5eb;
+  --color-orange-200: #ffd1dc;
+  --color-orange-300: #ffa3b8;
+  --color-orange-400: #ff5275;
+  --color-orange-500: #FF0033;
+  --color-orange-600: #e6002e;
+  --color-orange-700: #cc0029;
+  --color-orange-750: #b30024;
+  --color-orange-800: #99001f;
+  --color-orange-850: #80001a;
+  --color-orange-900: #660014;
+  --color-orange-950: #40000d;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+/* Custom animation for current active lesson mark */
+@keyframes ring-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 0, 51, 0.35);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 8px rgba(255, 0, 51, 0);
+  }
+}
+
+.active-lesson-pulse {
+  animation: ring-pulse 2s infinite ease-in-out;
+}
+
