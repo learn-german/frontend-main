@@ -1,0 +1,1543 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "react-example",
+    "languages": [
+      "css",
+      "html",
+      "json",
+      "markdown",
+      "typescript"
+    ],
+    "frameworks": [
+      "React",
+      "Vite",
+      "Vite React Plugin",
+      "Tailwind CSS",
+      "Motion",
+      "Lucide React",
+      "Google GenAI",
+      "Express"
+    ],
+    "description": "A Vite-powered React learning app for DeutschPath, combining Vietnamese-language German lessons, progress tracking, quizzes, and reusable UI components.",
+    "analyzedAt": "2026-06-23T10:50:18.910Z",
+    "gitCommitHash": "05c84ecf45aa3b7698e74f102264692e1f3dbf65"
+  },
+  "nodes": [
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Getting-started documentation for running the AI Studio app locally, including dependency installation, Gemini API key setup, and dev server startup.",
+      "complexity": "simple",
+      "tags": [
+        "documentation",
+        "getting-started",
+        "local-development"
+      ],
+      "language": "markdown"
+    },
+    {
+      "id": "config:package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "package.json",
+      "summary": "NPM manifest defining the React, Vite, Tailwind, Motion, Express, and Google GenAI dependencies plus scripts for development, type-checking, and production builds.",
+      "complexity": "simple",
+      "tags": [
+        "configuration",
+        "dependencies",
+        "scripts",
+        "build-system"
+      ],
+      "language": "json"
+    },
+    {
+      "id": "config:metadata.json",
+      "type": "config",
+      "name": "metadata.json",
+      "filePath": "metadata.json",
+      "summary": "AI Studio metadata describing the app name and runtime-facing project description.",
+      "complexity": "simple",
+      "tags": [
+        "configuration",
+        "metadata",
+        "ai-studio"
+      ],
+      "language": "json"
+    },
+    {
+      "id": "file:index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "index.html",
+      "summary": "Vite HTML shell that provides the root mount element and loads the React entry module.",
+      "complexity": "simple",
+      "tags": [
+        "entry-point",
+        "html-shell",
+        "vite"
+      ],
+      "language": "html"
+    },
+    {
+      "id": "config:tsconfig.json",
+      "type": "config",
+      "name": "tsconfig.json",
+      "filePath": "tsconfig.json",
+      "summary": "TypeScript compiler configuration for the React application, including JSX settings, path aliasing, and modern module resolution.",
+      "complexity": "simple",
+      "tags": [
+        "configuration",
+        "typescript",
+        "compiler"
+      ],
+      "language": "json"
+    },
+    {
+      "id": "file:vite.config.ts",
+      "type": "file",
+      "name": "vite.config.ts",
+      "filePath": "vite.config.ts",
+      "summary": "Vite configuration wiring React and Tailwind CSS plugins, local alias resolution, and development server HMR behavior.",
+      "complexity": "simple",
+      "tags": [
+        "configuration",
+        "vite",
+        "tailwind",
+        "build-system"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "file:src/main.tsx",
+      "type": "file",
+      "name": "main.tsx",
+      "filePath": "src/main.tsx",
+      "summary": "React browser entry point that mounts the application into the HTML root under StrictMode and loads global styles.",
+      "complexity": "simple",
+      "tags": [
+        "entry-point",
+        "react",
+        "bootstrap"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "file:src/App.tsx",
+      "type": "file",
+      "name": "App.tsx",
+      "filePath": "src/App.tsx",
+      "summary": "Top-level application shell that owns authentication state, lesson selection, user progress, toast display, guarded navigation, and page routing.",
+      "complexity": "complex",
+      "tags": [
+        "app-shell",
+        "state-management",
+        "routing",
+        "authentication"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/App.tsx:App",
+      "type": "function",
+      "name": "App",
+      "filePath": "src/App.tsx",
+      "summary": "Coordinates global React state, guarded navigation, progress persistence, page rendering, and toast presentation for the learning app.",
+      "complexity": "complex",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/types.ts",
+      "type": "file",
+      "name": "types.ts",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain model definitions for app state, CEFR levels, lessons, vocabulary, quizzes, modules, and user progress.",
+      "complexity": "complex",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "class:src/types.ts:VocabularyItem",
+      "type": "class",
+      "name": "VocabularyItem",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain type VocabularyItem used to keep app state and learning content strongly typed.",
+      "complexity": "moderate",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "function:src/types.ts:GrammarExplanation",
+      "type": "function",
+      "name": "GrammarExplanation",
+      "filePath": "src/types.ts",
+      "summary": "Exported symbol GrammarExplanation from src/types.ts.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "class:src/types.ts:QuizQuestion",
+      "type": "class",
+      "name": "QuizQuestion",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain type QuizQuestion used to keep app state and learning content strongly typed.",
+      "complexity": "moderate",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "class:src/types.ts:Lesson",
+      "type": "class",
+      "name": "Lesson",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain type Lesson used to keep app state and learning content strongly typed.",
+      "complexity": "moderate",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "class:src/types.ts:Module",
+      "type": "class",
+      "name": "Module",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain type Module used to keep app state and learning content strongly typed.",
+      "complexity": "moderate",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "class:src/types.ts:UserStats",
+      "type": "class",
+      "name": "UserStats",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain type UserStats used to keep app state and learning content strongly typed.",
+      "complexity": "moderate",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "class:src/types.ts:AppState",
+      "type": "class",
+      "name": "AppState",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain type AppState used to keep app state and learning content strongly typed.",
+      "complexity": "moderate",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "class:src/types.ts:Level",
+      "type": "class",
+      "name": "Level",
+      "filePath": "src/types.ts",
+      "summary": "Shared TypeScript domain type Level used to keep app state and learning content strongly typed.",
+      "complexity": "moderate",
+      "tags": [
+        "type-definition",
+        "domain-model",
+        "typescript"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "function:src/types.ts:QuizQuestionType",
+      "type": "function",
+      "name": "QuizQuestionType",
+      "filePath": "src/types.ts",
+      "summary": "Exported symbol QuizQuestionType from src/types.ts.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/lib/toast.ts",
+      "type": "file",
+      "name": "toast.ts",
+      "filePath": "src/lib/toast.ts",
+      "summary": "Small browser event helper for dispatching typed app toast notifications.",
+      "complexity": "simple",
+      "tags": [
+        "utility",
+        "event-handler",
+        "notification"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/lib/toast.ts:showToast",
+      "type": "function",
+      "name": "showToast",
+      "filePath": "src/lib/toast.ts",
+      "summary": "Dispatches a typed browser custom event consumed by the app-level toast renderer.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/data/mockData.ts",
+      "type": "file",
+      "name": "mockData.ts",
+      "filePath": "src/data/mockData.ts",
+      "summary": "Static German-learning curriculum data, testimonials, FAQs, lesson vocabulary, grammar explanations, and quiz questions used by the UI.",
+      "complexity": "complex",
+      "tags": [
+        "content-data",
+        "curriculum",
+        "mock-data"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "file:src/components/DesignSystem.tsx",
+      "type": "file",
+      "name": "DesignSystem.tsx",
+      "filePath": "src/components/DesignSystem.tsx",
+      "summary": "Reusable UI primitives such as buttons, inputs, level badges, and progress bars shared across pages.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "design-system",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/components/DesignSystem.tsx:Button",
+      "type": "function",
+      "name": "Button",
+      "filePath": "src/components/DesignSystem.tsx",
+      "summary": "Provides a reusable styled button with variants and loading/disabled behavior.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "function:src/components/DesignSystem.tsx:Input",
+      "type": "function",
+      "name": "Input",
+      "filePath": "src/components/DesignSystem.tsx",
+      "summary": "Provides a reusable labeled input with icon and validation presentation.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "function:src/components/DesignSystem.tsx:LevelBadge",
+      "type": "function",
+      "name": "LevelBadge",
+      "filePath": "src/components/DesignSystem.tsx",
+      "summary": "Displays CEFR level labels with consistent color treatment.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "function:src/components/DesignSystem.tsx:ProgressBar",
+      "type": "function",
+      "name": "ProgressBar",
+      "filePath": "src/components/DesignSystem.tsx",
+      "summary": "Displays bounded progress with optional labels and percentage text.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/components/Navigation.tsx",
+      "type": "file",
+      "name": "Navigation.tsx",
+      "filePath": "src/components/Navigation.tsx",
+      "summary": "Global navigation and sidebar components that expose route controls, progress indicators, authentication actions, and responsive menus.",
+      "complexity": "complex",
+      "tags": [
+        "component",
+        "design-system",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/components/Navigation.tsx:Navbar",
+      "type": "function",
+      "name": "Navbar",
+      "filePath": "src/components/Navigation.tsx",
+      "summary": "Renders top navigation, responsive mobile menu controls, progress indicators, and auth actions.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "function:src/components/Navigation.tsx:Sidebar",
+      "type": "function",
+      "name": "Sidebar",
+      "filePath": "src/components/Navigation.tsx",
+      "summary": "Renders desktop portal navigation and streak status for authenticated views.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/components/VideoPlayer.tsx",
+      "type": "file",
+      "name": "VideoPlayer.tsx",
+      "filePath": "src/components/VideoPlayer.tsx",
+      "summary": "Interactive lesson video player simulation with playback controls, volume, progress, transcript, and completion toast behavior.",
+      "complexity": "complex",
+      "tags": [
+        "component",
+        "design-system",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/components/VideoPlayer.tsx:VideoPlayer",
+      "type": "function",
+      "name": "VideoPlayer",
+      "filePath": "src/components/VideoPlayer.tsx",
+      "summary": "Simulates a lesson media player with playback, progress, volume, fullscreen, transcript, and completion feedback.",
+      "complexity": "complex",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/pages/LandingPage.tsx",
+      "type": "file",
+      "name": "LandingPage.tsx",
+      "filePath": "src/pages/LandingPage.tsx",
+      "summary": "Public marketing and discovery page for DeutschPath with hero content, feature highlights, testimonials, FAQ, and login call-to-action.",
+      "complexity": "complex",
+      "tags": [
+        "page",
+        "workflow",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/pages/LandingPage.tsx:LandingPage",
+      "type": "function",
+      "name": "LandingPage",
+      "filePath": "src/pages/LandingPage.tsx",
+      "summary": "Renders the public product experience and routes users toward authentication.",
+      "complexity": "complex",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/pages/LoginPage.tsx",
+      "type": "file",
+      "name": "LoginPage.tsx",
+      "filePath": "src/pages/LoginPage.tsx",
+      "summary": "Login/signup form flow that validates required fields, collects user identity, fires toasts, and hands successful authentication to the app shell.",
+      "complexity": "complex",
+      "tags": [
+        "page",
+        "workflow",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/pages/LoginPage.tsx:LoginPage",
+      "type": "function",
+      "name": "LoginPage",
+      "filePath": "src/pages/LoginPage.tsx",
+      "summary": "Handles login/signup form state, validation, toast feedback, and successful auth handoff.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/pages/DashboardPage.tsx",
+      "type": "file",
+      "name": "DashboardPage.tsx",
+      "filePath": "src/pages/DashboardPage.tsx",
+      "summary": "Authenticated dashboard summarizing XP, streak, learning progress, recent modules, recommended lessons, and quick navigation actions.",
+      "complexity": "complex",
+      "tags": [
+        "page",
+        "workflow",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/pages/DashboardPage.tsx:DashboardPage",
+      "type": "function",
+      "name": "DashboardPage",
+      "filePath": "src/pages/DashboardPage.tsx",
+      "summary": "Renders authenticated learning progress, statistics, recommended lessons, and module shortcuts.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/pages/RoadmapPage.tsx",
+      "type": "file",
+      "name": "RoadmapPage.tsx",
+      "filePath": "src/pages/RoadmapPage.tsx",
+      "summary": "Learning roadmap view that groups modules and lessons by level, showing completion state and lesson selection actions.",
+      "complexity": "complex",
+      "tags": [
+        "page",
+        "workflow",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/pages/RoadmapPage.tsx:RoadmapPage",
+      "type": "function",
+      "name": "RoadmapPage",
+      "filePath": "src/pages/RoadmapPage.tsx",
+      "summary": "Renders level/module progress and lesson navigation for the learning roadmap.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/pages/LessonDetailPage.tsx",
+      "type": "file",
+      "name": "LessonDetailPage.tsx",
+      "filePath": "src/pages/LessonDetailPage.tsx",
+      "summary": "Lesson learning view that combines video, vocabulary, grammar explanations, completion actions, quiz entry, and next-lesson progression.",
+      "complexity": "complex",
+      "tags": [
+        "page",
+        "workflow",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/pages/LessonDetailPage.tsx:LessonDetailPage",
+      "type": "function",
+      "name": "LessonDetailPage",
+      "filePath": "src/pages/LessonDetailPage.tsx",
+      "summary": "Renders a single lesson with video, vocabulary, grammar, completion, quiz, and next-lesson actions.",
+      "complexity": "moderate",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/pages/QuizPage.tsx",
+      "type": "file",
+      "name": "QuizPage.tsx",
+      "filePath": "src/pages/QuizPage.tsx",
+      "summary": "Quiz flow for multiple-choice, fill-blank, matching, and listening questions with scoring, feedback, progress, and completion handling.",
+      "complexity": "complex",
+      "tags": [
+        "page",
+        "workflow",
+        "ui"
+      ],
+      "language": "typescript",
+      "languageNotes": "Uses React component exports, typed props, and shared domain interfaces."
+    },
+    {
+      "id": "function:src/pages/QuizPage.tsx:QuizPage",
+      "type": "function",
+      "name": "QuizPage",
+      "filePath": "src/pages/QuizPage.tsx",
+      "summary": "Manages quiz state, answer validation, scoring, feedback, and completion callbacks.",
+      "complexity": "complex",
+      "tags": [
+        "component",
+        "exported",
+        "react"
+      ],
+      "language": "typescript"
+    },
+    {
+      "id": "file:src/index.css",
+      "type": "file",
+      "name": "index.css",
+      "filePath": "src/index.css",
+      "summary": "Tailwind CSS entry stylesheet defining design tokens, theme colors, animations, responsive utilities, and base styling.",
+      "complexity": "simple",
+      "tags": [
+        "styling",
+        "tailwind",
+        "design-tokens"
+      ],
+      "language": "css"
+    }
+  ],
+  "edges": [
+    {
+      "direction": "forward",
+      "source": "file:src/main.tsx",
+      "target": "file:src/App.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/main.tsx imports src/App.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/main.tsx",
+      "target": "file:src/index.css",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/main.tsx imports src/index.css."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/components/Navigation.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/components/Navigation.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/data/mockData.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/data/mockData.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/lib/toast.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/lib/toast.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/pages/DashboardPage.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/pages/DashboardPage.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/pages/LandingPage.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/pages/LandingPage.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/pages/LessonDetailPage.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/pages/LessonDetailPage.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/pages/LoginPage.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/pages/LoginPage.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/pages/QuizPage.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/pages/QuizPage.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/pages/RoadmapPage.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/pages/RoadmapPage.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "file:src/types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/App.tsx imports src/types.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:App",
+      "type": "contains",
+      "weight": 1,
+      "description": "App.tsx contains exported symbol App."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:App",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "App.tsx exports App."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:VocabularyItem",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol VocabularyItem."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:VocabularyItem",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports VocabularyItem."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "function:src/types.ts:GrammarExplanation",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol GrammarExplanation."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "function:src/types.ts:GrammarExplanation",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports GrammarExplanation."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:QuizQuestion",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol QuizQuestion."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:QuizQuestion",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports QuizQuestion."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:Lesson",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol Lesson."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:Lesson",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports Lesson."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:Module",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol Module."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:Module",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports Module."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:UserStats",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol UserStats."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:UserStats",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports UserStats."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:AppState",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol AppState."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:AppState",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports AppState."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:Level",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol Level."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "class:src/types.ts:Level",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports Level."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "function:src/types.ts:QuizQuestionType",
+      "type": "contains",
+      "weight": 1,
+      "description": "types.ts contains exported symbol QuizQuestionType."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/types.ts",
+      "target": "function:src/types.ts:QuizQuestionType",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "types.ts exports QuizQuestionType."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/lib/toast.ts",
+      "target": "function:src/lib/toast.ts:showToast",
+      "type": "contains",
+      "weight": 1,
+      "description": "toast.ts contains exported symbol showToast."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/lib/toast.ts",
+      "target": "function:src/lib/toast.ts:showToast",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "toast.ts exports showToast."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/data/mockData.ts",
+      "target": "file:src/types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/data/mockData.ts imports src/types.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "file:src/types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/components/DesignSystem.tsx imports src/types.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:Button",
+      "type": "contains",
+      "weight": 1,
+      "description": "DesignSystem.tsx contains exported symbol Button."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:Button",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "DesignSystem.tsx exports Button."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:Input",
+      "type": "contains",
+      "weight": 1,
+      "description": "DesignSystem.tsx contains exported symbol Input."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:Input",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "DesignSystem.tsx exports Input."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:LevelBadge",
+      "type": "contains",
+      "weight": 1,
+      "description": "DesignSystem.tsx contains exported symbol LevelBadge."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:LevelBadge",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "DesignSystem.tsx exports LevelBadge."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:ProgressBar",
+      "type": "contains",
+      "weight": 1,
+      "description": "DesignSystem.tsx contains exported symbol ProgressBar."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/DesignSystem.tsx",
+      "target": "function:src/components/DesignSystem.tsx:ProgressBar",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "DesignSystem.tsx exports ProgressBar."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/Navigation.tsx",
+      "target": "file:src/components/DesignSystem.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/components/Navigation.tsx imports src/components/DesignSystem.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/Navigation.tsx",
+      "target": "function:src/components/Navigation.tsx:Navbar",
+      "type": "contains",
+      "weight": 1,
+      "description": "Navigation.tsx contains exported symbol Navbar."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/Navigation.tsx",
+      "target": "function:src/components/Navigation.tsx:Navbar",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "Navigation.tsx exports Navbar."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/Navigation.tsx",
+      "target": "function:src/components/Navigation.tsx:Sidebar",
+      "type": "contains",
+      "weight": 1,
+      "description": "Navigation.tsx contains exported symbol Sidebar."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/Navigation.tsx",
+      "target": "function:src/components/Navigation.tsx:Sidebar",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "Navigation.tsx exports Sidebar."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/VideoPlayer.tsx",
+      "target": "file:src/lib/toast.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/components/VideoPlayer.tsx imports src/lib/toast.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/VideoPlayer.tsx",
+      "target": "function:src/components/VideoPlayer.tsx:VideoPlayer",
+      "type": "contains",
+      "weight": 1,
+      "description": "VideoPlayer.tsx contains exported symbol VideoPlayer."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/components/VideoPlayer.tsx",
+      "target": "function:src/components/VideoPlayer.tsx:VideoPlayer",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "VideoPlayer.tsx exports VideoPlayer."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LandingPage.tsx",
+      "target": "file:src/components/DesignSystem.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LandingPage.tsx imports src/components/DesignSystem.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LandingPage.tsx",
+      "target": "file:src/data/mockData.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LandingPage.tsx imports src/data/mockData.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LandingPage.tsx",
+      "target": "function:src/pages/LandingPage.tsx:LandingPage",
+      "type": "contains",
+      "weight": 1,
+      "description": "LandingPage.tsx contains exported symbol LandingPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LandingPage.tsx",
+      "target": "function:src/pages/LandingPage.tsx:LandingPage",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "LandingPage.tsx exports LandingPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LoginPage.tsx",
+      "target": "file:src/components/DesignSystem.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LoginPage.tsx imports src/components/DesignSystem.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LoginPage.tsx",
+      "target": "file:src/lib/toast.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LoginPage.tsx imports src/lib/toast.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LoginPage.tsx",
+      "target": "function:src/pages/LoginPage.tsx:LoginPage",
+      "type": "contains",
+      "weight": 1,
+      "description": "LoginPage.tsx contains exported symbol LoginPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LoginPage.tsx",
+      "target": "function:src/pages/LoginPage.tsx:LoginPage",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "LoginPage.tsx exports LoginPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/DashboardPage.tsx",
+      "target": "file:src/components/DesignSystem.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/DashboardPage.tsx imports src/components/DesignSystem.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/DashboardPage.tsx",
+      "target": "file:src/data/mockData.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/DashboardPage.tsx imports src/data/mockData.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/DashboardPage.tsx",
+      "target": "file:src/types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/DashboardPage.tsx imports src/types.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/DashboardPage.tsx",
+      "target": "function:src/pages/DashboardPage.tsx:DashboardPage",
+      "type": "contains",
+      "weight": 1,
+      "description": "DashboardPage.tsx contains exported symbol DashboardPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/DashboardPage.tsx",
+      "target": "function:src/pages/DashboardPage.tsx:DashboardPage",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "DashboardPage.tsx exports DashboardPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/RoadmapPage.tsx",
+      "target": "file:src/components/DesignSystem.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/RoadmapPage.tsx imports src/components/DesignSystem.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/RoadmapPage.tsx",
+      "target": "file:src/data/mockData.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/RoadmapPage.tsx imports src/data/mockData.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/RoadmapPage.tsx",
+      "target": "file:src/types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/RoadmapPage.tsx imports src/types.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/RoadmapPage.tsx",
+      "target": "function:src/pages/RoadmapPage.tsx:RoadmapPage",
+      "type": "contains",
+      "weight": 1,
+      "description": "RoadmapPage.tsx contains exported symbol RoadmapPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/RoadmapPage.tsx",
+      "target": "function:src/pages/RoadmapPage.tsx:RoadmapPage",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "RoadmapPage.tsx exports RoadmapPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LessonDetailPage.tsx",
+      "target": "file:src/components/DesignSystem.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LessonDetailPage.tsx imports src/components/DesignSystem.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LessonDetailPage.tsx",
+      "target": "file:src/components/VideoPlayer.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LessonDetailPage.tsx imports src/components/VideoPlayer.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LessonDetailPage.tsx",
+      "target": "file:src/lib/toast.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LessonDetailPage.tsx imports src/lib/toast.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LessonDetailPage.tsx",
+      "target": "file:src/types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/LessonDetailPage.tsx imports src/types.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LessonDetailPage.tsx",
+      "target": "function:src/pages/LessonDetailPage.tsx:LessonDetailPage",
+      "type": "contains",
+      "weight": 1,
+      "description": "LessonDetailPage.tsx contains exported symbol LessonDetailPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/LessonDetailPage.tsx",
+      "target": "function:src/pages/LessonDetailPage.tsx:LessonDetailPage",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "LessonDetailPage.tsx exports LessonDetailPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/QuizPage.tsx",
+      "target": "file:src/components/DesignSystem.tsx",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/QuizPage.tsx imports src/components/DesignSystem.tsx."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/QuizPage.tsx",
+      "target": "file:src/types.ts",
+      "type": "imports",
+      "weight": 0.7,
+      "description": "src/pages/QuizPage.tsx imports src/types.ts."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/QuizPage.tsx",
+      "target": "function:src/pages/QuizPage.tsx:QuizPage",
+      "type": "contains",
+      "weight": 1,
+      "description": "QuizPage.tsx contains exported symbol QuizPage."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/pages/QuizPage.tsx",
+      "target": "function:src/pages/QuizPage.tsx:QuizPage",
+      "type": "exports",
+      "weight": 0.8,
+      "description": "QuizPage.tsx exports QuizPage."
+    },
+    {
+      "direction": "forward",
+      "source": "document:README.md",
+      "target": "file:src/main.tsx",
+      "type": "documents",
+      "weight": 0.5,
+      "description": "The README explains how to run the app entry point locally."
+    },
+    {
+      "direction": "forward",
+      "source": "document:README.md",
+      "target": "file:src/App.tsx",
+      "type": "documents",
+      "weight": 0.5,
+      "description": "The README describes the application run flow that boots the app shell."
+    },
+    {
+      "direction": "forward",
+      "source": "config:package.json",
+      "target": "file:vite.config.ts",
+      "type": "configures",
+      "weight": 0.6,
+      "description": "NPM scripts and dependencies configure the Vite build."
+    },
+    {
+      "direction": "forward",
+      "source": "config:package.json",
+      "target": "file:src/main.tsx",
+      "type": "configures",
+      "weight": 0.6,
+      "description": "The package manifest supplies runtime and build dependencies for the React entry point."
+    },
+    {
+      "direction": "forward",
+      "source": "config:tsconfig.json",
+      "target": "file:src/types.ts",
+      "type": "configures",
+      "weight": 0.6,
+      "description": "TypeScript compiler settings govern the shared type definitions."
+    },
+    {
+      "direction": "forward",
+      "source": "config:tsconfig.json",
+      "target": "file:src/App.tsx",
+      "type": "configures",
+      "weight": 0.6,
+      "description": "TypeScript compiler settings apply to the app shell."
+    },
+    {
+      "direction": "forward",
+      "source": "file:vite.config.ts",
+      "target": "file:src/main.tsx",
+      "type": "configures",
+      "weight": 0.6,
+      "description": "Vite config controls bundling and plugin behavior for the browser entry point."
+    },
+    {
+      "direction": "forward",
+      "source": "file:index.html",
+      "target": "file:src/main.tsx",
+      "type": "serves",
+      "weight": 0.5,
+      "description": "The HTML shell loads the React entry module."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/index.css",
+      "target": "file:src/main.tsx",
+      "type": "configures",
+      "weight": 0.6,
+      "description": "The global stylesheet is imported by the React entry point."
+    },
+    {
+      "direction": "forward",
+      "source": "config:metadata.json",
+      "target": "document:README.md",
+      "type": "related",
+      "weight": 0.5,
+      "description": "AI Studio metadata complements the project documentation."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/data/mockData.ts",
+      "target": "file:src/types.ts",
+      "type": "depends_on",
+      "weight": 0.6,
+      "description": "Curriculum fixtures are typed with the shared lesson and module models."
+    },
+    {
+      "direction": "forward",
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:App",
+      "type": "calls",
+      "weight": 0.8,
+      "description": "The React renderer invokes the top-level App component."
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:documentation-and-metadata",
+      "name": "Documentation and Metadata",
+      "description": "Human-facing setup notes and AI Studio metadata that explain the project and its runtime context.",
+      "nodeIds": [
+        "document:README.md",
+        "config:metadata.json"
+      ]
+    },
+    {
+      "id": "layer:build-and-runtime-config",
+      "name": "Build and Runtime Config",
+      "description": "Configuration files that define dependencies, TypeScript behavior, Vite bundling, and the HTML mount shell.",
+      "nodeIds": [
+        "config:package.json",
+        "config:tsconfig.json",
+        "file:vite.config.ts",
+        "file:index.html"
+      ]
+    },
+    {
+      "id": "layer:application-shell",
+      "name": "Application Shell",
+      "description": "Bootstrap and orchestration code responsible for mounting React, maintaining app state, routing between views, and rendering global feedback.",
+      "nodeIds": [
+        "file:src/main.tsx",
+        "file:src/App.tsx"
+      ]
+    },
+    {
+      "id": "layer:shared-ui-and-utilities",
+      "name": "Shared UI and Utilities",
+      "description": "Reusable components, navigation widgets, media controls, toast helpers, and global styling shared by multiple pages.",
+      "nodeIds": [
+        "file:src/components/DesignSystem.tsx",
+        "file:src/components/Navigation.tsx",
+        "file:src/components/VideoPlayer.tsx",
+        "file:src/lib/toast.ts",
+        "file:src/index.css"
+      ]
+    },
+    {
+      "id": "layer:learning-experience-pages",
+      "name": "Learning Experience Pages",
+      "description": "Route-level React screens that implement discovery, login, dashboard, roadmap, lesson study, and quiz workflows.",
+      "nodeIds": [
+        "file:src/pages/LandingPage.tsx",
+        "file:src/pages/LoginPage.tsx",
+        "file:src/pages/DashboardPage.tsx",
+        "file:src/pages/RoadmapPage.tsx",
+        "file:src/pages/LessonDetailPage.tsx",
+        "file:src/pages/QuizPage.tsx"
+      ]
+    },
+    {
+      "id": "layer:domain-model-and-content",
+      "name": "Domain Model and Content",
+      "description": "Typed learning domain models and static curriculum data that drive lesson, quiz, progress, testimonial, and FAQ experiences.",
+      "nodeIds": [
+        "file:src/types.ts",
+        "file:src/data/mockData.ts"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Project Setup",
+      "description": "Start with the project documentation and manifest to understand how the Vite React app is installed, configured, and run locally.",
+      "nodeIds": [
+        "document:README.md",
+        "config:package.json",
+        "file:vite.config.ts"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Application Boot",
+      "description": "Follow the browser boot path from the HTML shell into the React entry point and top-level app shell.",
+      "nodeIds": [
+        "file:index.html",
+        "file:src/main.tsx",
+        "file:src/App.tsx"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "State, Navigation, and Progress",
+      "description": "Inspect how App coordinates authentication, progress persistence, current route selection, lesson selection, and toast feedback.",
+      "nodeIds": [
+        "file:src/App.tsx",
+        "file:src/components/Navigation.tsx",
+        "file:src/lib/toast.ts"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Shared Interface System",
+      "description": "Review the reusable buttons, inputs, badges, progress bars, media player, and global Tailwind styles used across the learning flow.",
+      "nodeIds": [
+        "file:src/components/DesignSystem.tsx",
+        "file:src/components/VideoPlayer.tsx",
+        "file:src/index.css"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Learning Workflows",
+      "description": "Walk through the route-level pages that implement landing, login, dashboard, roadmap, lesson study, and quiz interactions.",
+      "nodeIds": [
+        "file:src/pages/LandingPage.tsx",
+        "file:src/pages/LoginPage.tsx",
+        "file:src/pages/DashboardPage.tsx",
+        "file:src/pages/RoadmapPage.tsx",
+        "file:src/pages/LessonDetailPage.tsx",
+        "file:src/pages/QuizPage.tsx"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Learning Domain Data",
+      "description": "Finish with the typed lesson model and static German curriculum data that feed the roadmap, lesson detail, dashboard, and quiz pages.",
+      "nodeIds": [
+        "file:src/types.ts",
+        "file:src/data/mockData.ts"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1011 @@
+openapi: 3.1.0
+info:
+  title: DeutschPath API
+  version: 0.2.0
+  description: >
+    Backend contract for DeutschPath — a German learning app.
+
+
+    ## Auth strategy
+
+    Authentication is fully delegated to **Supabase Auth** (email/password +
+    Google OAuth). The frontend uses the Supabase JS SDK directly:
+    `supabase.auth.signUp()`, `supabase.auth.signInWithPassword()`,
+    `supabase.auth.signInWithOAuth({ provider: 'google' })`, etc.
+    No custom auth endpoints are needed.
+
+
+    The Supabase JWT (`access_token`) is forwarded as `Authorization: Bearer
+    <token>` to all protected endpoints below.
+
+
+    ## Endpoint routing
+
+    | Type | Base URL | Who calls it |
+    |---|---|---|
+    | **PostgREST** (auto CRUD) | `https://<project>.supabase.co/rest/v1` | Frontend direct |
+    | **Edge Functions** (business logic) | `https://<project>.supabase.co/functions/v1` | Frontend direct |
+
+
+    Endpoints in this spec map to **Edge Functions** unless tagged `[PostgREST]`.
+    PostgREST endpoints are documented here for schema reference; their actual
+    URL and filter syntax follow the PostgREST spec.
+
+
+    ## Quiz answer security
+
+    `correctAnswer` is never returned to the client. Quiz scoring happens
+    server-side inside the `quiz-submit` Edge Function using the Supabase
+    **service role key**, which bypasses RLS to read `correct_answer`.
+
+servers:
+  - url: https://<project>.supabase.co/functions/v1
+    description: Supabase Edge Functions (production)
+  - url: http://localhost:54321/functions/v1
+    description: Supabase local dev (supabase start)
+
+tags:
+  - name: User
+    description: User profile and stats — backed by PostgREST on `profiles` and `user_stats` tables
+  - name: Content
+    description: Static learning content (modules, lessons) — PostgREST on seeded tables
+  - name: Learning
+    description: Progress mutations — Edge Functions
+  - name: Quiz
+    description: Quiz fetch and submission — Edge Functions
+  - name: Dashboard
+    description: Aggregated views — Edge Functions
+  - name: Admin
+    description: Admin-only operations using service role key
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [Content]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ---------------------------------------------------------------------------
+  # NOTE: Auth endpoints are NOT here.
+  # Use Supabase Auth SDK on the frontend:
+  #   - Register:        supabase.auth.signUp({ email, password, options: { data: { full_name } } })
+  #   - Login:           supabase.auth.signInWithPassword({ email, password })
+  #   - Google OAuth:    supabase.auth.signInWithOAuth({ provider: 'google' })
+  #   - Forgot password: supabase.auth.resetPasswordForEmail(email)
+  #   - Reset password:  supabase.auth.updateUser({ password: newPassword })
+  #   - Logout:          supabase.auth.signOut()
+  #   - Token refresh:   Handled automatically by Supabase SDK
+  # ---------------------------------------------------------------------------
+
+  /users/me:
+    get:
+      tags: [User]
+      summary: Get current user profile
+      description: >
+        [PostgREST] Reads from `profiles` table joined with `auth.users`.
+        Actual PostgREST URL: `GET /rest/v1/profiles?id=eq.<user_id>`.
+        Supabase RLS ensures users can only read their own row.
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [User]
+      summary: Update current user profile (full_name, avatar_url)
+      description: >
+        [PostgREST] Updates `profiles` table. RLS allows owner update only.
+        Actual PostgREST URL: `PATCH /rest/v1/profiles?id=eq.<user_id>`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfilePatch"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/me/stats:
+    get:
+      tags: [User]
+      summary: Get current user's learning stats
+      description: >
+        [PostgREST] Reads from `user_stats` table.
+        Actual PostgREST URL: `GET /rest/v1/user_stats?user_id=eq.<user_id>`.
+        RLS ensures users only see their own stats.
+      responses:
+        "200":
+          description: User stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /admin/users/{userId}/stats:
+    patch:
+      tags: [Admin]
+      summary: Override a user's stats (admin / migration tool only)
+      description: >
+        Requires Supabase **service role key** in Authorization header (not a
+        user JWT). Used for data migrations or admin corrections.
+        Normal progress mutations go through `/lessons/{id}/complete` and
+        `/lessons/{id}/quiz/submit`.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: usr_123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserStatsPatch"
+      responses:
+        "200":
+          description: Updated stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden — service role key required
+
+  /modules:
+    get:
+      tags: [Content]
+      summary: List learning modules
+      description: >
+        [PostgREST] `GET /rest/v1/modules?select=*,lessons(*)&order=order_index`.
+        Filter by level: `&level=eq.A1`. Public — no auth required.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LevelQuery"
+        - name: includeLessons
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: When false, omit the nested lessons array (lighter response for nav/sidebar).
+      responses:
+        "200":
+          description: Module list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Module"
+
+  /modules/{moduleId}:
+    get:
+      tags: [Content]
+      summary: Get a module by id
+      description: "[PostgREST] `GET /rest/v1/modules?id=eq.{moduleId}&select=*,lessons(*)`"
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ModuleId"
+      responses:
+        "200":
+          description: Module detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /lessons:
+    get:
+      tags: [Content]
+      summary: List lessons
+      description: >
+        [PostgREST] `GET /rest/v1/lessons?select=*&order=order_index`.
+        Does NOT include quiz questions (use /lessons/{id} for that).
+        `correct_answer` column is hidden from this role via RLS/view.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LevelQuery"
+        - name: moduleId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lesson list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LessonSummary"
+
+  /lessons/{lessonId}:
+    get:
+      tags: [Content]
+      summary: Get lesson detail (vocabulary, grammar, quiz questions — no correctAnswer)
+      description: >
+        [PostgREST] `GET /rest/v1/lessons?id=eq.{lessonId}&select=*,vocabulary(*),grammar(*,examples(*)),quiz_questions(*)`.
+        The `quiz_questions` view strips `correct_answer` — scoring is server-side only.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LessonId"
+      responses:
+        "200":
+          description: Lesson detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /lessons/{lessonId}/complete:
+    post:
+      tags: [Learning]
+      summary: Mark a lesson as read/completed after studying content
+      description: >
+        [Edge Function] Idempotent. If `lessonId` not already in
+        `user_stats.completed_lessons`, appends it and awards +15 XP.
+        Uses service role key internally to write stats.
+      parameters:
+        - $ref: "#/components/parameters/LessonId"
+      responses:
+        "200":
+          description: Completion recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressMutationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /lessons/{lessonId}/quiz:
+    get:
+      tags: [Quiz]
+      summary: Get quiz questions for a lesson (no correctAnswer)
+      description: >
+        [PostgREST] Same as fetching lesson quiz via `/lessons/{id}` but
+        returns only question data. `correct_answer` is excluded by the
+        `quiz_questions_public` view / column-level security.
+        Can be called without auth (lesson content is public).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/LessonId"
+      responses:
+        "200":
+          description: Quiz questions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lessonId, questions]
+                properties:
+                  lessonId:
+                    type: string
+                  questions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QuizQuestionPublic"
+
+  /lessons/{lessonId}/quiz/submit:
+    post:
+      tags: [Quiz]
+      summary: Submit quiz answers and update progress
+      description: >
+        [Edge Function] Scores answers server-side using service role key
+        to read `correct_answer`. Scoring rules:
+
+        - **score ≥ 80%** → lesson marked complete, +30 XP awarded, streak incremented.
+
+        - **Streak logic**: if `user_stats.last_played_date` is today → no streak change;
+          if yesterday → +1 streak; if older → reset streak to 1.
+
+        - `last_played_date` is always updated to today on any submission.
+      parameters:
+        - $ref: "#/components/parameters/LessonId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSubmission"
+      responses:
+        "200":
+          description: Quiz result and updated stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard summary for the current user
+      description: >
+        [Edge Function] Aggregates: user profile, stats, next suggested lesson
+        (first incomplete lesson by order_index), level-by-level progress,
+        and last 5 quiz scores.
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /roadmap:
+    get:
+      tags: [Dashboard]
+      summary: Get roadmap with per-lesson completion and lock state
+      description: >
+        [Edge Function] Computes `status` (completed/current/locked) for each
+        lesson by comparing `user_stats.completed_lessons` against all lessons
+        ordered by `order_index`. A lesson is `locked` if the previous lesson
+        is not completed.
+      responses:
+        "200":
+          description: Roadmap state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Roadmap"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /content/testimonials:
+    get:
+      tags: [Content]
+      summary: List landing page testimonials
+      description: "[PostgREST] `GET /rest/v1/testimonials?order=order_index`"
+      security: []
+      responses:
+        "200":
+          description: Testimonials
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Testimonial"
+
+  /content/faqs:
+    get:
+      tags: [Content]
+      summary: List landing page FAQs
+      description: "[PostgREST] `GET /rest/v1/faqs?order=order_index`"
+      security: []
+      responses:
+        "200":
+          description: FAQ entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FaqItem"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    LevelQuery:
+      name: level
+      in: query
+      schema:
+        $ref: "#/components/schemas/Level"
+    ModuleId:
+      name: moduleId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: m-a1-1
+    LessonId:
+      name: lessonId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: a1-l1
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    Level:
+      type: string
+      enum: [A1, A2, B1]
+
+    User:
+      type: object
+      required: [id, email, fullName]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Maps to `auth.users.id` in Supabase
+          example: 550e8400-e29b-41d4-a716-446655440000
+        email:
+          type: string
+          format: email
+          example: hocvien@deutschpath.vn
+        fullName:
+          type: string
+          example: Nguyễn Văn Lâm
+        avatarUrl:
+          type: string
+          format: uri
+
+    UserProfilePatch:
+      type: object
+      description: Fields that a user may update on their own profile.
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+        avatarUrl:
+          type: string
+          format: uri
+
+    UserStats:
+      type: object
+      required: [xp, streak, completedLessons, quizScores]
+      properties:
+        xp:
+          type: integer
+          minimum: 0
+          example: 120
+        streak:
+          type: integer
+          minimum: 0
+          example: 4
+        lastPlayedDate:
+          type: string
+          format: date
+        completedLessons:
+          type: array
+          items:
+            type: string
+          example: [a1-l1]
+        quizScores:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+            maximum: 100
+          example:
+            a1-l1: 100
+
+    UserStatsPatch:
+      type: object
+      properties:
+        xp:
+          type: integer
+          minimum: 0
+        streak:
+          type: integer
+          minimum: 0
+        lastPlayedDate:
+          type: string
+          format: date
+        completedLessons:
+          type: array
+          items:
+            type: string
+        quizScores:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+            maximum: 100
+
+    VocabularyItem:
+      type: object
+      required: [de, pronunciation, vi, exampleDe, exampleVi]
+      properties:
+        de:
+          type: string
+        pronunciation:
+          type: string
+        vi:
+          type: string
+        exampleDe:
+          type: string
+        exampleVi:
+          type: string
+
+    GrammarExample:
+      type: object
+      required: [de, vi]
+      properties:
+        de:
+          type: string
+        vi:
+          type: string
+
+    GrammarExplanation:
+      type: object
+      required: [title, rule, examples]
+      properties:
+        title:
+          type: string
+        rule:
+          type: string
+        examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrammarExample"
+
+    QuizQuestionType:
+      type: string
+      enum: [multiple-choice, fill-blank, matching, listening]
+
+    MatchingPair:
+      type: object
+      required: [de, vi]
+      properties:
+        de:
+          type: string
+        vi:
+          type: string
+
+    QuizQuestionPublic:
+      type: object
+      required: [id, type, questionText, explanation]
+      properties:
+        id:
+          type: string
+        type:
+          $ref: "#/components/schemas/QuizQuestionType"
+        questionText:
+          type: string
+        audioText:
+          type: string
+          description: Text the frontend may play via SpeechSynthesis for listening questions.
+        options:
+          type: array
+          items:
+            type: string
+        matchingPairs:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchingPair"
+        explanation:
+          type: string
+
+    LessonSummary:
+      type: object
+      description: Lightweight lesson representation used in lists, dashboard, and roadmap.
+      required: [id, moduleId, moduleTitle, level, title, titleVi, duration, orderIndex]
+      properties:
+        id:
+          type: string
+          example: a1-l1
+        moduleId:
+          type: string
+          example: m-a1-1
+        moduleTitle:
+          type: string
+        level:
+          $ref: "#/components/schemas/Level"
+        title:
+          type: string
+        titleVi:
+          type: string
+        duration:
+          type: string
+          example: "05:40"
+        orderIndex:
+          type: integer
+          minimum: 0
+          description: Global lesson order across all modules. Used to determine next/prev lesson.
+        nextLessonId:
+          type: string
+          nullable: true
+          description: ID of the next lesson by orderIndex. Null if this is the last lesson.
+          example: a1-l2
+
+    Lesson:
+      type: object
+      description: Full lesson detail including vocabulary, grammar, and quiz questions.
+      required:
+        - id
+        - moduleId
+        - moduleTitle
+        - level
+        - title
+        - titleVi
+        - duration
+        - objective
+        - summary
+        - orderIndex
+        - vocabulary
+        - grammar
+        - quiz
+      properties:
+        id:
+          type: string
+          example: a1-l1
+        moduleId:
+          type: string
+          example: m-a1-1
+        moduleTitle:
+          type: string
+        level:
+          $ref: "#/components/schemas/Level"
+        title:
+          type: string
+        titleVi:
+          type: string
+        duration:
+          type: string
+          example: "05:40"
+        objective:
+          type: string
+        summary:
+          type: string
+        youtubeId:
+          type: string
+        orderIndex:
+          type: integer
+          minimum: 0
+          description: Global lesson order across all modules.
+        nextLessonId:
+          type: string
+          nullable: true
+          description: ID of the next lesson. Null if this is the last lesson.
+        vocabulary:
+          type: array
+          items:
+            $ref: "#/components/schemas/VocabularyItem"
+        grammar:
+          $ref: "#/components/schemas/GrammarExplanation"
+        quiz:
+          type: array
+          description: Quiz questions WITHOUT correctAnswer — scoring is server-side.
+          items:
+            $ref: "#/components/schemas/QuizQuestionPublic"
+
+    Module:
+      type: object
+      required: [id, level, title, titleVi, lessons]
+      properties:
+        id:
+          type: string
+          example: m-a1-1
+        level:
+          $ref: "#/components/schemas/Level"
+        title:
+          type: string
+        titleVi:
+          type: string
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+
+    QuizAnswer:
+      type: object
+      description: >
+        One answer per question. Use the appropriate field based on question type:
+
+        - **multiple-choice** / **fill-blank** / **listening** → set `answer` (string).
+          For fill-blank the server normalises case and trims whitespace before comparing.
+
+        - **matching** → set `matchedPairs` (array of de/vi pairs the user connected).
+          Do NOT set `answer` for matching questions.
+      required: [questionId]
+      properties:
+        questionId:
+          type: string
+        answer:
+          type: string
+          description: >
+            Used for: multiple-choice (selected option text), fill-blank (typed value),
+            listening (selected option text). Leave empty for matching type.
+        matchedPairs:
+          type: array
+          description: >
+            Used ONLY for matching type. Send all de/vi pairs the user connected.
+            Server checks each pair against stored correct pairs.
+          items:
+            $ref: "#/components/schemas/MatchingPair"
+
+    QuizSubmission:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizAnswer"
+
+    QuizQuestionResult:
+      type: object
+      required: [questionId, correct, userAnswer, questionText, explanation]
+      properties:
+        questionId:
+          type: string
+        correct:
+          type: boolean
+        userAnswer:
+          type: string
+        questionText:
+          type: string
+        explanation:
+          type: string
+        correctAnswer:
+          type: string
+          description: Optional. Return only after submission if you want the UI to show correction details.
+
+    QuizResult:
+      type: object
+      required: [lessonId, scorePercentage, passed, correctCount, totalQuestions, results, stats]
+      properties:
+        lessonId:
+          type: string
+        scorePercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        passed:
+          type: boolean
+        correctCount:
+          type: integer
+          minimum: 0
+        totalQuestions:
+          type: integer
+          minimum: 0
+        xpAwarded:
+          type: integer
+          minimum: 0
+          example: 30
+        streakIncremented:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizQuestionResult"
+        stats:
+          $ref: "#/components/schemas/UserStats"
+
+    ProgressMutationResponse:
+      type: object
+      required: [lessonId, alreadyCompleted, xpAwarded, stats]
+      properties:
+        lessonId:
+          type: string
+        alreadyCompleted:
+          type: boolean
+        xpAwarded:
+          type: integer
+          minimum: 0
+          example: 15
+        stats:
+          $ref: "#/components/schemas/UserStats"
+
+    DashboardSummary:
+      type: object
+      required: [user, stats, nextSuggestedLesson, levelProgress, recentScores]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        stats:
+          $ref: "#/components/schemas/UserStats"
+        nextSuggestedLesson:
+          description: >
+            First lesson not yet in `completed_lessons`, ordered by `order_index`.
+            Returns `LessonSummary` (not full Lesson) to keep the dashboard response lightweight.
+          $ref: "#/components/schemas/LessonSummary"
+        levelProgress:
+          type: array
+          items:
+            type: object
+            required: [level, completedLessons, totalLessons, progressPercentage]
+            properties:
+              level:
+                $ref: "#/components/schemas/Level"
+              completedLessons:
+                type: integer
+              totalLessons:
+                type: integer
+              progressPercentage:
+                type: integer
+                minimum: 0
+                maximum: 100
+        recentScores:
+          type: array
+          items:
+            type: object
+            required: [lessonId, title, score]
+            properties:
+              lessonId:
+                type: string
+              title:
+                type: string
+              score:
+                type: integer
+                minimum: 0
+                maximum: 100
+
+    Roadmap:
+      type: object
+      required: [overallProgress, levels]
+      properties:
+        overallProgress:
+          type: object
+          required: [completedLessons, totalLessons, progressPercentage]
+          properties:
+            completedLessons:
+              type: integer
+            totalLessons:
+              type: integer
+            progressPercentage:
+              type: integer
+              minimum: 0
+              maximum: 100
+        levels:
+          type: array
+          items:
+            type: object
+            required: [level, title, description, completedLessons, totalLessons, progressPercentage, lessons]
+            properties:
+              level:
+                $ref: "#/components/schemas/Level"
+              title:
+                type: string
+              description:
+                type: string
+              completedLessons:
+                type: integer
+              totalLessons:
+                type: integer
+              progressPercentage:
+                type: integer
+                minimum: 0
+                maximum: 100
+              lessons:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoadmapLesson"
+
+    RoadmapLesson:
+      type: object
+      required: [lesson, status]
+      properties:
+        lesson:
+          description: Lightweight summary — full detail loaded on demand via /lessons/{id}
+          $ref: "#/components/schemas/LessonSummary"
+        status:
+          type: string
+          enum: [completed, current, locked]
+          description: >
+            - `completed`: lessonId in user_stats.completed_lessons
+            - `current`: first lesson not completed (there is only one at a time)
+            - `locked`: not completed and not current
+
+    Testimonial:
+      type: object
+      required: [name, role, content]
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        content:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+
+    FaqItem:
+      type: object
+      required: [question, answer]
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

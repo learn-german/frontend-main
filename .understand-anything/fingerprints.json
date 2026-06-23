@@ -1,0 +1,128 @@
+{
+  "README.md": {
+    "hash": "1799b8b26fc65f2763f8fd9a93555ebffdfa300560acbc2b143ac162f3cb2e9f",
+    "sizeBytes": 542,
+    "sizeLines": 21,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "package.json": {
+    "hash": "dc7f4f50a6c59fdf16a3cc004a6fc16efe7b916a9c9734545ad39ee55a311ff6",
+    "sizeBytes": 926,
+    "sizeLines": 39,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "metadata.json": {
+    "hash": "7425cfad5840f2f229c56c1997e4f12767fc1e307ba560e8a2744f627645113c",
+    "sizeBytes": 348,
+    "sizeLines": 7,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "index.html": {
+    "hash": "b5a1b4bb457eded1c68ffa133748651b475b26f62f55a4e4b8b9495e18e045d7",
+    "sizeBytes": 311,
+    "sizeLines": 14,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "tsconfig.json": {
+    "hash": "e93e15c3794e43a117964ea191ae985cbedea70c41d3d82b2e20aa8d07374fe4",
+    "sizeBytes": 508,
+    "sizeLines": 27,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "vite.config.ts": {
+    "hash": "c7b7cc4b3a6b6a08f0a4fb916bb4d4e41804d5767611bce43d4c1ad53a198192",
+    "sizeBytes": 708,
+    "sizeLines": 23,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/main.tsx": {
+    "hash": "5580d48b0fec68698a113d45a640b88d479dc35eb1f4b87c51f67c6cc81cee9b",
+    "sizeBytes": 231,
+    "sizeLines": 11,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/App.tsx": {
+    "hash": "4a40db51a7e31e0ee12eb50f8840fde9d0f4b8ec793620647c84d440c56ddf0d",
+    "sizeBytes": 12653,
+    "sizeLines": 365,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/types.ts": {
+    "hash": "bb67e08c29af82804bba11115afa36400243ceed1e841ad9b5bcb27bb80b74a7",
+    "sizeBytes": 1842,
+    "sizeLines": 76,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/lib/toast.ts": {
+    "hash": "5433e39aa0edfb4a0ab4d733aadb85186dd757a6b7ffc5183533b2106d2e363b",
+    "sizeBytes": 424,
+    "sizeLines": 18,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/data/mockData.ts": {
+    "hash": "78f4fff8a51b1c3febeb83070aab657da3dc5f069e7310c5c99ef63b46dcac08",
+    "sizeBytes": 23641,
+    "sizeLines": 448,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/components/DesignSystem.tsx": {
+    "hash": "4dc07c29a4e52c62ddad0dd2da52c75ab4a113e7d289bceea1a149d77fd4417b",
+    "sizeBytes": 4344,
+    "sizeLines": 133,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/components/Navigation.tsx": {
+    "hash": "9894c997a454e9ba13267d2b7dee36fe2546bca53af9d73405a980cea5fd926f",
+    "sizeBytes": 15054,
+    "sizeLines": 353,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/components/VideoPlayer.tsx": {
+    "hash": "fbb9de4b95e3e56fd79162e9da1b74cb9d11efbd59555f14af4c028d68e44a61",
+    "sizeBytes": 14442,
+    "sizeLines": 325,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/pages/LandingPage.tsx": {
+    "hash": "47a1944e14b1f90d35f3617b00797e629514c4bf9a135dbb5e43e131b0f82cd8",
+    "sizeBytes": 30236,
+    "sizeLines": 540,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/pages/LoginPage.tsx": {
+    "hash": "2f1aed65d026de334cc9783f0af264725e986864da5553a55b2be9ae6585bf7f",
+    "sizeBytes": 12436,
+    "sizeLines": 291,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/pages/DashboardPage.tsx": {
+    "hash": "91e53b3afe3c8424c81141dadd4ed3a46d87dc502a25619e0bd58c2dbb80ac28",
+    "sizeBytes": 15885,
+    "sizeLines": 316,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/pages/RoadmapPage.tsx": {
+    "hash": "eaa355fc25412b56d8ee9ff8205479609e87a57559caa9531d1d5eebeea9cb79",
+    "sizeBytes": 12965,
+    "sizeLines": 263,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/pages/LessonDetailPage.tsx": {
+    "hash": "fe06df537c0745376b51d4750a2f9d0ff6414d5b189d8c8b51c9a4d4de065b35",
+    "sizeBytes": 11395,
+    "sizeLines": 284,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/pages/QuizPage.tsx": {
+    "hash": "9a21e9954715fe0f9ebb289f2f8c66054415da45f69e52d070fc7f3863e68afd",
+    "sizeBytes": 23948,
+    "sizeLines": 564,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  },
+  "src/index.css": {
+    "hash": "e808c0fa01982dfcd9ed98c87b53fc2665c23e44e42c2e74262dd060897903c5",
+    "sizeBytes": 1597,
+    "sizeLines": 66,
+    "generatedAt": "2026-06-23T10:50:18.910Z"
+  }
+}

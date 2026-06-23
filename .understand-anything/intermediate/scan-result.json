@@ -1,0 +1,218 @@
+{
+  "projectName": "react-example",
+  "projectDescription": "A Vite-powered React learning app for DeutschPath, combining Vietnamese-language German lessons, progress tracking, quizzes, and reusable UI components.",
+  "languages": [
+    "css",
+    "html",
+    "json",
+    "markdown",
+    "typescript"
+  ],
+  "frameworks": [
+    "React",
+    "Vite",
+    "Vite React Plugin",
+    "Tailwind CSS",
+    "Motion",
+    "Lucide React",
+    "Google GenAI",
+    "Express"
+  ],
+  "complexity": "small",
+  "files": [
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "sizeLines": 21,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "package.json",
+      "language": "json",
+      "sizeLines": 39,
+      "fileCategory": "config"
+    },
+    {
+      "path": "metadata.json",
+      "language": "json",
+      "sizeLines": 7,
+      "fileCategory": "config"
+    },
+    {
+      "path": "index.html",
+      "language": "html",
+      "sizeLines": 14,
+      "fileCategory": "markup"
+    },
+    {
+      "path": "tsconfig.json",
+      "language": "json",
+      "sizeLines": 27,
+      "fileCategory": "config"
+    },
+    {
+      "path": "vite.config.ts",
+      "language": "typescript",
+      "sizeLines": 23,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/main.tsx",
+      "language": "typescript",
+      "sizeLines": 11,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/App.tsx",
+      "language": "typescript",
+      "sizeLines": 365,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/types.ts",
+      "language": "typescript",
+      "sizeLines": 76,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/lib/toast.ts",
+      "language": "typescript",
+      "sizeLines": 18,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/data/mockData.ts",
+      "language": "typescript",
+      "sizeLines": 448,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/components/DesignSystem.tsx",
+      "language": "typescript",
+      "sizeLines": 133,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/components/Navigation.tsx",
+      "language": "typescript",
+      "sizeLines": 353,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/components/VideoPlayer.tsx",
+      "language": "typescript",
+      "sizeLines": 325,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/pages/LandingPage.tsx",
+      "language": "typescript",
+      "sizeLines": 540,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/pages/LoginPage.tsx",
+      "language": "typescript",
+      "sizeLines": 291,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/pages/DashboardPage.tsx",
+      "language": "typescript",
+      "sizeLines": 316,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/pages/RoadmapPage.tsx",
+      "language": "typescript",
+      "sizeLines": 263,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/pages/LessonDetailPage.tsx",
+      "language": "typescript",
+      "sizeLines": 284,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/pages/QuizPage.tsx",
+      "language": "typescript",
+      "sizeLines": 564,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/index.css",
+      "language": "css",
+      "sizeLines": 66,
+      "fileCategory": "markup"
+    }
+  ],
+  "importMap": {
+    "README.md": [],
+    "package.json": [],
+    "metadata.json": [],
+    "index.html": [],
+    "tsconfig.json": [],
+    "vite.config.ts": [],
+    "src/main.tsx": [
+      "src/App.tsx",
+      "src/index.css"
+    ],
+    "src/App.tsx": [
+      "src/components/Navigation.tsx",
+      "src/data/mockData.ts",
+      "src/lib/toast.ts",
+      "src/pages/DashboardPage.tsx",
+      "src/pages/LandingPage.tsx",
+      "src/pages/LessonDetailPage.tsx",
+      "src/pages/LoginPage.tsx",
+      "src/pages/QuizPage.tsx",
+      "src/pages/RoadmapPage.tsx",
+      "src/types.ts"
+    ],
+    "src/types.ts": [],
+    "src/lib/toast.ts": [],
+    "src/data/mockData.ts": [
+      "src/types.ts"
+    ],
+    "src/components/DesignSystem.tsx": [
+      "src/types.ts"
+    ],
+    "src/components/Navigation.tsx": [
+      "src/components/DesignSystem.tsx"
+    ],
+    "src/components/VideoPlayer.tsx": [
+      "src/lib/toast.ts"
+    ],
+    "src/pages/LandingPage.tsx": [
+      "src/components/DesignSystem.tsx",
+      "src/data/mockData.ts"
+    ],
+    "src/pages/LoginPage.tsx": [
+      "src/components/DesignSystem.tsx",
+      "src/lib/toast.ts"
+    ],
+    "src/pages/DashboardPage.tsx": [
+      "src/components/DesignSystem.tsx",
+      "src/data/mockData.ts",
+      "src/types.ts"
+    ],
+    "src/pages/RoadmapPage.tsx": [
+      "src/components/DesignSystem.tsx",
+      "src/data/mockData.ts",
+      "src/types.ts"
+    ],
+    "src/pages/LessonDetailPage.tsx": [
+      "src/components/DesignSystem.tsx",
+      "src/components/VideoPlayer.tsx",
+      "src/lib/toast.ts",
+      "src/types.ts"
+    ],
+    "src/pages/QuizPage.tsx": [
+      "src/components/DesignSystem.tsx",
+      "src/types.ts"
+    ],
+    "src/index.css": []
+  },
+  "filteredByIgnore": 0
+}
