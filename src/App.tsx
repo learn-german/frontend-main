@@ -17,6 +17,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
 import { supabase } from "./lib/supabase";
+import { signOut } from "./lib/auth";
 
 const LOCAL_STORAGE_STATS_KEY = "deutschpath_user_stats";
 
@@ -139,7 +140,7 @@ export default function App() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     // onAuthStateChange sẽ set user = null và chuyển về landing
   };
 
