@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button, Input } from "../components/DesignSystem";
 import { showToast } from "../lib/toast";
-import { supabase } from "../lib/supabase";
+import { signIn, signUp, signInWithGoogle, resetPassword } from "../lib/auth";
 
 interface LoginPageProps {
   onNavigateHome: () => void;
@@ -46,15 +46,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setIsLoading(true);
     try {
       if (isRegister) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } }
-        });
+        const { error: signUpError } = await signUp(email, password, fullName);
         if (signUpError) throw signUpError;
         showToast("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.", "success");
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { error: signInError } = await signIn(email, password);
         if (signInError) throw signInError;
         // App.tsx sẽ lắng nghe onAuthStateChange và chuyển trang
       }
@@ -68,15 +64,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin }
-    });
+    const { error: oauthError } = await signInWithGoogle();
     if (oauthError) {
       setError(oauthError.message);
       setIsLoading(false);
     }
     // Nếu thành công, browser sẽ redirect sang Google — không cần xử lý thêm
+  };
+
+  const handleForgotPassword = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Vui lòng nhập email của bạn rồi bấm 'Quên mật khẩu?'.");
+      return;
+    }
+    setIsLoading(true);
+    const { error: resetError } = await resetPassword(email);
+    setIsLoading(false);
+    if (resetError) {
+      setError(resetError.message);
+    } else {
+      showToast("Email khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư.", "success");
+    }
   };
 
   return (
@@ -166,10 +175,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     <input type="checkbox" className="rounded text-orange-600 accent-orange-600" defaultChecked />
                     Ghi nhớ đăng nhập
                   </label>
-                  <a 
+                  <a
                     id="btn-forgot-pwd"
-                    href="#" 
-                    onClick={(e) => { e.preventDefault(); showToast("Hệ thống đã gửi hướng dẫn khôi phục mật khẩu tới email của bạn (mô phỏng).", "success"); }} 
+                    href="#"
+                    onClick={handleForgotPassword}
                     className="text-orange-600 hover:text-orange-700 font-display font-semibold transition"
                   >
                     Quên mật khẩu?
