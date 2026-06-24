@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { SAMPLE_MODULES } from "../data/mockData";
-import { UserStats, Lesson } from "../types";
+import { UserStats, Lesson } from "../lib/appTypes";
 
 interface DashboardPageProps {
   user: { email: string; fullName: string };

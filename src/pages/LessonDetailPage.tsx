@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { LevelBadge, Button } from "../components/DesignSystem";
 import { VideoPlayer } from "../components/VideoPlayer";
-import { Lesson, UserStats } from "../types";
+import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 
 interface LessonDetailPageProps {

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { AppState, Level, Lesson, UserStats } from "./types";
+import { AppState, Level, Lesson, UserStats } from "./lib/appTypes";
 import { SAMPLE_MODULES } from "./data/mockData";
 import { Navbar, Sidebar } from "./components/Navigation";
 import { LandingPage } from "./pages/LandingPage";

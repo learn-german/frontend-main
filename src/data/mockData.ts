@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Module, Lesson } from "../types";
+import { Module, Lesson } from "../lib/appTypes";
 
 export const SAMPLE_MODULES: Module[] = [
   {
