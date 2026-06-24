@@ -16,9 +16,8 @@ import { QuizPage } from "./pages/QuizPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
+import { supabase } from "./lib/supabase";
 
-// Local storage keys
-const LOCAL_STORAGE_USER_KEY = "deutschpath_auth_user";
 const LOCAL_STORAGE_STATS_KEY = "deutschpath_user_stats";
 
 // Memory storage fallback in case localStorage is blocked in iframe/sandboxed environments
@@ -99,22 +98,37 @@ export default function App() {
     }
   }, [activeToast]);
 
-  // Load from local storage on mount
+  // Supabase auth state — handles initial session + OAuth callback redirect
   useEffect(() => {
-    const cachedUser = safeStorage.getItem(LOCAL_STORAGE_USER_KEY);
-    const cachedStats = safeStorage.getItem(LOCAL_STORAGE_STATS_KEY);
-
-    if (cachedUser) {
-      try {
-        const parsed = JSON.parse(cachedUser);
-        setUser(parsed);
-        // If logged in, go to dashboard
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          email: session.user.email ?? "",
+          fullName: session.user.user_metadata?.full_name ?? session.user.email ?? ""
+        });
         setCurrentPage("dashboard");
-      } catch (e) {
-        console.error("Failed to parse cached user", e);
       }
-    }
+    });
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          email: session.user.email ?? "",
+          fullName: session.user.user_metadata?.full_name ?? session.user.email ?? ""
+        });
+        setCurrentPage("dashboard");
+      } else {
+        setUser(null);
+        setCurrentPage("landing");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load stats from local storage on mount
+  useEffect(() => {
+    const cachedStats = safeStorage.getItem(LOCAL_STORAGE_STATS_KEY);
     if (cachedStats) {
       try {
         setStats(JSON.parse(cachedStats));
@@ -124,18 +138,9 @@ export default function App() {
     }
   }, []);
 
-  // Save auth user state on update
-  const handleLoginSuccess = (userData: { email: string; fullName: string }) => {
-    setUser(userData);
-    safeStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(userData));
-    setCurrentPage("dashboard");
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    safeStorage.removeItem(LOCAL_STORAGE_USER_KEY);
-    // Keep stats in local storage but reset to landing page
-    setCurrentPage("landing");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    // onAuthStateChange sẽ set user = null và chuyển về landing
   };
 
   const handleNavigate = (page: AppState["currentPage"]) => {
@@ -277,7 +282,6 @@ export default function App() {
 
               {currentPage === "login" && (
                 <LoginPage
-                  onLoginSuccess={handleLoginSuccess}
                   onNavigateHome={() => handleNavigate("landing")}
                 />
               )}

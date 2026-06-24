@@ -4,37 +4,36 @@
  */
 
 import React, { useState } from "react";
-import { 
-  Mail, 
-  Lock, 
-  ArrowRight, 
-  Compass, 
-  MapPin, 
-  User, 
-  BookOpen, 
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  User,
   CheckCircle2,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from "lucide-react";
 import { Button, Input } from "../components/DesignSystem";
 import { showToast } from "../lib/toast";
+import { supabase } from "../lib/supabase";
 
 interface LoginPageProps {
-  onLoginSuccess: (user: { email: string; fullName: string }) => void;
   onNavigateHome: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
-  onLoginSuccess,
   onNavigateHome
 }) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState("hocvien@deutschpath.vn");
-  const [password, setPassword] = useState("password123");
-  const [fullName, setFullName] = useState("Nguyễn Văn Lâm");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (!email || !password) {
       setError("Vui lòng nhập đầy đủ email và mật khẩu.");
       return;
@@ -44,17 +43,40 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       return;
     }
 
-    onLoginSuccess({
-      email,
-      fullName: isRegister ? fullName : "Nguyễn Văn Lâm"
-    });
+    setIsLoading(true);
+    try {
+      if (isRegister) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } }
+        });
+        if (signUpError) throw signUpError;
+        showToast("Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.", "success");
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+        // App.tsx sẽ lắng nghe onAuthStateChange và chuyển trang
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Đã có lỗi xảy ra, vui lòng thử lại.";
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    onLoginSuccess({
-      email: "google.user@gmail.com",
-      fullName: "Đức Nguyễn Google"
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin }
     });
+    if (oauthError) {
+      setError(oauthError.message);
+      setIsLoading(false);
+    }
+    // Nếu thành công, browser sẽ redirect sang Google — không cần xử lý thêm
   };
 
   return (
@@ -160,9 +182,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 type="submit"
                 variant="primary"
                 className="w-full mt-2"
+                disabled={isLoading}
               >
-                {isRegister ? "Đăng ký ngay" : "Đăng nhập bằng Email"}
-                <ArrowRight className="w-4 h-4 ml-2" />
+                {isLoading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <>{isRegister ? "Đăng ký ngay" : "Đăng nhập bằng Email"}<ArrowRight className="w-4 h-4 ml-2" /></>
+                }
               </Button>
             </form>
 
@@ -173,30 +198,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <span className="relative bg-white px-3.5 text-xs text-slate-400 font-sans">hoặc tiếp tục với</span>
             </div>
 
-            {/* Google Authentication simulation */}
+            {/* Google OAuth */}
             <button
               id="btn-google-auth"
               onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 font-display font-semibold text-slate-700 text-sm active:scale-95 duration-150 transition cursor-pointer shadow-sm"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 font-display font-semibold text-slate-700 text-sm active:scale-95 duration-150 transition cursor-pointer shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.6c-.28 1.5-.1.8-1.5 1.76v2.9h2.4c1.4-1.3 2.2-3.3 2.2-5.5v-.99z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.97-1.1 7.96-2.9l-3.86-3c-1.1.7-2.5 1.1-4.1 1.1-3.14 0-5.8-2.1-6.75-5H1.32v3.1C3.3 21.3 7.37 24 12 24z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.25 14.2c-.25-.7-.38-1.5-.38-2.2s.13-1.5.38-2.2V6.7H1.32C.48 8.4 0 10.15 0 12s.48 3.6 1.32 5.3l3.93-3.1z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.6 4.6 1.8l3.43-3.4C17.96 1.2 15.24 0 12 0 7.37 0 3.3 2.7 1.32 5.7l3.93 3.1c.95-2.9 3.61-5 6.75-5z"
-                />
-              </svg>
+              {isLoading
+                ? <Loader2 className="w-4.5 h-4.5 animate-spin text-slate-400" />
+                : (
+                  <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.6c-.28 1.5-.1.8-1.5 1.76v2.9h2.4c1.4-1.3 2.2-3.3 2.2-5.5v-.99z" />
+                    <path fill="#34A853" d="M12 24c3.24 0 5.97-1.1 7.96-2.9l-3.86-3c-1.1.7-2.5 1.1-4.1 1.1-3.14 0-5.8-2.1-6.75-5H1.32v3.1C3.3 21.3 7.37 24 12 24z" />
+                    <path fill="#FBBC05" d="M5.25 14.2c-.25-.7-.38-1.5-.38-2.2s.13-1.5.38-2.2V6.7H1.32C.48 8.4 0 10.15 0 12s.48 3.6 1.32 5.3l3.93-3.1z" />
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.6 4.6 1.8l3.43-3.4C17.96 1.2 15.24 0 12 0 7.37 0 3.3 2.7 1.32 5.7l3.93 3.1c.95-2.9 3.61-5 6.75-5z" />
+                  </svg>
+                )
+              }
               <span>Đăng nhập qua Google (Đề xuất)</span>
             </button>
           </div>
