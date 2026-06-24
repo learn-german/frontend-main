@@ -64,6 +64,7 @@ security:
 paths:
   /health:
     get:
+      operationId: healthCheck
       tags: [Content]
       summary: Health check
       security: []
@@ -94,6 +95,7 @@ paths:
 
   /users/me:
     get:
+      operationId: getMe
       tags: [User]
       summary: Get current user profile
       description: >
@@ -110,6 +112,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
     patch:
+      operationId: updateMe
       tags: [User]
       summary: Update current user profile (full_name, avatar_url)
       description: >
@@ -133,6 +136,7 @@ paths:
 
   /users/me/stats:
     get:
+      operationId: getMyStats
       tags: [User]
       summary: Get current user's learning stats
       description: >
@@ -151,6 +155,7 @@ paths:
 
   /admin/users/{userId}/stats:
     patch:
+      operationId: adminPatchUserStats
       tags: [Admin]
       summary: Override a user's stats (admin / migration tool only)
       description: >
@@ -185,6 +190,7 @@ paths:
 
   /modules:
     get:
+      operationId: listModules
       tags: [Content]
       summary: List learning modules
       description: >
@@ -215,6 +221,7 @@ paths:
 
   /modules/{moduleId}:
     get:
+      operationId: getModule
       tags: [Content]
       summary: Get a module by id
       description: "[PostgREST] `GET /rest/v1/modules?id=eq.{moduleId}&select=*,lessons(*)`"
@@ -233,6 +240,7 @@ paths:
 
   /lessons:
     get:
+      operationId: listLessons
       tags: [Content]
       summary: List lessons
       description: >
@@ -262,6 +270,7 @@ paths:
 
   /lessons/{lessonId}:
     get:
+      operationId: getLesson
       tags: [Content]
       summary: Get lesson detail (vocabulary, grammar, quiz questions — no correctAnswer)
       description: >
@@ -282,6 +291,7 @@ paths:
 
   /lessons/{lessonId}/complete:
     post:
+      operationId: completeLesson
       tags: [Learning]
       summary: Mark a lesson as read/completed after studying content
       description: >
@@ -304,6 +314,7 @@ paths:
 
   /lessons/{lessonId}/quiz:
     get:
+      operationId: getLessonQuiz
       tags: [Quiz]
       summary: Get quiz questions for a lesson (no correctAnswer)
       description: >
@@ -332,6 +343,7 @@ paths:
 
   /lessons/{lessonId}/quiz/submit:
     post:
+      operationId: submitQuiz
       tags: [Quiz]
       summary: Submit quiz answers and update progress
       description: >
@@ -366,6 +378,7 @@ paths:
 
   /dashboard:
     get:
+      operationId: getDashboard
       tags: [Dashboard]
       summary: Get dashboard summary for the current user
       description: >
@@ -384,6 +397,7 @@ paths:
 
   /roadmap:
     get:
+      operationId: getRoadmap
       tags: [Dashboard]
       summary: Get roadmap with per-lesson completion and lock state
       description: >
@@ -403,6 +417,7 @@ paths:
 
   /content/testimonials:
     get:
+      operationId: listTestimonials
       tags: [Content]
       summary: List landing page testimonials
       description: "[PostgREST] `GET /rest/v1/testimonials?order=order_index`"
@@ -423,6 +438,7 @@ paths:
 
   /content/faqs:
     get:
+      operationId: listFaqs
       tags: [Content]
       summary: List landing page FAQs
       description: "[PostgREST] `GET /rest/v1/faqs?order=order_index`"

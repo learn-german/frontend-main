@@ -12,29 +12,7 @@ export interface paths {
             cookie?: never;
         };
         /** Health check */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Service is healthy */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example ok */
-                            status: string;
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["healthCheck"];
         put?: never;
         post?: never;
         delete?: never;
@@ -54,27 +32,7 @@ export interface paths {
          * Get current user profile
          * @description [PostgREST] Reads from `profiles` table joined with `auth.users`. Actual PostgREST URL: `GET /rest/v1/profiles?id=eq.<user_id>`. Supabase RLS ensures users can only read their own row.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Current user */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-            };
-        };
+        get: operations["getMe"];
         put?: never;
         post?: never;
         delete?: never;
@@ -84,31 +42,7 @@ export interface paths {
          * Update current user profile (full_name, avatar_url)
          * @description [PostgREST] Updates `profiles` table. RLS allows owner update only. Actual PostgREST URL: `PATCH /rest/v1/profiles?id=eq.<user_id>`.
          */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UserProfilePatch"];
-                };
-            };
-            responses: {
-                /** @description Updated profile */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-            };
-        };
+        patch: operations["updateMe"];
         trace?: never;
     };
     "/users/me/stats": {
@@ -122,27 +56,7 @@ export interface paths {
          * Get current user's learning stats
          * @description [PostgREST] Reads from `user_stats` table. Actual PostgREST URL: `GET /rest/v1/user_stats?user_id=eq.<user_id>`. RLS ensures users only see their own stats.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description User stats */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserStats"];
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-            };
-        };
+        get: operations["getMyStats"];
         put?: never;
         post?: never;
         delete?: never;
@@ -168,41 +82,7 @@ export interface paths {
          * Override a user's stats (admin / migration tool only)
          * @description Requires Supabase **service role key** in Authorization header (not a user JWT). Used for data migrations or admin corrections. Normal progress mutations go through `/lessons/{id}/complete` and `/lessons/{id}/quiz/submit`.
          */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @example usr_123 */
-                    userId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UserStatsPatch"];
-                };
-            };
-            responses: {
-                /** @description Updated stats */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserStats"];
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-                /** @description Forbidden — service role key required */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        patch: operations["adminPatchUserStats"];
         trace?: never;
     };
     "/modules": {
@@ -216,32 +96,7 @@ export interface paths {
          * List learning modules
          * @description [PostgREST] `GET /rest/v1/modules?select=*,lessons(*)&order=order_index`. Filter by level: `&level=eq.A1`. Public — no auth required.
          */
-        get: {
-            parameters: {
-                query?: {
-                    level?: components["parameters"]["LevelQuery"];
-                    /** @description When false, omit the nested lessons array (lighter response for nav/sidebar). */
-                    includeLessons?: boolean;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Module list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            items: components["schemas"]["Module"][];
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["listModules"];
         put?: never;
         post?: never;
         delete?: never;
@@ -261,30 +116,7 @@ export interface paths {
          * Get a module by id
          * @description [PostgREST] `GET /rest/v1/modules?id=eq.{moduleId}&select=*,lessons(*)`
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @example m-a1-1 */
-                    moduleId: components["parameters"]["ModuleId"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Module detail */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Module"];
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
+        get: operations["getModule"];
         put?: never;
         post?: never;
         delete?: never;
@@ -304,31 +136,7 @@ export interface paths {
          * List lessons
          * @description [PostgREST] `GET /rest/v1/lessons?select=*&order=order_index`. Does NOT include quiz questions (use /lessons/{id} for that). `correct_answer` column is hidden from this role via RLS/view.
          */
-        get: {
-            parameters: {
-                query?: {
-                    level?: components["parameters"]["LevelQuery"];
-                    moduleId?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Lesson list */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            items: components["schemas"]["LessonSummary"][];
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["listLessons"];
         put?: never;
         post?: never;
         delete?: never;
@@ -348,30 +156,7 @@ export interface paths {
          * Get lesson detail (vocabulary, grammar, quiz questions — no correctAnswer)
          * @description [PostgREST] `GET /rest/v1/lessons?id=eq.{lessonId}&select=*,vocabulary(*),grammar(*,examples(*)),quiz_questions(*)`. The `quiz_questions` view strips `correct_answer` — scoring is server-side only.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @example a1-l1 */
-                    lessonId: components["parameters"]["LessonId"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Lesson detail */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Lesson"];
-                    };
-                };
-                404: components["responses"]["NotFound"];
-            };
-        };
+        get: operations["getLesson"];
         put?: never;
         post?: never;
         delete?: never;
@@ -393,31 +178,7 @@ export interface paths {
          * Mark a lesson as read/completed after studying content
          * @description [Edge Function] Idempotent. If `lessonId` not already in `user_stats.completed_lessons`, appends it and awards +15 XP. Uses service role key internally to write stats.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @example a1-l1 */
-                    lessonId: components["parameters"]["LessonId"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Completion recorded */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProgressMutationResponse"];
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-                404: components["responses"]["NotFound"];
-            };
-        };
+        post: operations["completeLesson"];
         delete?: never;
         options?: never;
         head?: never;
@@ -435,32 +196,7 @@ export interface paths {
          * Get quiz questions for a lesson (no correctAnswer)
          * @description [PostgREST] Same as fetching lesson quiz via `/lessons/{id}` but returns only question data. `correct_answer` is excluded by the `quiz_questions_public` view / column-level security. Can be called without auth (lesson content is public).
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @example a1-l1 */
-                    lessonId: components["parameters"]["LessonId"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Quiz questions */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            lessonId: string;
-                            questions: components["schemas"]["QuizQuestionPublic"][];
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["getLessonQuiz"];
         put?: never;
         post?: never;
         delete?: never;
@@ -487,35 +223,7 @@ export interface paths {
          *
          *     - `last_played_date` is always updated to today on any submission.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @example a1-l1 */
-                    lessonId: components["parameters"]["LessonId"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["QuizSubmission"];
-                };
-            };
-            responses: {
-                /** @description Quiz result and updated stats */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["QuizResult"];
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                401: components["responses"]["Unauthorized"];
-            };
-        };
+        post: operations["submitQuiz"];
         delete?: never;
         options?: never;
         head?: never;
@@ -533,27 +241,7 @@ export interface paths {
          * Get dashboard summary for the current user
          * @description [Edge Function] Aggregates: user profile, stats, next suggested lesson (first incomplete lesson by order_index), level-by-level progress, and last 5 quiz scores.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Dashboard data */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DashboardSummary"];
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-            };
-        };
+        get: operations["getDashboard"];
         put?: never;
         post?: never;
         delete?: never;
@@ -573,27 +261,7 @@ export interface paths {
          * Get roadmap with per-lesson completion and lock state
          * @description [Edge Function] Computes `status` (completed/current/locked) for each lesson by comparing `user_stats.completed_lessons` against all lessons ordered by `order_index`. A lesson is `locked` if the previous lesson is not completed.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Roadmap state */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Roadmap"];
-                    };
-                };
-                401: components["responses"]["Unauthorized"];
-            };
-        };
+        get: operations["getRoadmap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -613,28 +281,7 @@ export interface paths {
          * List landing page testimonials
          * @description [PostgREST] `GET /rest/v1/testimonials?order=order_index`
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Testimonials */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            items: components["schemas"]["Testimonial"][];
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["listTestimonials"];
         put?: never;
         post?: never;
         delete?: never;
@@ -654,28 +301,7 @@ export interface paths {
          * List landing page FAQs
          * @description [PostgREST] `GET /rest/v1/faqs?order=order_index`
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description FAQ entries */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            items: components["schemas"]["FaqItem"][];
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["listFaqs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -989,4 +615,395 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    healthCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service is healthy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example ok */
+                        status: string;
+                    };
+                };
+            };
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserProfilePatch"];
+            };
+        };
+        responses: {
+            /** @description Updated profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getMyStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User stats */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserStats"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    adminPatchUserStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example usr_123 */
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserStatsPatch"];
+            };
+        };
+        responses: {
+            /** @description Updated stats */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserStats"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden — service role key required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listModules: {
+        parameters: {
+            query?: {
+                level?: components["parameters"]["LevelQuery"];
+                /** @description When false, omit the nested lessons array (lighter response for nav/sidebar). */
+                includeLessons?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Module list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Module"][];
+                    };
+                };
+            };
+        };
+    };
+    getModule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example m-a1-1 */
+                moduleId: components["parameters"]["ModuleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Module detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Module"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listLessons: {
+        parameters: {
+            query?: {
+                level?: components["parameters"]["LevelQuery"];
+                moduleId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lesson list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["LessonSummary"][];
+                    };
+                };
+            };
+        };
+    };
+    getLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example a1-l1 */
+                lessonId: components["parameters"]["LessonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lesson detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lesson"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    completeLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example a1-l1 */
+                lessonId: components["parameters"]["LessonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Completion recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressMutationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getLessonQuiz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example a1-l1 */
+                lessonId: components["parameters"]["LessonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quiz questions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        lessonId: string;
+                        questions: components["schemas"]["QuizQuestionPublic"][];
+                    };
+                };
+            };
+        };
+    };
+    submitQuiz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @example a1-l1 */
+                lessonId: components["parameters"]["LessonId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizSubmission"];
+            };
+        };
+        responses: {
+            /** @description Quiz result and updated stats */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dashboard data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getRoadmap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Roadmap state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Roadmap"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listTestimonials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Testimonials */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Testimonial"][];
+                    };
+                };
+            };
+        };
+    };
+    listFaqs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description FAQ entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["FaqItem"][];
+                    };
+                };
+            };
+        };
+    };
+}
