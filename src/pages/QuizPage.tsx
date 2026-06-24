@@ -18,7 +18,7 @@ import {
   GraduationCap
 } from "lucide-react";
 import { Button, ProgressBar } from "../components/DesignSystem";
-import { Lesson, QuizQuestion } from "../types";
+import { Lesson, QuizQuestion } from "../lib/appTypes";
 
 interface QuizPageProps {
   lesson: Lesson;

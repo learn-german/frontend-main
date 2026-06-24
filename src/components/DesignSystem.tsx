@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { Level } from "../types";
+import { Level } from "../lib/appTypes";
 
 // Button Component
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

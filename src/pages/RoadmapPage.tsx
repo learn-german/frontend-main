@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { LevelBadge, ProgressBar, Button } from "../components/DesignSystem";
 import { SAMPLE_MODULES } from "../data/mockData";
-import { Level, UserStats, Lesson } from "../types";
+import { Level, UserStats, Lesson } from "../lib/appTypes";
 
 interface RoadmapPageProps {
   stats: UserStats;
