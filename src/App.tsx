@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { AppState, Level, Lesson, UserStats } from "./lib/appTypes";
-import { SAMPLE_MODULES } from "./data/mockData";
+import { AppState, Level, Lesson, UserStats, Module } from "./lib/appTypes";
+import { useModules } from "./hooks/useModules";
 import { Navbar, Sidebar } from "./components/Navigation";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -58,6 +58,9 @@ const DEFAULT_STATS: UserStats = {
 };
 
 export default function App() {
+  // Modules from DB
+  const { modules } = useModules();
+
   // Authentication states
   const [user, setUser] = useState<{ email: string; fullName: string } | null>(null);
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
@@ -205,15 +208,13 @@ export default function App() {
   };
 
   // Find active Lesson detail item
-  const activeLessonObject = SAMPLE_MODULES.flatMap(m => m.lessons).find(l => l.id === selectedLessonId) || SAMPLE_MODULES[0].lessons[0];
+  const flatLessons = modules.flatMap((m: Module) => m.lessons);
+  const activeLessonObject = flatLessons.find((l: Lesson) => l.id === selectedLessonId) ?? flatLessons[0];
 
   // Logic to proceed to NEXT lesson
   const handleNextLesson = () => {
-    // Collect flat list of all lessons
-    const flatLessons = SAMPLE_MODULES.flatMap(m => m.lessons);
-    const activeIdx = flatLessons.findIndex(l => l.id === selectedLessonId);
+    const activeIdx = flatLessons.findIndex((l: Lesson) => l.id === selectedLessonId);
     
-    // Check if next lesson exists
     if (activeIdx !== -1 && activeIdx + 1 < flatLessons.length) {
       const nextLesson = flatLessons[activeIdx + 1];
       setSelectedLessonId(nextLesson.id);
@@ -291,6 +292,7 @@ export default function App() {
                 <DashboardPage
                   user={user}
                   stats={stats}
+                  modules={modules}
                   onNavigateLesson={handleSelectLesson}
                   onNavigateRoadmap={() => handleNavigate("roadmap")}
                 />
@@ -299,6 +301,7 @@ export default function App() {
               {currentPage === "roadmap" && user && (
                 <RoadmapPage
                   stats={stats}
+                  modules={modules}
                   onSelectLesson={handleSelectLesson}
                 />
               )}

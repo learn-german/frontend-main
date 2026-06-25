@@ -16,27 +16,22 @@ import {
   LockKeyhole
 } from "lucide-react";
 import { LevelBadge, ProgressBar, Button } from "../components/DesignSystem";
-import { SAMPLE_MODULES } from "../data/mockData";
-import { Level, UserStats, Lesson } from "../lib/appTypes";
+import { Level, UserStats, Lesson, Module } from "../lib/appTypes";
 
 interface RoadmapPageProps {
   stats: UserStats;
+  modules: Module[];
   onSelectLesson: (lessonId: string) => void;
 }
 
 export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   stats,
+  modules,
   onSelectLesson
 }) => {
-  // We want to calculate unlock status of each lesson.
-  // Rule for unlock:
-  // Lesson 1 is always unlocked.
-  // Lesson N is unlocked if Lesson N-1 is in completedLessons. Or if it has level A2/B1, let's unlock A1 fully first, but let the user proceed.
-  // Actually, let's make a beautiful linear sequence of all our system lessons, and dynamically calculate status!
-  // Let's gather all lessons into a list
   const allLessons: { lesson: Lesson; moduleTitleVi: string; indexInAll: number }[] = [];
   let currentIdx = 0;
-  SAMPLE_MODULES.forEach(m => {
+  modules.forEach(m => {
     m.lessons.forEach(l => {
       allLessons.push({
         lesson: l,
@@ -124,8 +119,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
         <div className="absolute left-6 md:left-[50px] top-4 bottom-4 w-1 bg-slate-200 rounded pointer-events-none z-0 hidden sm:block" />
 
         {levels.map((lvl) => {
-          // Filter modules of this level
-          const levelModules = SAMPLE_MODULES.filter(m => m.level === lvl.id);
+          const levelModules = modules.filter(m => m.level === lvl.id);
           const levelLessons = levelModules.flatMap(m => m.lessons);
 
           // Calculate completed level lessons

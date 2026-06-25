@@ -19,12 +19,12 @@ import {
   Award
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
-import { SAMPLE_MODULES } from "../data/mockData";
-import { UserStats, Lesson } from "../lib/appTypes";
+import { UserStats, Lesson, Module } from "../lib/appTypes";
 
 interface DashboardPageProps {
   user: { email: string; fullName: string };
   stats: UserStats;
+  modules: Module[];
   onNavigateLesson: (lessonId: string) => void;
   onNavigateRoadmap: () => void;
 }
@@ -32,37 +32,27 @@ interface DashboardPageProps {
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
   stats,
+  modules,
   onNavigateLesson,
   onNavigateRoadmap
 }) => {
-  // Compute progress of lessons
-  const totalLessonsInA1 = SAMPLE_MODULES[0].lessons.length;
-  // Let's count how many A1 lessons are completed
-  const completedA1Lessons = SAMPLE_MODULES[0].lessons.filter(l => stats.completedLessons.includes(l.id)).length;
-  const progressA1Percentage = Math.round((completedA1Lessons / totalLessonsInA1) * 100);
+  const a1Module = modules.find(m => m.level === "A1");
+  const totalLessonsInA1 = a1Module?.lessons.length ?? 0;
+  const completedA1Lessons = a1Module?.lessons.filter(l => stats.completedLessons.includes(l.id)).length ?? 0;
+  const progressA1Percentage = totalLessonsInA1 > 0 ? Math.round((completedA1Lessons / totalLessonsInA1) * 100) : 0;
 
-  // Find current next lesson to suggest
-  let nextSuggestedLesson: Lesson = SAMPLE_MODULES[0].lessons[0];
-  for (const module of SAMPLE_MODULES) {
-    for (const l of module.lessons) {
-      if (!stats.completedLessons.includes(l.id)) {
-        nextSuggestedLesson = l;
-        break;
-      }
+  const allLessons = modules.flatMap(m => m.lessons);
+  let nextSuggestedLesson: Lesson | undefined = allLessons[0];
+  for (const l of allLessons) {
+    if (!stats.completedLessons.includes(l.id)) {
+      nextSuggestedLesson = l;
+      break;
     }
   }
 
-  // Check recent scores list
   const recentScores = Object.entries(stats.quizScores).map(([lessonId, score]) => {
-    // Find lesson title
-    let lessonTitle = "Bài kiểm tra";
-    for (const module of SAMPLE_MODULES) {
-      const match = module.lessons.find(l => l.id === lessonId);
-      if (match) {
-        lessonTitle = match.titleVi;
-      }
-    }
-    return { lessonId, title: lessonTitle, score: score as number };
+    const match = allLessons.find(l => l.id === lessonId);
+    return { lessonId, title: match?.titleVi ?? "Bài kiểm tra", score: score as number };
   });
 
   return (
@@ -102,6 +92,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="lg:col-span-8 space-y-8">
           
           {/* Continue Learning card */}
+          {nextSuggestedLesson && (
           <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 h-1.5 w-full bg-orange-600" />
             <div className="space-y-3 flex-1">
@@ -120,7 +111,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <span className="flex items-center gap-1">📖 {nextSuggestedLesson.vocabulary.length} từ vựng then chốt</span>
               </div>
             </div>
-            
+
             <Button
               id="btn-dash-continue-learn"
               variant="primary"
@@ -131,6 +122,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <PlayCircle className="w-4.5 h-4.5 mr-2" /> Tiếp tục học
             </Button>
           </div>
+          )}
 
           {/* Performance stats bento panel */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -196,7 +188,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     variant="ghost" 
                     size="sm" 
                     className="text-orange-600 p-0 hover:bg-transparent hover:underline mt-2 flex items-center text-xs font-bold whitespace-nowrap"
-                    onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
+                    onClick={() => nextSuggestedLesson && onNavigateLesson(nextSuggestedLesson.id)}
                   >
                     Xem bài học liên quan <ArrowRight className="w-3 h-3 ml-1" />
                   </Button>
@@ -217,7 +209,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     variant="ghost" 
                     size="sm" 
                     className="text-amber-600 p-0 hover:bg-transparent hover:underline mt-2 flex items-center text-xs font-bold whitespace-nowrap"
-                    onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
+                    onClick={() => nextSuggestedLesson && onNavigateLesson(nextSuggestedLesson.id)}
                   >
                     Mở bài nghe mẫu <ArrowRight className="w-3 h-3 ml-1" />
                   </Button>
@@ -250,7 +242,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   id="btn-start-test-first"
                   variant="secondary" 
                   size="sm" 
-                  onClick={() => onNavigateLesson(SAMPLE_MODULES[0].lessons[0].id)}
+                  onClick={() => allLessons[0] && onNavigateLesson(allLessons[0].id)}
                 >
                   Học bài đầu ngay
                 </Button>
