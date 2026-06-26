@@ -18,6 +18,7 @@ import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
 import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
+import { AppLoadingSkeleton } from "./components/Skeleton";
 
 const LOCAL_STORAGE_STATS_KEY = "deutschpath_user_stats";
 
@@ -60,6 +61,7 @@ const DEFAULT_STATS: UserStats = {
 export default function App() {
   // Authentication states
   const [user, setUser] = useState<{ email: string; fullName: string } | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
 
   // Router page state
@@ -109,6 +111,7 @@ export default function App() {
         });
         setCurrentPage("dashboard");
       }
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -224,6 +227,10 @@ export default function App() {
       setCurrentPage("dashboard");
     }
   };
+
+  if (authLoading) {
+    return <AppLoadingSkeleton />;
+  }
 
   // Layout check selectors
   const showNav = currentPage !== "login";
