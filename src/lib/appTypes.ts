@@ -53,7 +53,7 @@ export interface Lesson {
   nextLessonId?: string | null;
   vocabulary: VocabularyItem[];
   grammar: GrammarExplanation;
-  quiz: QuizQuestion[];
+  quiz?: QuizQuestion[];
 }
 
 export interface Module {
