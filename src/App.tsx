@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { AppState, Level, Lesson, UserStats, Module } from "./lib/appTypes";
-import { useModules } from "./hooks/useModules";
+import { AppState, Lesson, UserStats, Module } from "./lib/appTypes";
+import { useModules } from "./lib/hooks/useModules";
+import { AppLoadingSkeleton } from "./components/Skeleton";
 import { Navbar, Sidebar } from "./components/Navigation";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -18,7 +19,6 @@ import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
 import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
-import { AppLoadingSkeleton } from "./components/Skeleton";
 
 const LOCAL_STORAGE_STATS_KEY = "deutschpath_user_stats";
 
@@ -59,13 +59,11 @@ const DEFAULT_STATS: UserStats = {
 };
 
 export default function App() {
-  // Modules from DB
-  const { modules } = useModules();
-
   // Authentication states
-  const [user, setUser] = useState<{ email: string; fullName: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string; fullName: string } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
+  const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
 
   // Router page state
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
@@ -109,6 +107,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
+          id: session.user.id,
           email: session.user.email ?? "",
           fullName: session.user.user_metadata?.full_name ?? session.user.email ?? ""
         });
@@ -120,6 +119,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
+          id: session.user.id,
           email: session.user.email ?? "",
           fullName: session.user.user_metadata?.full_name ?? session.user.email ?? ""
         });
@@ -211,13 +211,14 @@ export default function App() {
   };
 
   // Find active Lesson detail item
-  const flatLessons = modules.flatMap((m: Module) => m.lessons);
-  const activeLessonObject = flatLessons.find((l: Lesson) => l.id === selectedLessonId) ?? flatLessons[0];
+  const flatLessons = modules.flatMap(m => m.lessons);
+  const activeLessonObject: Lesson | undefined = flatLessons.find(l => l.id === selectedLessonId) ?? flatLessons[0];
 
   // Logic to proceed to NEXT lesson
   const handleNextLesson = () => {
-    const activeIdx = flatLessons.findIndex((l: Lesson) => l.id === selectedLessonId);
+    const activeIdx = flatLessons.findIndex(l => l.id === selectedLessonId);
     
+    // Check if next lesson exists
     if (activeIdx !== -1 && activeIdx + 1 < flatLessons.length) {
       const nextLesson = flatLessons[activeIdx + 1];
       setSelectedLessonId(nextLesson.id);
@@ -232,6 +233,10 @@ export default function App() {
   if (authLoading) {
     return <AppLoadingSkeleton />;
   }
+
+  // Show loading overlay while fetching modules (only on authenticated pages)
+  const showModulesLoader = user && modulesLoading && modules.length === 0 &&
+    (currentPage === "dashboard" || currentPage === "roadmap" || currentPage === "lesson-detail");
 
   // Layout check selectors
   const showNav = currentPage !== "login";
@@ -266,6 +271,11 @@ export default function App() {
 
         {/* Content canvas panel */}
         <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden ${!showSidebar ? "w-full" : ""}`}>
+          {showModulesLoader && (
+            <div className="flex items-center justify-center h-64">
+              <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentPage + (currentPage === "lesson-detail" ? selectedLessonId : "")}
@@ -313,7 +323,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "lesson-detail" && user && (
+              {currentPage === "lesson-detail" && user && activeLessonObject && (
                 <LessonDetailPage
                   lesson={activeLessonObject}
                   stats={stats}
@@ -326,7 +336,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "quiz" && user && (
+              {currentPage === "quiz" && user && activeLessonObject && (
                 <QuizPage
                   lesson={activeLessonObject}
                   onQuizFinished={handleQuizFinished}
