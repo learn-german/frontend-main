@@ -15,7 +15,6 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
 import { LessonDetailPage } from "./pages/LessonDetailPage";
 import { QuizPage } from "./pages/QuizPage";
-import { AdminPage } from "./pages/admin/AdminPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
@@ -109,7 +108,7 @@ export default function App() {
 
   const handleNavigate = (page: AppState["currentPage"]) => {
     // If not logged in and try to access restrict views, lock them and put them on login
-    if (!user && (page === "dashboard" || page === "roadmap" || page === "lesson-detail" || page === "quiz" || page === "admin" || page === "leaderboard")) {
+    if (!user && (page === "dashboard" || page === "roadmap" || page === "lesson-detail" || page === "quiz" || page === "leaderboard")) {
       setCurrentPage("login");
     } else {
       setCurrentPage(page);
@@ -293,12 +292,6 @@ export default function App() {
                   onQuizFinished={handleQuizFinished}
                   onNavigateHome={() => handleNavigate("roadmap")}
                   onNextLesson={handleNextLesson}
-                />
-              )}
-              {currentPage === "admin" && user && (
-                <AdminPage
-                  userRole={user.role}
-                  onNavigateHome={() => handleNavigate("dashboard")}
                 />
               )}
               {currentPage === "leaderboard" && user && (
