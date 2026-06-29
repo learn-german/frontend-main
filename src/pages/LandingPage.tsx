@@ -530,7 +530,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Simple Footer */}
       <footer className="bg-slate-950 text-gray-500 py-10 text-center text-xs font-sans tracking-wide">
         <div className="max-w-7xl mx-auto px-4 space-y-2">
-          <p className="font-display font-bold text-gray-300 font-sans">© 2026 DeutschPath. Lập trình bởi Google AI Studio.</p>
+          <p className="font-display font-bold text-gray-300 font-sans">© 2026 DeutschPath.</p>
           <p>Phương pháp trực quan, học ngữ pháp và từ vựng thông minh cho người Việt.</p>
         </div>
       </footer>
