@@ -145,25 +145,36 @@ export default function App() {
     }
   }, []);
 
-  // After login, hydrate completedLessons + quizScores from server (authoritative)
+  // After login, hydrate stats from server (xp, streak, completedLessons, quizScores)
   useEffect(() => {
     if (!user) return;
 
-    supabase.functions.invoke("roadmap").then(({ data }) => {
-      if (!data?.modules) return;
-
-      const completedLessons: string[] = [];
-      const quizScores: Record<string, number> = {};
-
-      for (const mod of data.modules) {
-        for (const lesson of mod.lessons ?? []) {
-          if (lesson.isCompleted) completedLessons.push(lesson.id);
-          if (lesson.quizScore !== null) quizScores[lesson.id] = lesson.quizScore;
-        }
-      }
-
+    Promise.all([
+      supabase.functions.invoke("roadmap"),
+      supabase.functions.invoke("dashboard"),
+    ]).then(([roadmapRes, dashboardRes]) => {
       setStats((prev) => {
-        const updated = { ...prev, completedLessons, quizScores };
+        let updated = { ...prev };
+
+        // roadmap: completedLessons + quizScores per lesson
+        if (roadmapRes.data?.modules) {
+          const completedLessons: string[] = [];
+          const quizScores: Record<string, number> = {};
+          for (const mod of roadmapRes.data.modules) {
+            for (const lesson of mod.lessons ?? []) {
+              if (lesson.isCompleted) completedLessons.push(lesson.id as string);
+              if (lesson.quizScore !== null) quizScores[lesson.id as string] = lesson.quizScore as number;
+            }
+          }
+          updated = { ...updated, completedLessons, quizScores };
+        }
+
+        // dashboard: xp + streak from user_stats DB
+        if (dashboardRes.data?.stats) {
+          const dbStats = dashboardRes.data.stats as { xp: number; streak: number };
+          updated = { ...updated, xp: dbStats.xp, streak: dbStats.streak };
+        }
+
         safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updated));
         return updated;
       });
