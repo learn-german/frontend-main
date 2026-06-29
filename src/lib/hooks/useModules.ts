@@ -16,6 +16,10 @@ type SupabaseLesson = {
   next_lesson_id: string | null;
   vocabulary: unknown;
   grammar: unknown;
+  grammar_md: string | null;
+  listening_url: string | null;
+  reading_text: string | null;
+  reading_text_vi: string | null;
 };
 
 type SupabaseModule = {
@@ -48,6 +52,10 @@ function transformModule(m: SupabaseModule): Module {
       nextLessonId: l.next_lesson_id,
       vocabulary: (l.vocabulary as VocabularyItem[]) ?? [],
       grammar: (l.grammar as GrammarExplanation) ?? { title: "", rule: "", examples: [] },
+      grammarMd: l.grammar_md ?? undefined,
+      listeningUrl: l.listening_url ?? undefined,
+      readingText: l.reading_text ?? undefined,
+      readingTextVi: l.reading_text_vi ?? undefined,
     })),
   };
 }
@@ -74,7 +82,8 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
         lessons (
           id, level, title, title_vi, objective, summary,
           youtube_id, duration, order_index, xp_reward,
-          next_lesson_id, vocabulary, grammar
+          next_lesson_id, vocabulary, grammar,
+          grammar_md, listening_url, reading_text, reading_text_vi
         )
       `)
       .order("order_index")

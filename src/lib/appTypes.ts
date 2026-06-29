@@ -53,6 +53,10 @@ export interface Lesson {
   nextLessonId?: string | null;
   vocabulary: VocabularyItem[];
   grammar: GrammarExplanation;
+  grammarMd?: string;
+  listeningUrl?: string;
+  readingText?: string;
+  readingTextVi?: string;
   quiz?: QuizQuestion[];
 }
 
