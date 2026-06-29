@@ -90,7 +90,8 @@ export default function App() {
           fullName: session.user.user_metadata?.full_name ?? session.user.email ?? "",
           role: (session.user.app_metadata?.role as string) ?? "user",
         });
-        setCurrentPage("dashboard");
+        // Only redirect to dashboard on first login, not on token refresh
+        setCurrentPage(prev => (prev === "landing" || prev === "login") ? "dashboard" : prev);
       } else {
         setUser(null);
         setCurrentPage("landing");
