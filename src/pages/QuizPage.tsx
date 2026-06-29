@@ -10,6 +10,7 @@ import { Button, ProgressBar } from "../components/DesignSystem";
 import { Lesson } from "../lib/appTypes";
 import { useQuizQuestions } from "../lib/hooks/useQuizQuestions";
 import { supabase } from "../lib/supabase";
+import { speak, isTTSSupported } from "../lib/tts";
 
 interface QuizPageProps {
   lesson: Lesson;
@@ -71,22 +72,11 @@ export const QuizPage: React.FC<QuizPageProps> = ({
     }
 
     if (activeQuestion.type === "listening" && activeQuestion.audioText) {
-      setTimeout(() => playHearingWord(activeQuestion.audioText!), 500);
+      setTimeout(() => speak(activeQuestion.audioText!), 500);
     }
   }, [currentIdx, questions]);
 
-  const playHearingWord = (text: string) => {
-    if ("speechSynthesis" in window) {
-      try {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "de-DE";
-        utterance.rate = 0.8;
-        window.speechSynthesis.speak(utterance);
-      } catch (err) {
-        console.warn("Speech synthesis error:", err);
-      }
-    }
-  };
+  const ttsSupported = isTTSSupported();
 
   const handleDeClick = (de: string) => {
     if (matchedPairs[de]) return;
@@ -384,16 +374,23 @@ export const QuizPage: React.FC<QuizPageProps> = ({
         {/* LISTENING */}
         {activeQuestion.type === "listening" && activeQuestion.audioText && (
           <div className="space-y-6">
-            <div className="flex justify-center select-none">
-              <button
-                id="btn-quiz-listening-audio"
-                onClick={() => playHearingWord(activeQuestion.audioText!)}
-                className="w-24 h-24 rounded-3xl bg-orange-600 hover:bg-orange-700 border-b-4 border-orange-800/60 text-white flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
-                title="Nghe phát âm"
-              >
-                <Volume2 className="w-8 h-8 fill-white" />
-                <span className="text-[10px] font-display font-extrabold tracking-widest uppercase">NGHE LẠI</span>
-              </button>
+            <div className="flex flex-col items-center gap-3 select-none">
+              {ttsSupported ? (
+                <button
+                  id="btn-quiz-listening-audio"
+                  onClick={() => speak(activeQuestion.audioText!)}
+                  className="w-24 h-24 rounded-3xl bg-orange-600 hover:bg-orange-700 border-b-4 border-orange-800/60 text-white flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
+                  title="Nghe phát âm"
+                >
+                  <Volume2 className="w-8 h-8 fill-white" />
+                  <span className="text-[10px] font-display font-extrabold tracking-widest uppercase">NGHE LẠI</span>
+                </button>
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <p className="text-xs text-slate-500 mb-1">Trình duyệt không hỗ trợ âm thanh. Câu cần nghe:</p>
+                  <p className="text-base font-display font-bold text-slate-800">{activeQuestion.audioText}</p>
+                </div>
+              )}
             </div>
             {activeQuestion.options && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
