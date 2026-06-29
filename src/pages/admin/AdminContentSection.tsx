@@ -27,7 +27,8 @@ export const AdminContentSection: React.FC = () => {
       .from("modules")
       .select(`id, title, title_vi, level, order_index,
         lessons(id, title, title_vi, duration, level, xp_reward, youtube_id,
-                objective, summary, vocabulary, grammar, order_index)`)
+                objective, summary, vocabulary, grammar, grammar_md,
+                listening_url, reading_text, reading_text_vi, order_index)`)
       .order("order_index")
       .order("order_index", { referencedTable: "lessons" })
       .then(({ data }) => {

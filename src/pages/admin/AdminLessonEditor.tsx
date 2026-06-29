@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import {
   ArrowLeft, Save, Plus, Trash2,
-  BookOpen, GraduationCap, Video, Volume2, Loader2,
+  BookOpen, GraduationCap, Video, Volume2, Loader2, Headphones, FileText,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
+import { MarkdownBlock } from "../../components/MarkdownBlock";
 import { showToast } from "../../lib/toast";
 
 interface VocabItem {
@@ -30,6 +31,10 @@ export interface LessonEditable {
   summary?: string | null;
   vocabulary: VocabItem[];
   grammar: Grammar;
+  grammar_md?: string | null;
+  listening_url?: string | null;
+  reading_text?: string | null;
+  reading_text_vi?: string | null;
 }
 
 interface Props {
@@ -38,7 +43,6 @@ interface Props {
   onSaved: () => void;
 }
 
-// Inline editable text — looks like content, editable on focus
 const EditableText: React.FC<{
   value: string;
   onChange: (v: string) => void;
@@ -58,40 +62,18 @@ const EditableText: React.FC<{
 export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, onSaved }) => {
   const [data, setData] = useState<LessonEditable>({ ...initial });
   const [saving, setSaving] = useState(false);
+  const [grammarTab, setGrammarTab] = useState<"edit" | "preview">("edit");
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
 
   const updVocab = (idx: number, patch: Partial<VocabItem>) =>
-    setData(prev => {
-      const v = [...prev.vocabulary];
-      v[idx] = { ...v[idx], ...patch };
-      return { ...prev, vocabulary: v };
-    });
+    setData(prev => { const v = [...prev.vocabulary]; v[idx] = { ...v[idx], ...patch }; return { ...prev, vocabulary: v }; });
 
   const addVocab = () =>
-    setData(prev => ({
-      ...prev,
-      vocabulary: [...prev.vocabulary, { de: "", pronunciation: "", vi: "", exampleDe: "", exampleVi: "" }],
-    }));
+    setData(prev => ({ ...prev, vocabulary: [...prev.vocabulary, { de: "", pronunciation: "", vi: "", exampleDe: "", exampleVi: "" }] }));
 
   const removeVocab = (idx: number) =>
     setData(prev => ({ ...prev, vocabulary: prev.vocabulary.filter((_, i) => i !== idx) }));
-
-  const updGrammar = (patch: Partial<Grammar>) =>
-    setData(prev => ({ ...prev, grammar: { ...prev.grammar, ...patch } }));
-
-  const updGrammarEx = (idx: number, patch: Partial<GrammarExample>) =>
-    setData(prev => {
-      const ex = [...prev.grammar.examples];
-      ex[idx] = { ...ex[idx], ...patch };
-      return { ...prev, grammar: { ...prev.grammar, examples: ex } };
-    });
-
-  const addGrammarEx = () =>
-    updGrammar({ examples: [...data.grammar.examples, { de: "", vi: "" }] });
-
-  const removeGrammarEx = (idx: number) =>
-    updGrammar({ examples: data.grammar.examples.filter((_, i) => i !== idx) });
 
   const handleSave = async () => {
     setSaving(true);
@@ -105,6 +87,10 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       summary: data.summary || null,
       vocabulary: data.vocabulary,
       grammar: data.grammar,
+      grammar_md: data.grammar_md || null,
+      listening_url: data.listening_url || null,
+      reading_text: data.reading_text || null,
+      reading_text_vi: data.reading_text_vi || null,
     }).eq("id", data.id);
     setSaving(false);
 
@@ -116,15 +102,15 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     }
   };
 
+  const inputCls = "w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
+  const labelCls = "block text-xs font-bold text-slate-500 mb-1";
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200/60">
         <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl transition text-slate-500 hover:text-slate-900"
-          >
+          <button onClick={onBack} className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl transition text-slate-500 hover:text-slate-900">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="space-y-1">
@@ -132,30 +118,14 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
               <span className="text-xs font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{data.level}</span>
               <span className="text-xs text-slate-400 font-mono">{data.id}</span>
             </div>
-            <EditableText
-              value={data.title}
-              onChange={v => upd({ title: v })}
-              className="text-xl font-display font-black text-slate-900 tracking-tight"
-              placeholder="Tiêu đề (DE)"
-            />
-            <EditableText
-              value={data.title_vi}
-              onChange={v => upd({ title_vi: v })}
-              className="text-sm text-slate-500"
-              placeholder="Tiêu đề (VI)"
-            />
+            <EditableText value={data.title} onChange={v => upd({ title: v })} className="text-xl font-display font-black text-slate-900 tracking-tight" placeholder="Tiêu đề (DE)" />
+            <EditableText value={data.title_vi} onChange={v => upd({ title_vi: v })} className="text-sm text-slate-500" placeholder="Tiêu đề (VI)" />
           </div>
         </div>
-
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-500">
             <span className="text-xs font-bold text-slate-400">XP</span>
-            <input
-              type="number"
-              value={data.xp_reward}
-              onChange={e => upd({ xp_reward: parseInt(e.target.value) || 0 })}
-              className="w-16 bg-transparent outline-none font-bold text-blue-600 text-center"
-            />
+            <input type="number" value={data.xp_reward} onChange={e => upd({ xp_reward: parseInt(e.target.value) || 0 })} className="w-16 bg-transparent outline-none font-bold text-blue-600 text-center" />
           </div>
           <Button variant="primary" onClick={handleSave} className="flex-1 sm:flex-initial">
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
@@ -167,22 +137,17 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       {/* Main grid — mirrors LessonDetailPage */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        {/* Left column */}
+        {/* Left column: Video + Grammar */}
         <div className="lg:col-span-8 space-y-8">
 
-          {/* Video section */}
+          {/* Video */}
           <section className="space-y-3">
             <h2 className="text-base font-display font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
               <Video className="w-5 h-5 text-orange-500" /> Bài giảng lý thuyết
             </h2>
             <div className="aspect-video bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
               {data.youtube_id ? (
-                <iframe
-                  src={`https://www.youtube.com/embed/${data.youtube_id}`}
-                  className="w-full h-full"
-                  allowFullScreen
-                  title={data.title}
-                />
+                <iframe src={`https://www.youtube.com/embed/${data.youtube_id}`} className="w-full h-full" allowFullScreen title={data.title} />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400">
                   <Video className="w-10 h-10 opacity-30" />
@@ -192,109 +157,102 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             </div>
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
               <span className="text-xs font-bold text-slate-400 whitespace-nowrap">YouTube ID:</span>
-              <EditableText
-                value={data.youtube_id ?? ""}
-                onChange={v => upd({ youtube_id: v })}
-                className="text-sm font-mono text-slate-700"
-                placeholder="dQw4w9WgXcQ"
+              <EditableText value={data.youtube_id ?? ""} onChange={v => upd({ youtube_id: v })} className="text-sm font-mono text-slate-700" placeholder="dQw4w9WgXcQ" />
+            </div>
+          </section>
+
+          {/* Grammar — Markdown editor */}
+          <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                Ngữ pháp then chốt
+              </span>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                {(["edit", "preview"] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setGrammarTab(tab)}
+                    className={`px-3 py-1 text-[11px] font-bold transition-colors ${grammarTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                  >
+                    {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {grammarTab === "edit" ? (
+              <>
+                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách</p>
+                <textarea
+                  rows={12}
+                  value={data.grammar_md ?? ""}
+                  onChange={e => upd({ grammar_md: e.target.value })}
+                  placeholder={"## Mạo từ (Artikel)\n\nTiếng Đức có 3 mạo từ: **der** (nam), **die** (nữ), **das** (trung)\n\n### Ví dụ\n- **der** Mann (người đàn ông)\n- **die** Frau (người phụ nữ)\n- **das** Kind (đứa trẻ)"}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
+                />
+              </>
+            ) : (
+              <div className="min-h-32 bg-white border border-slate-200 rounded-xl p-4">
+                {data.grammar_md ? (
+                  <MarkdownBlock content={data.grammar_md} />
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Chưa có nội dung ngữ pháp.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Nghe section */}
+          <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-4">
+            <h3 className="text-sm font-display font-bold text-slate-800 flex items-center gap-2">
+              <Headphones className="w-4 h-4 text-orange-500" /> Luyện nghe
+            </h3>
+            <div>
+              <label className={labelCls}>URL audio (mp3 / m4a / wav)</label>
+              <input
+                type="text"
+                value={data.listening_url ?? ""}
+                onChange={e => upd({ listening_url: e.target.value })}
+                placeholder="https://example.com/audio.mp3"
+                className={inputCls}
               />
             </div>
-          </section>
-
-          {/* Vocabulary section */}
-          <section className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-5">
-            <div className="flex justify-between items-center pb-3.5 border-b border-slate-100">
-              <div className="space-y-1">
-                <h2 className="text-base font-display font-bold text-slate-900 flex items-center gap-1.5">
-                  <BookOpen className="w-5 h-5 text-orange-600" /> Từ vựng then chốt
-                </h2>
-                <p className="text-xs text-slate-400">Click vào ô để chỉnh sửa trực tiếp</p>
-              </div>
-              <button
-                onClick={addVocab}
-                className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 px-3 py-1.5 rounded-xl hover:bg-orange-50 border border-orange-200 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" /> Thêm từ
-              </button>
-            </div>
-
-            {data.vocabulary.length === 0 && (
-              <p className="text-center py-6 text-sm text-slate-400 italic">Chưa có từ vựng. Nhấn "Thêm từ" để bắt đầu.</p>
+            {data.listening_url && (
+              <audio controls src={data.listening_url} className="w-full rounded-xl mt-2">
+                Trình duyệt không hỗ trợ audio.
+              </audio>
             )}
+          </div>
 
-            <div className="divide-y divide-slate-100">
-              {data.vocabulary.map((vocab, idx) => (
-                <div key={idx} className="py-4 first:pt-0 grid grid-cols-1 md:grid-cols-12 gap-3 items-start group">
-
-                  {/* DE + pronunciation */}
-                  <div className="md:col-span-4 flex items-start gap-2.5">
-                    <div className="w-8 h-8 mt-1 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
-                      <Volume2 className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <EditableText
-                        value={vocab.de}
-                        onChange={v => updVocab(idx, { de: v })}
-                        className="font-display font-extrabold text-slate-900"
-                        placeholder="Từ tiếng Đức"
-                      />
-                      <EditableText
-                        value={vocab.pronunciation}
-                        onChange={v => updVocab(idx, { pronunciation: v })}
-                        className="font-mono text-xs text-slate-400"
-                        placeholder="[phiên âm]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* VI */}
-                  <div className="md:col-span-3">
-                    <EditableText
-                      value={vocab.vi}
-                      onChange={v => updVocab(idx, { vi: v })}
-                      className="text-sm font-semibold text-slate-700"
-                      placeholder="Nghĩa tiếng Việt"
-                    />
-                  </div>
-
-                  {/* Examples */}
-                  <div className="md:col-span-4 bg-slate-50/50 p-3 rounded-xl border border-slate-100 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-slate-400">🇩🇪</span>
-                      <EditableText
-                        value={vocab.exampleDe}
-                        onChange={v => updVocab(idx, { exampleDe: v })}
-                        className="text-xs font-display font-semibold text-slate-700"
-                        placeholder="Ví dụ tiếng Đức"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-slate-400">🇻🇳</span>
-                      <EditableText
-                        value={vocab.exampleVi}
-                        onChange={v => updVocab(idx, { exampleVi: v })}
-                        className="text-xs italic text-slate-500"
-                        placeholder="Dịch tiếng Việt"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Delete */}
-                  <div className="md:col-span-1 flex justify-end">
-                    <button
-                      onClick={() => removeVocab(idx)}
-                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+          {/* Đọc section */}
+          <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-4">
+            <h3 className="text-sm font-display font-bold text-slate-800 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-orange-500" /> Bài đọc
+            </h3>
+            <div>
+              <label className={labelCls}>Đoạn văn tiếng Đức</label>
+              <textarea
+                rows={5}
+                value={data.reading_text ?? ""}
+                onChange={e => upd({ reading_text: e.target.value })}
+                placeholder="Nhập đoạn văn tiếng Đức..."
+                className={inputCls + " resize-y"}
+              />
             </div>
-          </section>
+            <div>
+              <label className={labelCls}>Bản dịch tiếng Việt</label>
+              <textarea
+                rows={5}
+                value={data.reading_text_vi ?? ""}
+                onChange={e => upd({ reading_text_vi: e.target.value })}
+                placeholder="Nhập bản dịch tiếng Việt..."
+                className={inputCls + " resize-y"}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Right column */}
+        {/* Right column: Objective + Vocabulary */}
         <div className="lg:col-span-4 space-y-8">
 
           {/* Objective + Summary */}
@@ -302,91 +260,64 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             <h3 className="text-sm font-display font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
               <GraduationCap className="w-4 h-4 text-amber-500" /> Mục tiêu bài học
             </h3>
-            <EditableText
-              value={data.objective ?? ""}
-              onChange={v => upd({ objective: v })}
-              multiline
-              rows={4}
-              className="text-xs text-slate-600 leading-relaxed"
-              placeholder="Mô tả mục tiêu bài học..."
-            />
+            <EditableText value={data.objective ?? ""} onChange={v => upd({ objective: v })} multiline rows={4} className="text-xs text-slate-600 leading-relaxed" placeholder="Mô tả mục tiêu bài học..." />
             <div className="h-px bg-slate-100" />
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Tóm tắt</span>
-              <EditableText
-                value={data.summary ?? ""}
-                onChange={v => upd({ summary: v })}
-                multiline
-                rows={3}
-                className="text-xs text-slate-500 leading-relaxed"
-                placeholder="Tóm tắt nội dung..."
-              />
+              <EditableText value={data.summary ?? ""} onChange={v => upd({ summary: v })} multiline rows={3} className="text-xs text-slate-500 leading-relaxed" placeholder="Tóm tắt nội dung..." />
             </div>
           </div>
 
-          {/* Grammar */}
-          <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
-              Ngữ pháp then chốt
-            </span>
-
-            <EditableText
-              value={data.grammar.title}
-              onChange={v => updGrammar({ title: v })}
-              className="text-base font-display font-bold text-slate-900"
-              placeholder="Tiêu đề ngữ pháp"
-            />
-
-            <EditableText
-              value={data.grammar.rule}
-              onChange={v => updGrammar({ rule: v })}
-              multiline
-              rows={5}
-              className="text-xs text-slate-600 leading-relaxed"
-              placeholder="Giải thích quy tắc ngữ pháp..."
-            />
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-display font-bold text-slate-400 uppercase">Ví dụ minh họa</span>
-                <button
-                  onClick={addGrammarEx}
-                  className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
-                >
-                  <Plus className="w-3 h-3" /> Thêm
-                </button>
+          {/* Vocabulary */}
+          <section className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div className="space-y-1">
+                <h2 className="text-sm font-display font-bold text-slate-900 flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-orange-600" /> Từ vựng then chốt
+                </h2>
+                <p className="text-[10px] text-slate-400">Click ô để chỉnh sửa trực tiếp</p>
               </div>
+              <button onClick={addVocab} className="flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 px-2.5 py-1.5 rounded-xl hover:bg-orange-50 border border-orange-200 transition-colors">
+                <Plus className="w-3 h-3" /> Thêm
+              </button>
+            </div>
 
-              {data.grammar.examples.map((ex, idx) => (
-                <div key={idx} className="bg-white p-3 rounded-xl border border-slate-150 shadow-sm space-y-1.5 group relative">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px]">🇩🇪</span>
-                    <EditableText
-                      value={ex.de}
-                      onChange={v => updGrammarEx(idx, { de: v })}
-                      className="text-xs font-display font-bold text-slate-900"
-                      placeholder="Ví dụ tiếng Đức"
-                    />
+            {data.vocabulary.length === 0 && (
+              <p className="text-center py-4 text-xs text-slate-400 italic">Chưa có từ vựng.</p>
+            )}
+
+            <div className="divide-y divide-slate-100 space-y-0">
+              {data.vocabulary.map((vocab, idx) => (
+                <div key={idx} className="py-3 first:pt-0 space-y-1.5 group">
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 mt-0.5 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                      <Volume2 className="w-3 h-3" />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex gap-1.5">
+                        <EditableText value={vocab.de} onChange={v => updVocab(idx, { de: v })} className="font-display font-extrabold text-slate-900 text-sm flex-1" placeholder="Tiếng Đức" />
+                        <EditableText value={vocab.pronunciation} onChange={v => updVocab(idx, { pronunciation: v })} className="font-mono text-[10px] text-slate-400 w-20" placeholder="[phiên âm]" />
+                      </div>
+                      <EditableText value={vocab.vi} onChange={v => updVocab(idx, { vi: v })} className="text-xs font-semibold text-slate-700" placeholder="Nghĩa tiếng Việt" />
+                      <div className="bg-slate-50/50 rounded-lg p-1.5 border border-slate-100 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] text-slate-300">🇩🇪</span>
+                          <EditableText value={vocab.exampleDe} onChange={v => updVocab(idx, { exampleDe: v })} className="text-[11px] font-display font-semibold text-slate-700" placeholder="Ví dụ DE" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] text-slate-300">🇻🇳</span>
+                          <EditableText value={vocab.exampleVi} onChange={v => updVocab(idx, { exampleVi: v })} className="text-[11px] italic text-slate-500" placeholder="Dịch VI" />
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => removeVocab(idx)} className="p-1 rounded-lg text-slate-200 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px]">🇻🇳</span>
-                    <EditableText
-                      value={ex.vi}
-                      onChange={v => updGrammarEx(idx, { vi: v })}
-                      className="text-xs italic text-slate-500"
-                      placeholder="Dịch tiếng Việt"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removeGrammarEx(idx)}
-                    className="absolute top-2 right-2 p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>

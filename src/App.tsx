@@ -208,7 +208,7 @@ export default function App() {
       )}
 
       {/* 2. Responsive Side and Content Layout container */}
-      <div className="flex-1 flex flex-col lg:flex-row w-full max-w-7xl mx-auto">
+      <div className="flex-1 flex flex-col lg:flex-row w-full">
         
         {/* Sidebar on desktop portal pages */}
         {showSidebar && (
@@ -233,7 +233,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.22, ease: "easeInOut" }}
-              className="h-full"
+              className=""
             >
               {currentPage === "landing" && (
                 <LandingPage
