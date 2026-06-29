@@ -83,13 +83,13 @@ export const AdminUsersSection: React.FC = () => {
     if (!editUser) return;
     setSaving(true);
 
-    // Update full_name via PostgREST (admin RLS allows it)
+    // Update full_name + role column in profiles
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({ full_name: editForm.full_name })
+      .update({ full_name: editForm.full_name, role: editForm.role })
       .eq("id", editUser.id);
 
-    // Update role via set-admin-role EF if changed
+    // Also sync role to auth.app_metadata via Edge Function
     let roleError: string | null = null;
     if (editForm.role !== editUser.role) {
       const { data, error } = await supabase.functions.invoke("set-admin-role", {
