@@ -164,6 +164,19 @@ export const Navbar: React.FC<NavigationProps> = ({
               Bảng xếp hạng
             </button>
 
+            {user.role === "admin" && (
+              <button
+                id="nav-admin"
+                onClick={() => onNavigate("admin")}
+                className={`flex items-center gap-1.5 text-sm font-display font-medium transition cursor-pointer ${
+                  currentPage === "admin" ? "text-orange-600 font-bold" : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                Admin
+              </button>
+            )}
+
             {/* User profile dropdown snippet */}
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full pl-2 pr-3.5 py-1">
               <div className="w-7 h-7 bg-slate-800 text-white rounded-full flex items-center justify-center font-display font-bold text-xs">
