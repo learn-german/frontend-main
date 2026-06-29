@@ -16,14 +16,13 @@ import {
   TrendingUp,
   Award,
   Globe,
-  Settings,
   Trophy
 } from "lucide-react";
 import { Button } from "./DesignSystem";
 
 interface NavigationProps {
   currentPage: string;
-  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "admin" | "leaderboard") => void;
+  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard") => void;
   user: { email: string; fullName: string; role?: string } | null;
   onLogout: () => void;
   streak: number;
@@ -163,19 +162,6 @@ export const Navbar: React.FC<NavigationProps> = ({
               <Trophy className="w-4 h-4" />
               Bảng xếp hạng
             </button>
-
-            {user.role === "admin" && (
-              <button
-                id="nav-admin"
-                onClick={() => onNavigate("admin")}
-                className={`flex items-center gap-1.5 text-sm font-display font-medium transition cursor-pointer ${
-                  currentPage === "admin" ? "text-orange-600 font-bold" : "text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                Admin
-              </button>
-            )}
 
             {/* User profile dropdown snippet */}
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full pl-2 pr-3.5 py-1">
@@ -317,18 +303,6 @@ export const Navbar: React.FC<NavigationProps> = ({
                 </button>
               </div>
 
-              {user.role === "admin" && (
-                <button
-                  id="mob-admin"
-                  onClick={() => { onNavigate("admin"); setMobileMenuOpen(false); }}
-                  className={`flex items-center gap-2.5 p-3 rounded-xl text-sm font-display font-semibold transition ${
-                    currentPage === "admin" ? "bg-orange-50 text-orange-700" : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <Settings className="w-5 h-5 text-gray-400" />
-                  Admin Panel
-                </button>
-              )}
               <Button id="btn-mob-logout" variant="danger" size="md" onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="mt-2 w-full">
                 <LogOut className="w-4 h-4 mr-2" /> Đăng xuất
               </Button>
