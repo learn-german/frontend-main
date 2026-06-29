@@ -16,13 +16,14 @@ import {
   TrendingUp,
   Award,
   Globe,
-  Settings
+  Settings,
+  Trophy
 } from "lucide-react";
 import { Button } from "./DesignSystem";
 
 interface NavigationProps {
   currentPage: string;
-  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "admin") => void;
+  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "admin" | "leaderboard") => void;
   user: { email: string; fullName: string; role?: string } | null;
   onLogout: () => void;
   streak: number;
@@ -141,7 +142,7 @@ export const Navbar: React.FC<NavigationProps> = ({
               Bảng điều khiển
             </button>
 
-            <button 
+            <button
               id="nav-roadmap"
               onClick={() => onNavigate("roadmap")}
               className={`flex items-center gap-1.5 text-sm font-display font-medium transition cursor-pointer ${
@@ -150,6 +151,17 @@ export const Navbar: React.FC<NavigationProps> = ({
             >
               <Map className="w-4 h-4" />
               Lộ trình học
+            </button>
+
+            <button
+              id="nav-leaderboard"
+              onClick={() => onNavigate("leaderboard")}
+              className={`flex items-center gap-1.5 text-sm font-display font-medium transition cursor-pointer ${
+                currentPage === "leaderboard" ? "text-orange-600 font-bold" : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <Trophy className="w-4 h-4" />
+              Bảng xếp hạng
             </button>
 
             {/* User profile dropdown snippet */}
@@ -279,6 +291,16 @@ export const Navbar: React.FC<NavigationProps> = ({
                 >
                   <Map className="w-5 h-5 text-gray-400" />
                   Lộ trình học
+                </button>
+                <button
+                  id="mob-leaderboard"
+                  onClick={() => { onNavigate("leaderboard"); setMobileMenuOpen(false); }}
+                  className={`flex items-center gap-2.5 p-3 rounded-xl text-sm font-display font-semibold transition ${
+                    currentPage === "leaderboard" ? "bg-green-50 text-green-700" : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Trophy className="w-5 h-5 text-gray-400" />
+                  Bảng xếp hạng
                 </button>
               </div>
 
