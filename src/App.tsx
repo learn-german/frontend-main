@@ -145,6 +145,31 @@ export default function App() {
     }
   }, []);
 
+  // After login, hydrate completedLessons + quizScores from server (authoritative)
+  useEffect(() => {
+    if (!user) return;
+
+    supabase.functions.invoke("roadmap").then(({ data }) => {
+      if (!data?.modules) return;
+
+      const completedLessons: string[] = [];
+      const quizScores: Record<string, number> = {};
+
+      for (const mod of data.modules) {
+        for (const lesson of mod.lessons ?? []) {
+          if (lesson.isCompleted) completedLessons.push(lesson.id);
+          if (lesson.quizScore !== null) quizScores[lesson.id] = lesson.quizScore;
+        }
+      }
+
+      setStats((prev) => {
+        const updated = { ...prev, completedLessons, quizScores };
+        safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    });
+  }, [user?.id]);
+
   const handleLogout = async () => {
     await signOut();
     // onAuthStateChange sẽ set user = null và chuyển về landing
