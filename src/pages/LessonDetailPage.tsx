@@ -135,7 +135,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
               <Video className="w-5 h-5 text-orange-500" /> Bài giảng lý thuyết
             </h2>
             <VideoPlayer
-              durationStr={lesson.duration}
+              youtubeId={lesson.youtubeId}
               title={lesson.title}
               levelBadge={lesson.level}
             />
