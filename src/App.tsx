@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { AppState, Lesson, UserStats, Module } from "./lib/appTypes";
+import { AppState, Lesson, Module } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
+import { useUserStats } from "./lib/hooks/useUserStats";
 import { AppLoadingSkeleton } from "./components/Skeleton";
 import { Navbar, Sidebar } from "./components/Navigation";
 import { LandingPage } from "./pages/LandingPage";
@@ -20,49 +21,11 @@ import { showToast, ToastType } from "./lib/toast";
 import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
 
-const LOCAL_STORAGE_STATS_KEY = "deutschpath_user_stats";
-
-// Memory storage fallback in case localStorage is blocked in iframe/sandboxed environments
-const memoryStorage: Record<string, string> = {};
-const safeStorage = {
-  getItem: (key: string): string | null => {
-    try {
-      return window.localStorage.getItem(key);
-    } catch (e) {
-      console.warn("Storage access blocked/unavailable. Using memory fallback.", e);
-      return memoryStorage[key] || null;
-    }
-  },
-  setItem: (key: string, value: string): void => {
-    try {
-      window.localStorage.setItem(key, value);
-    } catch (e) {
-      console.warn("Storage access blocked/unavailable. Using memory fallback.", e);
-      memoryStorage[key] = value;
-    }
-  },
-  removeItem: (key: string): void => {
-    try {
-      window.localStorage.removeItem(key);
-    } catch (e) {
-      console.warn("Storage access blocked/unavailable. Using memory fallback.", e);
-      delete memoryStorage[key];
-    }
-  }
-};
-
-const DEFAULT_STATS: UserStats = {
-  xp: 120, // start with some nice progression
-  streak: 4, // 4-day streak to look active on first boot!
-  completedLessons: ["a1-l1"], // Lesson 1 completed by default to showcase statistics
-  quizScores: { "a1-l1": 100 }
-};
-
 export default function App() {
   // Authentication states
   const [user, setUser] = useState<{ id: string; email: string; fullName: string } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
+  const { stats, setStats } = useUserStats(user?.id ?? null);
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
 
   // Router page state
@@ -133,53 +96,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load stats from local storage on mount
-  useEffect(() => {
-    const cachedStats = safeStorage.getItem(LOCAL_STORAGE_STATS_KEY);
-    if (cachedStats) {
-      try {
-        setStats(JSON.parse(cachedStats));
-      } catch (e) {
-        console.error("Failed to parse cached stats", e);
-      }
-    }
-  }, []);
-
-  // After login, hydrate stats from server (xp, streak, completedLessons, quizScores)
-  useEffect(() => {
-    if (!user) return;
-
-    Promise.all([
-      supabase.functions.invoke("roadmap"),
-      supabase.functions.invoke("dashboard"),
-    ]).then(([roadmapRes, dashboardRes]) => {
-      setStats((prev) => {
-        let updated = { ...prev };
-
-        // roadmap: completedLessons + quizScores per lesson
-        if (roadmapRes.data?.modules) {
-          const completedLessons: string[] = [];
-          const quizScores: Record<string, number> = {};
-          for (const mod of roadmapRes.data.modules) {
-            for (const lesson of mod.lessons ?? []) {
-              if (lesson.isCompleted) completedLessons.push(lesson.id as string);
-              if (lesson.quizScore !== null) quizScores[lesson.id as string] = lesson.quizScore as number;
-            }
-          }
-          updated = { ...updated, completedLessons, quizScores };
-        }
-
-        // dashboard: xp + streak from user_stats DB
-        if (dashboardRes.data?.stats) {
-          const dbStats = dashboardRes.data.stats as { xp: number; streak: number };
-          updated = { ...updated, xp: dbStats.xp, streak: dbStats.streak };
-        }
-
-        safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updated));
-        return updated;
-      });
-    });
-  }, [user?.id]);
 
   const handleLogout = async () => {
     await signOut();
@@ -216,37 +132,28 @@ export default function App() {
 
     if (data?.alreadyCompleted) return;
 
-    const updatedStats: UserStats = {
-      ...stats,
-      completedLessons: [...stats.completedLessons, lessonId],
-      xp: stats.xp + (data?.xpAwarded ?? 15),
-      streak: data?.newStreak ?? stats.streak,
-    };
-    setStats(updatedStats);
-    safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updatedStats));
+    setStats((prev) => ({
+      ...prev,
+      completedLessons: [...prev.completedLessons, lessonId],
+      xp: prev.xp + (data?.xpAwarded ?? 15),
+      streak: data?.newStreak ?? prev.streak,
+    }));
   };
 
   // Triggers after completing a quiz (XP is awarded server-side by quiz-submit EF)
   const handleQuizFinished = (scorePercentage: number, xpEarned: number) => {
-    const updatedScores = {
-      ...stats.quizScores,
-      [selectedLessonId]: scorePercentage
-    };
+    setStats((prev) => {
+      const updatedCompleted = scorePercentage >= 80 && !prev.completedLessons.includes(selectedLessonId)
+        ? [...prev.completedLessons, selectedLessonId]
+        : prev.completedLessons;
 
-    let updatedCompleted = [...stats.completedLessons];
-    if (scorePercentage >= 80 && !updatedCompleted.includes(selectedLessonId)) {
-      updatedCompleted.push(selectedLessonId);
-    }
-
-    const updatedStats: UserStats = {
-      ...stats,
-      completedLessons: updatedCompleted,
-      quizScores: updatedScores,
-      xp: stats.xp + xpEarned,
-    };
-
-    setStats(updatedStats);
-    safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updatedStats));
+      return {
+        ...prev,
+        completedLessons: updatedCompleted,
+        quizScores: { ...prev.quizScores, [selectedLessonId]: scorePercentage },
+        xp: prev.xp + xpEarned,
+      };
+    });
   };
 
   // Find active Lesson detail item
