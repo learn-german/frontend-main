@@ -190,32 +190,23 @@ export default function App() {
     safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updatedStats));
   };
 
-  // Triggers after completing a quiz
-  const handleQuizFinished = (scorePercentage: number) => {
+  // Triggers after completing a quiz (XP is awarded server-side by quiz-submit EF)
+  const handleQuizFinished = (scorePercentage: number, xpEarned: number) => {
     const updatedScores = {
       ...stats.quizScores,
       [selectedLessonId]: scorePercentage
     };
 
     let updatedCompleted = [...stats.completedLessons];
-    let xpGain = 0;
-    let streakIncrement = 0;
-
-    // Standard Goethe threshold of 80% to pass and lock in completion
-    if (scorePercentage >= 80) {
-      if (!updatedCompleted.includes(selectedLessonId)) {
-        updatedCompleted.push(selectedLessonId);
-        xpGain += 30; // +30 XP for passing test
-        streakIncrement = 1; // reward streak progress!
-      }
+    if (scorePercentage >= 80 && !updatedCompleted.includes(selectedLessonId)) {
+      updatedCompleted.push(selectedLessonId);
     }
 
     const updatedStats: UserStats = {
       ...stats,
       completedLessons: updatedCompleted,
       quizScores: updatedScores,
-      xp: stats.xp + xpGain,
-      streak: stats.streak + streakIncrement
+      xp: stats.xp + xpEarned,
     };
 
     setStats(updatedStats);
