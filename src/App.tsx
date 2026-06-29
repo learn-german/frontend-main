@@ -165,17 +165,29 @@ export default function App() {
     setCurrentPage("lesson-detail");
   };
 
-  // Marks a lesson completed from the detail view
-  const handleMarkComplete = (lessonId: string) => {
-    if (!stats.completedLessons.includes(lessonId)) {
-      const updatedStats = {
-        ...stats,
-        completedLessons: [...stats.completedLessons, lessonId],
-        xp: stats.xp + 15 // +15 XP for reading lesson lecture
-      };
-      setStats(updatedStats);
-      safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updatedStats));
+  // Marks a lesson completed via Edge Function (server-side XP + streak)
+  const handleMarkComplete = async (lessonId: string) => {
+    if (stats.completedLessons.includes(lessonId)) return;
+
+    const { data, error } = await supabase.functions.invoke(`lesson-complete/${lessonId}`, {
+      method: "POST",
+    });
+
+    if (error) {
+      showToast("Không thể lưu tiến độ. Vui lòng thử lại.", "warning");
+      return;
     }
+
+    if (data?.alreadyCompleted) return;
+
+    const updatedStats: UserStats = {
+      ...stats,
+      completedLessons: [...stats.completedLessons, lessonId],
+      xp: stats.xp + (data?.xpAwarded ?? 15),
+      streak: data?.newStreak ?? stats.streak,
+    };
+    setStats(updatedStats);
+    safeStorage.setItem(LOCAL_STORAGE_STATS_KEY, JSON.stringify(updatedStats));
   };
 
   // Triggers after completing a quiz
