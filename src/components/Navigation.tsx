@@ -4,25 +4,26 @@
  */
 
 import React, { useState } from "react";
-import { 
-  BookOpen, 
-  Map, 
-  Compass, 
-  GraduationCap, 
-  User, 
-  Menu, 
-  X, 
-  LogOut, 
-  TrendingUp, 
+import {
+  BookOpen,
+  Map,
+  Compass,
+  GraduationCap,
+  User,
+  Menu,
+  X,
+  LogOut,
+  TrendingUp,
   Award,
-  Globe
+  Globe,
+  Settings
 } from "lucide-react";
 import { Button } from "./DesignSystem";
 
 interface NavigationProps {
   currentPage: string;
-  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz") => void;
-  user: { email: string; fullName: string } | null;
+  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "admin") => void;
+  user: { email: string; fullName: string; role?: string } | null;
   onLogout: () => void;
   streak: number;
   xp: number;
@@ -281,6 +282,18 @@ export const Navbar: React.FC<NavigationProps> = ({
                 </button>
               </div>
 
+              {user.role === "admin" && (
+                <button
+                  id="mob-admin"
+                  onClick={() => { onNavigate("admin"); setMobileMenuOpen(false); }}
+                  className={`flex items-center gap-2.5 p-3 rounded-xl text-sm font-display font-semibold transition ${
+                    currentPage === "admin" ? "bg-orange-50 text-orange-700" : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Settings className="w-5 h-5 text-gray-400" />
+                  Admin Panel
+                </button>
+              )}
               <Button id="btn-mob-logout" variant="danger" size="md" onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="mt-2 w-full">
                 <LogOut className="w-4 h-4 mr-2" /> Đăng xuất
               </Button>

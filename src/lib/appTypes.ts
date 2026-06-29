@@ -65,5 +65,5 @@ export interface Module {
 }
 
 export interface AppState {
-  currentPage: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz";
+  currentPage: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "admin";
 }
