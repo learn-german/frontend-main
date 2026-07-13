@@ -182,7 +182,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
             {grammarTab === "edit" ? (
               <>
-                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách</p>
+                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách (lồng nhau được), - [ ] checkbox, bảng, ```code block```, blockquote, và callout 💡 ⚠️ ❗ ✅ ℹ️</p>
                 <textarea
                   rows={12}
                   value={data.grammar_md ?? ""}
