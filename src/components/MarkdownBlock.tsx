@@ -3,8 +3,6 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CheckSquare, Square } from "lucide-react";
 
-const CALLOUT_ICONS = ["💡", "⚠️", "❗", "✅", "ℹ️"];
-
 const CALLOUT_STYLES: Record<string, string> = {
   "💡": "bg-amber-50 border-amber-400 text-amber-800",
   "ℹ️": "bg-blue-50 border-blue-400 text-blue-800",
@@ -12,6 +10,8 @@ const CALLOUT_STYLES: Record<string, string> = {
   "❗": "bg-rose-50 border-rose-400 text-rose-800",
   "✅": "bg-green-50 border-green-400 text-green-800",
 };
+
+const CALLOUT_ICONS = Object.keys(CALLOUT_STYLES);
 
 function mergeMultilineTableRows(content: string): string {
   const lines = content.split("\n");
