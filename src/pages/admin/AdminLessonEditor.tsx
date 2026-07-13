@@ -33,6 +33,8 @@ export interface LessonEditable {
   grammar: Grammar;
   grammar_md?: string | null;
   listening_url?: string | null;
+  video_r2_key?: string | null;
+  audio_r2_key?: string | null;
   reading_text?: string | null;
   reading_text_vi?: string | null;
 }
@@ -89,6 +91,8 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       grammar: data.grammar,
       grammar_md: data.grammar_md || null,
       listening_url: data.listening_url || null,
+      video_r2_key: data.video_r2_key || null,
+      audio_r2_key: data.audio_r2_key || null,
       reading_text: data.reading_text || null,
       reading_text_vi: data.reading_text_vi || null,
     }).eq("id", data.id);

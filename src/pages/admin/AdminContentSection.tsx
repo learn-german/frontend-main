@@ -28,7 +28,8 @@ export const AdminContentSection: React.FC = () => {
       .select(`id, title, title_vi, level, order_index,
         lessons(id, title, title_vi, duration, level, xp_reward, youtube_id,
                 objective, summary, vocabulary, grammar, grammar_md,
-                listening_url, reading_text, reading_text_vi, order_index)`)
+                listening_url, video_r2_key, audio_r2_key,
+                reading_text, reading_text_vi, order_index)`)
       .order("order_index")
       .order("order_index", { referencedTable: "lessons" })
       .then(({ data }) => {
