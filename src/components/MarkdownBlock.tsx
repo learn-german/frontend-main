@@ -43,6 +43,54 @@ function readTableRow(lines: string[], start: number): { cells: string[]; next: 
 
 const isSeparatorRow = (cells: string[]) => cells.length > 0 && cells.every(c => /^:?-+:?$/.test(c));
 
+const CALLOUT_ICONS = ["💡", "⚠️", "❗", "✅", "ℹ️"];
+
+function mergeMultilineTableRows(content: string): string {
+  const lines = content.split("\n");
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trimStart().startsWith("|")) {
+      let buffer = line;
+      let j = i;
+      while (!buffer.trim().endsWith("|") && j + 1 < lines.length) {
+        j++;
+        buffer += "<br/>" + lines[j];
+      }
+      out.push(buffer);
+      i = j + 1;
+    } else {
+      out.push(line);
+      i++;
+    }
+  }
+  return out.join("\n");
+}
+
+function wrapCalloutLines(content: string): string {
+  let inFence = false;
+  return content
+    .split("\n")
+    .map(line => {
+      if (/^\s*```/.test(line)) {
+        inFence = !inFence;
+        return line;
+      }
+      if (inFence) return line;
+      const trimmed = line.trim();
+      const startsWithCallout = CALLOUT_ICONS.some(icon => trimmed.startsWith(icon));
+      const alreadyBlock = /^[-*>|]|^\d+\./.test(trimmed);
+      if (startsWithCallout && !alreadyBlock) return `> ${trimmed}`;
+      return line;
+    })
+    .join("\n");
+}
+
+export function preprocessMarkdown(content: string): string {
+  return wrapCalloutLines(mergeMultilineTableRows(content));
+}
+
 export const MarkdownBlock: React.FC<{ content: string; className?: string }> = ({ content, className }) => {
   const lines = content.split("\n");
   const nodes: React.ReactNode[] = [];
