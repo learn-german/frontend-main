@@ -1,6 +1,5 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createClient } from "@supabase/supabase-js";
 
 type MediaType = "video" | "audio";
 
@@ -28,6 +27,22 @@ export function buildObjectKey(mediaType: MediaType, lessonId: string, ext: stri
   return `${folder}/${lessonId}.${ext.toLowerCase()}`;
 }
 
+interface AuthUser {
+  id: string;
+  app_metadata?: { role?: string };
+}
+
+async function getAuthenticatedUser(token: string): Promise<AuthUser | null> {
+  const res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: process.env.SUPABASE_ANON_KEY!,
+    },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as AuthUser;
+}
+
 export default async function handler(req: VercelRequestLike, res: VercelResponseLike) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -41,9 +56,8 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
+  const user = await getAuthenticatedUser(token);
+  if (!user) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
