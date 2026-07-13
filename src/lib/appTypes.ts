@@ -55,6 +55,8 @@ export interface Lesson {
   grammar: GrammarExplanation;
   grammarMd?: string;
   listeningUrl?: string;
+  videoR2Key?: string;
+  audioR2Key?: string;
   readingText?: string;
   readingTextVi?: string;
   quiz?: QuizQuestion[];

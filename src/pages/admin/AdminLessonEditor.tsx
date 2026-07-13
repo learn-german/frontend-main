@@ -33,6 +33,8 @@ export interface LessonEditable {
   grammar: Grammar;
   grammar_md?: string | null;
   listening_url?: string | null;
+  video_r2_key?: string | null;
+  audio_r2_key?: string | null;
   reading_text?: string | null;
   reading_text_vi?: string | null;
 }
@@ -59,10 +61,51 @@ const EditableText: React.FC<{
   );
 };
 
+async function uploadMedia(
+  file: File,
+  lessonId: string,
+  mediaType: "video" | "audio",
+  onProgress: (pct: number) => void
+): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Chưa đăng nhập");
+
+  const fileExt = file.name.split(".").pop() ?? "";
+  const res = await fetch("/api/media/upload-url", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ lessonId, mediaType, fileExt }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string };
+    throw new Error(body.error ?? "Không lấy được upload URL");
+  }
+  const { uploadUrl, objectKey } = (await res.json()) as { uploadUrl: string; objectKey: string };
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload thất bại (${xhr.status})`)));
+    xhr.onerror = () => reject(new Error("Upload thất bại (lỗi mạng)"));
+    xhr.send(file);
+  });
+
+  return objectKey;
+}
+
 export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, onSaved }) => {
   const [data, setData] = useState<LessonEditable>({ ...initial });
   const [saving, setSaving] = useState(false);
   const [grammarTab, setGrammarTab] = useState<"edit" | "preview">("edit");
+  const [videoUploadPct, setVideoUploadPct] = useState<number | null>(null);
+  const [audioUploadPct, setAudioUploadPct] = useState<number | null>(null);
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
 
@@ -74,6 +117,32 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
   const removeVocab = (idx: number) =>
     setData(prev => ({ ...prev, vocabulary: prev.vocabulary.filter((_, i) => i !== idx) }));
+
+  const handleVideoUpload = async (file: File) => {
+    setVideoUploadPct(0);
+    try {
+      const objectKey = await uploadMedia(file, data.id, "video", setVideoUploadPct);
+      upd({ video_r2_key: objectKey });
+      showToast("Đã tải video lên, nhớ bấm Lưu bài học.", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Tải video lên thất bại", "warning");
+    } finally {
+      setVideoUploadPct(null);
+    }
+  };
+
+  const handleAudioUpload = async (file: File) => {
+    setAudioUploadPct(0);
+    try {
+      const objectKey = await uploadMedia(file, data.id, "audio", setAudioUploadPct);
+      upd({ audio_r2_key: objectKey });
+      showToast("Đã tải audio lên, nhớ bấm Lưu bài học.", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Tải audio lên thất bại", "warning");
+    } finally {
+      setAudioUploadPct(null);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -89,6 +158,8 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       grammar: data.grammar,
       grammar_md: data.grammar_md || null,
       listening_url: data.listening_url || null,
+      video_r2_key: data.video_r2_key || null,
+      audio_r2_key: data.audio_r2_key || null,
       reading_text: data.reading_text || null,
       reading_text_vi: data.reading_text_vi || null,
     }).eq("id", data.id);
@@ -146,7 +217,12 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
               <Video className="w-5 h-5 text-orange-500" /> Bài giảng lý thuyết
             </h2>
             <div className="aspect-video bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
-              {data.youtube_id ? (
+              {data.video_r2_key ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500">
+                  <Video className="w-10 h-10 text-orange-400" />
+                  <p className="text-xs font-mono">{data.video_r2_key}</p>
+                </div>
+              ) : data.youtube_id ? (
                 <iframe src={`https://www.youtube.com/embed/${data.youtube_id}`} className="w-full h-full" allowFullScreen title={data.title} />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -155,10 +231,26 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-              <span className="text-xs font-bold text-slate-400 whitespace-nowrap">YouTube ID:</span>
-              <EditableText value={data.youtube_id ?? ""} onChange={v => upd({ youtube_id: v })} className="text-sm font-mono text-slate-700" placeholder="dQw4w9WgXcQ" />
-            </div>
+            <label className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-slate-100 transition">
+              <Video className="w-4 h-4 text-orange-500 shrink-0" />
+              <span className="text-xs font-bold text-slate-600">
+                {videoUploadPct !== null ? `Đang tải lên... ${videoUploadPct}%` : "Tải video lên (.mp4)"}
+              </span>
+              <input
+                type="file"
+                accept="video/mp4"
+                className="hidden"
+                disabled={videoUploadPct !== null}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(f); e.target.value = ""; }}
+              />
+            </label>
+            <details className="text-xs">
+              <summary className="text-slate-400 cursor-pointer">Nhập thủ công (cũ) — YouTube ID</summary>
+              <div className="flex items-center gap-2 mt-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                <span className="text-xs font-bold text-slate-400 whitespace-nowrap">YouTube ID:</span>
+                <EditableText value={data.youtube_id ?? ""} onChange={v => upd({ youtube_id: v })} className="text-sm font-mono text-slate-700" placeholder="dQw4w9WgXcQ" />
+              </div>
+            </details>
           </section>
 
           {/* Grammar — Markdown editor */}
@@ -207,17 +299,36 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             <h3 className="text-sm font-display font-bold text-slate-800 flex items-center gap-2">
               <Headphones className="w-4 h-4 text-orange-500" /> Luyện nghe
             </h3>
-            <div>
-              <label className={labelCls}>URL audio (mp3 / m4a / wav)</label>
+            <label className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-slate-100 transition">
+              <Headphones className="w-4 h-4 text-orange-500 shrink-0" />
+              <span className="text-xs font-bold text-slate-600">
+                {audioUploadPct !== null ? `Đang tải lên... ${audioUploadPct}%` : "Tải audio lên (.mp3 / .m4a / .wav)"}
+              </span>
               <input
-                type="text"
-                value={data.listening_url ?? ""}
-                onChange={e => upd({ listening_url: e.target.value })}
-                placeholder="https://example.com/audio.mp3"
-                className={inputCls}
+                type="file"
+                accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
+                className="hidden"
+                disabled={audioUploadPct !== null}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleAudioUpload(f); e.target.value = ""; }}
               />
-            </div>
-            {data.listening_url && (
+            </label>
+            {data.audio_r2_key && (
+              <p className="text-[10px] text-slate-400 font-mono">{data.audio_r2_key}</p>
+            )}
+            <details className="text-xs">
+              <summary className="text-slate-400 cursor-pointer">Nhập thủ công (cũ) — URL audio</summary>
+              <div className="mt-2">
+                <label className={labelCls}>URL audio (mp3 / m4a / wav)</label>
+                <input
+                  type="text"
+                  value={data.listening_url ?? ""}
+                  onChange={e => upd({ listening_url: e.target.value })}
+                  placeholder="https://example.com/audio.mp3"
+                  className={inputCls}
+                />
+              </div>
+            </details>
+            {data.listening_url && !data.audio_r2_key && (
               <audio controls src={data.listening_url} className="w-full rounded-xl mt-2">
                 Trình duyệt không hỗ trợ audio.
               </audio>

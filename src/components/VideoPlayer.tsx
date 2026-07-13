@@ -1,17 +1,50 @@
 import React from "react";
-import { Video } from "lucide-react";
+import { Video, Loader2 } from "lucide-react";
+import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 
 interface VideoPlayerProps {
+  lessonId: string;
   youtubeId?: string;
+  videoR2Key?: string;
   title: string;
   levelBadge: string;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  lessonId,
   youtubeId,
+  videoR2Key,
   title,
   levelBadge,
 }) => {
+  const { url, loading, error } = useMediaPlaybackUrl(lessonId, "video", videoR2Key);
+
+  if (videoR2Key) {
+    if (loading) {
+      return (
+        <div className="rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm bg-slate-50 aspect-video flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-orange-400 animate-spin" />
+        </div>
+      );
+    }
+    if (url) {
+      return (
+        <div className="rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm">
+          <video controls src={url} title={title} className="w-full aspect-video bg-black">
+            Trình duyệt không hỗ trợ video.
+          </video>
+        </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm bg-slate-50 aspect-video flex items-center justify-center">
+          <p className="text-xs text-red-500">Không tải được video: {error}</p>
+        </div>
+      );
+    }
+  }
+
   if (youtubeId) {
     return (
       <div className="rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm">
