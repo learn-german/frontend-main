@@ -80,7 +80,7 @@ async function uploadMedia(
     body: JSON.stringify({ lessonId, mediaType, fileExt }),
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const body = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string };
     throw new Error(body.error ?? "Không lấy được upload URL");
   }
   const { uploadUrl, objectKey } = (await res.json()) as { uploadUrl: string; objectKey: string };
