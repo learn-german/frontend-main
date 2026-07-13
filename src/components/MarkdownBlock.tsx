@@ -38,25 +38,73 @@ function mergeMultilineTableRows(content: string): string {
 
 function wrapCalloutLines(content: string): string {
   let inFence = false;
-  return content
-    .split("\n")
-    .map(line => {
-      if (/^\s*```/.test(line)) {
-        inFence = !inFence;
-        return line;
-      }
-      if (inFence) return line;
-      const trimmed = line.trim();
-      const startsWithCallout = CALLOUT_ICONS.some(icon => trimmed.startsWith(icon));
-      const alreadyBlock = /^[-*>|]|^\d+\./.test(trimmed);
-      if (startsWithCallout && !alreadyBlock) return `> ${trimmed}`;
+  const lines = content.split("\n");
+  const wrapped: boolean[] = [];
+  const out = lines.map(line => {
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      wrapped.push(false);
       return line;
-    })
-    .join("\n");
+    }
+    if (inFence) {
+      wrapped.push(false);
+      return line;
+    }
+    const trimmed = line.trim();
+    const startsWithCallout = CALLOUT_ICONS.some(icon => trimmed.startsWith(icon));
+    const alreadyBlock = /^[-*>|]|^\d+\./.test(trimmed);
+    if (startsWithCallout && !alreadyBlock) {
+      wrapped.push(true);
+      return `> ${trimmed}`;
+    }
+    wrapped.push(false);
+    return line;
+  });
+
+  // Each callout must be its own blockquote block, so consecutive callout
+  // lines (or a callout next to unrelated content) need a blank line
+  // between them — otherwise CommonMark merges them into one paragraph.
+  const result: string[] = [];
+  for (let i = 0; i < out.length; i++) {
+    const prevLine = result[result.length - 1];
+    if (wrapped[i] && prevLine !== undefined && prevLine.trim() !== "") {
+      result.push("");
+    }
+    result.push(out[i]);
+    const nextNeedsBlank = wrapped[i] && i + 1 < out.length && out[i + 1].trim() !== "";
+    if (nextNeedsBlank) {
+      result.push("");
+    }
+  }
+  return result.join("\n");
 }
 
 export function preprocessMarkdown(content: string): string {
   return wrapCalloutLines(mergeMultilineTableRows(content));
+}
+
+// react-markdown (without rehype-raw) renders literal "<br/>" text as an
+// escaped string rather than a line break. Table cells with content merged
+// from multiple physical lines rely on that literal marker, so split it back
+// into a real <br /> here at render time.
+function splitBrText(node: React.ReactNode, keyPrefix: string): React.ReactNode {
+  if (typeof node === "string") {
+    if (!node.includes("<br/>")) return node;
+    const parts = node.split("<br/>");
+    return parts.flatMap((part, i) =>
+      i === 0 ? [part] : [<br key={`${keyPrefix}-br-${i}`} />, part]
+    );
+  }
+  if (Array.isArray(node)) {
+    return node.map((child, i) => splitBrText(child, `${keyPrefix}-${i}`));
+  }
+  if (React.isValidElement(node)) {
+    const props = node.props as { children?: React.ReactNode };
+    return React.cloneElement(node, {
+      children: splitBrText(props.children, keyPrefix),
+    } as React.Attributes);
+  }
+  return node;
 }
 
 function extractText(node: React.ReactNode): string {
@@ -154,10 +202,12 @@ const components: Components = {
   ),
   th: ({ children }) => (
     <th className="border border-slate-200 bg-slate-100 px-2 py-1 text-left font-display font-bold text-slate-700">
-      {children}
+      {splitBrText(children, "th")}
     </th>
   ),
-  td: ({ children }) => <td className="border border-slate-200 px-2 py-1 text-slate-600">{children}</td>,
+  td: ({ children }) => (
+    <td className="border border-slate-200 px-2 py-1 text-slate-600">{splitBrText(children, "td")}</td>
+  ),
 };
 
 export const MarkdownBlock: React.FC<{ content: string; className?: string }> = ({ content, className }) => {
