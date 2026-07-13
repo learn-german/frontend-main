@@ -292,10 +292,11 @@ Expected: fails — `api/media/upload-url.ts` doesn't exist yet.
 
 - [ ] **Step 5: Write `api/media/upload-url.ts`**
 
+**Do not use `@supabase/supabase-js`'s `createClient()`** — it eagerly constructs a `RealtimeClient` requiring a global `WebSocket`, which throws synchronously on Node <22, and this function calls it on every invocation. Verify the JWT via a direct `fetch` to Supabase's `/auth/v1/user` REST endpoint instead (same fix applied to Task 3's `playback-url.ts`).
+
 ```ts
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createClient } from "@supabase/supabase-js";
 
 type MediaType = "video" | "audio";
 
@@ -307,6 +308,22 @@ interface VercelRequestLike {
 interface VercelResponseLike {
   status(code: number): VercelResponseLike;
   json(body: unknown): void;
+}
+
+interface AuthUser {
+  id: string;
+  app_metadata?: { role?: string };
+}
+
+async function getAuthenticatedUser(token: string): Promise<AuthUser | null> {
+  const res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: process.env.SUPABASE_ANON_KEY!,
+    },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as AuthUser;
 }
 
 const ALLOWED_EXT: Record<MediaType, string[]> = {
@@ -336,9 +353,8 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
+  const user = await getAuthenticatedUser(token);
+  if (!user) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
@@ -398,16 +414,10 @@ ALL PASS
 
 This calls the handler directly as a plain function (no HTTP server, no Vercel CLI needed) and only exercises paths that reject *before* touching the R2 SDK.
 
-Create `/tmp/media-upload-verify/auth-guard.mts`:
+Create `/tmp/media-upload-verify/auth-guard.mts`. Note: read `SUPABASE_URL`/`SUPABASE_ANON_KEY` from the process environment directly rather than via `dotenv` — Node's ESM resolver doesn't consult `NODE_PATH`, so a `dotenv` import from a script living outside the project's own directory tree fails to resolve; export the values in the shell instead when running the script (see below).
 
 ```ts
 import assert from "node:assert/strict";
-import dotenv from "dotenv";
-dotenv.config({ path: "/Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519/.env.local" });
-
-process.env.SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-process.env.SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-
 import handler from "/Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519/api/media/upload-url";
 
 function mockRes() {
@@ -452,7 +462,10 @@ console.log("ALL PASS");
 Run it:
 
 ```bash
-cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519 && NODE_PATH=$(npm root) npx tsx /tmp/media-upload-verify/auth-guard.mts
+cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519
+export SUPABASE_URL=$(grep VITE_SUPABASE_URL .env.local | cut -d= -f2-)
+export SUPABASE_ANON_KEY=$(grep VITE_SUPABASE_ANON_KEY .env.local | cut -d= -f2-)
+NODE_PATH=$(npm root) npx tsx /tmp/media-upload-verify/auth-guard.mts
 ```
 
 Expected:
