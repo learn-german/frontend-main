@@ -6,7 +6,7 @@
 
 **Architecture:** Two Vercel Serverless Functions (`api/media/upload-url.ts`, `api/media/playback-url.ts`) hold the R2 credentials (Vercel env vars, server-only) and use `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` to mint presigned S3 URLs. The admin browser PUTs the file straight to R2 using a presigned PUT URL (the function never touches file bytes). Learners fetch a presigned GET URL (4h expiry) by lesson ID; the function looks up the real object key itself so the client never supplies or guesses one. Two new nullable columns (`video_r2_key`, `audio_r2_key`) sit alongside the existing `youtube_id`/`listening_url` — new content prefers R2, older lessons fall back to the old fields unchanged.
 
-**Tech Stack:** React 19, TypeScript 5.8, Vercel Serverless Functions (Node.js runtime), `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` 3.x, `@supabase/supabase-js` (already a dependency).
+**Tech Stack:** React 19, TypeScript 5.8, Vercel Serverless Functions (Node.js runtime), `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` 3.x. The two Vercel functions call Supabase's REST APIs (`/auth/v1/user`, `/rest/v1/lessons`) directly via `fetch` rather than `@supabase/supabase-js` — the SDK's `createClient()` eagerly builds a `RealtimeClient` needing a global `WebSocket`, which throws on Node <22 (discovered and fixed during Task 2; see that task's code for the corrected approach). The frontend (`src/lib/hooks/useMediaPlaybackUrl.ts`, `AdminLessonEditor.tsx`) still uses the existing `supabase` client singleton from `src/lib/supabase.ts` as normal — this WebSocket issue is specific to constructing a *new* client inside a Node.js serverless function, not the browser-side singleton already in use everywhere else in this app.
 
 ## Global Constraints
 
@@ -491,20 +491,14 @@ git commit -m "feat: add /api/media/upload-url Vercel function for presigned R2 
 
 **Interfaces:**
 - Produces: `GET /api/media/playback-url?lessonId=...&type=video|audio`, header `Authorization: Bearer <supabase JWT>` → response `{ url: string }` (200), or `{ error: string }` with 400/401/404/405.
-- Consumes: same env vars as Task 2, plus reads `lessons.video_r2_key`/`lessons.audio_r2_key` (added in Task 1) via a Supabase client scoped to the caller's own JWT (relies on the `lessons: authenticated read` RLS policy — no service-role key).
+- Consumes: same env vars as Task 2 (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `R2_*`), plus reads `lessons.video_r2_key`/`lessons.audio_r2_key` (added in Task 1) via a direct REST call to `/rest/v1/lessons` using the caller's own bearer token (relies on the `lessons: authenticated read` RLS policy — no service-role key, no SDK). Does **not** use `@supabase/supabase-js` — see the note before Step 3 for why.
 
 - [ ] **Step 1: Write the failing verification script**
 
-Create `/tmp/media-upload-verify/playback-auth-guard.mts`:
+Create `/tmp/media-upload-verify/playback-auth-guard.mts`. Note: read `SUPABASE_URL`/`SUPABASE_ANON_KEY` from the process environment directly rather than via `dotenv` — Node's ESM resolver doesn't consult `NODE_PATH`, so a `dotenv` import from a script living outside the project's own directory tree fails to resolve; export the values in the shell instead when running the script (see Step 2).
 
 ```ts
 import assert from "node:assert/strict";
-import dotenv from "dotenv";
-dotenv.config({ path: "/Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519/.env.local" });
-
-process.env.SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-process.env.SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-
 import handler from "/Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519/api/media/playback-url";
 
 function mockRes() {
@@ -549,17 +543,21 @@ console.log("ALL PASS");
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519 && NODE_PATH=$(npm root) npx tsx /tmp/media-upload-verify/playback-auth-guard.mts
+cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519 && cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519
+export SUPABASE_URL=$(grep VITE_SUPABASE_URL .env.local | cut -d= -f2-)
+export SUPABASE_ANON_KEY=$(grep VITE_SUPABASE_ANON_KEY .env.local | cut -d= -f2-)
+NODE_PATH=$(npm root) npx tsx /tmp/media-upload-verify/playback-auth-guard.mts
 ```
 
 Expected: fails — `api/media/playback-url.ts` doesn't exist yet.
 
 - [ ] **Step 3: Write `api/media/playback-url.ts`**
 
+**Correction (discovered during Task 2, applies here too):** do not use `@supabase/supabase-js`'s `createClient()` — it eagerly constructs a `RealtimeClient` that requires a global `WebSocket`, which throws synchronously on Node 20 (`Error: Node.js 20 detected without native WebSocket support`), and this function would call it on every invocation. Neither the auth check nor the RLS-scoped `lessons` read need the SDK — both are plain HTTP calls to Supabase's REST APIs (`/auth/v1/user` for the JWT check, `/rest/v1/lessons` for the RLS-respecting read, using the caller's own bearer token so RLS evaluates as that user). This was verified directly against the real project: a garbage bearer token against `/rest/v1/lessons` returns 401, and an unauthenticated (anon-only) request against it returns an empty array `[]` (RLS silently filters it out) rather than an error — both map correctly onto this handler's existing 401/404 branches with no extra handling needed.
+
 ```ts
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createClient } from "@supabase/supabase-js";
 
 interface VercelRequestLike {
   method?: string;
@@ -569,6 +567,21 @@ interface VercelRequestLike {
 interface VercelResponseLike {
   status(code: number): VercelResponseLike;
   json(body: unknown): void;
+}
+
+interface AuthUser {
+  id: string;
+}
+
+async function getAuthenticatedUser(token: string): Promise<AuthUser | null> {
+  const res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: process.env.SUPABASE_ANON_KEY!,
+    },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as AuthUser;
 }
 
 export default async function handler(req: VercelRequestLike, res: VercelResponseLike) {
@@ -584,18 +597,14 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const lessonId = typeof req.query.lessonId === "string" ? req.query.lessonId : undefined;
-  const type = typeof req.query.type === "string" ? req.query.type : undefined;
-
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
+  const user = await getAuthenticatedUser(token);
+  if (!user) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+
+  const lessonId = typeof req.query.lessonId === "string" ? req.query.lessonId : undefined;
+  const type = typeof req.query.type === "string" ? req.query.type : undefined;
 
   if (!lessonId || (type !== "video" && type !== "audio")) {
     res.status(400).json({ error: "lessonId and type (video|audio) required" });
@@ -603,18 +612,21 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
   }
 
   const column = type === "video" ? "video_r2_key" : "audio_r2_key";
-  const { data: lesson, error: dbError } = await supabase
-    .from("lessons")
-    .select(column)
-    .eq("id", lessonId)
-    .single();
-
-  if (dbError || !lesson) {
+  const restRes = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&select=${column}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: process.env.SUPABASE_ANON_KEY!,
+      },
+    }
+  );
+  if (!restRes.ok) {
     res.status(404).json({ error: "Lesson not found" });
     return;
   }
-
-  const objectKey = (lesson as Record<string, string | null>)[column];
+  const rows = (await restRes.json()) as Record<string, string | null>[];
+  const objectKey = rows[0]?.[column];
   if (!objectKey) {
     res.status(404).json({ error: "Media not found for this lesson" });
     return;
@@ -644,7 +656,10 @@ Note: the auth check intentionally runs *before* the `lessonId`/`type` validatio
 - [ ] **Step 4: Run the verification script again**
 
 ```bash
-cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519 && NODE_PATH=$(npm root) npx tsx /tmp/media-upload-verify/playback-auth-guard.mts
+cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519 && cd /Users/thangnv/Documents/web-gemany/.claude/worktrees/modest-jang-d05519
+export SUPABASE_URL=$(grep VITE_SUPABASE_URL .env.local | cut -d= -f2-)
+export SUPABASE_ANON_KEY=$(grep VITE_SUPABASE_ANON_KEY .env.local | cut -d= -f2-)
+NODE_PATH=$(npm root) npx tsx /tmp/media-upload-verify/playback-auth-guard.mts
 ```
 
 Expected:
