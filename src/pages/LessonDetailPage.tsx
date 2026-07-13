@@ -17,6 +17,7 @@ import { VideoPlayer } from "../components/VideoPlayer";
 import { MarkdownBlock } from "../components/MarkdownBlock";
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
+import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 
 interface LessonDetailPageProps {
   lesson: Lesson;
@@ -38,6 +39,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
   const [bottomTab, setBottomTab] = useState<BottomTab>("quiz");
+  const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", lesson.audioR2Key);
 
   const handlePronounce = (text: string) => {
     if ("speechSynthesis" in window) {
@@ -119,7 +121,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
             <h2 className="text-base font-display font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide font-sans">
               <Video className="w-5 h-5 text-orange-500" /> Bài giảng lý thuyết
             </h2>
-            <VideoPlayer youtubeId={lesson.youtubeId} title={lesson.title} levelBadge={lesson.level} />
+            <VideoPlayer lessonId={lesson.id} youtubeId={lesson.youtubeId} videoR2Key={lesson.videoR2Key} title={lesson.title} levelBadge={lesson.level} />
           </section>
 
           {/* Grammar — markdown or legacy structured */}
@@ -251,7 +253,21 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Nghe tab */}
           {bottomTab === "nghe" && (
             <div className="space-y-4">
-              {lesson.listeningUrl ? (
+              {lesson.audioR2Key ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Headphones className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
+                  </div>
+                  {audioPlayback.loading && <p className="text-xs text-slate-400">Đang tải...</p>}
+                  {audioPlayback.url && (
+                    <audio controls src={audioPlayback.url} className="w-full rounded-xl">
+                      Trình duyệt không hỗ trợ audio.
+                    </audio>
+                  )}
+                  {audioPlayback.error && <p className="text-xs text-red-500">Không tải được audio: {audioPlayback.error}</p>}
+                </>
+              ) : lesson.listeningUrl ? (
                 <>
                   <div className="flex items-center gap-2 mb-2">
                     <Headphones className="w-4 h-4 text-orange-500" />
