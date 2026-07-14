@@ -12,6 +12,7 @@ interface AdminUser {
   xp: number;
   streak: number;
   role: string;
+  unlockedLevels: string[];
 }
 
 interface CreateForm { email: string; password: string; full_name: string; role: string; }
@@ -35,7 +36,7 @@ export const AdminUsersSection: React.FC = () => {
   const fetchUsers = () => {
     supabase
       .from("profiles")
-      .select("id, email, full_name, created_at, role, user_stats(xp, streak)")
+      .select("id, email, full_name, created_at, role, unlocked_levels, user_stats(xp, streak)")
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setUsers(
@@ -49,6 +50,7 @@ export const AdminUsersSection: React.FC = () => {
               xp: stats?.xp ?? 0,
               streak: stats?.streak ?? 0,
               role: (p as unknown as { role?: string }).role ?? "user",
+              unlockedLevels: (p as unknown as { unlocked_levels?: string[] }).unlocked_levels ?? [],
             };
           }),
         );
@@ -126,6 +128,22 @@ export const AdminUsersSection: React.FC = () => {
     }
   };
 
+  const handleToggleLevel = async (user: AdminUser, level: string) => {
+    const previousLevels = user.unlockedLevels;
+    const newLevels = previousLevels.includes(level)
+      ? previousLevels.filter((l) => l !== level)
+      : [...previousLevels, level];
+
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: newLevels } : u)));
+
+    const { error } = await supabase.from("profiles").update({ unlocked_levels: newLevels }).eq("id", user.id);
+
+    if (error) {
+      showToast("Cập nhật cấp độ thất bại: " + error.message, "warning");
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: previousLevels } : u)));
+    }
+  };
+
   const filtered = users.filter(
     (u) =>
       u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -170,6 +188,7 @@ export const AdminUsersSection: React.FC = () => {
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Người dùng</th>
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Email</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Role</th>
+              <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Cấp độ mở</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">XP</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Streak</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ngày tạo</th>
@@ -191,6 +210,21 @@ export const AdminUsersSection: React.FC = () => {
                   ) : (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">User</span>
                   )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-2">
+                    {(["A1", "A2", "B1", "B2"] as const).map((level) => (
+                      <label key={level} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={u.unlockedLevels.includes(level)}
+                          onChange={() => handleToggleLevel(u, level)}
+                          className="w-3.5 h-3.5 accent-orange-600 cursor-pointer"
+                        />
+                        {level}
+                      </label>
+                    ))}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-right font-bold text-blue-600">{u.xp}</td>
                 <td className="px-4 py-3 text-right font-bold text-orange-600">{u.streak} 🔥</td>
@@ -217,7 +251,7 @@ export const AdminUsersSection: React.FC = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
               </tr>
             )}
           </tbody>
