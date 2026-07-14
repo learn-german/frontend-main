@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { AppState, Lesson, Module } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
+import { useLessonPositions } from "./lib/hooks/useLessonPositions";
 import { useUserStats } from "./lib/hooks/useUserStats";
 import { AppLoadingSkeleton } from "./components/Skeleton";
 import { Navbar, Sidebar } from "./components/Navigation";
@@ -28,6 +29,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const { stats, setStats } = useUserStats(user?.id ?? null);
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
+  const { positions } = useLessonPositions(user?.id ?? null);
 
   // Router page state
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
@@ -269,6 +271,7 @@ export default function App() {
                 <RoadmapPage
                   stats={stats}
                   modules={modules}
+                  positions={positions}
                   onSelectLesson={handleSelectLesson}
                 />
               )}
