@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Loader2, Pencil, ChevronDown, ChevronRight, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { AdminLessonEditor, LessonEditable } from "./AdminLessonEditor";
+import { LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 
 interface AdminLesson extends LessonEditable {
@@ -20,7 +21,7 @@ interface AdminModule {
 const LESSON_SELECT = `id, title, title_vi, duration, level, xp_reward, youtube_id,
                 objective, summary, vocabulary, grammar, grammar_md,
                 listening_url, video_r2_key, audio_r2_key,
-                reading_text, reading_text_vi, order_index`;
+                reading_text, reading_text_vi, order_index, status`;
 
 export const AdminContentSection: React.FC = () => {
   const [modules, setModules] = useState<AdminModule[]>([]);
@@ -71,6 +72,7 @@ export const AdminContentSection: React.FC = () => {
         order_index: n,
         vocabulary: [],
         grammar: { title: "", rule: "", examples: [] },
+        status: "draft",
       })
       .select(LESSON_SELECT)
       .single();
@@ -153,6 +155,7 @@ export const AdminContentSection: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
+                      <LessonStatusBadge status={lesson.status} />
                       <span className="text-xs font-mono text-slate-400">{lesson.youtube_id || "—"}</span>
                       <span className="text-xs font-bold text-blue-600">{lesson.xp_reward} XP</span>
                       <button
