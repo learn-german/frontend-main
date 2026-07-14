@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import {
   ArrowLeft, Save, Plus, Trash2,
   BookOpen, GraduationCap, Video, Volume2, Loader2, Headphones, FileText,
+  Globe, EyeOff,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import { Button } from "../../components/DesignSystem";
+import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { MarkdownBlock } from "../../components/MarkdownBlock";
 import { showToast } from "../../lib/toast";
 
@@ -37,6 +38,7 @@ export interface LessonEditable {
   audio_r2_key?: string | null;
   reading_text?: string | null;
   reading_text_vi?: string | null;
+  status: "draft" | "published";
 }
 
 interface Props {
@@ -173,6 +175,49 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     }
   };
 
+  const handlePublish = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("lessons").update({
+      title: data.title,
+      title_vi: data.title_vi,
+      duration: data.duration,
+      youtube_id: data.youtube_id || null,
+      xp_reward: data.xp_reward,
+      objective: data.objective || null,
+      summary: data.summary || null,
+      vocabulary: data.vocabulary,
+      grammar: data.grammar,
+      grammar_md: data.grammar_md || null,
+      listening_url: data.listening_url || null,
+      video_r2_key: data.video_r2_key || null,
+      audio_r2_key: data.audio_r2_key || null,
+      reading_text: data.reading_text || null,
+      reading_text_vi: data.reading_text_vi || null,
+      status: "published",
+    }).eq("id", data.id);
+    setSaving(false);
+
+    if (error) {
+      showToast("Public thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã public bài học.", "success");
+      onSaved();
+    }
+  };
+
+  const handleRevertToDraft = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("lessons").update({ status: "draft" }).eq("id", data.id);
+    setSaving(false);
+
+    if (error) {
+      showToast("Chuyển về Nháp thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã chuyển về Nháp.", "success");
+      onSaved();
+    }
+  };
+
   const inputCls = "w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
   const labelCls = "block text-xs font-bold text-slate-500 mb-1";
 
@@ -193,15 +238,25 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             <EditableText value={data.title_vi} onChange={v => upd({ title_vi: v })} className="text-sm text-slate-500" placeholder="Tiêu đề (VI)" />
           </div>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+          <LessonStatusBadge status={data.status} />
           <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-500">
             <span className="text-xs font-bold text-slate-400">XP</span>
             <input type="number" value={data.xp_reward} onChange={e => upd({ xp_reward: parseInt(e.target.value) || 0 })} className="w-16 bg-transparent outline-none font-bold text-blue-600 text-center" />
           </div>
-          <Button variant="primary" onClick={handleSave} className="flex-1 sm:flex-initial">
+          <Button variant="secondary" onClick={handleSave} className="flex-1 sm:flex-initial">
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
             Lưu bài học
           </Button>
+          {data.status === "draft" ? (
+            <Button variant="primary" onClick={handlePublish} className="flex-1 sm:flex-initial">
+              <Globe className="w-4 h-4 mr-1" /> Public
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={handleRevertToDraft}>
+              <EyeOff className="w-4 h-4 mr-1" /> Chuyển về Nháp
+            </Button>
+          )}
         </div>
       </div>
 
