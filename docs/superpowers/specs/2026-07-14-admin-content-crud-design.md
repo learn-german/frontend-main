@@ -1,34 +1,33 @@
-# CRUD Module + Lesson trong trang Quản lý Nội dung (Admin)
+# Quản lý nội dung (Module/Lesson) + Mở khóa level theo user + Roadmap phẳng
 
 ## Bối cảnh
 
-[AdminContentSection.tsx](../../../src/pages/admin/AdminContentSection.tsx) hiện chỉ hiển thị danh sách module ("mục lớn") và lesson bên trong ("mục nhỏ"), với duy nhất 1 hành động: bấm ✏️ trên 1 lesson để mở [AdminLessonEditor.tsx](../../../src/pages/admin/AdminLessonEditor.tsx) sửa toàn bộ nội dung bài học. Không có cách thêm module mới, sửa/xóa module, hay thêm/xóa lesson.
+Yêu cầu ban đầu là cho phép admin thêm/sửa/xóa module và lesson trong [AdminContentSection.tsx](../../../src/pages/admin/AdminContentSection.tsx). Qua trao đổi, phạm vi thực tế rộng hơn và có 1 thay đổi kiến trúc quan trọng ở cách người học nhìn thấy nội dung:
 
-Yêu cầu: cho phép sửa module và thêm/sửa/xóa lesson ngay trong trang này.
+- **Module cố định 1-1 với level** (A1/A2/B1/B2), không phải "chủ đề" tùy ý — xác nhận qua dữ liệu thật (`m-a1-1`, `m-a2-1`, `m-b1-1`, thiếu `m-b2-1`). Module **không có title/title_vi hiển thị** — admin không sửa/thêm/xóa module, chỉ thấy 4 nhóm cố định gắn nhãn theo level.
+- **Người học không thấy nhãn level (A1/A2/...) ở đâu cả** — chỉ thấy 1 danh sách lesson liên tục theo thứ tự, không chia đoạn theo level/module.
+- **Level được mở theo từng user** (không phải mở toàn hệ thống) — admin tick chọn A1/A2/B1/B2 nào user được học, trong trang **Người dùng**, không phải trang Nội dung.
+- **Nếu user chỉ mở A2 (không mở A1)**, danh sách lesson của user đó bắt đầu thẳng từ lesson đầu tiên của A2 — không cần "hoàn thành A1" vì A1 không nằm trong danh sách của user đó.
+- **Cơ chế "học xong bài trước mới mở bài sau" giữ nguyên** — logic này đã có sẵn trong [RoadmapPage.tsx](../../../src/pages/RoadmapPage.tsx) (`getLessonStatus`), chỉ cần áp dụng đúng trên danh sách đã lọc theo level được mở của từng user, không cần viết lại.
 
-**Làm rõ khái niệm module (quan trọng, thay đổi so với thiết kế ban đầu):** mỗi module trong hệ thống này **tương ứng 1-1 với 1 level** (A1/A2/B1/B2) — không phải "chủ đề" tùy ý. Dữ liệu thật xác nhận: `m-a1-1` (A1), `m-a2-1` (A2), `m-b1-1` (B1) — đúng 1 module mỗi level đã có. Phía người học ([RoadmapPage.tsx](../../../src/pages/RoadmapPage.tsx)) cũng hiển thị đúng theo cấu trúc này: "mục lớn" = swimlane theo level (A1/A2/B1 — thiếu B2), "mục nhỏ" = toàn bộ lesson của level đó được `flatMap` thành 1 danh sách ngang hàng, không chia theo module/chủ đề — khớp với mô tả "người học chỉ thấy chủ đề theo thứ tự, không thấy đó là bài học của A1 hay A2" (ở cấp lesson không lặp lại nhãn level, vì nhãn đã hiện ở header level rồi).
+## Khảo sát kỹ thuật (đã xác nhận qua Supabase MCP)
 
-Vì vậy: **không cần (và không nên) cho admin tự tạo/xóa module** — chỉ cần đúng 4 module cố định A1/A2/B1/B2 (hiện thiếu B2, sẽ seed qua migration), và admin chỉ sửa được title/title_vi của module đã có.
+**Modules/Lessons** (giữ từ khảo sát trước):
+- `lessons.module_id → modules.id` CASCADE; `lessons.next_lesson_id → lessons.id` NO ACTION (phải null hóa trước khi xóa lesson bị trỏ tới); `quiz_questions.lesson_id → lessons.id` CASCADE.
+- Id pattern: module `m-{level}-{k}`, lesson `{level}-l{n}` (n theo thứ tự trong module).
+- RLS `modules`/`lessons`: `authenticated` đọc tất cả, `admin` insert/update/delete — đủ dùng, không cần đổi.
 
-## Khảo sát schema (đã xác nhận qua Supabase MCP)
+**Profiles** (mới khảo sát):
+- RLS `profiles`: `SELECT`/`UPDATE` cho phép nếu `auth.uid() = id` **HOẶC** JWT có `app_metadata.role = admin` — admin sửa được `profiles` của bất kỳ user khác, user tự đọc được hồ sơ chính mình. **Đủ dùng, không cần đổi RLS.**
+- Hiện chưa có cột lưu "level nào được mở cho user này".
 
-- `modules`: `id text PK`, `level text`, `title text`, `title_vi text`, `description text NULL`, `order_index integer DEFAULT 0`. RLS: `authenticated` đọc tất cả, `admin` (theo `app_metadata.role`) insert/update/delete — **đã đủ, không cần đổi RLS hay thêm Edge Function/Vercel Function**.
-- `lessons.module_id → modules.id` **ON DELETE CASCADE** — xóa module tự xóa hết lesson con.
-- `lessons.next_lesson_id → lessons.id` **ON DELETE NO ACTION** — xóa 1 lesson mà lesson khác đang trỏ `next_lesson_id` tới nó sẽ bị **DB từ chối** (foreign key violation) nếu không tự gỡ liên kết trước.
-- `quiz_questions.lesson_id → lessons.id` **ON DELETE CASCADE** — xóa lesson tự xóa quiz câu hỏi của lesson đó.
-- Quy luật `id` hiện có trong dữ liệu thật (xác nhận qua query):
-  - Module: `m-{level}-{k}` (ví dụ `m-a1-1`, `m-a2-1`, `m-b1-1`) — `k` là số thứ tự module **trong level đó**, bắt đầu từ 1.
-  - Lesson: `{level}-l{n}` (ví dụ `a1-l1`, `a1-l2`) — `n` là số thứ tự lesson **trong module đó**, bắt đầu từ 1.
-  - `modules.order_index` đánh **toàn cục** qua mọi level (1, 2, 3, ... không reset theo level).
-  - `lessons.order_index` đánh **trong phạm vi module** (bắt đầu lại từ 1 ở mỗi module), trùng giá trị với `n` trong id.
-
-Ngoài phạm vi FK kể trên, `user_stats.completedLessons` (jsonb, không có FK) có thể còn giữ lessonId của lesson đã xóa — chấp nhận để lại dữ liệu "mồ côi" này, không dọn (không ảnh hưởng tính đúng của app, chỉ là vài id vô nghĩa nằm trong 1 mảng lịch sử).
+**Nguồn dữ liệu hiện tại của RoadmapPage:**
+- `useUserStats.ts` fetch `user_stats` (xp, streak) + `lesson_progress` (completedLessons, quizScores) theo `userId` — **chưa fetch `profiles`**, cần mở rộng.
+- `RoadmapPage.tsx`: `allLessons` hiện flatten **toàn bộ** module (không lọc), rồi `getLessonStatus` check lesson trước đã `completedLessons` chưa để quyết định "current"/"locked". UI bọc mỗi level trong 1 "Level Group Header Card" riêng (màu + tiêu đề "Cấp độ A1...").
 
 ## Thiết kế chi tiết
 
-### 1. Seed module B2 (migration, không phải hành động admin trong UI)
-
-Hiện chỉ có `m-a1-1`/`m-a2-1`/`m-b1-1`, thiếu module cho B2. Thêm 1 migration insert module B2 nếu chưa tồn tại (idempotent), theo đúng phong cách nội dung 3 module đã có:
+### 1. Migration: seed module B2
 
 ```sql
 INSERT INTO modules (id, level, title, title_vi, description, order_index)
@@ -36,77 +35,87 @@ VALUES ('m-b2-1', 'B2', 'Vertiefung & Diskussion', 'Nâng cao & Tranh biện', '
 ON CONFLICT (id) DO NOTHING;
 ```
 
-Sau migration này, hệ thống có đúng 4 module cố định (A1/A2/B1/B2) — **không có UI "Thêm module" hay "Xóa module"**, vì module không phải đơn vị admin tự do tạo/xóa.
+(Giữ `title`/`title_vi` trong DB cho mọi module — không xóa cột, chỉ đơn giản là **frontend không hiển thị/sửa các field này nữa**. Xóa cột là thay đổi schema không cần thiết cho mục tiêu này.)
 
-### 2. Sửa module
-
-Title (DE) và Title (VI) sửa **inline** trên chính list — thay `<p>{mod.title_vi}</p>` bằng input dùng lại pattern `EditableText`-style hiện có trong `AdminLessonEditor.tsx` (đã có sẵn component `EditableText`, sẽ import dùng lại), auto-save `onBlur` bằng 1 `UPDATE modules SET title=... WHERE id=...` (không cần nút "Lưu" riêng, khác với `AdminLessonEditor` — vì đây chỉ 2 field text đơn giản, không cần buffer state phức tạp).
-
-**Không sửa được `level`** — level đã cố định 1-1 với module, đổi level sẽ phá vỡ đúng bản chất "4 module cố định = 4 level" vừa xác lập ở trên.
-
-Việc click vào text để sửa **phải không kích hoạt** hành vi expand/collapse của module (hiện `<button>` bọc toàn bộ header module để toggle expand) — cần tách text ra khỏi vùng `<button>` toggle, hoặc dùng `stopPropagation` khi click vào vùng edit.
-
-### 3. Cập nhật Level type + RoadmapPage cho B2
-
-- `src/lib/appTypes.ts`: `Level` đổi từ `"A1" | "A2" | "B1"` thành `"A1" | "A2" | "B1" | "B2"`.
-- `src/pages/RoadmapPage.tsx`: thêm 1 entry vào mảng `levels` cho B2, theo đúng phong cách 3 entry hiện có (`id`, `title`, `desc`, `color`, `ringColor`) — ví dụ màu `bg-purple-700`/`ring-purple-100` để phân biệt với 3 màu đã dùng (orange, amber, slate). Không đổi logic `flatMap`/tính tiến trình gì khác — logic đó đã tổng quát theo `levels` array, tự động chạy đúng khi thêm entry B2 vào đó.
-
-### 4. Thêm lesson
-
-Nút "+ Thêm bài học" trong mỗi module đã expand (dưới list lesson của module đó). Bấm ngay lập tức (không qua modal nhập liệu trước):
-
-```
-levelLower = module.level.toLowerCase()
-n = số lesson hiện có trong module đó + 1
-id = `${levelLower}-l${n}`
-order_index = n
-INSERT vào lessons {
-  id, module_id: module.id, level: module.level,
-  title: "Bài học mới", title_vi: "Bài học mới",
-  duration: "10 phút", xp_reward: 10, order_index,
-  objective: null, summary: null, vocabulary: [], grammar: { title: "", rule: "", examples: [] }
-}
-```
-
-Sau INSERT thành công: mở ngay `AdminLessonEditor` cho lesson vừa tạo (dùng lại flow `setEditing` hiện có) để admin điền tiếp — giống hệt trải nghiệm bấm ✏️ sửa lesson.
-
-### 5. Xóa lesson
-
-Nút 🗑️ cạnh mỗi lesson trong list (hiện khi hover). Bấm mở modal xác nhận đơn giản: *"Xóa bài học **{title_vi}**? Hành động này không thể hoàn tác."* — 2 nút Hủy / Xóa (đỏ), không cần gõ lại tên.
-
-Bấm "Xóa": trước khi xóa, gỡ liên kết `next_lesson_id` đang trỏ tới lesson này:
+### 2. Migration: thêm `profiles.unlocked_levels` + backfill an toàn cho user cũ
 
 ```sql
-UPDATE lessons SET next_lesson_id = null WHERE next_lesson_id = '{lessonId}';
-DELETE FROM lessons WHERE id = '{lessonId}';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_levels TEXT[] NOT NULL DEFAULT ARRAY['A1']::text[];
 ```
 
-(2 lệnh riêng qua PostgREST — `supabase.from("lessons").update({ next_lesson_id: null }).eq("next_lesson_id", lessonId)` rồi `supabase.from("lessons").delete().eq("id", lessonId)`.) Quiz câu hỏi của lesson tự xóa theo cascade. Đóng modal, `fetchModules()` lại.
+**Rủi ro cần xử lý:** `DEFAULT ARRAY['A1']` áp dụng cho mọi row hiện có, kể cả user đã học tới A2/B1 — nếu không backfill, họ sẽ bị "khóa ngược" các level đã học. Backfill ngay sau ALTER TABLE, mở thêm level nào user đã có **ít nhất 1 lesson completed** thuộc level đó:
+
+```sql
+UPDATE profiles p
+SET unlocked_levels = (
+  SELECT array_agg(DISTINCT l.level)
+  FROM lesson_progress lp
+  JOIN lessons l ON l.id = lp.lesson_id
+  WHERE lp.user_id = p.id
+) || ARRAY['A1']  -- luôn giữ A1 làm baseline
+WHERE EXISTS (
+  SELECT 1 FROM lesson_progress lp WHERE lp.user_id = p.id
+);
+```
+
+(User chưa học gì thì giữ default `['A1']` từ `ALTER TABLE`, không cần touch.)
+
+### 3. `appTypes.ts`
+
+- `Level` đổi từ `"A1" | "A2" | "B1"` thành `"A1" | "A2" | "B1" | "B2"`.
+- `UserStats` thêm `unlockedLevels: Level[]`.
+
+### 4. `useUserStats.ts` — fetch thêm `unlocked_levels`
+
+Thêm 1 query `profiles.select("unlocked_levels").eq("id", userId).single()` vào `Promise.all` hiện có, map vào `unlockedLevels` trong `EMPTY_STATS`/kết quả trả về (`EMPTY_STATS.unlockedLevels = []` khi chưa đăng nhập).
+
+### 5. `AdminContentSection.tsx` — bỏ sửa module, giữ thêm/xóa lesson
+
+- **Bỏ hoàn toàn UI sửa title/title_vi module** (không còn tính năng "Sửa module" nữa) — header mỗi nhóm chỉ hiện label lấy từ `level` (ví dụ chữ "A1" to, không kèm title/title_vi).
+- **Thêm lesson**: nút "+ Thêm bài học" trong mỗi nhóm module đã mở rộng — giữ nguyên hành vi đã spec trước (tạo lesson với title tạm "Bài học mới", id sinh `{level}-l{n}`, `n` = số lesson hiện có trong module + 1, mở ngay `AdminLessonEditor` để điền tiếp).
+- **Xóa lesson**: giữ nguyên — modal xác nhận đơn giản (Hủy/Xóa), tự null hóa `next_lesson_id` đang trỏ tới lesson bị xóa trước khi `DELETE`, quiz cascade tự xóa theo.
+
+### 6. `AdminUsersSection.tsx` — thêm cột "Cấp độ mở" (mới)
+
+- `fetchUsers()`: thêm `unlocked_levels` vào `.select(...)` của `profiles`.
+- Thêm 1 cột mới trong bảng, giữa "Role" và "XP": 4 checkbox nhỏ nhãn A1/A2/B1/B2 (dùng `LEVELS: Level[] = ["A1","A2","B1","B2"]` lặp qua để render).
+- Tick/bỏ tick 1 checkbox → gọi ngay `supabase.from("profiles").update({ unlocked_levels: newArray }).eq("id", u.id)`, cập nhật local state `users` optimistic (không cần đợi refetch toàn bộ danh sách), hiện toast lỗi nếu update thất bại (rollback lại checkbox).
+
+### 7. `RoadmapPage.tsx` — bỏ swimlane theo level, hiển thị danh sách phẳng
+
+- Bỏ mảng `levels` (title/desc/color/ringColor) — không còn dùng để render header nữa.
+- `allLessons` đổi từ "flatten toàn bộ module" thành **chỉ lấy module có `level` nằm trong `stats.unlockedLevels`**, giữ nguyên thứ tự hiện có (`modules` đã sort theo `order_index` từ `useModules.ts`, tương ứng đúng thứ tự A1→A2→B1→B2 vì `order_index` của 4 module là 1,2,3,4).
+- `getLessonStatus` **giữ nguyên logic** (so completedLessons của lesson liền trước trong danh sách đã lọc) — hoạt động đúng luôn vì nó chỉ nhìn vào `indexInAll` và `allLessons`, không quan tâm level.
+- UI: bỏ "Level Group Header Card" bọc từng level; thay bằng 1 danh sách lesson liên tục duy nhất (giữ nguyên phần hiển thị từng lesson item hiện có bên trong card — icon trạng thái Completed/Current/Locked, tên bài, XP — chỉ bỏ phần bọc ngoài chia theo level).
+- **Bỏ luôn `{lesson.moduleTitle}` khỏi label mỗi lesson card** (dòng `Bài {overallIdx + 1} • {lesson.moduleTitle}` hiện tại) — đây đang trực tiếp lộ tên module (tiếng Đức, ví dụ "Einführung & Begrüßung") trên từng thẻ bài học, đúng thứ thông tin cần ẩn theo yêu cầu. Label mới chỉ còn `Bài {overallIdx + 1}`.
+- Banner tổng tiến trình ở đầu trang (`Tổng tiến trình`, dòng "Hoàn thành A1 để mở khóa bứt tốc A2!") — bỏ câu gợi ý nhắc tên level cụ thể đó (không còn đúng ngữ cảnh khi user có thể không bắt đầu từ A1); có thể đổi thành câu chung không nhắc level, ví dụ "Hoàn thành bài học trước để mở bài tiếp theo!".
+- Trường hợp `unlockedLevels` rỗng (về lý thuyết không xảy ra vì default luôn có A1, nhưng vẫn nên xử lý) — hiện 1 empty state ngắn, ví dụ "Chưa có level nào được mở, liên hệ quản trị viên."
 
 ## Phạm vi thay đổi
 
-- 1 migration mới: seed module B2.
-- `src/lib/appTypes.ts`: mở rộng `Level` thêm `"B2"`.
-- `src/pages/RoadmapPage.tsx`: thêm entry B2 vào mảng `levels`.
-- `src/pages/admin/AdminContentSection.tsx`: sửa module inline (title/title_vi), thêm/xóa lesson.
+- 2 migration (seed B2, thêm `profiles.unlocked_levels` + backfill).
+- `src/lib/appTypes.ts` — mở rộng `Level`, thêm `UserStats.unlockedLevels`.
+- `src/lib/hooks/useUserStats.ts` — fetch thêm `unlocked_levels`.
+- `src/pages/admin/AdminContentSection.tsx` — bỏ sửa module, giữ thêm/xóa lesson.
+- `src/pages/admin/AdminUsersSection.tsx` — thêm cột tick chọn level mở.
+- `src/pages/RoadmapPage.tsx` — bỏ chia theo level, lọc theo `unlockedLevels`, hiển thị danh sách phẳng.
 
-Không đổi RLS, không cần Vercel Function/Edge Function mới — mọi thao tác admin đi thẳng qua PostgREST như code hiện tại.
+Không đổi RLS, không cần Vercel Function/Edge Function mới.
 
 ## Testing / verification
 
 - `npm run lint` pass.
-- Sau migration: query `modules` xác nhận có đúng 4 module (A1/A2/B1/B2), không tạo trùng nếu chạy migration 2 lần (`ON CONFLICT DO NOTHING`).
-- Thêm lesson mới trong module đã có lesson → xác nhận `n`/`order_index` tăng đúng theo số lesson hiện có **của module đó** (không phải toàn cục).
-- Xóa lesson đang được 1 lesson khác trỏ `next_lesson_id` tới → xác nhận không bị lỗi FK, và lesson trỏ tới nó có `next_lesson_id = null` sau khi xóa.
-- Xóa lesson có quiz_questions liên kết → xác nhận quiz cascade xóa theo (query lại DB).
-- Sửa module inline: click vào text sửa không làm module tự expand/collapse ngoài ý muốn.
-- RoadmapPage: sau khi thêm module B2 + có ít nhất 1 lesson B2, xác nhận swimlane B2 hiện đúng, tiến trình tính đúng, không vỡ layout với 4 level thay vì 3.
-- Test qua browser (dev server): thêm/xóa lesson, sửa module end-to-end ở trang admin; xem lại Roadmap phía người học có B2.
+- Sau migration: `modules` có đúng 4 module (A1-B2); `profiles` mọi row có `unlocked_levels` không null, user đã học A2 trước migration vẫn có `'A2'` trong `unlocked_levels` sau migration (không bị khóa ngược).
+- User mới tạo (chưa có `lesson_progress`) → `unlocked_levels = ['A1']` đúng default.
+- Admin tick mở A2 cho 1 user (không tick A1) → đăng nhập user đó, xác nhận Roadmap hiển thị đúng bắt đầu từ `a2-l1`, trạng thái "current" (không "locked").
+- Admin bỏ tick hết mọi level 1 user → xác nhận Roadmap hiện empty state, không crash (chia 0 ở `overAllProgress`/`levelProgressPercent` cần guard — đã có guard `levelTotal > 0` sẵn cho phần theo-level cũ, cần kiểm tra lại `overAllProgress` tổng cũng phải guard chia 0 khi `totalLessons === 0`).
+- Thêm/xóa lesson trong Admin Content vẫn hoạt động đúng như spec trước (id sinh đúng theo module, xóa gỡ `next_lesson_id` trước).
+- Xác nhận UI người học (Roadmap) không còn hiển thị chữ "A1"/"A2"/"Cấp độ..." ở đâu cả.
+- Test qua browser: toggle level trong trang Người dùng → mở Roadmap kiểm tra danh sách bài học thay đổi đúng theo tick.
 
 ## Ngoài phạm vi (không làm)
 
-- Không cho admin thêm/xóa module (module cố định 1-1 theo level, seed sẵn qua migration).
-- Không cho sửa `level` của module đã có.
-- Không làm kéo-thả sắp xếp lại thứ tự lesson (order_index) — chỉ tự tính khi tạo mới, sắp xếp lại thủ công (nếu cần) vẫn phải sửa `order_index` trực tiếp qua DB như hiện tại.
-- Không dọn dữ liệu "mồ côi" trong `user_stats.completedLessons` khi xóa lesson.
-- Không thêm modal xác nhận rời trang khi đang sửa inline chưa lưu (auto-save on blur nên rủi ro mất dữ liệu thấp).
+- Không cho admin thêm/xóa module, không sửa `level`/title của module — module cố định 1-1 theo level.
+- Không làm hệ thống "gói khóa học" phức tạp (hết hạn theo thời gian, thanh toán...) — chỉ là danh sách level mở/khóa vĩnh viễn do admin tick tay.
+- Không làm kéo-thả sắp xếp lại thứ tự lesson (order_index) — vẫn tự tính khi tạo mới.
+- Không dọn dữ liệu "mồ côi" trong `lesson_progress`/`completedLessons` khi xóa lesson hoặc khi user bị khóa lại 1 level đã học (tiến trình cũ vẫn giữ, chỉ ẩn khỏi danh sách hiển thị nếu level bị khóa lại sau này).
