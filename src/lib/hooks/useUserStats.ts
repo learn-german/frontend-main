@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, Dispatch, SetStateAction } from "react";
 import { supabase } from "../supabase";
-import { UserStats } from "../appTypes";
+import { UserStats, Level } from "../appTypes";
 
 const EMPTY_STATS: UserStats = {
   xp: 0,
   streak: 0,
   completedLessons: [],
   quizScores: {},
+  unlockedLevels: [],
 };
 
 export function useUserStats(userId: string | null): {
@@ -25,7 +26,7 @@ export function useUserStats(userId: string | null): {
 
     setStatsLoading(true);
 
-    const [statsRes, progressRes] = await Promise.all([
+    const [statsRes, progressRes, profileRes] = await Promise.all([
       supabase
         .from("user_stats")
         .select("xp, streak")
@@ -35,6 +36,11 @@ export function useUserStats(userId: string | null): {
         .from("lesson_progress")
         .select("lesson_id, quiz_score")
         .eq("user_id", userId),
+      supabase
+        .from("profiles")
+        .select("unlocked_levels")
+        .eq("id", userId)
+        .single(),
     ]);
 
     setStats({
@@ -46,6 +52,7 @@ export function useUserStats(userId: string | null): {
           .filter((p) => p.quiz_score !== null)
           .map((p) => [p.lesson_id as string, p.quiz_score as number]),
       ),
+      unlockedLevels: (profileRes.data?.unlocked_levels ?? []) as Level[],
     });
 
     setStatsLoading(false);
