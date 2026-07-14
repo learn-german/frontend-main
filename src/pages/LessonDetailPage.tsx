@@ -27,7 +27,7 @@ interface LessonDetailPageProps {
   onStartQuiz: (lessonId: string) => void;
 }
 
-type BottomTab = "quiz" | "nghe" | "doc";
+type BottomTab = "quiz" | "nghe" | "doc" | "tuvung";
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   lesson,
@@ -65,6 +65,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
     { id: "quiz", label: "Quiz", Icon: HelpCircle },
     { id: "nghe", label: "Nghe", Icon: Headphones },
     { id: "doc", label: "Đọc", Icon: FileText },
+    { id: "tuvung", label: "Từ vựng", Icon: BookOpen },
   ];
 
   return (
@@ -110,105 +111,58 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Main Grid — Left: Video + Grammar | Right: Objectives + Vocabulary */}
+      {/* Row 1: Video + Objectives, side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        {/* Left Column: Video + Grammar */}
-        <div className="lg:col-span-8 space-y-8">
+        {/* Video */}
+        <section className="lg:col-span-8 space-y-3">
+          <h2 className="text-base font-display font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide font-sans">
+            <Video className="w-5 h-5 text-orange-500" /> Bài giảng lý thuyết
+          </h2>
+          <VideoPlayer lessonId={lesson.id} youtubeId={lesson.youtubeId} videoR2Key={lesson.videoR2Key} title={lesson.title} levelBadge={lesson.level} />
+        </section>
 
-          {/* Video */}
-          <section className="space-y-3">
-            <h2 className="text-base font-display font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide font-sans">
-              <Video className="w-5 h-5 text-orange-500" /> Bài giảng lý thuyết
-            </h2>
-            <VideoPlayer lessonId={lesson.id} youtubeId={lesson.youtubeId} videoR2Key={lesson.videoR2Key} title={lesson.title} levelBadge={lesson.level} />
-          </section>
-
-          {/* Grammar — markdown or legacy structured */}
-          <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
-              Ngữ pháp then chốt
-            </span>
-
-            {lesson.grammarMd ? (
-              <MarkdownBlock content={lesson.grammarMd} />
-            ) : (
-              <>
-                <h3 className="text-base font-display font-bold text-slate-900">{lesson.grammar.title}</h3>
-                <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-sans">{lesson.grammar.rule}</p>
-                {lesson.grammar.examples.length > 0 && (
-                  <div className="space-y-2 mt-4">
-                    <span className="text-[10px] font-display font-bold text-slate-400 block uppercase">Ví dụ minh họa:</span>
-                    {lesson.grammar.examples.map((ex, i) => (
-                      <div key={i} className="bg-white p-3 rounded-xl border border-slate-150 shadow-sm text-xs">
-                        <p className="font-display font-bold text-slate-900 leading-normal">🇩🇪 {ex.de}</p>
-                        <p className="text-slate-500 mt-1 font-sans italic">🇻🇳 {ex.vi}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Objectives + Vocabulary */}
-        <div className="lg:col-span-4 space-y-8">
-
-          {/* Objectives */}
-          <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
-            <h3 className="text-sm font-display font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5 font-sans">
-              <GraduationCap className="w-4 h-4 text-amber-500" /> Mục tiêu bài học
-            </h3>
-            <p className="text-xs text-slate-650 leading-relaxed font-sans">{lesson.objective}</p>
-            <div className="h-[1px] bg-slate-100" />
-            <p className="text-xs text-slate-500 leading-relaxed font-sans">
-              <b>Tóm tắt:</b> {lesson.summary}
-            </p>
-          </div>
-
-          {/* Vocabulary */}
-          <section className="bg-white border border-slate-200/60 select-none rounded-3xl p-5 shadow-sm space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <div className="space-y-1">
-                <h2 className="text-sm font-display font-bold text-slate-900 flex items-center gap-1.5 font-sans">
-                  <BookOpen className="w-4 h-4 text-orange-600" /> Từ vựng then chốt
-                </h2>
-                <p className="text-[10px] text-slate-400">Click loa để nghe phát âm</p>
-              </div>
-              <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
-                {lesson.vocabulary.length} từ
-              </span>
-            </div>
-
-            <div className="divide-y divide-slate-100">
-              {lesson.vocabulary.map((vocab, index) => (
-                <div key={index} className="py-3 first:pt-0 last:pb-0 flex items-start gap-2.5">
-                  <button
-                    onClick={() => handlePronounce(vocab.de)}
-                    className="w-7 h-7 mt-0.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-500 flex items-center justify-center transition shrink-0 active:scale-90"
-                  >
-                    <Volume2 className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="font-display font-extrabold text-sm text-slate-900">{vocab.de}</span>
-                      <span className="font-mono text-[10px] text-slate-400">{vocab.pronunciation}</span>
-                      <span className="text-xs font-semibold text-slate-600 ml-auto">{vocab.vi}</span>
-                    </div>
-                    <div className="mt-1 bg-slate-50 rounded-lg px-2 py-1.5 text-[10px]">
-                      <p className="font-display font-semibold text-slate-700">🇩🇪 {vocab.exampleDe}</p>
-                      <p className="text-slate-400 italic mt-0.5">🇻🇳 {vocab.exampleVi}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+        {/* Objectives */}
+        <div className="lg:col-span-4 bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm h-full flex flex-col justify-between">
+          <h3 className="text-sm font-display font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5 font-sans">
+            <GraduationCap className="w-4 h-4 text-amber-500" /> Mục tiêu bài học
+          </h3>
+          <p className="text-xs text-slate-650 leading-relaxed font-sans">{lesson.objective}</p>
+          <div className="h-[1px] bg-slate-100" />
+          <p className="text-xs text-slate-500 leading-relaxed font-sans">
+            <b>Tóm tắt:</b> {lesson.summary}
+          </p>
         </div>
       </div>
 
-      {/* Bottom tabbed section: Quiz / Nghe / Đọc */}
+      {/* Row 2: Grammar — full width, markdown or legacy structured */}
+      <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
+        <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+          Ngữ pháp then chốt
+        </span>
+
+        {lesson.grammarMd ? (
+          <MarkdownBlock content={lesson.grammarMd} />
+        ) : (
+          <>
+            <h3 className="text-base font-display font-bold text-slate-900">{lesson.grammar.title}</h3>
+            <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-sans">{lesson.grammar.rule}</p>
+            {lesson.grammar.examples.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <span className="text-[10px] font-display font-bold text-slate-400 block uppercase">Ví dụ minh họa:</span>
+                {lesson.grammar.examples.map((ex, i) => (
+                  <div key={i} className="bg-white p-3 rounded-xl border border-slate-150 shadow-sm text-xs">
+                    <p className="font-display font-bold text-slate-900 leading-normal">🇩🇪 {ex.de}</p>
+                    <p className="text-slate-500 mt-1 font-sans italic">🇻🇳 {ex.vi}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Bottom tabbed section: Quiz / Nghe / Đọc / Từ vựng */}
       <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl overflow-hidden">
         {/* Tab bar */}
         <div className="flex border-b border-slate-200/60 bg-white">
@@ -328,6 +282,47 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 </div>
               )}
             </div>
+          )}
+
+          {/* Từ vựng tab */}
+          {bottomTab === "tuvung" && (
+            <section className="space-y-4">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                <div className="space-y-1">
+                  <h2 className="text-sm font-display font-bold text-slate-900 flex items-center gap-1.5 font-sans">
+                    <BookOpen className="w-4 h-4 text-orange-600" /> Từ vựng then chốt
+                  </h2>
+                  <p className="text-[10px] text-slate-400">Click loa để nghe phát âm</p>
+                </div>
+                <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                  {lesson.vocabulary.length} từ
+                </span>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {lesson.vocabulary.map((vocab, index) => (
+                  <div key={index} className="py-3 first:pt-0 last:pb-0 flex items-start gap-2.5">
+                    <button
+                      onClick={() => handlePronounce(vocab.de)}
+                      className="w-7 h-7 mt-0.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-500 flex items-center justify-center transition shrink-0 active:scale-90"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="font-display font-extrabold text-sm text-slate-900">{vocab.de}</span>
+                        <span className="font-mono text-[10px] text-slate-400">{vocab.pronunciation}</span>
+                        <span className="text-xs font-semibold text-slate-600 ml-auto">{vocab.vi}</span>
+                      </div>
+                      <div className="mt-1 bg-slate-50 rounded-lg px-2 py-1.5 text-[10px]">
+                        <p className="font-display font-semibold text-slate-700">🇩🇪 {vocab.exampleDe}</p>
+                        <p className="text-slate-400 italic mt-0.5">🇻🇳 {vocab.exampleVi}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </div>
