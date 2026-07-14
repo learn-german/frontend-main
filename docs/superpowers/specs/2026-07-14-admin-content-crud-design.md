@@ -4,7 +4,11 @@
 
 [AdminContentSection.tsx](../../../src/pages/admin/AdminContentSection.tsx) hiện chỉ hiển thị danh sách module ("mục lớn") và lesson bên trong ("mục nhỏ"), với duy nhất 1 hành động: bấm ✏️ trên 1 lesson để mở [AdminLessonEditor.tsx](../../../src/pages/admin/AdminLessonEditor.tsx) sửa toàn bộ nội dung bài học. Không có cách thêm module mới, sửa/xóa module, hay thêm/xóa lesson.
 
-Yêu cầu: cho phép thêm, sửa, xóa cả module và lesson ngay trong trang này.
+Yêu cầu: cho phép sửa module và thêm/sửa/xóa lesson ngay trong trang này.
+
+**Làm rõ khái niệm module (quan trọng, thay đổi so với thiết kế ban đầu):** mỗi module trong hệ thống này **tương ứng 1-1 với 1 level** (A1/A2/B1/B2) — không phải "chủ đề" tùy ý. Dữ liệu thật xác nhận: `m-a1-1` (A1), `m-a2-1` (A2), `m-b1-1` (B1) — đúng 1 module mỗi level đã có. Phía người học ([RoadmapPage.tsx](../../../src/pages/RoadmapPage.tsx)) cũng hiển thị đúng theo cấu trúc này: "mục lớn" = swimlane theo level (A1/A2/B1 — thiếu B2), "mục nhỏ" = toàn bộ lesson của level đó được `flatMap` thành 1 danh sách ngang hàng, không chia theo module/chủ đề — khớp với mô tả "người học chỉ thấy chủ đề theo thứ tự, không thấy đó là bài học của A1 hay A2" (ở cấp lesson không lặp lại nhãn level, vì nhãn đã hiện ở header level rồi).
+
+Vì vậy: **không cần (và không nên) cho admin tự tạo/xóa module** — chỉ cần đúng 4 module cố định A1/A2/B1/B2 (hiện thiếu B2, sẽ seed qua migration), và admin chỉ sửa được title/title_vi của module đã có.
 
 ## Khảo sát schema (đã xác nhận qua Supabase MCP)
 
@@ -22,41 +26,34 @@ Ngoài phạm vi FK kể trên, `user_stats.completedLessons` (jsonb, không có
 
 ## Thiết kế chi tiết
 
-### 1. Thêm module
+### 1. Seed module B2 (migration, không phải hành động admin trong UI)
 
-Nút "+ Thêm module" ở đầu trang (`<h1>Quản lý Nội dung</h1>` cùng dòng). Bấm mở modal với 3 field: Title (DE), Title (VI), Level (`<select>` A1/A2/B1). Bấm "Tạo":
+Hiện chỉ có `m-a1-1`/`m-a2-1`/`m-b1-1`, thiếu module cho B2. Thêm 1 migration insert module B2 nếu chưa tồn tại (idempotent), theo đúng phong cách nội dung 3 module đã có:
 
-```
-levelLower = level.toLowerCase()  // "a1" | "a2" | "b1"
-k = số module hiện có với level === level đã chọn, + 1
-id = `m-${levelLower}-${k}`
-order_index = max(order_index của mọi module hiện có) + 1  (0 nếu chưa có module nào)
-INSERT vào modules { id, level, title, title_vi, order_index }
+```sql
+INSERT INTO modules (id, level, title, title_vi, description, order_index)
+VALUES ('m-b2-1', 'B2', 'Vertiefung & Diskussion', 'Nâng cao & Tranh biện', 'Tranh biện học thuật, viết luận, giao tiếp chuyên sâu', 4)
+ON CONFLICT (id) DO NOTHING;
 ```
 
-Sau khi tạo: đóng modal, `fetchModules()` lại, tự động `setExpanded` module mới thành `true`.
+Sau migration này, hệ thống có đúng 4 module cố định (A1/A2/B1/B2) — **không có UI "Thêm module" hay "Xóa module"**, vì module không phải đơn vị admin tự do tạo/xóa.
 
 ### 2. Sửa module
 
 Title (DE) và Title (VI) sửa **inline** trên chính list — thay `<p>{mod.title_vi}</p>` bằng input dùng lại pattern `EditableText`-style hiện có trong `AdminLessonEditor.tsx` (đã có sẵn component `EditableText`, sẽ import dùng lại), auto-save `onBlur` bằng 1 `UPDATE modules SET title=... WHERE id=...` (không cần nút "Lưu" riêng, khác với `AdminLessonEditor` — vì đây chỉ 2 field text đơn giản, không cần buffer state phức tạp).
 
-Level sửa qua `<select>` nhỏ cạnh title, đổi là `UPDATE` ngay (`onChange`).
+**Không sửa được `level`** — level đã cố định 1-1 với module, đổi level sẽ phá vỡ đúng bản chất "4 module cố định = 4 level" vừa xác lập ở trên.
 
 Việc click vào text để sửa **phải không kích hoạt** hành vi expand/collapse của module (hiện `<button>` bọc toàn bộ header module để toggle expand) — cần tách text ra khỏi vùng `<button>` toggle, hoặc dùng `stopPropagation` khi click vào vùng edit.
 
-### 3. Xóa module
+### 3. Cập nhật Level type + RoadmapPage cho B2
 
-Nút 🗑️ cạnh mỗi module (chỉ hiện khi hover, giống pattern nút xóa vocab trong `AdminLessonEditor`). Bấm mở modal cảnh báo:
-
-> "Xóa module **{title_vi}** sẽ xóa vĩnh viễn **{N} bài học** và toàn bộ quiz bên trong. Hành động này không thể hoàn tác.
-> Gõ lại **{title_vi}** để xác nhận:"
-> `<input>` — nút "Xóa vĩnh viễn" (đỏ) chỉ **enable** khi giá trị nhập khớp chính xác `title_vi`.
-
-Bấm "Xóa vĩnh viễn": `DELETE FROM modules WHERE id = ...` — cascade tự xóa lessons + quiz_questions. Đóng modal, `fetchModules()` lại.
+- `src/lib/appTypes.ts`: `Level` đổi từ `"A1" | "A2" | "B1"` thành `"A1" | "A2" | "B1" | "B2"`.
+- `src/pages/RoadmapPage.tsx`: thêm 1 entry vào mảng `levels` cho B2, theo đúng phong cách 3 entry hiện có (`id`, `title`, `desc`, `color`, `ringColor`) — ví dụ màu `bg-purple-700`/`ring-purple-100` để phân biệt với 3 màu đã dùng (orange, amber, slate). Không đổi logic `flatMap`/tính tiến trình gì khác — logic đó đã tổng quát theo `levels` array, tự động chạy đúng khi thêm entry B2 vào đó.
 
 ### 4. Thêm lesson
 
-Nút "+ Thêm bài học" trong mỗi module đã expand (cạnh nút xóa module hoặc dưới list lesson). Bấm ngay lập tức (không qua modal nhập liệu trước):
+Nút "+ Thêm bài học" trong mỗi module đã expand (dưới list lesson của module đó). Bấm ngay lập tức (không qua modal nhập liệu trước):
 
 ```
 levelLower = module.level.toLowerCase()
@@ -88,22 +85,28 @@ DELETE FROM lessons WHERE id = '{lessonId}';
 
 ## Phạm vi thay đổi
 
-Chỉ 1 file: `src/pages/admin/AdminContentSection.tsx`. Không đổi DB schema, không đổi RLS, không cần Vercel Function/Edge Function mới.
+- 1 migration mới: seed module B2.
+- `src/lib/appTypes.ts`: mở rộng `Level` thêm `"B2"`.
+- `src/pages/RoadmapPage.tsx`: thêm entry B2 vào mảng `levels`.
+- `src/pages/admin/AdminContentSection.tsx`: sửa module inline (title/title_vi), thêm/xóa lesson.
+
+Không đổi RLS, không cần Vercel Function/Edge Function mới — mọi thao tác admin đi thẳng qua PostgREST như code hiện tại.
 
 ## Testing / verification
 
 - `npm run lint` pass.
-- Thêm module mới với level đã có sẵn module → xác nhận id sinh đúng (`k` tăng dần, không trùng id cũ).
-- Thêm module mới với level **chưa có module nào** → xác nhận `k = 1`.
-- Thêm lesson mới trong module đã có lesson → xác nhận `n` tăng đúng theo số lesson hiện có của module đó (không phải toàn cục).
-- Xóa module có lesson đang có quiz → xác nhận cascade xóa cả lesson và quiz (query lại DB sau khi xóa).
+- Sau migration: query `modules` xác nhận có đúng 4 module (A1/A2/B1/B2), không tạo trùng nếu chạy migration 2 lần (`ON CONFLICT DO NOTHING`).
+- Thêm lesson mới trong module đã có lesson → xác nhận `n`/`order_index` tăng đúng theo số lesson hiện có **của module đó** (không phải toàn cục).
 - Xóa lesson đang được 1 lesson khác trỏ `next_lesson_id` tới → xác nhận không bị lỗi FK, và lesson trỏ tới nó có `next_lesson_id = null` sau khi xóa.
-- Modal xóa module: nút "Xóa vĩnh viễn" phải disabled khi chưa gõ đúng tên, enable khi gõ khớp.
+- Xóa lesson có quiz_questions liên kết → xác nhận quiz cascade xóa theo (query lại DB).
 - Sửa module inline: click vào text sửa không làm module tự expand/collapse ngoài ý muốn.
-- Test qua browser (dev server): thêm/sửa/xóa module và lesson end-to-end, xác nhận UI refresh đúng sau mỗi hành động.
+- RoadmapPage: sau khi thêm module B2 + có ít nhất 1 lesson B2, xác nhận swimlane B2 hiện đúng, tiến trình tính đúng, không vỡ layout với 4 level thay vì 3.
+- Test qua browser (dev server): thêm/xóa lesson, sửa module end-to-end ở trang admin; xem lại Roadmap phía người học có B2.
 
 ## Ngoài phạm vi (không làm)
 
-- Không làm kéo-thả sắp xếp lại thứ tự module/lesson (order_index) — chỉ tự tính khi tạo mới, sắp xếp lại thủ công (nếu cần) vẫn phải sửa `order_index` trực tiếp qua DB như hiện tại.
+- Không cho admin thêm/xóa module (module cố định 1-1 theo level, seed sẵn qua migration).
+- Không cho sửa `level` của module đã có.
+- Không làm kéo-thả sắp xếp lại thứ tự lesson (order_index) — chỉ tự tính khi tạo mới, sắp xếp lại thủ công (nếu cần) vẫn phải sửa `order_index` trực tiếp qua DB như hiện tại.
 - Không dọn dữ liệu "mồ côi" trong `user_stats.completedLessons` khi xóa lesson.
 - Không thêm modal xác nhận rời trang khi đang sửa inline chưa lưu (auto-save on blur nên rủi ro mất dữ liệu thấp).
