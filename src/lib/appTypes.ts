@@ -61,6 +61,7 @@ export interface Lesson {
   readingText?: string;
   readingTextVi?: string;
   quiz?: QuizQuestion[];
+  status?: "draft" | "published";
 }
 
 export interface Module {
@@ -69,6 +70,13 @@ export interface Module {
   title: string;
   titleVi: string;
   lessons: Lesson[];
+}
+
+export interface LessonPosition {
+  id: string;
+  moduleId: string;
+  orderIndex: number;
+  status: "draft" | "published";
 }
 
 export interface AppState {
