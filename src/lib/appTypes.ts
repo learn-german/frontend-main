@@ -1,4 +1,4 @@
-export type Level = "A1" | "A2" | "B1";
+export type Level = "A1" | "A2" | "B1" | "B2";
 
 export interface UserStats {
   xp: number;
