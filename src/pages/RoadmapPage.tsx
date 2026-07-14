@@ -4,30 +4,47 @@
  */
 
 import React from "react";
-import { Check, Lock, Play, ArrowRight, LockKeyhole } from "lucide-react";
+import { Check, Lock, Play, ArrowRight, LockKeyhole, Clock } from "lucide-react";
 import { ProgressBar } from "../components/DesignSystem";
-import { UserStats, Lesson, Module } from "../lib/appTypes";
+import { UserStats, Lesson, Module, LessonPosition } from "../lib/appTypes";
+import { showToast } from "../lib/toast";
 
 interface RoadmapPageProps {
   stats: UserStats;
   modules: Module[];
+  positions: LessonPosition[];
   onSelectLesson: (lessonId: string) => void;
 }
+
+type RoadmapItem =
+  | { kind: "lesson"; lesson: Lesson }
+  | { kind: "draft"; id: string };
 
 export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   stats,
   modules,
+  positions,
   onSelectLesson
 }) => {
   const unlockedModules = modules.filter(m => stats.unlockedLevels.includes(m.level));
+  const unlockedModuleIds = new Set(unlockedModules.map(m => m.id));
+  const draftPositions = positions.filter(p => p.status === "draft" && unlockedModuleIds.has(p.moduleId));
 
-  const allLessons: { lesson: Lesson; indexInAll: number }[] = [];
-  let currentIdx = 0;
+  const orderedItems: RoadmapItem[] = [];
   unlockedModules.forEach(m => {
-    m.lessons.forEach(l => {
-      allLessons.push({ lesson: l, indexInAll: currentIdx++ });
-    });
+    const draftsInModule = draftPositions.filter(p => p.moduleId === m.id);
+    const combined: { orderIndex: number; item: RoadmapItem }[] = [
+      ...m.lessons.map(l => ({ orderIndex: l.orderIndex ?? 0, item: { kind: "lesson" as const, lesson: l } })),
+      ...draftsInModule.map(p => ({ orderIndex: p.orderIndex, item: { kind: "draft" as const, id: p.id } })),
+    ];
+    combined.sort((a, b) => a.orderIndex - b.orderIndex);
+    combined.forEach(c => orderedItems.push(c.item));
   });
+
+  const allLessons: { item: RoadmapItem; indexInAll: number }[] =
+    orderedItems.map((item, indexInAll) => ({ item, indexInAll }));
+
+  const idOf = (item: RoadmapItem): string => (item.kind === "lesson" ? item.lesson.id : item.id);
 
   const getLessonStatus = (lessonId: string, indexInAll: number) => {
     if (stats.completedLessons.includes(lessonId)) {
@@ -37,7 +54,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
       return "current";
     }
     // Check if the previous lesson was completed
-    const prevLessonId = allLessons[indexInAll - 1].lesson.id;
+    const prevLessonId = idOf(allLessons[indexInAll - 1].item);
     if (stats.completedLessons.includes(prevLessonId)) {
       return "current"; // Highlight current uncompleted lesson
     }
@@ -87,7 +104,41 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 pl-0 sm:pl-11 relative z-10">
-            {allLessons.map(({ lesson, indexInAll }) => {
+            {allLessons.map(({ item, indexInAll }) => {
+              if (item.kind === "draft") {
+                return (
+                  <div
+                    key={item.id}
+                    className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 opacity-75 flex flex-col justify-between min-h-[170px] relative overflow-hidden"
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">
+                          Bài {indexInAll + 1}
+                        </span>
+                        <h3 className="text-sm font-display font-bold text-slate-500 font-sans">
+                          Đang chỉnh sửa
+                        </h3>
+                      </div>
+                      <div className="shrink-0 pt-0.5 select-none">
+                        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-200" title="Bài học đang được chỉnh sửa">
+                          <Clock className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-slate-100 mt-1 flex justify-end items-center">
+                      <button
+                        onClick={() => showToast("Bài học đang được chỉnh sửa. Hãy quay lại sau.", "warning")}
+                        className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-display font-bold text-slate-400 cursor-not-allowed"
+                      >
+                        Chưa khả dụng
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              const lesson = item.lesson;
               const status = getLessonStatus(lesson.id, indexInAll);
 
               const cardStyles = {

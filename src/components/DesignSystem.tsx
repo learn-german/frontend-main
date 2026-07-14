@@ -104,6 +104,29 @@ export const LevelBadge: React.FC<{ level: Level; className?: string }> = ({
   );
 };
 
+// Lesson Status Badge Component
+export const LessonStatusBadge: React.FC<{ status: "draft" | "published"; className?: string }> = ({
+  status,
+  className = ""
+}) => {
+  const styles = {
+    draft: "bg-amber-50 text-amber-700 border-amber-200",
+    published: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  };
+  const labels = {
+    draft: "Nháp",
+    published: "Đã public",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center font-display font-bold text-xs px-2.5 py-1 rounded-lg border ${styles[status]} ${className}`}
+    >
+      {labels[status]}
+    </span>
+  );
+};
+
 // Progress Bar Component
 export const ProgressBar: React.FC<{
   value: number;
