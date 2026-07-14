@@ -349,6 +349,57 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             )}
           </div>
 
+          {/* Vocabulary */}
+          <section className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div className="space-y-1">
+                <h2 className="text-sm font-display font-bold text-slate-900 flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-orange-600" /> Từ vựng then chốt
+                </h2>
+                <p className="text-[10px] text-slate-400">Click ô để chỉnh sửa trực tiếp</p>
+              </div>
+              <button onClick={addVocab} className="flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 px-2.5 py-1.5 rounded-xl hover:bg-orange-50 border border-orange-200 transition-colors">
+                <Plus className="w-3 h-3" /> Thêm
+              </button>
+            </div>
+
+            {data.vocabulary.length === 0 && (
+              <p className="text-center py-4 text-xs text-slate-400 italic">Chưa có từ vựng.</p>
+            )}
+
+            <div className="divide-y divide-slate-100 space-y-0">
+              {data.vocabulary.map((vocab, idx) => (
+                <div key={idx} className="py-3 first:pt-0 space-y-1.5 group">
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 mt-0.5 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                      <Volume2 className="w-3 h-3" />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex gap-1.5">
+                        <EditableText value={vocab.de} onChange={v => updVocab(idx, { de: v })} className="font-display font-extrabold text-slate-900 text-sm flex-1" placeholder="Tiếng Đức" />
+                        <EditableText value={vocab.pronunciation} onChange={v => updVocab(idx, { pronunciation: v })} className="font-mono text-[10px] text-slate-400 w-20" placeholder="[phiên âm]" />
+                      </div>
+                      <EditableText value={vocab.vi} onChange={v => updVocab(idx, { vi: v })} className="text-xs font-semibold text-slate-700" placeholder="Nghĩa tiếng Việt" />
+                      <div className="bg-slate-50/50 rounded-lg p-1.5 border border-slate-100 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] text-slate-300">🇩🇪</span>
+                          <EditableText value={vocab.exampleDe} onChange={v => updVocab(idx, { exampleDe: v })} className="text-[11px] font-display font-semibold text-slate-700" placeholder="Ví dụ DE" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] text-slate-300">🇻🇳</span>
+                          <EditableText value={vocab.exampleVi} onChange={v => updVocab(idx, { exampleVi: v })} className="text-[11px] italic text-slate-500" placeholder="Dịch VI" />
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => removeVocab(idx)} className="p-1 rounded-lg text-slate-200 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Nghe section */}
           <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-display font-bold text-slate-800 flex items-center gap-2">
@@ -418,7 +469,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
           </div>
         </div>
 
-        {/* Right column: Objective + Vocabulary */}
+        {/* Right column: Objective */}
         <div className="lg:col-span-4 space-y-8">
 
           {/* Objective + Summary */}
@@ -433,57 +484,6 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
               <EditableText value={data.summary ?? ""} onChange={v => upd({ summary: v })} multiline rows={3} className="text-xs text-slate-500 leading-relaxed" placeholder="Tóm tắt nội dung..." />
             </div>
           </div>
-
-          {/* Vocabulary */}
-          <section className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <div className="space-y-1">
-                <h2 className="text-sm font-display font-bold text-slate-900 flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-orange-600" /> Từ vựng then chốt
-                </h2>
-                <p className="text-[10px] text-slate-400">Click ô để chỉnh sửa trực tiếp</p>
-              </div>
-              <button onClick={addVocab} className="flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 px-2.5 py-1.5 rounded-xl hover:bg-orange-50 border border-orange-200 transition-colors">
-                <Plus className="w-3 h-3" /> Thêm
-              </button>
-            </div>
-
-            {data.vocabulary.length === 0 && (
-              <p className="text-center py-4 text-xs text-slate-400 italic">Chưa có từ vựng.</p>
-            )}
-
-            <div className="divide-y divide-slate-100 space-y-0">
-              {data.vocabulary.map((vocab, idx) => (
-                <div key={idx} className="py-3 first:pt-0 space-y-1.5 group">
-                  <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 mt-0.5 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
-                      <Volume2 className="w-3 h-3" />
-                    </div>
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex gap-1.5">
-                        <EditableText value={vocab.de} onChange={v => updVocab(idx, { de: v })} className="font-display font-extrabold text-slate-900 text-sm flex-1" placeholder="Tiếng Đức" />
-                        <EditableText value={vocab.pronunciation} onChange={v => updVocab(idx, { pronunciation: v })} className="font-mono text-[10px] text-slate-400 w-20" placeholder="[phiên âm]" />
-                      </div>
-                      <EditableText value={vocab.vi} onChange={v => updVocab(idx, { vi: v })} className="text-xs font-semibold text-slate-700" placeholder="Nghĩa tiếng Việt" />
-                      <div className="bg-slate-50/50 rounded-lg p-1.5 border border-slate-100 space-y-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] text-slate-300">🇩🇪</span>
-                          <EditableText value={vocab.exampleDe} onChange={v => updVocab(idx, { exampleDe: v })} className="text-[11px] font-display font-semibold text-slate-700" placeholder="Ví dụ DE" />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] text-slate-300">🇻🇳</span>
-                          <EditableText value={vocab.exampleVi} onChange={v => updVocab(idx, { exampleVi: v })} className="text-[11px] italic text-slate-500" placeholder="Dịch VI" />
-                        </div>
-                      </div>
-                    </div>
-                    <button onClick={() => removeVocab(idx)} className="p-1 rounded-lg text-slate-200 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shrink-0">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       </div>
     </div>
