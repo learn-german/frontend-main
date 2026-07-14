@@ -115,7 +115,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     setData(prev => { const v = [...prev.vocabulary]; v[idx] = { ...v[idx], ...patch }; return { ...prev, vocabulary: v }; });
 
   const addVocab = () =>
-    setData(prev => ({ ...prev, vocabulary: [...prev.vocabulary, { de: "", pronunciation: "", vi: "", exampleDe: "", exampleVi: "" }] }));
+    setData(prev => ({ ...prev, vocabulary: [{ de: "", pronunciation: "", vi: "", exampleDe: "", exampleVi: "" }, ...prev.vocabulary] }));
 
   const removeVocab = (idx: number) =>
     setData(prev => ({ ...prev, vocabulary: prev.vocabulary.filter((_, i) => i !== idx) }));
