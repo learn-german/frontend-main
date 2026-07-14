@@ -28,10 +28,13 @@ CREATE POLICY "lessons: authenticated read"
 --    (no title/video/vocabulary/grammar exposed here).
 --
 --    This view intentionally runs with the view owner's privileges (the
---    migration role), NOT the querying user's — same pattern already used
---    for quiz_questions_public (see supabase/migrations/20260624000003_helpers.sql).
---    That means it bypasses the base table's RLS policy above by design:
---    the only data exposed is 4 non-sensitive columns.
+--    migration role), NOT the querying user's, so it bypasses the base
+--    table's RLS policy above by design — the only data exposed is 4
+--    non-sensitive columns. quiz_questions_public (see
+--    supabase/migrations/20260624000003_helpers.sql) is the same idea
+--    applied to a different table, though that view currently runs with
+--    security_invoker = true; this one relies on default (definer)
+--    semantics, which is what makes the RLS bypass work here.
 CREATE VIEW lesson_positions AS
   SELECT id, module_id, order_index, status FROM lessons;
 
