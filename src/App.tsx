@@ -10,6 +10,7 @@ import { useLessonPositions } from "./lib/hooks/useLessonPositions";
 import { useUserStats } from "./lib/hooks/useUserStats";
 import { AppLoadingSkeleton } from "./components/Skeleton";
 import { Navbar, Sidebar } from "./components/Navigation";
+import { Button } from "./components/DesignSystem";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -162,9 +163,12 @@ export default function App() {
     });
   };
 
-  // Find active Lesson detail item
+  // Find active Lesson detail item — no fallback to flatLessons[0]: if the
+  // selected id isn't found (deleted, or just reverted to draft while the
+  // learner was on it), we must show a "not available" message, not a
+  // different lesson silently swapped in.
   const flatLessons = modules.flatMap(m => m.lessons);
-  const activeLessonObject: Lesson | undefined = flatLessons.find(l => l.id === selectedLessonId) ?? flatLessons[0];
+  const activeLessonObject: Lesson | undefined = flatLessons.find(l => l.id === selectedLessonId);
 
   // Logic to proceed to NEXT lesson
   const handleNextLesson = () => {
@@ -287,6 +291,18 @@ export default function App() {
                     setCurrentPage("quiz");
                   }}
                 />
+              )}
+
+              {currentPage === "lesson-detail" && user && !activeLessonObject && !modulesLoading && (
+                <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+                  <p className="text-sm font-display font-bold text-slate-600">
+                    Bài học không khả dụng, có thể đang được chỉnh sửa.
+                  </p>
+                  <p className="text-xs text-slate-400">Hãy quay lại sau.</p>
+                  <Button variant="secondary" onClick={() => handleNavigate("roadmap")}>
+                    Quay về Lộ trình học
+                  </Button>
+                </div>
               )}
 
               {currentPage === "quiz" && user && activeLessonObject && (
