@@ -26,9 +26,28 @@ async function getAuthenticatedUser(token: string): Promise<AuthUser | null> {
   return (await res.json()) as AuthUser;
 }
 
+const REQUIRED_ENV_VARS = [
+  "SUPABASE_URL",
+  "SUPABASE_ANON_KEY",
+  "R2_ACCOUNT_ID",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET_NAME",
+] as const;
+
+function findMissingEnvVars(): string[] {
+  return REQUIRED_ENV_VARS.filter(name => !process.env[name]);
+}
+
 export default async function handler(req: VercelRequestLike, res: VercelResponseLike) {
   if (req.method !== "GET") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  const missingEnvVars = findMissingEnvVars();
+  if (missingEnvVars.length > 0) {
+    res.status(500).json({ error: `Server misconfigured: missing env var(s): ${missingEnvVars.join(", ")}` });
     return;
   }
 
