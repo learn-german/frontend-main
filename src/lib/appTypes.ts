@@ -6,6 +6,7 @@ export interface UserStats {
   lastPlayedDate?: string;
   completedLessons: string[];
   quizScores: Record<string, number>;
+  unlockedLevels: Level[];
 }
 
 export interface VocabularyItem {
