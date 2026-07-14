@@ -123,15 +123,17 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
         </section>
 
         {/* Objectives */}
-        <div className="lg:col-span-4 bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm h-full flex flex-col justify-between">
+        <div className="lg:col-span-4 flex flex-col gap-3">
           <h3 className="text-sm font-display font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5 font-sans">
             <GraduationCap className="w-4 h-4 text-amber-500" /> Mục tiêu bài học
           </h3>
-          <p className="text-xs text-slate-650 leading-relaxed font-sans">{lesson.objective}</p>
-          <div className="h-[1px] bg-slate-100" />
-          <p className="text-xs text-slate-500 leading-relaxed font-sans">
-            <b>Tóm tắt:</b> {lesson.summary}
-          </p>
+          <div className="flex-1 bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+            <p className="text-xs text-slate-650 leading-relaxed font-sans">{lesson.objective}</p>
+            <div className="h-[1px] bg-slate-100" />
+            <p className="text-xs text-slate-500 leading-relaxed font-sans">
+              <b>Tóm tắt:</b> {lesson.summary}
+            </p>
+          </div>
         </div>
       </div>
 
