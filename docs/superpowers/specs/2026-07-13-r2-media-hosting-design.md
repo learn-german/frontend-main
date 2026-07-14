@@ -136,14 +136,19 @@ Audio trong `LessonDetailPage.tsx` (tab "Nghe"): nếu có `audioR2Key`, gọi `
 ```json
 [
   {
-    "AllowedOrigins": ["https://<production-domain>", "http://localhost:5173"],
+    "AllowedOrigins": [
+      "https://gemany.fares.vn",
+      "https://frontend-main-git-claude-r2-media-hosting-faresvn.vercel.app",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ],
     "AllowedMethods": ["PUT", "GET", "HEAD"],
     "AllowedHeaders": ["*"],
     "MaxAgeSeconds": 3600
   }
 ]
 ```
-(`<production-domain>` cần điền domain thật app đang deploy trên Vercel.)
+`https://gemany.fares.vn` là domain chính (production). Domain `*.vercel.app` là preview deployment của PR — có thể xoá khỏi danh sách sau khi PR merge và không còn cần test trên preview nữa.
 
 ## Testing / verification
 
