@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, Pencil, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Pencil, ChevronDown, ChevronRight, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { AdminLessonEditor, LessonEditable } from "./AdminLessonEditor";
+import { showToast } from "../../lib/toast";
 
 interface AdminLesson extends LessonEditable {
   order_index: number;
@@ -16,20 +17,24 @@ interface AdminModule {
   lessons: AdminLesson[];
 }
 
+const LESSON_SELECT = `id, title, title_vi, duration, level, xp_reward, youtube_id,
+                objective, summary, vocabulary, grammar, grammar_md,
+                listening_url, video_r2_key, audio_r2_key,
+                reading_text, reading_text_vi, order_index`;
+
 export const AdminContentSection: React.FC = () => {
   const [modules, setModules] = useState<AdminModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<AdminLesson | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminLesson | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchModules = () => {
     supabase
       .from("modules")
-      .select(`id, title, title_vi, level, order_index,
-        lessons(id, title, title_vi, duration, level, xp_reward, youtube_id,
-                objective, summary, vocabulary, grammar, grammar_md,
-                listening_url, video_r2_key, audio_r2_key,
-                reading_text, reading_text_vi, order_index)`)
+      .select(`id, title, title_vi, level, order_index, lessons(${LESSON_SELECT})`)
       .order("order_index")
       .order("order_index", { referencedTable: "lessons" })
       .then(({ data }) => {
@@ -39,6 +44,64 @@ export const AdminContentSection: React.FC = () => {
   };
 
   useEffect(() => { fetchModules(); }, []);
+
+  const emptyVocabGrammar = (row: unknown): Pick<AdminLesson, "vocabulary" | "grammar"> => ({
+    vocabulary: Array.isArray((row as AdminLesson).vocabulary) ? (row as AdminLesson).vocabulary : [],
+    grammar: (row as AdminLesson).grammar && typeof (row as AdminLesson).grammar === "object"
+      ? (row as AdminLesson).grammar
+      : { title: "", rule: "", examples: [] },
+  });
+
+  const handleAddLesson = async (mod: AdminModule) => {
+    setAdding(true);
+    const levelLower = mod.level.toLowerCase();
+    const n = mod.lessons.length + 1;
+    const id = `${levelLower}-l${n}`;
+
+    const { data, error } = await supabase
+      .from("lessons")
+      .insert({
+        id,
+        module_id: mod.id,
+        level: mod.level,
+        title: "Bài học mới",
+        title_vi: "Bài học mới",
+        duration: "10 phút",
+        xp_reward: 10,
+        order_index: n,
+        vocabulary: [],
+        grammar: { title: "", rule: "", examples: [] },
+      })
+      .select(LESSON_SELECT)
+      .single();
+
+    setAdding(false);
+
+    if (error || !data) {
+      showToast("Tạo bài học thất bại: " + (error?.message ?? "unknown error"), "warning");
+      return;
+    }
+
+    setEditing({ ...(data as unknown as AdminLesson), ...emptyVocabGrammar(data) });
+  };
+
+  const handleDeleteLesson = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+
+    await supabase.from("lessons").update({ next_lesson_id: null }).eq("next_lesson_id", deleteTarget.id);
+    const { error } = await supabase.from("lessons").delete().eq("id", deleteTarget.id);
+
+    setDeleting(false);
+
+    if (error) {
+      showToast("Xóa thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã xóa bài học.", "success");
+      setDeleteTarget(null);
+      fetchModules();
+    }
+  };
 
   if (loading) {
     return (
@@ -53,7 +116,7 @@ export const AdminContentSection: React.FC = () => {
     return (
       <AdminLessonEditor
         lesson={editing}
-        onBack={() => setEditing(null)}
+        onBack={() => { setEditing(null); fetchModules(); }}
         onSaved={() => { setEditing(null); fetchModules(); }}
       />
     );
@@ -74,15 +137,15 @@ export const AdminContentSection: React.FC = () => {
                 ? <ChevronDown className="w-4 h-4 text-slate-400" />
                 : <ChevronRight className="w-4 h-4 text-slate-400" />}
               <div className="flex-1">
-                <p className="font-display font-bold text-slate-900 text-sm">{mod.title_vi}</p>
-                <p className="text-xs text-slate-400">{mod.title} · Level {mod.level} · {mod.lessons.length} bài học</p>
+                <p className="font-display font-black text-slate-900 text-sm">{mod.level}</p>
+                <p className="text-xs text-slate-400">{mod.lessons.length} bài học</p>
               </div>
             </button>
 
             {expanded[mod.id] && (
               <div className="border-t border-slate-100 divide-y divide-slate-50">
                 {mod.lessons.map((lesson) => (
-                  <div key={lesson.id} className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50/50 transition-colors">
+                  <div key={lesson.id} className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50/50 transition-colors group">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800 truncate">{lesson.title_vi}</p>
                       <p className="text-xs text-slate-400 truncate">
@@ -93,26 +156,69 @@ export const AdminContentSection: React.FC = () => {
                       <span className="text-xs font-mono text-slate-400">{lesson.youtube_id || "—"}</span>
                       <span className="text-xs font-bold text-blue-600">{lesson.xp_reward} XP</span>
                       <button
-                        onClick={() => setEditing({
-                          ...lesson,
-                          vocabulary: Array.isArray(lesson.vocabulary) ? lesson.vocabulary as AdminLesson["vocabulary"] : [],
-                          grammar: (lesson.grammar && typeof lesson.grammar === "object")
-                            ? lesson.grammar as AdminLesson["grammar"]
-                            : { title: "", rule: "", examples: [] },
-                        })}
+                        onClick={() => setEditing({ ...lesson, ...emptyVocabGrammar(lesson) })}
                         className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-colors"
                         title="Chỉnh sửa bài học"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => setDeleteTarget(lesson)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Xóa bài học"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
+                <div className="px-4 py-3">
+                  <button
+                    onClick={() => handleAddLesson(mod)}
+                    disabled={adding}
+                    className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 px-3 py-1.5 rounded-xl hover:bg-orange-50 border border-orange-200 transition-colors disabled:opacity-50"
+                  >
+                    {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    Thêm bài học
+                  </button>
+                </div>
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-bold text-slate-900">Xóa bài học?</h3>
+              <button onClick={() => setDeleteTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600">
+              Xóa bài học <span className="font-bold">{deleteTarget.title_vi}</span>? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-display font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleDeleteLesson}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
