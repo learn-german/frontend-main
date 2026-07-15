@@ -11,6 +11,7 @@ import {
   Headphones,
   FileText,
   HelpCircle,
+  Mic,
 } from "lucide-react";
 import { LevelBadge, Button } from "../components/DesignSystem";
 import { VideoPlayer } from "../components/VideoPlayer";
@@ -27,7 +28,7 @@ interface LessonDetailPageProps {
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
 }
 
-type BottomTab = "quiz" | "nghe" | "doc" | "tuvung";
+type BottomTab = "quiz" | "nghe" | "doc" | "tuvung" | "noi";
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   lesson,
@@ -63,6 +64,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 
   const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
     { id: "tuvung", label: "Từ vựng", Icon: BookOpen },
+    { id: "noi", label: "Nói", Icon: Mic },
     { id: "quiz", label: "Bài tập ngữ pháp", Icon: HelpCircle },
     { id: "nghe", label: "Nghe", Icon: Headphones },
     { id: "doc", label: "Đọc", Icon: FileText },
@@ -203,6 +205,23 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   Bắt đầu bài tập ngữ pháp <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* Nói tab */}
+          {bottomTab === "noi" && (
+            <div className="space-y-4">
+              {lesson.speakingMd ? (
+                <MarkdownBlock content={lesson.speakingMd} />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
+                    <Mic className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <p className="text-sm font-display font-bold text-slate-500">Sắp có</p>
+                  <p className="text-xs text-slate-400">Nội dung luyện nói cho bài học này đang được chuẩn bị.</p>
+                </div>
+              )}
             </div>
           )}
 

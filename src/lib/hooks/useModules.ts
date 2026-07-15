@@ -17,6 +17,7 @@ type SupabaseLesson = {
   vocabulary: unknown;
   grammar: unknown;
   grammar_md: string | null;
+  speaking_md: string | null;
   listening_url: string | null;
   video_r2_key: string | null;
   audio_r2_key: string | null;
@@ -55,6 +56,7 @@ function transformModule(m: SupabaseModule): Module {
       vocabulary: (l.vocabulary as VocabularyItem[]) ?? [],
       grammar: (l.grammar as GrammarExplanation) ?? { title: "", rule: "", examples: [] },
       grammarMd: l.grammar_md ?? undefined,
+      speakingMd: l.speaking_md ?? undefined,
       listeningUrl: l.listening_url ?? undefined,
       videoR2Key: l.video_r2_key ?? undefined,
       audioR2Key: l.audio_r2_key ?? undefined,
@@ -87,7 +89,7 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
           id, level, title, title_vi, objective, summary,
           youtube_id, duration, order_index, xp_reward,
           next_lesson_id, vocabulary, grammar,
-          grammar_md, listening_url, video_r2_key, audio_r2_key,
+          grammar_md, speaking_md, listening_url, video_r2_key, audio_r2_key,
           reading_text, reading_text_vi
         )
       `)

@@ -5,10 +5,12 @@ import {
   ArrowRight,
   RotateCcw,
   Loader2,
+  Headphones,
 } from "lucide-react";
 import { Button, ProgressBar } from "../components/DesignSystem";
 import { Lesson } from "../lib/appTypes";
 import { useQuizQuestions } from "../lib/hooks/useQuizQuestions";
+import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { supabase } from "../lib/supabase";
 import { speak, isTTSSupported } from "../lib/tts";
 
@@ -37,6 +39,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   onBackToLesson,
 }) => {
   const { questions, loading: questionsLoading, error: questionsError } = useQuizQuestions(lesson.id, category);
+  const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", lesson.audioR2Key);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -323,6 +326,31 @@ export const QuizPage: React.FC<QuizPageProps> = ({
           Câu hỏi {currentIdx + 1} / {questions.length}
         </span>
       </div>
+
+      {/* Audio recap (Nghe exercises only) */}
+      {category === "nghe" && (lesson.audioR2Key || lesson.listeningUrl) && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Headphones className="w-4 h-4 text-orange-500" />
+            <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
+          </div>
+          {lesson.audioR2Key ? (
+            <>
+              {audioPlayback.loading && <p className="text-xs text-slate-400">Đang tải...</p>}
+              {audioPlayback.url && (
+                <audio controls src={audioPlayback.url} className="w-full rounded-xl">
+                  Trình duyệt không hỗ trợ audio.
+                </audio>
+              )}
+              {audioPlayback.error && <p className="text-xs text-red-500">Không tải được audio: {audioPlayback.error}</p>}
+            </>
+          ) : (
+            <audio controls src={lesson.listeningUrl} className="w-full rounded-xl">
+              Trình duyệt không hỗ trợ audio.
+            </audio>
+          )}
+        </div>
+      )}
 
       {/* Reading passage recap (Đọc exercises only) */}
       {category === "doc" && lesson.readingText && (

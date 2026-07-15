@@ -56,6 +56,7 @@ export interface Lesson {
   vocabulary: VocabularyItem[];
   grammar: GrammarExplanation;
   grammarMd?: string;
+  speakingMd?: string;
   listeningUrl?: string;
   videoR2Key?: string;
   audioR2Key?: string;
