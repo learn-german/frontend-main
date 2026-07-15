@@ -26,9 +26,17 @@ serve(async (req) => {
     const body = await req.json();
     const lesson_id: string = body.lesson_id;
     const answers: Record<string, string> = body.answers;
+    const category: string = body.category;
 
-    if (!lesson_id || !answers) {
-      return new Response(JSON.stringify({ error: "lesson_id and answers required" }), {
+    if (!lesson_id || !answers || !category) {
+      return new Response(JSON.stringify({ error: "lesson_id, answers, and category required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!["nguphap", "nghe", "doc"].includes(category)) {
+      return new Response(JSON.stringify({ error: "invalid category" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -53,7 +61,8 @@ serve(async (req) => {
     const { data: questions, error: qErr } = await supabase
       .from("quiz_questions")
       .select("id, type, correct_answer")
-      .eq("lesson_id", lesson_id);
+      .eq("lesson_id", lesson_id)
+      .eq("category", category);
 
     if (qErr || !questions) {
       return new Response(JSON.stringify({ error: "Failed to load questions" }), {
@@ -86,12 +95,13 @@ serve(async (req) => {
     const score = total > 0 ? Math.round((correct / total) * 100) : 0;
     const passed = score >= PASS_THRESHOLD;
 
-    // Idempotency: check if already completed
+    // Idempotency: check if already completed (for this category specifically)
     const { data: existing } = await supabase
       .from("lesson_progress")
       .select("lesson_id")
       .eq("user_id", user.id)
       .eq("lesson_id", lesson_id)
+      .eq("category", category)
       .maybeSingle();
 
     let xp_earned = 0;
@@ -101,10 +111,10 @@ serve(async (req) => {
       xp_earned = XP_REWARD;
     }
 
-    // UPSERT lesson_progress (idempotent)
+    // UPSERT lesson_progress (idempotent, per category)
     await supabase.from("lesson_progress").upsert(
-      { user_id: user.id, lesson_id, quiz_score: score },
-      { onConflict: "user_id,lesson_id" },
+      { user_id: user.id, lesson_id, category, quiz_score: score },
+      { onConflict: "user_id,lesson_id,category" },
     );
 
     return new Response(

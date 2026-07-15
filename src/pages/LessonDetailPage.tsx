@@ -62,10 +62,10 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   };
 
   const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
+    { id: "tuvung", label: "Từ vựng", Icon: BookOpen },
     { id: "quiz", label: "Quiz", Icon: HelpCircle },
     { id: "nghe", label: "Nghe", Icon: Headphones },
     { id: "doc", label: "Đọc", Icon: FileText },
-    { id: "tuvung", label: "Từ vựng", Icon: BookOpen },
   ];
 
   return (

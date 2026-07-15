@@ -8,6 +8,7 @@ interface QuizQuestion {
   id: string;
   lesson_id: string;
   type: "multiple-choice" | "fill-blank" | "matching" | "listening";
+  category: "nguphap" | "nghe" | "doc";
   question_text: string;
   audio_text: string | null;
   options: string[] | null;
@@ -28,6 +29,7 @@ type EditForm = Omit<QuizQuestion, "id" | "lesson_id">;
 
 const EMPTY_FORM: EditForm = {
   type: "multiple-choice",
+  category: "nguphap",
   question_text: "",
   audio_text: null,
   options: ["", "", "", ""],
@@ -42,6 +44,12 @@ const TYPE_LABELS: Record<string, string> = {
   "fill-blank": "Điền chỗ trống",
   "matching": "Ghép đôi",
   "listening": "Nghe hiểu",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  "nguphap": "Ngữ pháp",
+  "nghe": "Nghe",
+  "doc": "Đọc",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -108,6 +116,7 @@ export const AdminQuizSection: React.FC = () => {
     setEditLessonId(q.lesson_id);
     setForm({
       type: q.type,
+      category: q.category,
       question_text: q.question_text,
       audio_text: q.audio_text,
       options: q.options ?? ["", "", "", ""],
@@ -133,6 +142,7 @@ export const AdminQuizSection: React.FC = () => {
 
     const payload = {
       type: form.type,
+      category: form.category,
       question_text: form.question_text,
       audio_text: form.audio_text || null,
       options: (form.type === "multiple-choice" || form.type === "listening") ? form.options?.filter(Boolean) ?? null : null,
@@ -241,6 +251,7 @@ export const AdminQuizSection: React.FC = () => {
                   <thead>
                     <tr className="bg-slate-50">
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-8">#</th>
+                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-24">Dạng</th>
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-28">Loại</th>
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500">Câu hỏi</th>
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-40">Đáp án đúng</th>
@@ -251,6 +262,11 @@ export const AdminQuizSection: React.FC = () => {
                     {group.questions.map((q) => (
                       <tr key={q.id} className="hover:bg-slate-50/50 group">
                         <td className="px-4 py-2.5 text-slate-400 text-xs">{q.order_index}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-slate-100 text-slate-500">
+                            {CATEGORY_LABELS[q.category] ?? q.category}
+                          </span>
+                        </td>
                         <td className="px-4 py-2.5">
                           <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${TYPE_COLORS[q.type] ?? "bg-slate-100 text-slate-500"}`}>
                             {TYPE_LABELS[q.type] ?? q.type}
@@ -280,7 +296,7 @@ export const AdminQuizSection: React.FC = () => {
                     ))}
                     {group.questions.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-sm">Chưa có câu hỏi nào.</td>
+                        <td colSpan={6} className="px-4 py-6 text-center text-slate-400 text-sm">Chưa có câu hỏi nào.</td>
                       </tr>
                     )}
                   </tbody>
@@ -302,8 +318,20 @@ export const AdminQuizSection: React.FC = () => {
               </button>
             </div>
 
-            {/* Type & Order */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Category, Type & Order */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className={labelCls}>Dạng bài tập</label>
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value as EditForm["category"] }))}
+                  className={inputCls}
+                >
+                  {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className={labelCls}>Loại câu hỏi</label>
                 <select

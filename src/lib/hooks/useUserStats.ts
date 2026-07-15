@@ -35,7 +35,8 @@ export function useUserStats(userId: string | null): {
       supabase
         .from("lesson_progress")
         .select("lesson_id, quiz_score")
-        .eq("user_id", userId),
+        .eq("user_id", userId)
+        .eq("category", "nguphap"),
       supabase
         .from("profiles")
         .select("unlocked_levels")
