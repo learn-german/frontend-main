@@ -24,7 +24,7 @@ interface LessonDetailPageProps {
   stats: UserStats;
   onBack: () => void;
   onMarkComplete: (lessonId: string) => void;
-  onStartQuiz: (lessonId: string) => void;
+  onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
 }
 
 type BottomTab = "quiz" | "nghe" | "doc" | "tuvung";
@@ -246,6 +246,13 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   <p className="text-xs text-slate-400">Bài luyện nghe cho bài học này đang được chuẩn bị.</p>
                 </div>
               )}
+              {(lesson.audioR2Key || lesson.listeningUrl) && (
+                <div className="flex justify-center pt-2">
+                  <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
+                    Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -281,6 +288,13 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   </div>
                   <p className="text-sm font-display font-bold text-slate-500">Sắp có</p>
                   <p className="text-xs text-slate-400">Bài đọc hiểu cho bài học này đang được chuẩn bị.</p>
+                </div>
+              )}
+              {lesson.readingText && (
+                <div className="flex justify-center pt-2">
+                  <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
+                    Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Button>
                 </div>
               )}
             </div>
