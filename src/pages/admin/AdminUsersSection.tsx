@@ -1,8 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck, ArrowUpDown } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
+import { computeCompletedLessons, furthestCompletedLesson, LessonProgressRow } from "../../lib/completion";
+
+interface ProgressLesson {
+  id: string;
+  title: string;
+  titleVi: string;
+  moduleTitle: string;
+  level: string;
+  audioR2Key?: string;
+  listeningUrl?: string;
+  readingText?: string;
+}
 
 interface AdminUser {
   id: string;
@@ -24,6 +36,9 @@ export const AdminUsersSection: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [orderedLessons, setOrderedLessons] = useState<ProgressLesson[]>([]);
+  const [allProgress, setAllProgress] = useState<(LessonProgressRow & { user_id: string })[]>([]);
+  const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE);
   const [creating, setCreating] = useState(false);
@@ -59,6 +74,41 @@ export const AdminUsersSection: React.FC = () => {
   };
 
   useEffect(() => { fetchUsers(); }, []);
+
+  useEffect(() => {
+    supabase
+      .from("modules")
+      .select(`
+        id, order_index, title_vi, level,
+        lessons (id, title, title_vi, order_index, status, audio_r2_key, listening_url, reading_text)
+      `)
+      .order("order_index")
+      .order("order_index", { referencedTable: "lessons" })
+      .then(({ data }) => {
+        const flat: ProgressLesson[] = (data ?? []).flatMap((m) =>
+          (m.lessons ?? [])
+            .filter((l: { status: string }) => l.status === "published")
+            .map((l: { id: string; title: string; title_vi: string; audio_r2_key: string | null; listening_url: string | null; reading_text: string | null }) => ({
+              id: l.id,
+              title: l.title,
+              titleVi: l.title_vi,
+              moduleTitle: m.title_vi,
+              level: m.level,
+              audioR2Key: l.audio_r2_key ?? undefined,
+              listeningUrl: l.listening_url ?? undefined,
+              readingText: l.reading_text ?? undefined,
+            })),
+        );
+        setOrderedLessons(flat);
+      });
+
+    supabase
+      .from("lesson_progress")
+      .select("user_id, lesson_id, category, quiz_score, completed_at")
+      .then(({ data }) => {
+        setAllProgress((data ?? []) as (LessonProgressRow & { user_id: string })[]);
+      });
+  }, []);
 
   const handleCreate = async () => {
     if (!createForm.email || !createForm.password) {
@@ -144,11 +194,47 @@ export const AdminUsersSection: React.FC = () => {
     }
   };
 
-  const filtered = users.filter(
-    (u) =>
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      (u.full_name ?? "").toLowerCase().includes(search.toLowerCase()),
-  );
+  const progressByUser = useMemo(() => {
+    const map: Record<string, LessonProgressRow[]> = {};
+    for (const row of allProgress) {
+      (map[row.user_id] ??= []).push(row);
+    }
+    return map;
+  }, [allProgress]);
+
+  const furthestLabelByUser = useMemo(() => {
+    const labels: Record<string, string> = {};
+    const orderIndexOf: Record<string, number> = {};
+    orderedLessons.forEach((l, idx) => { orderIndexOf[l.id] = idx; });
+
+    for (const u of users) {
+      const unlockedLessons = orderedLessons.filter((l) => u.unlockedLevels.includes(l.level));
+      const completed = computeCompletedLessons(unlockedLessons, progressByUser[u.id] ?? []);
+      const furthest = furthestCompletedLesson(unlockedLessons, completed);
+      labels[u.id] = furthest ? `${furthest.level} · Bài ${orderIndexOf[furthest.id] + 1}: ${furthest.titleVi}` : "Chưa học bài nào";
+    }
+    return labels;
+  }, [users, orderedLessons, progressByUser]);
+
+  const filtered = users
+    .filter(
+      (u) =>
+        u.email.toLowerCase().includes(search.toLowerCase()) ||
+        (u.full_name ?? "").toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) => {
+      if (!sortByProgress) return 0;
+      const orderIndexOf: Record<string, number> = {};
+      orderedLessons.forEach((l, idx) => { orderIndexOf[l.id] = idx; });
+      const rank = (u: AdminUser) => {
+        const unlockedLessons = orderedLessons.filter((l) => u.unlockedLevels.includes(l.level));
+        const completed = computeCompletedLessons(unlockedLessons, progressByUser[u.id] ?? []);
+        const furthest = furthestCompletedLesson(unlockedLessons, completed);
+        return furthest ? orderIndexOf[furthest.id] : -1;
+      };
+      const diff = rank(a) - rank(b);
+      return sortByProgress === "asc" ? diff : -diff;
+    });
 
   if (loading) {
     return (
@@ -189,6 +275,14 @@ export const AdminUsersSection: React.FC = () => {
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Email</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Role</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Cấp độ mở</th>
+              <th
+                className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase cursor-pointer select-none hover:text-slate-700"
+                onClick={() => setSortByProgress((prev) => (prev === "asc" ? "desc" : "asc"))}
+              >
+                <span className="inline-flex items-center gap-1">
+                  Đã học đến bài <ArrowUpDown className="w-3 h-3" />
+                </span>
+              </th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">XP</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Streak</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ngày tạo</th>
@@ -226,6 +320,9 @@ export const AdminUsersSection: React.FC = () => {
                     ))}
                   </div>
                 </td>
+                <td className="px-4 py-3 text-slate-600 text-xs max-w-[220px] truncate" title={furthestLabelByUser[u.id]}>
+                  {furthestLabelByUser[u.id]}
+                </td>
                 <td className="px-4 py-3 text-right font-bold text-blue-600">{u.xp}</td>
                 <td className="px-4 py-3 text-right font-bold text-orange-600">{u.streak} 🔥</td>
                 <td className="px-4 py-3 text-right text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString("vi-VN")}</td>
@@ -251,7 +348,7 @@ export const AdminUsersSection: React.FC = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
               </tr>
             )}
           </tbody>
