@@ -98,15 +98,15 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto">
-          {!marked ? (
-            <Button id="btn-lesson-mark-complete-top" variant="secondary" className="flex-1 sm:flex-initial" onClick={handleCompleteClick}>
-              Đánh dấu đã học
-            </Button>
-          ) : (
+          {marked ? (
             <div className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-display font-bold">
               <CheckCircle className="w-4 h-4 text-green-600" /> Đã học xong
             </div>
-          )}
+          ) : isCompleted ? (
+            <Button id="btn-lesson-mark-complete-top" variant="secondary" className="flex-1 sm:flex-initial" onClick={handleCompleteClick}>
+              Đánh dấu đã học
+            </Button>
+          ) : null}
           <Button id="btn-lesson-start-quiz-top" variant="primary" className="flex-1 sm:flex-initial" onClick={() => onStartQuiz(lesson.id)}>
             Kiểm tra ngay <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
@@ -196,7 +196,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 Tham gia trả lời <b>4 câu hỏi kiểm tra ngẫu nhiên</b> bám sát từ vựng và ngữ pháp vừa học. Cần vượt qua <b>80%</b> để hoàn tất!
               </p>
               <div className="flex justify-center gap-3 pt-1">
-                {!marked && (
+                {!marked && isCompleted && (
                   <Button id="btn-lesson-mark-complete-bottom" variant="secondary" onClick={handleCompleteClick}>
                     Đánh dấu đã học
                   </Button>
