@@ -14,6 +14,7 @@ import { speak, isTTSSupported } from "../lib/tts";
 
 interface QuizPageProps {
   lesson: Lesson;
+  category?: "nguphap" | "nghe" | "doc";
   onQuizFinished: (scorePercentage: number, xpEarned: number) => void;
   onNavigateHome: () => void;
   onNextLesson: () => void;
@@ -28,11 +29,12 @@ interface QuizResult {
 
 export const QuizPage: React.FC<QuizPageProps> = ({
   lesson,
+  category = "nguphap",
   onQuizFinished,
   onNavigateHome,
   onNextLesson,
 }) => {
-  const { questions, loading: questionsLoading, error: questionsError } = useQuizQuestions(lesson.id);
+  const { questions, loading: questionsLoading, error: questionsError } = useQuizQuestions(lesson.id, category);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -138,7 +140,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
     setSubmitError(null);
 
     const { data, error } = await supabase.functions.invoke("quiz-submit", {
-      body: { lesson_id: lesson.id, answers: finalAnswers },
+      body: { lesson_id: lesson.id, answers: finalAnswers, category },
     });
 
     setSubmitting(false);
