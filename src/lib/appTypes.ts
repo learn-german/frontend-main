@@ -31,6 +31,7 @@ export interface GrammarExplanation {
 export interface QuizQuestion {
   id: string;
   type: "multiple-choice" | "fill-blank" | "matching" | "listening";
+  category?: "nguphap" | "nghe" | "doc";
   questionText: string;
   audioText?: string;
   options?: string[];

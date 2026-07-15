@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import { QuizQuestion } from "../appTypes";
 
-export function useQuizQuestions(lessonId: string) {
+export function useQuizQuestions(lessonId: string, category: "nguphap" | "nghe" | "doc") {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +18,9 @@ export function useQuizQuestions(lessonId: string) {
 
     supabase
       .from("quiz_questions_public")
-      .select("id, type, question_text, audio_text, options, matching_pairs, explanation, order_index")
+      .select("id, type, category, question_text, audio_text, options, matching_pairs, explanation, order_index")
       .eq("lesson_id", lessonId)
+      .eq("category", category)
       .order("order_index")
       .then(({ data, error: fetchError }) => {
         if (fetchError) {
@@ -29,6 +30,7 @@ export function useQuizQuestions(lessonId: string) {
             (data ?? []).map((q) => ({
               id: q.id as string,
               type: q.type as QuizQuestion["type"],
+              category: q.category as QuizQuestion["category"],
               questionText: q.question_text as string,
               audioText: (q.audio_text as string | null) ?? undefined,
               options: (q.options as string[] | null) ?? undefined,
@@ -39,7 +41,7 @@ export function useQuizQuestions(lessonId: string) {
         }
         setLoading(false);
       });
-  }, [lessonId]);
+  }, [lessonId, category]);
 
   return { questions, loading, error };
 }
