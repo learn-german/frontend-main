@@ -33,6 +33,7 @@ export interface LessonEditable {
   vocabulary: VocabItem[];
   grammar: Grammar;
   grammar_md?: string | null;
+  speaking_md?: string | null;
   listening_url?: string | null;
   video_r2_key?: string | null;
   audio_r2_key?: string | null;
@@ -106,6 +107,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
   const [data, setData] = useState<LessonEditable>({ ...initial });
   const [saving, setSaving] = useState(false);
   const [grammarTab, setGrammarTab] = useState<"edit" | "preview">("edit");
+  const [speakingTab, setSpeakingTab] = useState<"edit" | "preview">("edit");
   const [videoUploadPct, setVideoUploadPct] = useState<number | null>(null);
   const [audioUploadPct, setAudioUploadPct] = useState<number | null>(null);
 
@@ -159,6 +161,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       vocabulary: data.vocabulary,
       grammar: data.grammar,
       grammar_md: data.grammar_md || null,
+      speaking_md: data.speaking_md || null,
       listening_url: data.listening_url || null,
       video_r2_key: data.video_r2_key || null,
       audio_r2_key: data.audio_r2_key || null,
@@ -188,6 +191,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       vocabulary: data.vocabulary,
       grammar: data.grammar,
       grammar_md: data.grammar_md || null,
+      speaking_md: data.speaking_md || null,
       listening_url: data.listening_url || null,
       video_r2_key: data.video_r2_key || null,
       audio_r2_key: data.audio_r2_key || null,
@@ -344,6 +348,47 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
                   <MarkdownBlock content={data.grammar_md} />
                 ) : (
                   <p className="text-xs text-slate-400 italic">Chưa có nội dung ngữ pháp.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Nói — Markdown editor */}
+          <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                Nói
+              </span>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                {(["edit", "preview"] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setSpeakingTab(tab)}
+                    className={`px-3 py-1 text-[11px] font-bold transition-colors ${speakingTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                  >
+                    {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {speakingTab === "edit" ? (
+              <>
+                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách (lồng nhau được), - [ ] checkbox, bảng, ```code block```, blockquote, và callout 💡 ⚠️ ❗ ✅ ℹ️</p>
+                <textarea
+                  rows={12}
+                  value={data.speaking_md ?? ""}
+                  onChange={e => upd({ speaking_md: e.target.value })}
+                  placeholder={"## Luyện nói: Giới thiệu bản thân\n\nHãy tập nói to các câu sau:\n- \"Guten Tag! Ich heiße ...\"\n- \"Ich komme aus ...\""}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
+                />
+              </>
+            ) : (
+              <div className="min-h-32 bg-white border border-slate-200 rounded-xl p-4">
+                {data.speaking_md ? (
+                  <MarkdownBlock content={data.speaking_md} />
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Chưa có nội dung luyện nói.</p>
                 )}
               </div>
             )}
