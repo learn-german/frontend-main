@@ -466,12 +466,6 @@ export const AdminUsersSection: React.FC = () => {
         const completed = computeCompletedLessons(unlockedLessons, userProgress);
         const statuses = computeLessonStatuses(unlockedLessons, completed);
         const scoresByLesson = buildScoresByLesson(userProgress);
-        const completedAtByLessonCategory: Record<string, string | undefined> = {};
-        for (const row of userProgress) {
-          if ((row.quiz_score ?? 0) >= 80 && row.completed_at) {
-            completedAtByLessonCategory[`${row.lesson_id}:${row.category}`] = row.completed_at;
-          }
-        }
         const statusLabel: Record<string, string> = { completed: "Hoàn thành", current: "Đang học", locked: "Chưa học" };
         const statusColor: Record<string, string> = {
           completed: "bg-green-50 text-green-700 border-green-200",
