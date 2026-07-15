@@ -25,6 +25,7 @@ export const AdminDashboardSection: React.FC = () => {
       supabase
         .from("lesson_progress")
         .select("lesson_id", { count: "exact", head: true })
+        .eq("category", "nguphap")
         .gte("completed_at", today),
     ]).then(([usersRes, activeRes, completionsRes]) => {
       setStats({

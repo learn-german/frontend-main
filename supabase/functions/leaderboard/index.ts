@@ -43,6 +43,7 @@ serve(async (req) => {
       const { data: progress } = await supabase
         .from("lesson_progress")
         .select("user_id, lessons(xp_reward)")
+        .eq("category", "nguphap")
         .gte("completed_at", since);
 
       // Aggregate weekly XP per user
