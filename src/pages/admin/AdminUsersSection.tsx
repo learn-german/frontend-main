@@ -3,7 +3,13 @@ import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck, ArrowUpDown } fr
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
-import { computeCompletedLessons, furthestCompletedLesson, LessonProgressRow } from "../../lib/completion";
+import {
+  computeCompletedLessons,
+  furthestCompletedLesson,
+  computeLessonStatuses,
+  buildScoresByLesson,
+  LessonProgressRow,
+} from "../../lib/completion";
 
 interface ProgressLesson {
   id: string;
@@ -47,6 +53,7 @@ export const AdminUsersSection: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [progressUser, setProgressUser] = useState<AdminUser | null>(null);
 
   const fetchUsers = () => {
     supabase
@@ -293,7 +300,12 @@ export const AdminUsersSection: React.FC = () => {
             {filtered.map((u) => (
               <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
                 <td className="px-4 py-3 font-medium text-slate-800">
-                  {u.full_name || <span className="text-slate-400 italic">Chưa đặt tên</span>}
+                  <button
+                    onClick={() => setProgressUser(u)}
+                    className="hover:text-orange-600 hover:underline cursor-pointer text-left"
+                  >
+                    {u.full_name || <span className="text-slate-400 italic">Chưa đặt tên</span>}
+                  </button>
                 </td>
                 <td className="px-4 py-3 text-slate-500">{u.email}</td>
                 <td className="px-4 py-3 text-center">
@@ -446,6 +458,94 @@ export const AdminUsersSection: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Per-user progress detail modal */}
+      {progressUser && (() => {
+        const unlockedLessons = orderedLessons.filter((l) => progressUser.unlockedLevels.includes(l.level));
+        const userProgress = progressByUser[progressUser.id] ?? [];
+        const completed = computeCompletedLessons(unlockedLessons, userProgress);
+        const statuses = computeLessonStatuses(unlockedLessons, completed);
+        const scoresByLesson = buildScoresByLesson(userProgress);
+        const completedAtByLessonCategory: Record<string, string | undefined> = {};
+        for (const row of userProgress) {
+          if ((row.quiz_score ?? 0) >= 80 && row.completed_at) {
+            completedAtByLessonCategory[`${row.lesson_id}:${row.category}`] = row.completed_at;
+          }
+        }
+        const statusLabel: Record<string, string> = { completed: "Hoàn thành", current: "Đang học", locked: "Chưa học" };
+        const statusColor: Record<string, string> = {
+          completed: "bg-green-50 text-green-700 border-green-200",
+          current: "bg-orange-50 text-orange-700 border-orange-200",
+          locked: "bg-slate-100 text-slate-500 border-slate-200",
+        };
+
+        const scoreCell = (lessonId: string, category: "nguphap" | "nghe" | "doc", applicable: boolean) => {
+          if (!applicable) return <span className="text-slate-300">—</span>;
+          const score = scoresByLesson[lessonId]?.[category];
+          if (score === undefined) return <span className="text-slate-400">Chưa làm</span>;
+          return (
+            <span className={score >= 80 ? "text-green-600 font-bold" : "text-red-500 font-bold"}>{score}%</span>
+          );
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-bold text-slate-900">
+                    Tiến độ học tập — {progressUser.full_name || progressUser.email}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {completed.length}/{unlockedLessons.length} bài hoàn thành · {progressUser.xp} XP · {progressUser.streak} 🔥 streak
+                  </p>
+                </div>
+                <button onClick={() => setProgressUser(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {unlockedLessons.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">Người dùng chưa mở khóa cấp độ nào.</p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50 sticky top-0">
+                      <th className="text-left px-3 py-2 font-bold text-slate-500 uppercase">Bài học</th>
+                      <th className="text-center px-3 py-2 font-bold text-slate-500 uppercase">Trạng thái</th>
+                      <th className="text-center px-3 py-2 font-bold text-slate-500 uppercase">Ngữ pháp</th>
+                      <th className="text-center px-3 py-2 font-bold text-slate-500 uppercase">Nghe</th>
+                      <th className="text-center px-3 py-2 font-bold text-slate-500 uppercase">Đọc</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {unlockedLessons.map((l) => {
+                      const hasNghe = !!(l.audioR2Key || l.listeningUrl);
+                      const hasDoc = !!l.readingText;
+                      return (
+                        <tr key={l.id}>
+                          <td className="px-3 py-2">
+                            <p className="font-medium text-slate-800">{l.titleVi}</p>
+                            <p className="text-[10px] text-slate-400">{l.level} · {l.title}</p>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold ${statusColor[statuses[l.id]]}`}>
+                              {statusLabel[statuses[l.id]]}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">{scoreCell(l.id, "nguphap", true)}</td>
+                          <td className="px-3 py-2 text-center">{scoreCell(l.id, "nghe", hasNghe)}</td>
+                          <td className="px-3 py-2 text-center">{scoreCell(l.id, "doc", hasDoc)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Confirm delete modal */}
       {deleteTarget && (
