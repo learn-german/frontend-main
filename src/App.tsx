@@ -35,6 +35,7 @@ export default function App() {
   // Router page state
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
   const [selectedLessonId, setSelectedLessonId] = useState<string>("a1-l1");
+  const [activeExerciseCategory, setActiveExerciseCategory] = useState<"nguphap" | "nghe" | "doc">("nguphap");
 
   // Custom Toast state
   const [activeToast, setActiveToast] = useState<{ message: string; type: ToastType; id: number } | null>(null);
@@ -286,8 +287,9 @@ export default function App() {
                   stats={stats}
                   onBack={() => handleNavigate("roadmap")}
                   onMarkComplete={handleMarkComplete}
-                  onStartQuiz={(lessonId) => {
+                  onStartQuiz={(lessonId, category = "nguphap") => {
                     setSelectedLessonId(lessonId);
+                    setActiveExerciseCategory(category);
                     setCurrentPage("quiz");
                   }}
                 />
@@ -308,9 +310,11 @@ export default function App() {
               {currentPage === "quiz" && user && activeLessonObject && (
                 <QuizPage
                   lesson={activeLessonObject}
+                  category={activeExerciseCategory}
                   onQuizFinished={handleQuizFinished}
                   onNavigateHome={() => handleNavigate("roadmap")}
                   onNextLesson={handleNextLesson}
+                  onBackToLesson={() => setCurrentPage("lesson-detail")}
                 />
               )}
               {currentPage === "leaderboard" && user && (
