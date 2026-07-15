@@ -38,7 +38,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 }) => {
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
-  const [bottomTab, setBottomTab] = useState<BottomTab>("quiz");
+  const [bottomTab, setBottomTab] = useState<BottomTab>("tuvung");
   const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", lesson.audioR2Key);
 
   const handlePronounce = (text: string) => {
