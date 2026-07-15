@@ -63,7 +63,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 
   const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
     { id: "tuvung", label: "Từ vựng", Icon: BookOpen },
-    { id: "quiz", label: "Quiz", Icon: HelpCircle },
+    { id: "quiz", label: "Bài tập ngữ pháp", Icon: HelpCircle },
     { id: "nghe", label: "Nghe", Icon: Headphones },
     { id: "doc", label: "Đọc", Icon: FileText },
   ];
@@ -164,7 +164,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
         )}
       </div>
 
-      {/* Bottom tabbed section: Quiz / Nghe / Đọc / Từ vựng */}
+      {/* Bottom tabbed section: Bài tập ngữ pháp / Nghe / Đọc / Từ vựng */}
       <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl overflow-hidden">
         {/* Tab bar */}
         <div className="flex border-b border-slate-200/60 bg-white">
@@ -186,7 +186,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 
         {/* Tab content */}
         <div className="p-6">
-          {/* Quiz tab */}
+          {/* Bài tập ngữ pháp tab */}
           {bottomTab === "quiz" && (
             <div className="text-center space-y-4">
               <h3 className="text-sm font-display font-extrabold text-slate-800">Bạn đã hoàn tất bài giảng lý thuyết chứ?</h3>
@@ -200,7 +200,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   </Button>
                 )}
                 <Button id="btn-lesson-start-quiz-bottom" variant="primary" onClick={() => onStartQuiz(lesson.id)}>
-                  Bắt đầu Quiz ngay <ArrowRight className="w-4 h-4 ml-1.5" />
+                  Bắt đầu bài tập ngữ pháp <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </div>
             </div>
