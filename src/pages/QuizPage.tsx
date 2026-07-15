@@ -18,6 +18,7 @@ interface QuizPageProps {
   onQuizFinished: (scorePercentage: number, xpEarned: number) => void;
   onNavigateHome: () => void;
   onNextLesson: () => void;
+  onBackToLesson: () => void;
 }
 
 interface QuizResult {
@@ -33,6 +34,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   onQuizFinished,
   onNavigateHome,
   onNextLesson,
+  onBackToLesson,
 }) => {
   const { questions, loading: questionsLoading, error: questionsError } = useQuizQuestions(lesson.id, category);
 
@@ -176,10 +178,18 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   }
 
   if (questionsError || questions.length === 0) {
+    const emptyMessage =
+      category === "nghe" ? "Bài tập nghe cho bài học này chưa được soạn."
+      : category === "doc" ? "Bài tập đọc cho bài học này chưa được soạn."
+      : "Không tải được câu hỏi quiz. Vui lòng thử lại sau.";
     return (
       <div className="max-w-2xl mx-auto text-center space-y-4 py-12">
-        <p className="text-slate-500">Không tải được câu hỏi quiz. Vui lòng thử lại sau.</p>
-        <Button variant="secondary" onClick={onNavigateHome}>Quay về Lộ trình</Button>
+        <p className="text-slate-500">{emptyMessage}</p>
+        {category === "nguphap" ? (
+          <Button variant="secondary" onClick={onNavigateHome}>Quay về Lộ trình</Button>
+        ) : (
+          <Button variant="secondary" onClick={onBackToLesson}>Quay lại bài học</Button>
+        )}
       </div>
     );
   }
@@ -266,18 +276,29 @@ export const QuizPage: React.FC<QuizPageProps> = ({
           <Button id="btn-quiz-retry" variant="secondary" className="flex-1" onClick={handleRetry}>
             <RotateCcw className="w-4 h-4 mr-2" /> Làm lại bài Test
           </Button>
-          {passed ? (
-            <Button id="btn-quiz-next-lesson" variant="primary" className="flex-1" onClick={onNextLesson}>
-              Học bài tiếp theo <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+          {category === "nguphap" ? (
+            passed ? (
+              <Button id="btn-quiz-next-lesson" variant="primary" className="flex-1" onClick={onNextLesson}>
+                Học bài tiếp theo <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                id="btn-quiz-exit"
+                variant="ghost"
+                className="flex-1 text-slate-500"
+                onClick={onNavigateHome}
+              >
+                Quay về Lộ trình
+              </Button>
+            )
           ) : (
             <Button
-              id="btn-quiz-exit"
-              variant="ghost"
-              className="flex-1 text-slate-500"
-              onClick={onNavigateHome}
+              id="btn-quiz-back-to-lesson"
+              variant="primary"
+              className="flex-1"
+              onClick={onBackToLesson}
             >
-              Quay về Lộ trình
+              Quay lại bài học
             </Button>
           )}
         </div>
@@ -302,6 +323,25 @@ export const QuizPage: React.FC<QuizPageProps> = ({
           Câu hỏi {currentIdx + 1} / {questions.length}
         </span>
       </div>
+
+      {/* Reading passage recap (Đọc exercises only) */}
+      {category === "doc" && lesson.readingText && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">🇩🇪 Tiếng Đức</span>
+            <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{lesson.readingText}</p>
+          </div>
+          {lesson.readingTextVi && (
+            <>
+              <div className="h-px bg-slate-100" />
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">🇻🇳 Tiếng Việt</span>
+                <p className="text-xs text-slate-500 leading-relaxed font-sans italic whitespace-pre-wrap">{lesson.readingTextVi}</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Question card */}
       <div
