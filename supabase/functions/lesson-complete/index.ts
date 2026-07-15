@@ -47,12 +47,15 @@ serve(async (req) => {
       });
     }
 
-    // Idempotency check: already completed?
+    // Idempotency check: already completed? Pinned to 'nguphap' — this is
+    // the "mark lesson complete" flow, unaffected by optional Nghe/Đọc
+    // exercise attempts, which live in separate category rows.
     const { data: existing } = await supabase
       .from("lesson_progress")
       .select("lesson_id")
       .eq("user_id", user.id)
       .eq("lesson_id", lessonId)
+      .eq("category", "nguphap")
       .maybeSingle();
 
     if (existing) {
@@ -92,6 +95,7 @@ serve(async (req) => {
     await supabase.from("lesson_progress").insert({
       user_id: user.id,
       lesson_id: lessonId,
+      category: "nguphap",
     });
 
     // Update user_stats atomically
