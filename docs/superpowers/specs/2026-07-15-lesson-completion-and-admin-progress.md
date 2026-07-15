@@ -26,6 +26,7 @@ Hiện tại một bài học được coi là "hoàn thành" (`stats.completedL
     - Điểm từng mục Ngữ pháp / Nghe / Đọc: điểm % nếu có dòng `lesson_progress` tương ứng, `"—"` nếu bài không có nội dung mục đó, `"Chưa làm"` nếu có nội dung nhưng chưa có dòng progress
     - Ngày hoàn thành gần nhất của bài (giá trị `completed_at` lớn nhất trong các category đã hoàn thành của bài đó, nếu có)
   - Modal hiển thị thêm ở đầu: tổng quan nhanh (tổng số bài đã hoàn thành / tổng số bài, XP, streak — dùng lại dữ liệu đã có trong bảng danh sách).
+- **Sắp xếp theo cột "Đã học đến bài"**: header cột này bấm được để sort tăng/giảm theo order của bài học cao nhất đã hoàn thành (giống pattern sort đơn giản, click để đổi chiều asc/desc, không cần đa cột).
 
 ### Phần 3 — Cải tiến Roadmap/Dashboard
 
