@@ -63,6 +63,7 @@ export const AdminQuizSection: React.FC = () => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<"nguphap" | "nghe" | "doc">("nguphap");
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -79,26 +80,22 @@ export const AdminQuizSection: React.FC = () => {
       supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").order("order_index"),
     ]);
 
-    const lessonMap = new Map(
-      (lessonsRes.data ?? []).map((l) => [
-        l.id,
-        {
-          lesson_title: l.title_vi,
-          module_title: (l.modules as unknown as { title_vi: string } | null)?.title_vi ?? "",
-        },
-      ]),
-    );
-
-    const grouped: Record<string, LessonGroup> = {};
+    const questionsByLesson: Record<string, QuizQuestion[]> = {};
     for (const q of questionsRes.data ?? []) {
-      if (!grouped[q.lesson_id]) {
-        const meta = lessonMap.get(q.lesson_id) ?? { lesson_title: q.lesson_id, module_title: "" };
-        grouped[q.lesson_id] = { lesson_id: q.lesson_id, ...meta, questions: [] };
-      }
-      grouped[q.lesson_id].questions.push(q as QuizQuestion);
+      (questionsByLesson[q.lesson_id] ??= []).push(q as QuizQuestion);
     }
 
-    setGroups(Object.values(grouped));
+    // Build one group per lesson (ALL lessons, not just ones that already
+    // have questions) so admins can add the first Nghe/Đọc question for
+    // any lesson, not only lessons that already have Ngữ pháp questions.
+    const grouped: LessonGroup[] = (lessonsRes.data ?? []).map((l) => ({
+      lesson_id: l.id,
+      lesson_title: l.title_vi,
+      module_title: (l.modules as unknown as { title_vi: string } | null)?.title_vi ?? "",
+      questions: questionsByLesson[l.id] ?? [],
+    }));
+
+    setGroups(grouped);
     setLoading(false);
   };
 
@@ -107,7 +104,7 @@ export const AdminQuizSection: React.FC = () => {
   const openCreate = (lessonId: string, nextOrder: number) => {
     setEditId(null);
     setEditLessonId(lessonId);
-    setForm({ ...EMPTY_FORM, order_index: nextOrder });
+    setForm({ ...EMPTY_FORM, category: activeTab, order_index: nextOrder });
     setModalOpen(true);
   };
 
@@ -223,10 +220,28 @@ export const AdminQuizSection: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-display font-black text-slate-900">Quản lý Quiz</h1>
+      <h1 className="text-xl font-display font-black text-slate-900">Quản lý bài tập</h1>
+
+      <div className="flex gap-2 border-b border-slate-200/60">
+        {(Object.keys(CATEGORY_LABELS) as ("nguphap" | "nghe" | "doc")[]).map((val) => (
+          <button
+            key={val}
+            onClick={() => setActiveTab(val)}
+            className={`px-4 py-2.5 text-sm font-display font-bold border-b-2 transition-colors ${
+              activeTab === val
+                ? "border-orange-500 text-orange-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {CATEGORY_LABELS[val]}
+          </button>
+        ))}
+      </div>
 
       <div className="space-y-3">
-        {groups.map((group) => (
+        {groups.map((group) => {
+          const filteredQuestions = group.questions.filter((q) => q.category === activeTab);
+          return (
           <div key={group.lesson_id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
             <button
               onClick={() => setExpanded((prev) => ({ ...prev, [group.lesson_id]: !prev[group.lesson_id] }))}
@@ -235,10 +250,10 @@ export const AdminQuizSection: React.FC = () => {
               {expanded[group.lesson_id] ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
               <div className="flex-1">
                 <p className="font-display font-bold text-slate-900 text-sm">{group.lesson_title}</p>
-                <p className="text-xs text-slate-400">{group.module_title} · {group.questions.length} câu hỏi</p>
+                <p className="text-xs text-slate-400">{group.module_title} · {filteredQuestions.length} câu hỏi</p>
               </div>
               <span
-                onClick={(e) => { e.stopPropagation(); openCreate(group.lesson_id, group.questions.length); }}
+                onClick={(e) => { e.stopPropagation(); openCreate(group.lesson_id, filteredQuestions.length); }}
                 className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
@@ -251,7 +266,6 @@ export const AdminQuizSection: React.FC = () => {
                   <thead>
                     <tr className="bg-slate-50">
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-8">#</th>
-                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-24">Dạng</th>
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-28">Loại</th>
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500">Câu hỏi</th>
                       <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-40">Đáp án đúng</th>
@@ -259,14 +273,9 @@ export const AdminQuizSection: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {group.questions.map((q) => (
+                    {filteredQuestions.map((q) => (
                       <tr key={q.id} className="hover:bg-slate-50/50 group">
                         <td className="px-4 py-2.5 text-slate-400 text-xs">{q.order_index}</td>
-                        <td className="px-4 py-2.5">
-                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-slate-100 text-slate-500">
-                            {CATEGORY_LABELS[q.category] ?? q.category}
-                          </span>
-                        </td>
                         <td className="px-4 py-2.5">
                           <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${TYPE_COLORS[q.type] ?? "bg-slate-100 text-slate-500"}`}>
                             {TYPE_LABELS[q.type] ?? q.type}
@@ -294,9 +303,9 @@ export const AdminQuizSection: React.FC = () => {
                         </td>
                       </tr>
                     ))}
-                    {group.questions.length === 0 && (
+                    {filteredQuestions.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-6 text-center text-slate-400 text-sm">Chưa có câu hỏi nào.</td>
+                        <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-sm">Chưa có câu hỏi nào.</td>
                       </tr>
                     )}
                   </tbody>
@@ -304,7 +313,8 @@ export const AdminQuizSection: React.FC = () => {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Edit / Create modal */}

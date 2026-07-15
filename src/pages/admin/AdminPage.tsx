@@ -26,7 +26,7 @@ const NAV_ITEMS: { id: AdminSection; label: string; Icon: React.FC<{ className?:
   { id: "dashboard", label: "Tổng quan", Icon: LayoutDashboard },
   { id: "users", label: "Người dùng", Icon: Users },
   { id: "content", label: "Nội dung", Icon: BookOpen },
-  { id: "quiz", label: "Quiz", Icon: HelpCircle },
+  { id: "quiz", label: "Bài tập", Icon: HelpCircle },
 ];
 
 export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome }) => {
