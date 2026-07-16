@@ -22,9 +22,11 @@ export function isAllowedExt(mediaType: MediaType, ext: string): boolean {
   return ALLOWED_EXT[mediaType].includes(ext.toLowerCase());
 }
 
-export function buildObjectKey(mediaType: MediaType, lessonId: string, ext: string): string {
-  const folder = mediaType === "video" ? "videos" : "audio";
-  return `${folder}/${lessonId}.${ext.toLowerCase()}`;
+export function buildObjectKey(mediaType: MediaType, lessonId: string, ext: string, clipId?: string): string {
+  if (mediaType === "video") {
+    return `videos/${lessonId}.${ext.toLowerCase()}`;
+  }
+  return `audio/${lessonId}/${clipId}.${ext.toLowerCase()}`;
 }
 
 interface AuthUser {
@@ -85,12 +87,16 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const body = req.body as { lessonId?: string; mediaType?: string; fileExt?: string };
-  const { lessonId, fileExt } = body;
+  const body = req.body as { lessonId?: string; mediaType?: string; fileExt?: string; clipId?: string };
+  const { lessonId, fileExt, clipId } = body;
   const mediaType = body.mediaType;
 
   if (!lessonId || (mediaType !== "video" && mediaType !== "audio") || !fileExt) {
     res.status(400).json({ error: "lessonId, mediaType (video|audio), fileExt required" });
+    return;
+  }
+  if (mediaType === "audio" && !clipId) {
+    res.status(400).json({ error: "clipId required for audio uploads" });
     return;
   }
   if (!isAllowedExt(mediaType, fileExt)) {
@@ -98,7 +104,7 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const objectKey = buildObjectKey(mediaType, lessonId, fileExt);
+  const objectKey = buildObjectKey(mediaType, lessonId, fileExt, clipId);
 
   const s3 = new S3Client({
     region: "auto",
