@@ -40,21 +40,30 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 }) => {
   const { questions: rawQuestions, loading: questionsLoading, error: questionsError } = useQuizQuestions(lesson.id, category);
 
-  // For Nghe, group+reorder questions by their owning clip (in clip upload
-  // order) so the learner works through one mp3's questions at a time,
-  // rather than relying on raw order_index alone. A question whose
-  // audioClipId doesn't match any of the lesson's clips (shouldn't happen
-  // post-migration) is appended at the end instead of dropped, so the
-  // client-rendered question count always matches the server's scoring
-  // denominator in quiz-submit. The per-clip audio recap below already
-  // degrades gracefully for these (activeClip is undefined).
+  // For Nghe/Đọc, group+reorder questions by their owning clip/passage (in
+  // upload/creation order) so the learner works through one mp3 or one
+  // passage's questions at a time, rather than relying on raw order_index
+  // alone. A question whose audioClipId/readingPassageId doesn't match any
+  // of the lesson's current clips/passages (shouldn't happen post-migration)
+  // is appended at the end instead of dropped, so the client-rendered
+  // question count always matches the server's scoring denominator in
+  // quiz-submit. The per-group recap below already degrades gracefully for
+  // these (activeClip/activePassage is undefined).
   const questions = useMemo(() => {
-    if (category !== "nghe") return rawQuestions;
-    const grouped = (lesson.listeningClips ?? []).flatMap((clip) => rawQuestions.filter((q) => q.audioClipId === clip.id));
-    const groupedIds = new Set(grouped.map((q) => q.id));
-    const orphans = rawQuestions.filter((q) => !groupedIds.has(q.id));
-    return [...grouped, ...orphans];
-  }, [category, lesson.listeningClips, rawQuestions]);
+    if (category === "nghe") {
+      const grouped = (lesson.listeningClips ?? []).flatMap((clip) => rawQuestions.filter((q) => q.audioClipId === clip.id));
+      const groupedIds = new Set(grouped.map((q) => q.id));
+      const orphans = rawQuestions.filter((q) => !groupedIds.has(q.id));
+      return [...grouped, ...orphans];
+    }
+    if (category === "doc") {
+      const grouped = (lesson.readingPassages ?? []).flatMap((p) => rawQuestions.filter((q) => q.readingPassageId === p.id));
+      const groupedIds = new Set(grouped.map((q) => q.id));
+      const orphans = rawQuestions.filter((q) => !groupedIds.has(q.id));
+      return [...grouped, ...orphans];
+    }
+    return rawQuestions;
+  }, [category, lesson.listeningClips, lesson.readingPassages, rawQuestions]);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -77,6 +86,9 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   const isLastQuestion = currentIdx === questions.length - 1;
   const activeClip = category === "nghe" && activeQuestion
     ? (lesson.listeningClips ?? []).find((c) => c.id === activeQuestion.audioClipId)
+    : undefined;
+  const activePassage = category === "doc" && activeQuestion
+    ? (lesson.readingPassages ?? []).find((p) => p.id === activeQuestion.readingPassageId)
     : undefined;
   const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", activeClip?.r2Key, activeClip?.id);
 
@@ -363,22 +375,13 @@ export const QuizPage: React.FC<QuizPageProps> = ({
         </div>
       )}
 
-      {/* Reading passage recap (Đọc exercises only) */}
-      {category === "doc" && lesson.readingText && (
+      {/* Reading passage recap (Đọc exercises only) — shows the passage that owns the current question */}
+      {category === "doc" && activePassage && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">🇩🇪 Tiếng Đức</span>
-            <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{lesson.readingText}</p>
+            <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{activePassage.textDe}</p>
           </div>
-          {lesson.readingTextVi && (
-            <>
-              <div className="h-px bg-slate-100" />
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">🇻🇳 Tiếng Việt</span>
-                <p className="text-xs text-slate-500 leading-relaxed font-sans italic whitespace-pre-wrap">{lesson.readingTextVi}</p>
-              </div>
-            </>
-          )}
         </div>
       )}
 
