@@ -12,19 +12,19 @@ export interface LessonProgressRow {
 export interface LessonContentFlags {
   id: string;
   listeningClips?: { id: string }[];
-  readingText?: string;
+  readingPassages?: { id: string }[];
 }
 
 /**
  * Which quiz categories actually apply to a lesson. Ngữ pháp always applies;
- * Nghe/Đọc only apply if the lesson has at least one listening clip / a
- * reading passage (mirrors the content-gated "Bắt đầu bài tập" buttons on
- * LessonDetailPage).
+ * Nghe/Đọc only apply if the lesson has at least one listening clip / at
+ * least one reading passage (mirrors the content-gated "Bắt đầu bài tập"
+ * buttons on LessonDetailPage).
  */
 export function applicableCategories(lesson: LessonContentFlags): QuizCategory[] {
   const categories: QuizCategory[] = ["nguphap"];
   if ((lesson.listeningClips?.length ?? 0) > 0) categories.push("nghe");
-  if (lesson.readingText) categories.push("doc");
+  if ((lesson.readingPassages?.length ?? 0) > 0) categories.push("doc");
   return categories;
 }
 
