@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, GripVertical } from "lucide-react";
+import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, GripVertical, Search } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
@@ -64,6 +64,7 @@ export const AdminQuizSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<"nguphap" | "nghe" | "doc">("nguphap");
+  const [search, setSearch] = useState("");
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -210,6 +211,12 @@ export const AdminQuizSection: React.FC = () => {
   const inputCls = "w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
   const labelCls = "block text-xs font-bold text-slate-600 mb-1";
 
+  const filteredGroups = groups.filter(
+    (g) =>
+      g.lesson_title.toLowerCase().includes(search.toLowerCase()) ||
+      g.module_title.toLowerCase().includes(search.toLowerCase()),
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-48">
@@ -220,7 +227,19 @@ export const AdminQuizSection: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-display font-black text-slate-900">Quản lý bài tập</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-xl font-display font-black text-slate-900">Quản lý bài tập</h1>
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Tìm bài học..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          />
+        </div>
+      </div>
 
       <div className="flex gap-2 border-b border-slate-200/60">
         {(Object.keys(CATEGORY_LABELS) as ("nguphap" | "nghe" | "doc")[]).map((val) => (
@@ -239,7 +258,7 @@ export const AdminQuizSection: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {groups.map((group) => {
+        {filteredGroups.map((group) => {
           const filteredQuestions = group.questions.filter((q) => q.category === activeTab);
           return (
           <div key={group.lesson_id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
@@ -315,6 +334,11 @@ export const AdminQuizSection: React.FC = () => {
           </div>
           );
         })}
+        {filteredGroups.length === 0 && (
+          <div className="text-center py-10 text-slate-400 text-sm">
+            Không tìm thấy bài học nào khớp với "{search}".
+          </div>
+        )}
       </div>
 
       {/* Edit / Create modal */}
