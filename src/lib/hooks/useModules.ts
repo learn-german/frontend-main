@@ -20,9 +20,8 @@ type SupabaseLesson = {
   speaking_md: string | null;
   listening_url: string | null;
   video_r2_key: string | null;
-  reading_text: string | null;
-  reading_text_vi: string | null;
   listening_clips: { id: string; r2_key: string; order_index: number }[];
+  reading_passages: { id: string; text_de: string; order_index: number }[];
 };
 
 type SupabaseModule = {
@@ -64,8 +63,11 @@ function transformModule(m: SupabaseModule): Module {
       listeningClips: [...(l.listening_clips ?? [])]
         .sort((a, b) => a.order_index - b.order_index)
         .map((c) => ({ id: c.id, r2Key: c.r2_key })),
-      readingText: l.reading_text ?? undefined,
-      readingTextVi: l.reading_text_vi ?? undefined,
+      // Sorted client-side for the same reason as listeningClips above (no
+      // reliance on a 3-level-deep Supabase nested .order() call).
+      readingPassages: [...(l.reading_passages ?? [])]
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((p) => ({ id: p.id, textDe: p.text_de })),
     })),
   };
 }
@@ -94,8 +96,8 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
           youtube_id, duration, order_index, xp_reward,
           next_lesson_id, vocabulary, grammar,
           grammar_md, speaking_md, video_r2_key,
-          reading_text, reading_text_vi,
-          listening_clips (id, r2_key, order_index)
+          listening_clips (id, r2_key, order_index),
+          reading_passages (id, text_de, order_index)
         )
       `)
       .order("order_index")
