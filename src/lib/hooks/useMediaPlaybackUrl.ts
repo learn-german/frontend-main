@@ -4,7 +4,8 @@ import { supabase } from "../supabase";
 export function useMediaPlaybackUrl(
   lessonId: string,
   type: "video" | "audio",
-  objectKey: string | undefined
+  objectKey: string | undefined,
+  clipId?: string,
 ): { url: string | null; loading: boolean; error: string | null } {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +30,8 @@ export function useMediaPlaybackUrl(
         return;
       }
       try {
-        const res = await fetch(`/api/media/playback-url?lessonId=${encodeURIComponent(lessonId)}&type=${type}`, {
+        const clipParam = clipId ? `&clipId=${encodeURIComponent(clipId)}` : "";
+        const res = await fetch(`/api/media/playback-url?lessonId=${encodeURIComponent(lessonId)}&type=${type}${clipParam}`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -44,7 +46,7 @@ export function useMediaPlaybackUrl(
     })();
 
     return () => { cancelled = true; };
-  }, [lessonId, type, objectKey]);
+  }, [lessonId, type, objectKey, clipId]);
 
   return { url, loading, error };
 }

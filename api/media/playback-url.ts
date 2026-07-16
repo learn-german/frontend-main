@@ -66,28 +66,55 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
 
   const lessonId = typeof req.query.lessonId === "string" ? req.query.lessonId : undefined;
   const type = typeof req.query.type === "string" ? req.query.type : undefined;
+  const clipId = typeof req.query.clipId === "string" ? req.query.clipId : undefined;
 
   if (!lessonId || (type !== "video" && type !== "audio")) {
     res.status(400).json({ error: "lessonId and type (video|audio) required" });
     return;
   }
 
-  const column = type === "video" ? "video_r2_key" : "audio_r2_key";
-  const restRes = await fetch(
-    `${process.env.SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&select=${column}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        apikey: process.env.SUPABASE_ANON_KEY!,
-      },
+  let objectKey: string | undefined;
+
+  if (type === "audio" && clipId) {
+    const clipRes = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/listening_clips?id=eq.${encodeURIComponent(clipId)}&select=r2_key,lesson_id`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: process.env.SUPABASE_ANON_KEY!,
+        },
+      }
+    );
+    if (!clipRes.ok) {
+      res.status(404).json({ error: "Clip not found" });
+      return;
     }
-  );
-  if (!restRes.ok) {
-    res.status(404).json({ error: "Lesson not found" });
-    return;
+    const clipRows = (await clipRes.json()) as { r2_key: string; lesson_id: string }[];
+    const clipRow = clipRows[0];
+    if (!clipRow || clipRow.lesson_id !== lessonId) {
+      res.status(404).json({ error: "Clip not found for this lesson" });
+      return;
+    }
+    objectKey = clipRow.r2_key;
+  } else {
+    const column = type === "video" ? "video_r2_key" : "audio_r2_key";
+    const restRes = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&select=${column}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: process.env.SUPABASE_ANON_KEY!,
+        },
+      }
+    );
+    if (!restRes.ok) {
+      res.status(404).json({ error: "Lesson not found" });
+      return;
+    }
+    const rows = (await restRes.json()) as Record<string, string | null>[];
+    objectKey = rows[0]?.[column] ?? undefined;
   }
-  const rows = (await restRes.json()) as Record<string, string | null>[];
-  const objectKey = rows[0]?.[column];
+
   if (!objectKey) {
     res.status(404).json({ error: "Media not found for this lesson" });
     return;

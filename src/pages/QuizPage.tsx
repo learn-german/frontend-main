@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Volume2,
   Check,
@@ -38,8 +38,23 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   onNextLesson,
   onBackToLesson,
 }) => {
-  const { questions, loading: questionsLoading, error: questionsError } = useQuizQuestions(lesson.id, category);
-  const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", lesson.audioR2Key);
+  const { questions: rawQuestions, loading: questionsLoading, error: questionsError } = useQuizQuestions(lesson.id, category);
+
+  // For Nghe, group+reorder questions by their owning clip (in clip upload
+  // order) so the learner works through one mp3's questions at a time,
+  // rather than relying on raw order_index alone. A question whose
+  // audioClipId doesn't match any of the lesson's clips (shouldn't happen
+  // post-migration) is appended at the end instead of dropped, so the
+  // client-rendered question count always matches the server's scoring
+  // denominator in quiz-submit. The per-clip audio recap below already
+  // degrades gracefully for these (activeClip is undefined).
+  const questions = useMemo(() => {
+    if (category !== "nghe") return rawQuestions;
+    const grouped = (lesson.listeningClips ?? []).flatMap((clip) => rawQuestions.filter((q) => q.audioClipId === clip.id));
+    const groupedIds = new Set(grouped.map((q) => q.id));
+    const orphans = rawQuestions.filter((q) => !groupedIds.has(q.id));
+    return [...grouped, ...orphans];
+  }, [category, lesson.listeningClips, rawQuestions]);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -60,6 +75,10 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 
   const activeQuestion = questions[currentIdx];
   const isLastQuestion = currentIdx === questions.length - 1;
+  const activeClip = category === "nghe" && activeQuestion
+    ? (lesson.listeningClips ?? []).find((c) => c.id === activeQuestion.audioClipId)
+    : undefined;
+  const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", activeClip?.r2Key, activeClip?.id);
 
   // Initialize matching UI when question changes
   useEffect(() => {
@@ -327,28 +346,20 @@ export const QuizPage: React.FC<QuizPageProps> = ({
         </span>
       </div>
 
-      {/* Audio recap (Nghe exercises only) */}
-      {category === "nghe" && (lesson.audioR2Key || lesson.listeningUrl) && (
+      {/* Audio recap (Nghe exercises only) — shows the clip that owns the current question */}
+      {category === "nghe" && activeClip && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Headphones className="w-4 h-4 text-orange-500" />
             <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
           </div>
-          {lesson.audioR2Key ? (
-            <>
-              {audioPlayback.loading && <p className="text-xs text-slate-400">Đang tải...</p>}
-              {audioPlayback.url && (
-                <audio controls src={audioPlayback.url} className="w-full rounded-xl">
-                  Trình duyệt không hỗ trợ audio.
-                </audio>
-              )}
-              {audioPlayback.error && <p className="text-xs text-red-500">Không tải được audio: {audioPlayback.error}</p>}
-            </>
-          ) : (
-            <audio controls src={lesson.listeningUrl} className="w-full rounded-xl">
+          {audioPlayback.loading && <p className="text-xs text-slate-400">Đang tải...</p>}
+          {audioPlayback.url && (
+            <audio controls src={audioPlayback.url} className="w-full rounded-xl">
               Trình duyệt không hỗ trợ audio.
             </audio>
           )}
+          {audioPlayback.error && <p className="text-xs text-red-500">Không tải được audio: {audioPlayback.error}</p>}
         </div>
       )}
 

@@ -35,6 +35,7 @@ export interface QuizQuestion {
   category?: "nguphap" | "nghe" | "doc";
   questionText: string;
   audioText?: string;
+  audioClipId?: string;
   options?: string[];
   matchingPairs?: { de: string; vi: string }[];
   explanation: string;
@@ -58,9 +59,8 @@ export interface Lesson {
   grammar: GrammarExplanation;
   grammarMd?: string;
   speakingMd?: string;
-  listeningUrl?: string;
   videoR2Key?: string;
-  audioR2Key?: string;
+  listeningClips: { id: string; r2Key: string }[];
   readingText?: string;
   readingTextVi?: string;
   quiz?: QuizQuestion[];
