@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, GripVertical, Search } from "lucide-react";
+import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, GripVertical, Search, Headphones } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
+import { uploadMedia } from "../../lib/uploadMedia";
+import { useMediaPlaybackUrl } from "../../lib/hooks/useMediaPlaybackUrl";
 
 interface QuizQuestion {
   id: string;
@@ -11,10 +13,18 @@ interface QuizQuestion {
   category: "nguphap" | "nghe" | "doc";
   question_text: string;
   audio_text: string | null;
+  audio_clip_id: string | null;
   options: string[] | null;
   matching_pairs: { de: string; vi: string }[] | null;
   correct_answer: string;
   explanation: string;
+  order_index: number;
+}
+
+interface ListeningClip {
+  id: string;
+  lesson_id: string;
+  r2_key: string;
   order_index: number;
 }
 
@@ -23,6 +33,7 @@ interface LessonGroup {
   lesson_title: string;
   module_title: string;
   questions: QuizQuestion[];
+  clips: ListeningClip[];
 }
 
 type EditForm = Omit<QuizQuestion, "id" | "lesson_id">;
@@ -32,6 +43,7 @@ const EMPTY_FORM: EditForm = {
   category: "nguphap",
   question_text: "",
   audio_text: null,
+  audio_clip_id: null,
   options: ["", "", "", ""],
   matching_pairs: [{ de: "", vi: "" }],
   correct_answer: "",
@@ -59,12 +71,113 @@ const TYPE_COLORS: Record<string, string> = {
   "listening": "bg-amber-50 text-amber-700",
 };
 
+const QuestionTable: React.FC<{
+  questions: QuizQuestion[];
+  onEdit: (q: QuizQuestion) => void;
+  onDelete: (q: QuizQuestion) => void;
+}> = ({ questions, onEdit, onDelete }) => (
+  <table className="w-full text-sm">
+    <thead>
+      <tr className="bg-slate-50">
+        <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-8">#</th>
+        <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-28">Loại</th>
+        <th className="text-left px-4 py-2 text-xs font-bold text-slate-500">Câu hỏi</th>
+        <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-40">Đáp án đúng</th>
+        <th className="px-4 py-2 w-20"></th>
+      </tr>
+    </thead>
+    <tbody className="divide-y divide-slate-50">
+      {questions.map((q) => (
+        <tr key={q.id} className="hover:bg-slate-50/50 group">
+          <td className="px-4 py-2.5 text-slate-400 text-xs">{q.order_index}</td>
+          <td className="px-4 py-2.5">
+            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${TYPE_COLORS[q.type] ?? "bg-slate-100 text-slate-500"}`}>
+              {TYPE_LABELS[q.type] ?? q.type}
+            </span>
+          </td>
+          <td className="px-4 py-2.5 text-slate-700 max-w-xs truncate">{q.question_text}</td>
+          <td className="px-4 py-2.5 text-green-700 font-mono text-xs max-w-[160px] truncate">{q.correct_answer}</td>
+          <td className="px-4 py-2.5">
+            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => onEdit(q)}
+                className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
+                title="Chỉnh sửa"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onDelete(q)}
+                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                title="Xóa"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))}
+      {questions.length === 0 && (
+        <tr>
+          <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-sm">Chưa có câu hỏi nào.</td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+);
+
+const ClipCard: React.FC<{
+  lessonId: string;
+  clip: ListeningClip;
+  index: number;
+  questions: QuizQuestion[];
+  onDeleteClip: (clip: ListeningClip) => void;
+  onAddQuestion: (lessonId: string, nextOrder: number, clipId?: string) => void;
+  onEditQuestion: (q: QuizQuestion) => void;
+  onDeleteQuestion: (q: QuizQuestion) => void;
+}> = ({ lessonId, clip, index, questions, onDeleteClip, onAddQuestion, onEditQuestion, onDeleteQuestion }) => {
+  const playback = useMediaPlaybackUrl(lessonId, "audio", clip.r2_key, clip.id);
+
+  return (
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 p-3 bg-slate-50/60">
+        <span className="text-xs font-display font-bold text-slate-600 shrink-0">File {index + 1}</span>
+        <div className="flex-1 min-w-0">
+          {playback.loading && <p className="text-[11px] text-slate-400">Đang tải...</p>}
+          {playback.url && (
+            <audio controls src={playback.url} className="w-full h-8">
+              Trình duyệt không hỗ trợ audio.
+            </audio>
+          )}
+          {playback.error && <p className="text-[11px] text-red-500">Không tải được: {playback.error}</p>}
+        </div>
+        <button
+          onClick={() => onAddQuestion(lessonId, questions.length, clip.id)}
+          className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors shrink-0"
+        >
+          <Plus className="w-3.5 h-3.5" /> Câu hỏi
+        </button>
+        <button
+          onClick={() => onDeleteClip(clip)}
+          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors shrink-0"
+          title="Xóa file mp3 này (xóa luôn các câu hỏi thuộc file)"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <QuestionTable questions={questions} onEdit={onEditQuestion} onDelete={onDeleteQuestion} />
+    </div>
+  );
+};
+
 export const AdminQuizSection: React.FC = () => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<"nguphap" | "nghe" | "doc">("nguphap");
   const [search, setSearch] = useState("");
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,16 +187,24 @@ export const AdminQuizSection: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<QuizQuestion | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteClipTarget, setDeleteClipTarget] = useState<ListeningClip | null>(null);
+  const [deletingClip, setDeletingClip] = useState(false);
 
   const fetchQuestions = async () => {
-    const [questionsRes, lessonsRes] = await Promise.all([
+    const [questionsRes, lessonsRes, clipsRes] = await Promise.all([
       supabase.from("quiz_questions").select("*").order("lesson_id").order("order_index"),
       supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").order("order_index"),
+      supabase.from("listening_clips").select("*").order("lesson_id").order("order_index"),
     ]);
 
     const questionsByLesson: Record<string, QuizQuestion[]> = {};
     for (const q of questionsRes.data ?? []) {
       (questionsByLesson[q.lesson_id] ??= []).push(q as QuizQuestion);
+    }
+
+    const clipsByLesson: Record<string, ListeningClip[]> = {};
+    for (const c of clipsRes.data ?? []) {
+      (clipsByLesson[c.lesson_id] ??= []).push(c as ListeningClip);
     }
 
     // Build one group per lesson (ALL lessons, not just ones that already
@@ -94,6 +215,7 @@ export const AdminQuizSection: React.FC = () => {
       lesson_title: l.title_vi,
       module_title: (l.modules as unknown as { title_vi: string } | null)?.title_vi ?? "",
       questions: questionsByLesson[l.id] ?? [],
+      clips: clipsByLesson[l.id] ?? [],
     }));
 
     setGroups(grouped);
@@ -102,10 +224,10 @@ export const AdminQuizSection: React.FC = () => {
 
   useEffect(() => { fetchQuestions(); }, []);
 
-  const openCreate = (lessonId: string, nextOrder: number) => {
+  const openCreate = (lessonId: string, nextOrder: number, clipId?: string) => {
     setEditId(null);
     setEditLessonId(lessonId);
-    setForm({ ...EMPTY_FORM, category: activeTab, order_index: nextOrder });
+    setForm({ ...EMPTY_FORM, category: activeTab, order_index: nextOrder, audio_clip_id: clipId ?? null });
     setModalOpen(true);
   };
 
@@ -117,6 +239,7 @@ export const AdminQuizSection: React.FC = () => {
       category: q.category,
       question_text: q.question_text,
       audio_text: q.audio_text,
+      audio_clip_id: q.audio_clip_id,
       options: q.options ?? ["", "", "", ""],
       matching_pairs: q.matching_pairs ?? [{ de: "", vi: "" }],
       correct_answer: q.correct_answer,
@@ -143,6 +266,7 @@ export const AdminQuizSection: React.FC = () => {
       category: form.category,
       question_text: form.question_text,
       audio_text: form.audio_text || null,
+      audio_clip_id: form.category === "nghe" ? form.audio_clip_id : null,
       options: (form.type === "multiple-choice" || form.type === "listening") ? form.options?.filter(Boolean) ?? null : null,
       matching_pairs: form.type === "matching" ? form.matching_pairs?.filter((p) => p.de || p.vi) ?? null : null,
       correct_answer: form.correct_answer,
@@ -178,6 +302,42 @@ export const AdminQuizSection: React.FC = () => {
     } else {
       showToast("Đã xóa câu hỏi.", "success");
       setDeleteTarget(null);
+      fetchQuestions();
+    }
+  };
+
+  const handleUploadClip = async (lessonId: string, file: File) => {
+    setUploadingFor(lessonId);
+    setUploadPct(0);
+    try {
+      const clipId = crypto.randomUUID();
+      const objectKey = await uploadMedia(file, lessonId, "audio", setUploadPct, clipId);
+      const group = groups.find((g) => g.lesson_id === lessonId);
+      const nextOrder = group?.clips.length ?? 0;
+      const { error } = await supabase
+        .from("listening_clips")
+        .insert({ id: clipId, lesson_id: lessonId, r2_key: objectKey, order_index: nextOrder });
+      if (error) throw new Error(error.message);
+      showToast("Đã tải file mp3 lên.", "success");
+      fetchQuestions();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Tải file mp3 thất bại", "warning");
+    } finally {
+      setUploadingFor(null);
+      setUploadPct(null);
+    }
+  };
+
+  const handleDeleteClip = async () => {
+    if (!deleteClipTarget) return;
+    setDeletingClip(true);
+    const { error } = await supabase.from("listening_clips").delete().eq("id", deleteClipTarget.id);
+    setDeletingClip(false);
+    if (error) {
+      showToast("Xóa thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã xóa file mp3 và các câu hỏi thuộc file.", "success");
+      setDeleteClipTarget(null);
       fetchQuestions();
     }
   };
@@ -269,66 +429,67 @@ export const AdminQuizSection: React.FC = () => {
               {expanded[group.lesson_id] ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
               <div className="flex-1">
                 <p className="font-display font-bold text-slate-900 text-sm">{group.lesson_title}</p>
-                <p className="text-xs text-slate-400">{group.module_title} · {filteredQuestions.length} câu hỏi</p>
+                <p className="text-xs text-slate-400">
+                  {group.module_title} · {filteredQuestions.length} câu hỏi
+                  {activeTab === "nghe" && ` · ${group.clips.length} file mp3`}
+                </p>
               </div>
-              <span
-                onClick={(e) => { e.stopPropagation(); openCreate(group.lesson_id, filteredQuestions.length); }}
-                className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
-              </span>
+              {activeTab !== "nghe" && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); openCreate(group.lesson_id, filteredQuestions.length); }}
+                  className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
+                </span>
+              )}
             </button>
 
             {expanded[group.lesson_id] && (
-              <div className="border-t border-slate-100">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-8">#</th>
-                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-28">Loại</th>
-                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500">Câu hỏi</th>
-                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 w-40">Đáp án đúng</th>
-                      <th className="px-4 py-2 w-20"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {filteredQuestions.map((q) => (
-                      <tr key={q.id} className="hover:bg-slate-50/50 group">
-                        <td className="px-4 py-2.5 text-slate-400 text-xs">{q.order_index}</td>
-                        <td className="px-4 py-2.5">
-                          <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${TYPE_COLORS[q.type] ?? "bg-slate-100 text-slate-500"}`}>
-                            {TYPE_LABELS[q.type] ?? q.type}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-700 max-w-xs truncate">{q.question_text}</td>
-                        <td className="px-4 py-2.5 text-green-700 font-mono text-xs max-w-[160px] truncate">{q.correct_answer}</td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openEdit(q)}
-                              className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
-                              title="Chỉnh sửa"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(q)}
-                              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                              title="Xóa"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredQuestions.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-sm">Chưa có câu hỏi nào.</td>
-                      </tr>
+              <div className="border-t border-slate-100 p-4 space-y-3">
+                {activeTab === "nghe" ? (
+                  <>
+                    <label className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-slate-100 transition w-fit">
+                      <Headphones className="w-4 h-4 text-orange-500 shrink-0" />
+                      <span className="text-xs font-bold text-slate-600">
+                        {uploadingFor === group.lesson_id
+                          ? `Đang tải lên... ${uploadPct}%`
+                          : "Tải file mp3 mới (.mp3 / .m4a / .wav)"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
+                        className="hidden"
+                        disabled={uploadingFor !== null}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleUploadClip(group.lesson_id, f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {group.clips.length === 0 ? (
+                      <p className="text-center py-6 text-slate-400 text-sm">Chưa có file mp3 nào cho bài học này.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {group.clips.map((clip, idx) => (
+                          <ClipCard
+                            key={clip.id}
+                            lessonId={group.lesson_id}
+                            clip={clip}
+                            index={idx}
+                            questions={filteredQuestions.filter((q) => q.audio_clip_id === clip.id)}
+                            onDeleteClip={setDeleteClipTarget}
+                            onAddQuestion={openCreate}
+                            onEditQuestion={openEdit}
+                            onDeleteQuestion={setDeleteTarget}
+                          />
+                        ))}
+                      </div>
                     )}
-                  </tbody>
-                </table>
+                  </>
+                ) : (
+                  <QuestionTable questions={filteredQuestions} onEdit={openEdit} onDelete={setDeleteTarget} />
+                )}
               </div>
             )}
           </div>
@@ -536,7 +697,7 @@ export const AdminQuizSection: React.FC = () => {
         </div>
       )}
 
-      {/* Confirm delete */}
+      {/* Confirm delete question */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
@@ -559,6 +720,33 @@ export const AdminQuizSection: React.FC = () => {
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors"
               >
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Xóa vĩnh viễn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete clip */}
+      {deleteClipTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-slate-900">Xóa file mp3?</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Toàn bộ câu hỏi thuộc file này cũng sẽ bị xóa. Hành động này không thể hoàn tác.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setDeleteClipTarget(null)}>Hủy</Button>
+              <button
+                onClick={handleDeleteClip}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors"
+              >
+                {deletingClip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 Xóa vĩnh viễn
               </button>
             </div>
