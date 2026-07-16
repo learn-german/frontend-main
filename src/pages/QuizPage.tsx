@@ -43,16 +43,18 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   // For Nghe, group+reorder questions by their owning clip (in clip upload
   // order) so the learner works through one mp3's questions at a time,
   // rather than relying on raw order_index alone. A question whose
-  // audioClipId doesn't match any of the lesson's clips is defensively
-  // dropped (shouldn't happen post-migration, but avoids an ungrouped
-  // orphan question breaking the per-clip audio recap below).
-  const questions = useMemo(
-    () =>
-      category === "nghe"
-        ? (lesson.listeningClips ?? []).flatMap((clip) => rawQuestions.filter((q) => q.audioClipId === clip.id))
-        : rawQuestions,
-    [category, lesson.listeningClips, rawQuestions],
-  );
+  // audioClipId doesn't match any of the lesson's clips (shouldn't happen
+  // post-migration) is appended at the end instead of dropped, so the
+  // client-rendered question count always matches the server's scoring
+  // denominator in quiz-submit. The per-clip audio recap below already
+  // degrades gracefully for these (activeClip is undefined).
+  const questions = useMemo(() => {
+    if (category !== "nghe") return rawQuestions;
+    const grouped = (lesson.listeningClips ?? []).flatMap((clip) => rawQuestions.filter((q) => q.audioClipId === clip.id));
+    const groupedIds = new Set(grouped.map((q) => q.id));
+    const orphans = rawQuestions.filter((q) => !groupedIds.has(q.id));
+    return [...grouped, ...orphans];
+  }, [category, lesson.listeningClips, rawQuestions]);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
