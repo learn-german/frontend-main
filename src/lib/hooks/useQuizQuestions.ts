@@ -18,7 +18,7 @@ export function useQuizQuestions(lessonId: string, category: "nguphap" | "nghe" 
 
     supabase
       .from("quiz_questions_public")
-      .select("id, type, category, question_text, audio_text, options, matching_pairs, explanation, order_index")
+      .select("id, type, category, question_text, audio_text, audio_clip_id, options, matching_pairs, explanation, order_index")
       .eq("lesson_id", lessonId)
       .eq("category", category)
       .order("order_index")
@@ -33,6 +33,7 @@ export function useQuizQuestions(lessonId: string, category: "nguphap" | "nghe" 
               category: q.category as QuizQuestion["category"],
               questionText: q.question_text as string,
               audioText: (q.audio_text as string | null) ?? undefined,
+              audioClipId: (q.audio_clip_id as string | null) ?? undefined,
               options: (q.options as string[] | null) ?? undefined,
               matchingPairs: (q.matching_pairs as { de: string; vi: string }[] | null) ?? undefined,
               explanation: (q.explanation as string | null) ?? "",
