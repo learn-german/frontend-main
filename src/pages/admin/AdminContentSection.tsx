@@ -26,7 +26,7 @@ interface AdminModule {
 
 const LESSON_SELECT = `id, title, title_vi, duration, level, xp_reward, youtube_id,
                 objective, summary, vocabulary, grammar, grammar_md, speaking_md,
-                listening_url, video_r2_key, audio_r2_key,
+                video_r2_key,
                 reading_text, reading_text_vi, order_index, status`;
 
 const SortableLessonRow: React.FC<{
