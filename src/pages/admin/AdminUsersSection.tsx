@@ -17,8 +17,7 @@ interface ProgressLesson {
   titleVi: string;
   moduleTitle: string;
   level: string;
-  audioR2Key?: string;
-  listeningUrl?: string;
+  listeningClips: { id: string }[];
   readingText?: string;
 }
 
@@ -87,7 +86,7 @@ export const AdminUsersSection: React.FC = () => {
       .from("modules")
       .select(`
         id, order_index, title_vi, level,
-        lessons (id, title, title_vi, order_index, status, audio_r2_key, listening_url, reading_text)
+        lessons (id, title, title_vi, order_index, status, reading_text, listening_clips(id))
       `)
       .order("order_index")
       .order("order_index", { referencedTable: "lessons" })
@@ -95,14 +94,13 @@ export const AdminUsersSection: React.FC = () => {
         const flat: ProgressLesson[] = (data ?? []).flatMap((m) =>
           (m.lessons ?? [])
             .filter((l: { status: string }) => l.status === "published")
-            .map((l: { id: string; title: string; title_vi: string; audio_r2_key: string | null; listening_url: string | null; reading_text: string | null }) => ({
+            .map((l: { id: string; title: string; title_vi: string; reading_text: string | null; listening_clips: { id: string }[] | null }) => ({
               id: l.id,
               title: l.title,
               titleVi: l.title_vi,
               moduleTitle: m.title_vi,
               level: m.level,
-              audioR2Key: l.audio_r2_key ?? undefined,
-              listeningUrl: l.listening_url ?? undefined,
+              listeningClips: l.listening_clips ?? [],
               readingText: l.reading_text ?? undefined,
             })),
         );
@@ -514,7 +512,7 @@ export const AdminUsersSection: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {unlockedLessons.map((l) => {
-                      const hasNghe = !!(l.audioR2Key || l.listeningUrl);
+                      const hasNghe = l.listeningClips.length > 0;
                       const hasDoc = !!l.readingText;
                       return (
                         <tr key={l.id}>
