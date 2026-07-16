@@ -14,6 +14,7 @@ interface QuizQuestion {
   question_text: string;
   audio_text: string | null;
   audio_clip_id: string | null;
+  reading_passage_id: string | null;
   options: string[] | null;
   matching_pairs: { de: string; vi: string }[] | null;
   correct_answer: string;
@@ -28,12 +29,20 @@ interface ListeningClip {
   order_index: number;
 }
 
+interface ReadingPassage {
+  id: string;
+  lesson_id: string;
+  text_de: string;
+  order_index: number;
+}
+
 interface LessonGroup {
   lesson_id: string;
   lesson_title: string;
   module_title: string;
   questions: QuizQuestion[];
   clips: ListeningClip[];
+  passages: ReadingPassage[];
 }
 
 type EditForm = Omit<QuizQuestion, "id" | "lesson_id">;
@@ -44,6 +53,7 @@ const EMPTY_FORM: EditForm = {
   question_text: "",
   audio_text: null,
   audio_clip_id: null,
+  reading_passage_id: null,
   options: ["", "", "", ""],
   matching_pairs: [{ de: "", vi: "" }],
   correct_answer: "",
@@ -132,7 +142,7 @@ const ClipCard: React.FC<{
   index: number;
   questions: QuizQuestion[];
   onDeleteClip: (clip: ListeningClip) => void;
-  onAddQuestion: (lessonId: string, nextOrder: number, clipId?: string) => void;
+  onAddQuestion: (lessonId: string, nextOrder: number, refId?: string) => void;
   onEditQuestion: (q: QuizQuestion) => void;
   onDeleteQuestion: (q: QuizQuestion) => void;
 }> = ({ lessonId, clip, index, questions, onDeleteClip, onAddQuestion, onEditQuestion, onDeleteQuestion }) => {
@@ -170,6 +180,64 @@ const ClipCard: React.FC<{
   );
 };
 
+const PassageCard: React.FC<{
+  lessonId: string;
+  passage: ReadingPassage;
+  index: number;
+  questions: QuizQuestion[];
+  saving: boolean;
+  onSavePassage: (passageId: string, textDe: string) => void;
+  onDeletePassage: (passage: ReadingPassage) => void;
+  onAddQuestion: (lessonId: string, nextOrder: number, refId?: string) => void;
+  onEditQuestion: (q: QuizQuestion) => void;
+  onDeleteQuestion: (q: QuizQuestion) => void;
+}> = ({ lessonId, passage, index, questions, saving, onSavePassage, onDeletePassage, onAddQuestion, onEditQuestion, onDeleteQuestion }) => {
+  const [textDe, setTextDe] = useState(passage.text_de);
+  const dirty = textDe !== passage.text_de;
+
+  return (
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <div className="p-3 bg-slate-50/60 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-display font-bold text-slate-600 shrink-0">Đoạn {index + 1}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {dirty && (
+              <button
+                onClick={() => onSavePassage(passage.id, textDe)}
+                disabled={saving}
+                className="text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+              >
+                {saving ? "Đang lưu..." : "Lưu đoạn văn"}
+              </button>
+            )}
+            <button
+              onClick={() => onAddQuestion(lessonId, questions.length, passage.id)}
+              className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Câu hỏi
+            </button>
+            <button
+              onClick={() => onDeletePassage(passage)}
+              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+              title="Xóa đoạn văn này (xóa luôn các câu hỏi thuộc đoạn)"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+        <textarea
+          rows={4}
+          value={textDe}
+          onChange={(e) => setTextDe(e.target.value)}
+          placeholder="Nhập đoạn văn tiếng Đức..."
+          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-y"
+        />
+      </div>
+      <QuestionTable questions={questions} onEdit={onEditQuestion} onDelete={onDeleteQuestion} />
+    </div>
+  );
+};
+
 export const AdminQuizSection: React.FC = () => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,6 +246,7 @@ export const AdminQuizSection: React.FC = () => {
   const [search, setSearch] = useState("");
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [savingPassageId, setSavingPassageId] = useState<string | null>(null);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -189,12 +258,15 @@ export const AdminQuizSection: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteClipTarget, setDeleteClipTarget] = useState<ListeningClip | null>(null);
   const [deletingClip, setDeletingClip] = useState(false);
+  const [deletePassageTarget, setDeletePassageTarget] = useState<ReadingPassage | null>(null);
+  const [deletingPassage, setDeletingPassage] = useState(false);
 
   const fetchQuestions = async () => {
-    const [questionsRes, lessonsRes, clipsRes] = await Promise.all([
+    const [questionsRes, lessonsRes, clipsRes, passagesRes] = await Promise.all([
       supabase.from("quiz_questions").select("*").order("lesson_id").order("order_index"),
       supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").order("order_index"),
       supabase.from("listening_clips").select("*").order("lesson_id").order("order_index"),
+      supabase.from("reading_passages").select("*").order("lesson_id").order("order_index"),
     ]);
 
     const questionsByLesson: Record<string, QuizQuestion[]> = {};
@@ -207,6 +279,11 @@ export const AdminQuizSection: React.FC = () => {
       (clipsByLesson[c.lesson_id] ??= []).push(c as ListeningClip);
     }
 
+    const passagesByLesson: Record<string, ReadingPassage[]> = {};
+    for (const p of passagesRes.data ?? []) {
+      (passagesByLesson[p.lesson_id] ??= []).push(p as ReadingPassage);
+    }
+
     // Build one group per lesson (ALL lessons, not just ones that already
     // have questions) so admins can add the first Nghe/Đọc question for
     // any lesson, not only lessons that already have Ngữ pháp questions.
@@ -216,6 +293,7 @@ export const AdminQuizSection: React.FC = () => {
       module_title: (l.modules as unknown as { title_vi: string } | null)?.title_vi ?? "",
       questions: questionsByLesson[l.id] ?? [],
       clips: clipsByLesson[l.id] ?? [],
+      passages: passagesByLesson[l.id] ?? [],
     }));
 
     setGroups(grouped);
@@ -224,10 +302,16 @@ export const AdminQuizSection: React.FC = () => {
 
   useEffect(() => { fetchQuestions(); }, []);
 
-  const openCreate = (lessonId: string, nextOrder: number, clipId?: string) => {
+  const openCreate = (lessonId: string, nextOrder: number, refId?: string) => {
     setEditId(null);
     setEditLessonId(lessonId);
-    setForm({ ...EMPTY_FORM, category: activeTab, order_index: nextOrder, audio_clip_id: clipId ?? null });
+    setForm({
+      ...EMPTY_FORM,
+      category: activeTab,
+      order_index: nextOrder,
+      audio_clip_id: activeTab === "nghe" ? (refId ?? null) : null,
+      reading_passage_id: activeTab === "doc" ? (refId ?? null) : null,
+    });
     setModalOpen(true);
   };
 
@@ -240,6 +324,7 @@ export const AdminQuizSection: React.FC = () => {
       question_text: q.question_text,
       audio_text: q.audio_text,
       audio_clip_id: q.audio_clip_id,
+      reading_passage_id: q.reading_passage_id,
       options: q.options ?? ["", "", "", ""],
       matching_pairs: q.matching_pairs ?? [{ de: "", vi: "" }],
       correct_answer: q.correct_answer,
@@ -267,6 +352,7 @@ export const AdminQuizSection: React.FC = () => {
       question_text: form.question_text,
       audio_text: form.audio_text || null,
       audio_clip_id: form.category === "nghe" ? form.audio_clip_id : null,
+      reading_passage_id: form.category === "doc" ? form.reading_passage_id : null,
       options: (form.type === "multiple-choice" || form.type === "listening") ? form.options?.filter(Boolean) ?? null : null,
       matching_pairs: form.type === "matching" ? form.matching_pairs?.filter((p) => p.de || p.vi) ?? null : null,
       correct_answer: form.correct_answer,
@@ -338,6 +424,45 @@ export const AdminQuizSection: React.FC = () => {
     } else {
       showToast("Đã xóa file mp3 và các câu hỏi thuộc file.", "success");
       setDeleteClipTarget(null);
+      fetchQuestions();
+    }
+  };
+
+  const handleAddPassage = async (lessonId: string) => {
+    const group = groups.find((g) => g.lesson_id === lessonId);
+    const nextOrder = group?.passages.length ?? 0;
+    const { error } = await supabase
+      .from("reading_passages")
+      .insert({ lesson_id: lessonId, text_de: "", order_index: nextOrder });
+    if (error) {
+      showToast("Thêm đoạn văn thất bại: " + error.message, "warning");
+    } else {
+      fetchQuestions();
+    }
+  };
+
+  const handleSavePassage = async (passageId: string, textDe: string) => {
+    setSavingPassageId(passageId);
+    const { error } = await supabase.from("reading_passages").update({ text_de: textDe }).eq("id", passageId);
+    setSavingPassageId(null);
+    if (error) {
+      showToast("Lưu thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã lưu đoạn văn.", "success");
+      fetchQuestions();
+    }
+  };
+
+  const handleDeletePassage = async () => {
+    if (!deletePassageTarget) return;
+    setDeletingPassage(true);
+    const { error } = await supabase.from("reading_passages").delete().eq("id", deletePassageTarget.id);
+    setDeletingPassage(false);
+    if (error) {
+      showToast("Xóa thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã xóa đoạn văn và các câu hỏi thuộc đoạn.", "success");
+      setDeletePassageTarget(null);
       fetchQuestions();
     }
   };
@@ -432,9 +557,10 @@ export const AdminQuizSection: React.FC = () => {
                 <p className="text-xs text-slate-400">
                   {group.module_title} · {filteredQuestions.length} câu hỏi
                   {activeTab === "nghe" && ` · ${group.clips.length} file mp3`}
+                  {activeTab === "doc" && ` · ${group.passages.length} đoạn văn`}
                 </p>
               </div>
-              {activeTab !== "nghe" && (
+              {activeTab !== "nghe" && activeTab !== "doc" && (
                 <span
                   onClick={(e) => { e.stopPropagation(); openCreate(group.lesson_id, filteredQuestions.length); }}
                   className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
@@ -479,6 +605,36 @@ export const AdminQuizSection: React.FC = () => {
                             index={idx}
                             questions={filteredQuestions.filter((q) => q.audio_clip_id === clip.id)}
                             onDeleteClip={setDeleteClipTarget}
+                            onAddQuestion={openCreate}
+                            onEditQuestion={openEdit}
+                            onDeleteQuestion={setDeleteTarget}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : activeTab === "doc" ? (
+                  <>
+                    <button
+                      onClick={() => handleAddPassage(group.lesson_id)}
+                      className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors w-fit"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Thêm đoạn văn mới
+                    </button>
+                    {group.passages.length === 0 ? (
+                      <p className="text-center py-6 text-slate-400 text-sm">Chưa có đoạn văn nào cho bài học này.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {group.passages.map((passage, idx) => (
+                          <PassageCard
+                            key={passage.id}
+                            lessonId={group.lesson_id}
+                            passage={passage}
+                            index={idx}
+                            questions={filteredQuestions.filter((q) => q.reading_passage_id === passage.id)}
+                            saving={savingPassageId === passage.id}
+                            onSavePassage={handleSavePassage}
+                            onDeletePassage={setDeletePassageTarget}
                             onAddQuestion={openCreate}
                             onEditQuestion={openEdit}
                             onDeleteQuestion={setDeleteTarget}
@@ -747,6 +903,33 @@ export const AdminQuizSection: React.FC = () => {
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors"
               >
                 {deletingClip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Xóa vĩnh viễn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete passage */}
+      {deletePassageTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-slate-900">Xóa đoạn văn?</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Toàn bộ câu hỏi thuộc đoạn này cũng sẽ bị xóa. Hành động này không thể hoàn tác.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setDeletePassageTarget(null)}>Hủy</Button>
+              <button
+                onClick={handleDeletePassage}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors"
+              >
+                {deletingPassage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 Xóa vĩnh viễn
               </button>
             </div>
