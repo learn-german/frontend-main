@@ -16,9 +16,9 @@ import {
 import { LevelBadge, Button } from "../components/DesignSystem";
 import { VideoPlayer } from "../components/VideoPlayer";
 import { MarkdownBlock } from "../components/MarkdownBlock";
+import { ListeningClipPlayer } from "../components/ListeningClipPlayer";
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
-import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 
 interface LessonDetailPageProps {
   lesson: Lesson;
@@ -40,7 +40,6 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
   const [bottomTab, setBottomTab] = useState<BottomTab>("tuvung");
-  const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", lesson.audioR2Key);
 
   const handlePronounce = (text: string) => {
     if ("speechSynthesis" in window) {
@@ -228,33 +227,17 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Nghe tab */}
           {bottomTab === "nghe" && (
             <div className="space-y-4">
-              {lesson.audioR2Key ? (
+              {lesson.listeningClips.length > 0 ? (
                 <>
                   <div className="flex items-center gap-2 mb-2">
                     <Headphones className="w-4 h-4 text-orange-500" />
                     <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
                   </div>
-                  {audioPlayback.loading && <p className="text-xs text-slate-400">Đang tải...</p>}
-                  {audioPlayback.url && (
-                    <audio controls src={audioPlayback.url} className="w-full rounded-xl">
-                      Trình duyệt không hỗ trợ audio.
-                    </audio>
-                  )}
-                  {audioPlayback.error && <p className="text-xs text-red-500">Không tải được audio: {audioPlayback.error}</p>}
-                </>
-              ) : lesson.listeningUrl ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Headphones className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
+                  <div className="space-y-4">
+                    {lesson.listeningClips.map((clip, idx) => (
+                      <ListeningClipPlayer key={clip.id} lessonId={lesson.id} clip={clip} label={`File ${idx + 1}`} />
+                    ))}
                   </div>
-                  <audio
-                    controls
-                    src={lesson.listeningUrl}
-                    className="w-full rounded-xl"
-                  >
-                    Trình duyệt không hỗ trợ audio.
-                  </audio>
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
@@ -265,7 +248,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   <p className="text-xs text-slate-400">Bài luyện nghe cho bài học này đang được chuẩn bị.</p>
                 </div>
               )}
-              {(lesson.audioR2Key || lesson.listeningUrl) && (
+              {lesson.listeningClips.length > 0 && (
                 <div className="flex justify-center pt-2">
                   <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
                     Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
