@@ -6,6 +6,7 @@ export interface UserStats {
   lastPlayedDate?: string;
   completedLessons: string[];
   quizScores: Record<string, number>;
+  quizScoresByCategory: Record<string, Partial<Record<"nguphap" | "nghe" | "doc", number>>>;
   unlockedLevels: Level[];
 }
 

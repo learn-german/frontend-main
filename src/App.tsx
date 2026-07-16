@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { AppState, Lesson, Module } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
 import { useLessonPositions } from "./lib/hooks/useLessonPositions";
@@ -28,9 +28,10 @@ export default function App() {
   // Authentication states
   const [user, setUser] = useState<{ id: string; email: string; fullName: string; role: string } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const { stats, setStats } = useUserStats(user?.id ?? null);
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
   const { positions } = useLessonPositions(user?.id ?? null);
+  const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
+  const { stats, applyLessonCompleteReward, applyQuizResult } = useUserStats(user?.id ?? null, flatLessons);
 
   // Router page state
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
@@ -125,10 +126,11 @@ export default function App() {
     setCurrentPage("lesson-detail");
   };
 
-  // Marks a lesson completed via Edge Function (server-side XP + streak)
+  // Awards the "mark complete" bonus via Edge Function (server-side XP + streak).
+  // completedLessons itself is no longer set here — it's fully derived from
+  // quiz scores in useUserStats, so this only fires once that's already true
+  // (see LessonDetailPage's gating on stats.completedLessons).
   const handleMarkComplete = async (lessonId: string) => {
-    if (stats.completedLessons.includes(lessonId)) return;
-
     const { data, error } = await supabase.functions.invoke(`lesson-complete/${lessonId}`, {
       method: "POST",
     });
@@ -140,35 +142,19 @@ export default function App() {
 
     if (data?.alreadyCompleted) return;
 
-    setStats((prev) => ({
-      ...prev,
-      completedLessons: [...prev.completedLessons, lessonId],
-      xp: prev.xp + (data?.xpAwarded ?? 15),
-      streak: data?.newStreak ?? prev.streak,
-    }));
+    applyLessonCompleteReward(data?.xpAwarded ?? 15, data?.newStreak ?? stats.streak);
   };
 
-  // Triggers after completing a quiz (XP is awarded server-side by quiz-submit EF)
+  // Triggers after completing a quiz (XP is awarded server-side by quiz-submit EF).
+  // Records the category-specific score; completedLessons re-derives automatically.
   const handleQuizFinished = (scorePercentage: number, xpEarned: number) => {
-    setStats((prev) => {
-      const updatedCompleted = scorePercentage >= 80 && !prev.completedLessons.includes(selectedLessonId)
-        ? [...prev.completedLessons, selectedLessonId]
-        : prev.completedLessons;
-
-      return {
-        ...prev,
-        completedLessons: updatedCompleted,
-        quizScores: { ...prev.quizScores, [selectedLessonId]: scorePercentage },
-        xp: prev.xp + xpEarned,
-      };
-    });
+    applyQuizResult(selectedLessonId, activeExerciseCategory, scorePercentage, xpEarned);
   };
 
   // Find active Lesson detail item — no fallback to flatLessons[0]: if the
   // selected id isn't found (deleted, or just reverted to draft while the
   // learner was on it), we must show a "not available" message, not a
   // different lesson silently swapped in.
-  const flatLessons = modules.flatMap(m => m.lessons);
   const activeLessonObject: Lesson | undefined = flatLessons.find(l => l.id === selectedLessonId);
 
   // Logic to proceed to NEXT lesson

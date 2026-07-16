@@ -4,15 +4,14 @@
  */
 
 import React from "react";
-import { 
-  Trophy, 
-  Flame, 
-  BookOpen, 
-  PlayCircle, 
-  CheckCircle, 
-  TrendingUp, 
-  Plus, 
-  Zap,
+import {
+  Trophy,
+  Flame,
+  BookOpen,
+  PlayCircle,
+  CheckCircle,
+  TrendingUp,
+  Plus,
   ArrowRight,
   ListRestart,
   HeartCrack,
@@ -163,58 +162,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </div>
 
-          {/* Recommended quick activities / interactive card */}
-          <div className="space-y-4">
-            <h3 className="text-base font-display font-extrabold text-slate-900 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-500 animate-pulse" /> Đề xuất rèn luyện nhanh
-            </h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              <div className="bg-slate-50/50 border border-slate-200/60 hover:border-orange-100 p-5 rounded-2xl flex items-start gap-4 hover:bg-white duration-200 transition">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center shrink-0 font-display font-bold text-sm">
-                  ⚡
-                </div>
-                <div>
-                  <h4 className="text-sm font-display font-bold text-slate-900 font-sans">Chiến dịch lướt từ vựng</h4>
-                  <p className="text-[11px] text-slate-500 leading-normal mt-1">
-                    Học ngẫu nhiên 10 từ vựng cốt lõi thường gặp nhất trong các đề thi nói hội thoại của Goethe.
-                  </p>
-                  <Button 
-                    id="btn-dash-vocab-quiz"
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-orange-600 p-0 hover:bg-transparent hover:underline mt-2 flex items-center text-xs font-bold whitespace-nowrap"
-                    onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
-                  >
-                    Xem bài học liên quan <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-slate-50/50 border border-slate-200/60 hover:border-amber-100 p-5 rounded-2xl flex items-start gap-4 hover:bg-white duration-200 transition">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 text-sm">
-                  🎧
-                </div>
-                <div>
-                  <h4 className="text-sm font-display font-bold text-slate-900 font-sans">Luyện nghe hội thoại</h4>
-                  <p className="text-[11px] text-slate-500 leading-normal mt-1">
-                    Rèn luyện thói quen phản xạ âm thanh qua 4 giọng đọc máy chuẩn bản xứ miền Tây nước Đức.
-                  </p>
-                  <Button 
-                    id="btn-dash-listening-drill"
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-amber-600 p-0 hover:bg-transparent hover:underline mt-2 flex items-center text-xs font-bold whitespace-nowrap"
-                    onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
-                  >
-                    Mở bài nghe mẫu <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </div>
-              </div>
-
-            </div>
-          </div>
 
         </div>
 

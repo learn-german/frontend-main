@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Check, Lock, Play, ArrowRight, LockKeyhole, Clock } from "lucide-react";
 import { ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module, LessonPosition } from "../lib/appTypes";
@@ -60,6 +60,19 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
     }
     return "locked";
   };
+
+  useEffect(() => {
+    if (allLessons.length === 0) return;
+    const current = allLessons.find(({ item, indexInAll }) => {
+      if (item.kind !== "lesson") return false;
+      return getLessonStatus(item.lesson.id, indexInAll) === "current";
+    });
+    if (!current) return;
+    const id = idOf(current.item);
+    document.getElementById(`roadmap-lesson-card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Only run once per fresh lesson list (e.g. on mount / module unlock change) — not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allLessons.length]);
 
   const totalLessons = allLessons.length;
   const completedTotal = stats.completedLessons.length;
@@ -151,7 +164,8 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
                 <div
                   key={lesson.id}
                   id={`roadmap-lesson-card-${lesson.id}`}
-                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between min-h-[170px] relative overflow-hidden group ${cardStyles[status]}`}
+                  onClick={() => status !== "locked" && onSelectLesson(lesson.id)}
+                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between min-h-[170px] relative overflow-hidden group ${cardStyles[status]} ${status !== "locked" ? "cursor-pointer" : ""}`}
                 >
                   {/* Top section indicators */}
                   <div className="flex justify-between items-start gap-4">
@@ -163,6 +177,11 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
                         {status === "current" && (
                           <span className="bg-orange-600 text-white text-[9px] font-display font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wide">
                             Đang học
+                          </span>
+                        )}
+                        {status === "completed" && (
+                          <span className="bg-green-600 text-white text-[9px] font-display font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wide">
+                            Đã xong
                           </span>
                         )}
                       </div>
