@@ -179,6 +179,24 @@ export const QuizPage: React.FC<QuizPageProps> = ({
     return "";
   };
 
+  const hasAnsweredCurrent = (): boolean => {
+    if (!activeQuestion) return false;
+    if (activeQuestion.type === "multiple-choice" || activeQuestion.type === "listening") {
+      return selectedOption !== "";
+    }
+    if (activeQuestion.type === "fill-blank") {
+      if (fillBlankCount > 0) {
+        return fillBlankValues.length === fillBlankCount && fillBlankValues.every((v) => v.trim() !== "");
+      }
+      return fillBlankValue.trim() !== "";
+    }
+    if (activeQuestion.type === "matching") {
+      const totalPairs = activeQuestion.matchingPairs?.length ?? 0;
+      return totalPairs > 0 && Object.keys(matchedPairs).length >= totalPairs;
+    }
+    return false;
+  };
+
   const handleNext = () => {
     const answer = getCurrentAnswerString();
     const updated = { ...answers, [activeQuestion.id]: answer };
@@ -618,6 +636,18 @@ export const QuizPage: React.FC<QuizPageProps> = ({
             <div className="pt-3 flex justify-end text-xs font-display font-bold text-slate-400">
               Đã khớp: {Object.keys(matchedPairs).length} / {activeQuestion.matchingPairs?.length}
             </div>
+          </div>
+        )}
+
+        {/* Post-answer explanation — shown once the learner has fully answered the current question, any type */}
+        {hasAnsweredCurrent() && activeQuestion.explanation && (
+          <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl space-y-1.5">
+            <span className="text-[10px] font-display font-bold text-blue-600 uppercase tracking-wider">
+              💡 Giải thích
+            </span>
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {activeQuestion.explanation}
+            </p>
           </div>
         )}
       </div>
