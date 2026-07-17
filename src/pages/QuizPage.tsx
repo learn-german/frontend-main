@@ -95,9 +95,9 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   // segments.length - 1 is the blank count. Questions with no "{{blank}}"
   // token at all (legacy single-answer fill-blank) yield a 1-element array
   // and fillBlankCount 0.
-  const isSplitFillBlank = activeQuestion?.type === "fill-blank" && !!activeQuestion.answerText;
+  const isSplitFillBlank = activeQuestion?.type === "fill-blank" && !!activeQuestion.answerText?.trim();
   const fillBlankSource = activeQuestion?.type === "fill-blank"
-    ? (activeQuestion.answerText || activeQuestion.questionText)
+    ? (activeQuestion.answerText?.trim() ? activeQuestion.answerText : activeQuestion.questionText)
     : "";
   const fillBlankSegments = activeQuestion?.type === "fill-blank"
     ? fillBlankSource.split("{{blank}}")
