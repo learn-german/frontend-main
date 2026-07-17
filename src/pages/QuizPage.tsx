@@ -319,7 +319,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
                 key={q.id}
                 className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs"
               >
-                <p className="font-display font-bold text-slate-800 leading-tight mb-1">
+                <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
                   Câu {idx + 1}: {q.questionText}
                 </p>
                 <p className="text-slate-500 text-[11px] leading-relaxed">
@@ -422,7 +422,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
             {activeQuestion.type === "listening" && "Kiểm tra kỹ năng nghe"}
           </span>
           {!(activeQuestion.type === "fill-blank" && !isSplitFillBlank && fillBlankCount > 0) && (
-            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 leading-snug">
+            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 leading-snug whitespace-pre-wrap">
               {activeQuestion.questionText}
             </h2>
           )}
@@ -467,7 +467,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
         {/* FILL IN THE BLANK — multi-blank inline (question_text has 1+ {{blank}} tokens) */}
         {activeQuestion.type === "fill-blank" && fillBlankCount > 0 && (
           <div className="space-y-3">
-            <p className="text-sm sm:text-base text-slate-800 leading-loose font-sans">
+            <p className="text-sm sm:text-base text-slate-800 leading-loose font-sans whitespace-pre-wrap">
               {fillBlankSegments.map((segment, i) => (
                 <React.Fragment key={i}>
                   {segment}
