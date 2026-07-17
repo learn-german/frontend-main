@@ -61,7 +61,7 @@ serve(async (req) => {
     // Read quiz_questions base table (has correct_answer, never exposed to client)
     const { data: questions, error: qErr } = await supabase
       .from("quiz_questions")
-      .select("id, type, question_text, correct_answer")
+      .select("id, type, question_text, answer_text, correct_answer")
       .eq("lesson_id", lesson_id)
       .eq("category", category);
 
