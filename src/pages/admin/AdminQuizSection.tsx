@@ -81,6 +81,8 @@ const TYPE_COLORS: Record<string, string> = {
   "listening": "bg-amber-50 text-amber-700",
 };
 
+const hasBlankMarkers = (text: string): boolean => /\{\{[^}]*\}\}/.test(text);
+
 const QuestionTable: React.FC<{
   questions: QuizQuestion[];
   onEdit: (q: QuizQuestion) => void;
@@ -261,6 +263,8 @@ export const AdminQuizSection: React.FC = () => {
   const [deletePassageTarget, setDeletePassageTarget] = useState<ReadingPassage | null>(null);
   const [deletingPassage, setDeletingPassage] = useState(false);
 
+  const isMultiBlank = form.type === "fill-blank" && hasBlankMarkers(form.question_text);
+
   const fetchQuestions = async () => {
     const [questionsRes, lessonsRes, clipsRes, passagesRes] = await Promise.all([
       supabase.from("quiz_questions").select("*").order("lesson_id").order("order_index"),
@@ -339,7 +343,7 @@ export const AdminQuizSection: React.FC = () => {
       showToast("Câu hỏi không được để trống.", "warning");
       return;
     }
-    if (!form.correct_answer.trim()) {
+    if (!isMultiBlank && !form.correct_answer.trim()) {
       showToast("Đáp án đúng không được để trống.", "warning");
       return;
     }
@@ -355,7 +359,7 @@ export const AdminQuizSection: React.FC = () => {
       reading_passage_id: form.category === "doc" ? form.reading_passage_id : null,
       options: (form.type === "multiple-choice" || form.type === "listening") ? form.options?.filter(Boolean) ?? null : null,
       matching_pairs: form.type === "matching" ? form.matching_pairs?.filter((p) => p.de || p.vi) ?? null : null,
-      correct_answer: form.correct_answer,
+      correct_answer: isMultiBlank ? "" : form.correct_answer,
       explanation: form.explanation,
       order_index: form.order_index,
     };
@@ -711,12 +715,17 @@ export const AdminQuizSection: React.FC = () => {
             <div>
               <label className={labelCls}>Câu hỏi *</label>
               <textarea
-                rows={2}
+                rows={form.type === "fill-blank" ? 4 : 2}
                 value={form.question_text}
                 onChange={(e) => setForm((prev) => ({ ...prev, question_text: e.target.value }))}
                 className={inputCls + " resize-none"}
                 placeholder="Nhập nội dung câu hỏi..."
               />
+              {form.type === "fill-blank" && (
+                <p className="text-[10px] text-slate-400 font-sans mt-1.5 leading-relaxed">
+                  Đánh dấu chỗ trống bằng <code className="bg-slate-100 px-1 rounded">{"{{đáp_án}}"}</code>, nhiều biến thể đúng cách nhau bởi <code className="bg-slate-100 px-1 rounded">|</code> — ví dụ <code className="bg-slate-100 px-1 rounded">{"{{bin|Bin}}"}</code>. Có thể dùng nhiều chỗ trống trong 1 câu hoặc cả đoạn văn dài.
+                </p>
+              )}
             </div>
 
             {/* Audio text (listening) */}
@@ -806,29 +815,38 @@ export const AdminQuizSection: React.FC = () => {
             )}
 
             {/* Correct answer */}
-            <div>
-              <label className={labelCls}>Đáp án đúng *</label>
-              {(form.type === "multiple-choice" || form.type === "listening") && (form.options ?? []).some(Boolean) ? (
-                <select
-                  value={form.correct_answer}
-                  onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
-                  className={inputCls}
-                >
-                  <option value="">-- Chọn đáp án đúng --</option>
-                  {(form.options ?? []).filter(Boolean).map((opt, i) => (
-                    <option key={i} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={form.correct_answer}
-                  onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
-                  className={inputCls}
-                  placeholder={form.type === "matching" ? 'JSON: [{"de":"...", "vi":"..."}]' : "Đáp án đúng..."}
-                />
-              )}
-            </div>
+            {isMultiBlank ? (
+              <div>
+                <label className={labelCls}>Đáp án đúng</label>
+                <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                  Đáp án đã được đánh dấu trực tiếp trong nội dung câu hỏi bằng <code className="bg-white px-1 rounded border border-slate-200">{"{{...}}"}</code> — không cần nhập riêng.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className={labelCls}>Đáp án đúng *</label>
+                {(form.type === "multiple-choice" || form.type === "listening") && (form.options ?? []).some(Boolean) ? (
+                  <select
+                    value={form.correct_answer}
+                    onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="">-- Chọn đáp án đúng --</option>
+                    {(form.options ?? []).filter(Boolean).map((opt, i) => (
+                      <option key={i} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={form.correct_answer}
+                    onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
+                    className={inputCls}
+                    placeholder={form.type === "matching" ? 'JSON: [{"de":"...", "vi":"..."}]' : "Đáp án đúng..."}
+                  />
+                )}
+              </div>
+            )}
 
             {/* Explanation */}
             <div>
