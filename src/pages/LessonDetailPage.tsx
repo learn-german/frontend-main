@@ -261,26 +261,19 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Đọc tab */}
           {bottomTab === "doc" && (
             <div className="space-y-4">
-              {lesson.readingText ? (
+              {lesson.readingPassages.length > 0 ? (
                 <>
                   <div className="flex items-center gap-2 mb-2">
                     <FileText className="w-4 h-4 text-orange-500" />
                     <span className="text-sm font-display font-bold text-slate-800">Bài đọc</span>
                   </div>
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">🇩🇪 Tiếng Đức</span>
-                      <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{lesson.readingText}</p>
-                    </div>
-                    {lesson.readingTextVi && (
-                      <>
-                        <div className="h-px bg-slate-100" />
-                        <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">🇻🇳 Tiếng Việt</span>
-                          <p className="text-xs text-slate-500 leading-relaxed font-sans italic whitespace-pre-wrap">{lesson.readingTextVi}</p>
-                        </div>
-                      </>
-                    )}
+                  <div className="space-y-4">
+                    {lesson.readingPassages.map((passage, idx) => (
+                      <div key={passage.id} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Đoạn {idx + 1}</span>
+                        <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{passage.textDe}</p>
+                      </div>
+                    ))}
                   </div>
                 </>
               ) : (
@@ -292,7 +285,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   <p className="text-xs text-slate-400">Bài đọc hiểu cho bài học này đang được chuẩn bị.</p>
                 </div>
               )}
-              {lesson.readingText && (
+              {lesson.readingPassages.length > 0 && (
                 <div className="flex justify-center pt-2">
                   <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
                     Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />

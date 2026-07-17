@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   ArrowLeft, Save, Plus, Trash2,
-  BookOpen, GraduationCap, Video, Volume2, Loader2, FileText,
+  BookOpen, GraduationCap, Video, Volume2, Loader2,
   Globe, EyeOff,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
@@ -36,8 +36,6 @@ export interface LessonEditable {
   grammar_md?: string | null;
   speaking_md?: string | null;
   video_r2_key?: string | null;
-  reading_text?: string | null;
-  reading_text_vi?: string | null;
   status: "draft" | "published";
 }
 
@@ -109,8 +107,6 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       grammar_md: data.grammar_md || null,
       speaking_md: data.speaking_md || null,
       video_r2_key: data.video_r2_key || null,
-      reading_text: data.reading_text || null,
-      reading_text_vi: data.reading_text_vi || null,
     }).eq("id", data.id);
     setSaving(false);
 
@@ -137,8 +133,6 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       grammar_md: data.grammar_md || null,
       speaking_md: data.speaking_md || null,
       video_r2_key: data.video_r2_key || null,
-      reading_text: data.reading_text || null,
-      reading_text_vi: data.reading_text_vi || null,
       status: "published",
     }).eq("id", data.id);
     setSaving(false);
@@ -387,32 +381,6 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             </div>
           </section>
 
-          {/* Đọc section */}
-          <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-display font-bold text-slate-800 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-orange-500" /> Bài đọc
-            </h3>
-            <div>
-              <label className={labelCls}>Đoạn văn tiếng Đức</label>
-              <textarea
-                rows={5}
-                value={data.reading_text ?? ""}
-                onChange={e => upd({ reading_text: e.target.value })}
-                placeholder="Nhập đoạn văn tiếng Đức..."
-                className={inputCls + " resize-y"}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Bản dịch tiếng Việt</label>
-              <textarea
-                rows={5}
-                value={data.reading_text_vi ?? ""}
-                onChange={e => upd({ reading_text_vi: e.target.value })}
-                placeholder="Nhập bản dịch tiếng Việt..."
-                className={inputCls + " resize-y"}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Right column: Objective */}

@@ -31,6 +31,7 @@ export function useModules() {
             moduleId: l.module_id,
             moduleTitle: m.title_vi,
             listeningClips: [],
+            readingPassages: [],
             level: l.level as Level,
             title: l.title,
             titleVi: l.title_vi,

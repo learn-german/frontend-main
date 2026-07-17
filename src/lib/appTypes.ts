@@ -36,6 +36,7 @@ export interface QuizQuestion {
   questionText: string;
   audioText?: string;
   audioClipId?: string;
+  readingPassageId?: string;
   options?: string[];
   matchingPairs?: { de: string; vi: string }[];
   explanation: string;
@@ -61,8 +62,7 @@ export interface Lesson {
   speakingMd?: string;
   videoR2Key?: string;
   listeningClips: { id: string; r2Key: string }[];
-  readingText?: string;
-  readingTextVi?: string;
+  readingPassages: { id: string; textDe: string }[];
   quiz?: QuizQuestion[];
   status?: "draft" | "published";
 }
