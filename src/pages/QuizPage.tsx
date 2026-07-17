@@ -85,14 +85,22 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 
   const activeQuestion = questions[currentIdx];
   const isLastQuestion = currentIdx === questions.length - 1;
-  // Multi-blank fill-blank questions have their question_text pre-stripped
-  // to the literal token "{{blank}}" by the quiz_questions_public view
-  // (never the real answer). Splitting on it yields the text segments to
-  // interleave with inline inputs; segments.length - 1 is the blank count.
-  // Legacy single-answer fill-blank questions contain no "{{blank}}" token
-  // at all, so fillBlankSegments is a 1-element array and fillBlankCount is 0.
+  // Multi-blank fill-blank questions have their {{...}} pre-stripped to the
+  // literal token "{{blank}}" by the quiz_questions_public view (never the
+  // real answer). New-format questions carry the blank sentence in
+  // answerText; old (un-migrated) ones still have it in questionText —
+  // prefer answerText, fall back to questionText, mirroring the same rule
+  // used by quiz-submit's scoring and the SQL view itself. Splitting on
+  // "{{blank}}" yields the text segments to interleave with inline inputs;
+  // segments.length - 1 is the blank count. Questions with no "{{blank}}"
+  // token at all (legacy single-answer fill-blank) yield a 1-element array
+  // and fillBlankCount 0.
+  const isSplitFillBlank = activeQuestion?.type === "fill-blank" && !!activeQuestion.answerText;
+  const fillBlankSource = activeQuestion?.type === "fill-blank"
+    ? (activeQuestion.answerText || activeQuestion.questionText)
+    : "";
   const fillBlankSegments = activeQuestion?.type === "fill-blank"
-    ? activeQuestion.questionText.split("{{blank}}")
+    ? fillBlankSource.split("{{blank}}")
     : [];
   const fillBlankCount = Math.max(fillBlankSegments.length - 1, 0);
   const activeClip = category === "nghe" && activeQuestion
@@ -413,7 +421,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
             {activeQuestion.type === "matching" && "Cặp từ nối ngữ nghĩa"}
             {activeQuestion.type === "listening" && "Kiểm tra kỹ năng nghe"}
           </span>
-          {!(activeQuestion.type === "fill-blank" && fillBlankCount > 0) && (
+          {!(activeQuestion.type === "fill-blank" && !isSplitFillBlank && fillBlankCount > 0) && (
             <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 leading-snug">
               {activeQuestion.questionText}
             </h2>
