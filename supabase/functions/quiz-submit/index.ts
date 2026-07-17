@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { computeQuizScore } from "./scoring.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +61,7 @@ serve(async (req) => {
     // Read quiz_questions base table (has correct_answer, never exposed to client)
     const { data: questions, error: qErr } = await supabase
       .from("quiz_questions")
-      .select("id, type, correct_answer")
+      .select("id, type, question_text, correct_answer")
       .eq("lesson_id", lesson_id)
       .eq("category", category);
 
@@ -71,28 +72,7 @@ serve(async (req) => {
       });
     }
 
-    // Sort matching answer strings alphabetically by de key before comparing
-    const normalizeMatching = (s: string) =>
-      s.split("|")
-        .map(p => p.trim())
-        .sort((a, b) => a.localeCompare(b))
-        .join("|");
-
-    // Score calculation
-    let correct = 0;
-    for (const q of questions) {
-      const userAnswer = (answers[q.id] ?? "").trim();
-      const correctAnswer = (q.correct_answer ?? "").trim();
-
-      if (q.type === "matching") {
-        if (normalizeMatching(userAnswer) === normalizeMatching(correctAnswer)) correct++;
-      } else {
-        if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) correct++;
-      }
-    }
-
-    const total = questions.length;
-    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const { correct, total, score } = computeQuizScore(questions, answers);
     const passed = score >= PASS_THRESHOLD;
 
     // Idempotency: check if already completed (for this category specifically)
