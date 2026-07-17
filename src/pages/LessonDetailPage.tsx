@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Volume2,
@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Mic,
   PenLine,
+  Loader2,
 } from "lucide-react";
 import { LevelBadge, Button } from "../components/DesignSystem";
 import { VideoPlayer } from "../components/VideoPlayer";
@@ -20,10 +21,12 @@ import { MarkdownBlock } from "../components/MarkdownBlock";
 import { ListeningClipPlayer } from "../components/ListeningClipPlayer";
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
+import { useWritingSubmission } from "../lib/hooks/useWritingSubmission";
 
 interface LessonDetailPageProps {
   lesson: Lesson;
   stats: UserStats;
+  userId: string;
   onBack: () => void;
   onMarkComplete: (lessonId: string) => void;
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
@@ -34,6 +37,7 @@ type BottomTab = "quiz" | "nghe" | "doc" | "tuvung" | "noi" | "viet";
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   lesson,
   stats,
+  userId,
   onBack,
   onMarkComplete,
   onStartQuiz,
@@ -227,14 +231,10 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
             </div>
           )}
 
-          {/* Viết (Schreiben) tab — read-only prompt display for now; a
-              later task replaces this panel body with the full submission
-              form, reusing this same bottomTab === "viet" gate. Hidden
-              entirely via visibleTabs when writingPromptMd is empty. */}
+          {/* Viết (Schreiben) tab — hidden entirely via visibleTabs when
+              writingPromptMd is empty. */}
           {bottomTab === "viet" && lesson.writingPromptMd && (
-            <div className="space-y-4">
-              <MarkdownBlock content={lesson.writingPromptMd} />
-            </div>
+            <WritingTabPanel lessonId={lesson.id} userId={userId} promptMd={lesson.writingPromptMd} />
           )}
 
           {/* Nói (Sprechen) tab — hidden entirely via visibleTabs when
@@ -333,6 +333,72 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
         </div>
       </div>
 
+    </div>
+  );
+};
+
+const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: string }> = ({ lessonId, userId, promptMd }) => {
+  const { submission, loading, submit } = useWritingSubmission(lessonId, userId);
+  const [content, setContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setContent(submission?.content ?? "");
+  }, [submission?.id, submission?.content]);
+
+  const handleSubmit = async () => {
+    if (!content.trim()) {
+      showToast("Bài viết không được để trống.", "warning");
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await submit(content.trim());
+    setSubmitting(false);
+    if (error) {
+      showToast("Nộp bài thất bại: " + error, "warning");
+    } else {
+      showToast("Đã nộp bài viết.", "success");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <MarkdownBlock content={promptMd} />
+
+      {submission?.gradedAt && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-1">
+          <p className="text-xs font-display font-bold text-emerald-700">Đã chấm: {submission.score}/100</p>
+          {submission.comment && (
+            <p className="text-xs text-emerald-800 font-sans whitespace-pre-wrap">{submission.comment}</p>
+          )}
+        </div>
+      )}
+      {submission && !submission.gradedAt && (
+        <p className="text-xs text-slate-400 font-sans">Đã nộp bài, đang chờ admin chấm điểm.</p>
+      )}
+
+      <textarea
+        id="writing-submission-textarea"
+        rows={10}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Viết bài của bạn ở đây..."
+        className="w-full px-4 py-3 bg-white border border-slate-250 rounded-xl font-sans text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition duration-150 resize-y"
+      />
+      <div className="flex justify-center">
+        <Button id="btn-writing-submit" variant="primary" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
+          {submission ? "Nộp lại" : "Nộp bài"}
+        </Button>
+      </div>
     </div>
   );
 };

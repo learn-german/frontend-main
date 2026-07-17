@@ -271,6 +271,7 @@ export default function App() {
                 <LessonDetailPage
                   lesson={activeLessonObject}
                   stats={stats}
+                  userId={user.id}
                   onBack={() => handleNavigate("roadmap")}
                   onMarkComplete={handleMarkComplete}
                   onStartQuiz={(lessonId, category = "nguphap") => {
