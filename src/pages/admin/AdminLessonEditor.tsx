@@ -35,6 +35,7 @@ export interface LessonEditable {
   grammar: Grammar;
   grammar_md?: string | null;
   speaking_md?: string | null;
+  writing_prompt_md?: string | null;
   video_r2_key?: string | null;
   status: "draft" | "published";
 }
@@ -66,6 +67,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
   const [saving, setSaving] = useState(false);
   const [grammarTab, setGrammarTab] = useState<"edit" | "preview">("edit");
   const [speakingTab, setSpeakingTab] = useState<"edit" | "preview">("edit");
+  const [writingTab, setWritingTab] = useState<"edit" | "preview">("edit");
   const [videoUploadPct, setVideoUploadPct] = useState<number | null>(null);
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
@@ -106,6 +108,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       grammar: data.grammar,
       grammar_md: data.grammar_md || null,
       speaking_md: data.speaking_md || null,
+      writing_prompt_md: data.writing_prompt_md || null,
       video_r2_key: data.video_r2_key || null,
     }).eq("id", data.id);
     setSaving(false);
@@ -132,6 +135,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       grammar: data.grammar,
       grammar_md: data.grammar_md || null,
       speaking_md: data.speaking_md || null,
+      writing_prompt_md: data.writing_prompt_md || null,
       video_r2_key: data.video_r2_key || null,
       status: "published",
     }).eq("id", data.id);
@@ -325,6 +329,49 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
                   <MarkdownBlock content={data.speaking_md} />
                 ) : (
                   <p className="text-xs text-slate-400 italic">Chưa có nội dung luyện nói.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Viết — Markdown editor cho đề bài. Học viên viết bài + admin
+              chấm điểm được quản lý ở trang "Chấm bài viết" riêng, không
+              phải ở đây — trang này chỉ soạn đề bài. */}
+          <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                Viết
+              </span>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                {(["edit", "preview"] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setWritingTab(tab)}
+                    className={`px-3 py-1 text-[11px] font-bold transition-colors ${writingTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                  >
+                    {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {writingTab === "edit" ? (
+              <>
+                <p className="text-[10px] text-slate-400">Đề bài viết cho học viên. Hỗ trợ Markdown giống ô Nói ở trên.</p>
+                <textarea
+                  rows={8}
+                  value={data.writing_prompt_md ?? ""}
+                  onChange={e => upd({ writing_prompt_md: e.target.value })}
+                  placeholder={"## Đề bài: Viết đoạn văn giới thiệu bản thân\n\nViết khoảng 5-7 câu bằng tiếng Đức giới thiệu tên, quê quán, nghề nghiệp của bạn."}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
+                />
+              </>
+            ) : (
+              <div className="min-h-32 bg-white border border-slate-200 rounded-xl p-4">
+                {data.writing_prompt_md ? (
+                  <MarkdownBlock content={data.writing_prompt_md} />
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Chưa có đề bài viết.</p>
                 )}
               </div>
             )}

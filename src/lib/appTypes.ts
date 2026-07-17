@@ -60,6 +60,8 @@ export interface Lesson {
   grammar: GrammarExplanation;
   grammarMd?: string;
   speakingMd?: string;
+  writingPromptMd?: string;
+  hasNguphapQuestions?: boolean;
   videoR2Key?: string;
   listeningClips: { id: string; r2Key: string }[];
   readingPassages: { id: string; textDe: string }[];

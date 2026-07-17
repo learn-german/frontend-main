@@ -18,6 +18,7 @@ type SupabaseLesson = {
   grammar: unknown;
   grammar_md: string | null;
   speaking_md: string | null;
+  writing_prompt_md: string | null;
   listening_url: string | null;
   video_r2_key: string | null;
   listening_clips: { id: string; r2_key: string; order_index: number }[];
@@ -33,7 +34,7 @@ type SupabaseModule = {
   lessons: SupabaseLesson[];
 };
 
-function transformModule(m: SupabaseModule): Module {
+function transformModule(m: SupabaseModule, nguphapLessonIds: Set<string>): Module {
   return {
     id: m.id,
     level: m.level as Level,
@@ -56,6 +57,8 @@ function transformModule(m: SupabaseModule): Module {
       grammar: (l.grammar as GrammarExplanation) ?? { title: "", rule: "", examples: [] },
       grammarMd: l.grammar_md ?? undefined,
       speakingMd: l.speaking_md ?? undefined,
+      writingPromptMd: l.writing_prompt_md ?? undefined,
+      hasNguphapQuestions: nguphapLessonIds.has(l.id),
       videoR2Key: l.video_r2_key ?? undefined,
       // Sorted client-side rather than relying on a 3-level-deep Supabase
       // nested .order() call (modules -> lessons -> listening_clips), which
@@ -87,30 +90,36 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
     let cancelled = false;
     setLoading(true);
 
-    supabase
-      .from("modules")
-      .select(`
-        id, level, title, title_vi, order_index,
-        lessons (
-          id, level, title, title_vi, objective, summary,
-          youtube_id, duration, order_index, xp_reward,
-          next_lesson_id, vocabulary, grammar,
-          grammar_md, speaking_md, video_r2_key,
-          listening_clips (id, r2_key, order_index),
-          reading_passages (id, text_de, order_index)
-        )
-      `)
-      .order("order_index")
-      .order("order_index", { referencedTable: "lessons" })
-      .then(({ data, error: err }) => {
-        if (cancelled) return;
-        if (err) {
-          setError(err.message);
-        } else {
-          setModules((data ?? []).map(m => transformModule(m as SupabaseModule)));
-        }
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from("modules")
+        .select(`
+          id, level, title, title_vi, order_index,
+          lessons (
+            id, level, title, title_vi, objective, summary,
+            youtube_id, duration, order_index, xp_reward,
+            next_lesson_id, vocabulary, grammar,
+            grammar_md, speaking_md, writing_prompt_md, video_r2_key,
+            listening_clips (id, r2_key, order_index),
+            reading_passages (id, text_de, order_index)
+          )
+        `)
+        .order("order_index")
+        .order("order_index", { referencedTable: "lessons" }),
+      supabase
+        .from("quiz_questions_public")
+        .select("lesson_id")
+        .eq("category", "nguphap"),
+    ]).then(([modulesRes, nguphapRes]) => {
+      if (cancelled) return;
+      if (modulesRes.error) {
+        setError(modulesRes.error.message);
+      } else {
+        const nguphapLessonIds = new Set((nguphapRes.data ?? []).map((r) => r.lesson_id as string));
+        setModules((modulesRes.data ?? []).map(m => transformModule(m as SupabaseModule, nguphapLessonIds)));
+      }
+      setLoading(false);
+    });
 
     return () => { cancelled = true; };
   }, [userId]);

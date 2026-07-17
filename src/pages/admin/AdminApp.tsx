@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { GraduationCap, LogOut, Loader2, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { AdminPage } from "./AdminPage";
+import { NotificationBell } from "../../components/NotificationBell";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { ToastType } from "../../lib/toast";
 import { AnimatePresence, motion } from "motion/react";
@@ -129,6 +130,7 @@ export const AdminApp: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <NotificationBell dark />
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
               <span>{user.email}</span>
