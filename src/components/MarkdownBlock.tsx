@@ -197,7 +197,7 @@ const components: Components = {
   img: ({ src, alt }) => <img src={src} alt={alt} className="rounded-lg max-w-full my-1" />,
   table: ({ children }) => (
     <div className="overflow-x-auto my-2">
-      <table className="w-full text-xs border-collapse">{children}</table>
+      <table className="w-full text-xs border-collapse table-fixed">{children}</table>
     </div>
   ),
   th: ({ children }) => (
