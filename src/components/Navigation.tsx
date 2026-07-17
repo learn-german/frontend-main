@@ -18,6 +18,7 @@ import {
   Globe,
   Trophy
 } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 import { Button } from "./DesignSystem";
 
 interface NavigationProps {
@@ -126,6 +127,8 @@ export const Navbar: React.FC<NavigationProps> = ({
               <Award className="w-3.5 h-3.5" />
               <span className="text-xs font-display font-bold">{xp} XP</span>
             </div>
+
+            <NotificationBell />
 
             <div className="h-4 w-[1px] bg-slate-200" />
 
