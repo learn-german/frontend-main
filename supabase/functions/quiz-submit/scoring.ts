@@ -2,6 +2,7 @@ export interface ScorableQuestion {
   id: string;
   type: string;
   question_text: string;
+  answer_text: string | null;
   correct_answer: string;
 }
 
@@ -48,7 +49,12 @@ export function computeQuizScore(
   let total = 0;
 
   for (const q of questions) {
-    const blanks = q.type === "fill-blank" ? extractBlanks(q.question_text) : null;
+    // New-format fill-blank questions carry {{...}} in answer_text; old
+    // (un-migrated) ones still have it in question_text. Prefer
+    // answer_text, fall back to question_text — mirrors the same rule
+    // applied in quiz_questions_public's SQL definition.
+    const blankSource = q.answer_text?.trim() ? q.answer_text : q.question_text;
+    const blanks = q.type === "fill-blank" ? extractBlanks(blankSource) : null;
 
     if (blanks && blanks.length > 0) {
       const userParts = (answers[q.id] ?? "").split("|").map((s) => s.trim().toLowerCase());

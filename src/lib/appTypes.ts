@@ -34,6 +34,7 @@ export interface QuizQuestion {
   type: "multiple-choice" | "fill-blank" | "matching" | "listening";
   category?: "nguphap" | "nghe" | "doc";
   questionText: string;
+  answerText?: string;
   audioText?: string;
   audioClipId?: string;
   readingPassageId?: string;

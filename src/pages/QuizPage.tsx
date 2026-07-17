@@ -85,14 +85,22 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 
   const activeQuestion = questions[currentIdx];
   const isLastQuestion = currentIdx === questions.length - 1;
-  // Multi-blank fill-blank questions have their question_text pre-stripped
-  // to the literal token "{{blank}}" by the quiz_questions_public view
-  // (never the real answer). Splitting on it yields the text segments to
-  // interleave with inline inputs; segments.length - 1 is the blank count.
-  // Legacy single-answer fill-blank questions contain no "{{blank}}" token
-  // at all, so fillBlankSegments is a 1-element array and fillBlankCount is 0.
+  // Multi-blank fill-blank questions have their {{...}} pre-stripped to the
+  // literal token "{{blank}}" by the quiz_questions_public view (never the
+  // real answer). New-format questions carry the blank sentence in
+  // answerText; old (un-migrated) ones still have it in questionText —
+  // prefer answerText, fall back to questionText, mirroring the same rule
+  // used by quiz-submit's scoring and the SQL view itself. Splitting on
+  // "{{blank}}" yields the text segments to interleave with inline inputs;
+  // segments.length - 1 is the blank count. Questions with no "{{blank}}"
+  // token at all (legacy single-answer fill-blank) yield a 1-element array
+  // and fillBlankCount 0.
+  const isSplitFillBlank = activeQuestion?.type === "fill-blank" && !!activeQuestion.answerText?.trim();
+  const fillBlankSource = activeQuestion?.type === "fill-blank"
+    ? (activeQuestion.answerText?.trim() ? activeQuestion.answerText : activeQuestion.questionText)
+    : "";
   const fillBlankSegments = activeQuestion?.type === "fill-blank"
-    ? activeQuestion.questionText.split("{{blank}}")
+    ? fillBlankSource.split("{{blank}}")
     : [];
   const fillBlankCount = Math.max(fillBlankSegments.length - 1, 0);
   const activeClip = category === "nghe" && activeQuestion
@@ -169,6 +177,24 @@ export const QuizPage: React.FC<QuizPageProps> = ({
         .join("|");
     }
     return "";
+  };
+
+  const hasAnsweredCurrent = (): boolean => {
+    if (!activeQuestion) return false;
+    if (activeQuestion.type === "multiple-choice" || activeQuestion.type === "listening") {
+      return selectedOption !== "";
+    }
+    if (activeQuestion.type === "fill-blank") {
+      if (fillBlankCount > 0) {
+        return fillBlankValues.length === fillBlankCount && fillBlankValues.every((v) => v.trim() !== "");
+      }
+      return fillBlankValue.trim() !== "";
+    }
+    if (activeQuestion.type === "matching") {
+      const totalPairs = activeQuestion.matchingPairs?.length ?? 0;
+      return totalPairs > 0 && Object.keys(matchedPairs).length >= totalPairs;
+    }
+    return false;
   };
 
   const handleNext = () => {
@@ -311,7 +337,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
                 key={q.id}
                 className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs"
               >
-                <p className="font-display font-bold text-slate-800 leading-tight mb-1">
+                <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
                   Câu {idx + 1}: {q.questionText}
                 </p>
                 <p className="text-slate-500 text-[11px] leading-relaxed">
@@ -413,8 +439,8 @@ export const QuizPage: React.FC<QuizPageProps> = ({
             {activeQuestion.type === "matching" && "Cặp từ nối ngữ nghĩa"}
             {activeQuestion.type === "listening" && "Kiểm tra kỹ năng nghe"}
           </span>
-          {!(activeQuestion.type === "fill-blank" && fillBlankCount > 0) && (
-            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 leading-snug">
+          {!(activeQuestion.type === "fill-blank" && !isSplitFillBlank && fillBlankCount > 0) && (
+            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 leading-snug whitespace-pre-wrap">
               {activeQuestion.questionText}
             </h2>
           )}
@@ -459,7 +485,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
         {/* FILL IN THE BLANK — multi-blank inline (question_text has 1+ {{blank}} tokens) */}
         {activeQuestion.type === "fill-blank" && fillBlankCount > 0 && (
           <div className="space-y-3">
-            <p className="text-sm sm:text-base text-slate-800 leading-loose font-sans">
+            <p className="text-sm sm:text-base text-slate-800 leading-loose font-sans whitespace-pre-wrap">
               {fillBlankSegments.map((segment, i) => (
                 <React.Fragment key={i}>
                   {segment}
@@ -610,6 +636,18 @@ export const QuizPage: React.FC<QuizPageProps> = ({
             <div className="pt-3 flex justify-end text-xs font-display font-bold text-slate-400">
               Đã khớp: {Object.keys(matchedPairs).length} / {activeQuestion.matchingPairs?.length}
             </div>
+          </div>
+        )}
+
+        {/* Post-answer explanation — shown once the learner has fully answered the current question, any type */}
+        {hasAnsweredCurrent() && activeQuestion.explanation && (
+          <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl space-y-1.5">
+            <span className="text-[10px] font-display font-bold text-blue-600 uppercase tracking-wider">
+              💡 Giải thích
+            </span>
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {activeQuestion.explanation}
+            </p>
           </div>
         )}
       </div>
