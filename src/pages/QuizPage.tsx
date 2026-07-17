@@ -71,6 +71,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
   // Per-question answer state
   const [selectedOption, setSelectedOption] = useState("");
   const [fillBlankValue, setFillBlankValue] = useState("");
+  const [fillBlankValues, setFillBlankValues] = useState<string[]>([]);
   const [matchedPairs, setMatchedPairs] = useState<Record<string, string>>({});
   const [shuffledDeWords, setShuffledDeWords] = useState<string[]>([]);
   const [shuffledViWords, setShuffledViWords] = useState<string[]>([]);
@@ -84,6 +85,16 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 
   const activeQuestion = questions[currentIdx];
   const isLastQuestion = currentIdx === questions.length - 1;
+  // Multi-blank fill-blank questions have their question_text pre-stripped
+  // to the literal token "{{blank}}" by the quiz_questions_public view
+  // (never the real answer). Splitting on it yields the text segments to
+  // interleave with inline inputs; segments.length - 1 is the blank count.
+  // Legacy single-answer fill-blank questions contain no "{{blank}}" token
+  // at all, so fillBlankSegments is a 1-element array and fillBlankCount is 0.
+  const fillBlankSegments = activeQuestion?.type === "fill-blank"
+    ? activeQuestion.questionText.split("{{blank}}")
+    : [];
+  const fillBlankCount = Math.max(fillBlankSegments.length - 1, 0);
   const activeClip = category === "nghe" && activeQuestion
     ? (lesson.listeningClips ?? []).find((c) => c.id === activeQuestion.audioClipId)
     : undefined;
@@ -98,6 +109,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 
     setSelectedOption("");
     setFillBlankValue("");
+    setFillBlankValues(Array(fillBlankCount).fill(""));
 
     if (activeQuestion.type === "matching" && activeQuestion.matchingPairs) {
       const deList = activeQuestion.matchingPairs.map((p) => p.de);
@@ -143,6 +155,9 @@ export const QuizPage: React.FC<QuizPageProps> = ({
       return selectedOption;
     }
     if (activeQuestion.type === "fill-blank") {
+      if (fillBlankCount > 0) {
+        return fillBlankValues.map((v) => v.trim()).join("|");
+      }
       return fillBlankValue.trim();
     }
     if (activeQuestion.type === "matching") {
@@ -196,6 +211,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
     setAnswers({});
     setSelectedOption("");
     setFillBlankValue("");
+    setFillBlankValues([]);
     setMatchedPairs({});
     setQuizResult(null);
     setSubmitError(null);
@@ -397,9 +413,11 @@ export const QuizPage: React.FC<QuizPageProps> = ({
             {activeQuestion.type === "matching" && "Cặp từ nối ngữ nghĩa"}
             {activeQuestion.type === "listening" && "Kiểm tra kỹ năng nghe"}
           </span>
-          <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 leading-snug">
-            {activeQuestion.questionText}
-          </h2>
+          {!(activeQuestion.type === "fill-blank" && fillBlankCount > 0) && (
+            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 leading-snug">
+              {activeQuestion.questionText}
+            </h2>
+          )}
         </div>
 
         {/* MULTIPLE CHOICE */}
@@ -438,8 +456,36 @@ export const QuizPage: React.FC<QuizPageProps> = ({
           </div>
         )}
 
-        {/* FILL IN THE BLANK */}
-        {activeQuestion.type === "fill-blank" && (
+        {/* FILL IN THE BLANK — multi-blank inline (question_text has 1+ {{blank}} tokens) */}
+        {activeQuestion.type === "fill-blank" && fillBlankCount > 0 && (
+          <div className="space-y-3">
+            <p className="text-sm sm:text-base text-slate-800 leading-loose font-sans">
+              {fillBlankSegments.map((segment, i) => (
+                <React.Fragment key={i}>
+                  {segment}
+                  {i < fillBlankCount && (
+                    <input
+                      type="text"
+                      value={fillBlankValues[i] ?? ""}
+                      onChange={(e) => {
+                        const next = [...fillBlankValues];
+                        next[i] = e.target.value;
+                        setFillBlankValues(next);
+                      }}
+                      className="inline-block w-28 mx-1 px-2 py-1 bg-white border border-slate-250 rounded-lg font-sans text-sm text-slate-900 text-center focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition duration-150"
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+            </p>
+            <p className="text-[10px] text-slate-400 font-sans tracking-wide">
+              *Chú ý viết chính xác từng chữ cái bao gồm cả các ký tự Umlaut (ä, ö, ü, ß) nếu có.
+            </p>
+          </div>
+        )}
+
+        {/* FILL IN THE BLANK — legacy single-answer (no {{blank}} tokens) */}
+        {activeQuestion.type === "fill-blank" && fillBlankCount === 0 && (
           <div className="space-y-3 max-w-sm">
             <input
               id="quiz-fill-input"
