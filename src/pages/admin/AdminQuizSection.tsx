@@ -12,6 +12,7 @@ interface QuizQuestion {
   type: "multiple-choice" | "fill-blank" | "matching" | "listening";
   category: "nguphap" | "nghe" | "doc";
   question_text: string;
+  answer_text: string | null;
   audio_text: string | null;
   audio_clip_id: string | null;
   reading_passage_id: string | null;
@@ -51,6 +52,7 @@ const EMPTY_FORM: EditForm = {
   type: "multiple-choice",
   category: "nguphap",
   question_text: "",
+  answer_text: null,
   audio_text: null,
   audio_clip_id: null,
   reading_passage_id: null,
@@ -263,7 +265,7 @@ export const AdminQuizSection: React.FC = () => {
   const [deletePassageTarget, setDeletePassageTarget] = useState<ReadingPassage | null>(null);
   const [deletingPassage, setDeletingPassage] = useState(false);
 
-  const isMultiBlank = form.type === "fill-blank" && hasBlankMarkers(form.question_text);
+  const isMultiBlank = form.type === "fill-blank" && hasBlankMarkers(form.answer_text ?? "");
 
   const fetchQuestions = async () => {
     const [questionsRes, lessonsRes, clipsRes, passagesRes] = await Promise.all([
@@ -326,6 +328,7 @@ export const AdminQuizSection: React.FC = () => {
       type: q.type,
       category: q.category,
       question_text: q.question_text,
+      answer_text: q.answer_text,
       audio_text: q.audio_text,
       audio_clip_id: q.audio_clip_id,
       reading_passage_id: q.reading_passage_id,
@@ -339,8 +342,12 @@ export const AdminQuizSection: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.question_text.trim()) {
+    if (form.type !== "fill-blank" && !form.question_text.trim()) {
       showToast("Câu hỏi không được để trống.", "warning");
+      return;
+    }
+    if (form.type === "fill-blank" && !(form.answer_text ?? "").trim()) {
+      showToast("Câu trả lời không được để trống.", "warning");
       return;
     }
     if (!isMultiBlank && !form.correct_answer.trim()) {
@@ -354,6 +361,7 @@ export const AdminQuizSection: React.FC = () => {
       type: form.type,
       category: form.category,
       question_text: form.question_text,
+      answer_text: form.type === "fill-blank" ? form.answer_text : null,
       audio_text: form.audio_text || null,
       audio_clip_id: form.category === "nghe" ? form.audio_clip_id : null,
       reading_passage_id: form.category === "doc" ? form.reading_passage_id : null,
@@ -713,20 +721,36 @@ export const AdminQuizSection: React.FC = () => {
 
             {/* Question text */}
             <div>
-              <label className={labelCls}>Câu hỏi *</label>
+              <label className={labelCls}>Câu hỏi{form.type === "fill-blank" ? "" : " *"}</label>
               <textarea
-                rows={form.type === "fill-blank" ? 4 : 2}
+                rows={2}
                 value={form.question_text}
                 onChange={(e) => setForm((prev) => ({ ...prev, question_text: e.target.value }))}
                 className={inputCls + " resize-none"}
-                placeholder="Nhập nội dung câu hỏi..."
+                placeholder={
+                  form.type === "fill-blank"
+                    ? "Hướng dẫn/câu dẫn (tùy chọn) — ví dụ: 'Chia động từ trong ngoặc'..."
+                    : "Nhập nội dung câu hỏi..."
+                }
               />
-              {form.type === "fill-blank" && (
+            </div>
+
+            {/* Answer text (fill-blank only) */}
+            {form.type === "fill-blank" && (
+              <div>
+                <label className={labelCls}>Câu trả lời *</label>
+                <textarea
+                  rows={4}
+                  value={form.answer_text ?? ""}
+                  onChange={(e) => setForm((prev) => ({ ...prev, answer_text: e.target.value }))}
+                  className={inputCls + " resize-none"}
+                  placeholder="Nhập câu/đoạn chứa chỗ trống, ví dụ: Ich {{bin|Bin}} Student."
+                />
                 <p className="text-[10px] text-slate-400 font-sans mt-1.5 leading-relaxed">
                   Đánh dấu chỗ trống bằng <code className="bg-slate-100 px-1 rounded">{"{{đáp_án}}"}</code>, nhiều biến thể đúng cách nhau bởi <code className="bg-slate-100 px-1 rounded">|</code> — ví dụ <code className="bg-slate-100 px-1 rounded">{"{{bin|Bin}}"}</code>. Có thể dùng nhiều chỗ trống trong 1 câu hoặc cả đoạn văn dài.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Audio text (listening) */}
             {form.type === "listening" && (
