@@ -12,6 +12,7 @@ import {
   FileText,
   HelpCircle,
   Mic,
+  PenLine,
 } from "lucide-react";
 import { LevelBadge, Button } from "../components/DesignSystem";
 import { VideoPlayer } from "../components/VideoPlayer";
@@ -28,7 +29,7 @@ interface LessonDetailPageProps {
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
 }
 
-type BottomTab = "quiz" | "nghe" | "doc" | "tuvung" | "noi";
+type BottomTab = "quiz" | "nghe" | "doc" | "tuvung" | "noi" | "viet";
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   lesson,
@@ -39,7 +40,34 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 }) => {
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
-  const [bottomTab, setBottomTab] = useState<BottomTab>("tuvung");
+
+  const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
+    { id: "tuvung", label: "Wortschatz", Icon: BookOpen },
+    { id: "quiz", label: "Grammatikübungen", Icon: HelpCircle },
+    { id: "doc", label: "Lesen", Icon: FileText },
+    { id: "nghe", label: "Hören", Icon: Headphones },
+    { id: "viet", label: "Schreiben", Icon: PenLine },
+    { id: "noi", label: "Sprechen", Icon: Mic },
+  ];
+
+  // Any tab lacking available content for this lesson is hidden entirely
+  // (no "Sắp có" placeholder tab shown anymore) — extends the content-gated
+  // pattern already used for Nghe/Đọc's "Bắt đầu bài tập" buttons to every
+  // tab. hasNguphapQuestions is optional/undefined for lessons not yet
+  // fetched with the new signal (e.g. stale/mocked Lesson data) — treat
+  // undefined as "has content" so Grammatikübungen is never hidden by
+  // mistake.
+  const visibleTabs = BOTTOM_TABS.filter(({ id }) => {
+    if (id === "tuvung") return lesson.vocabulary.length > 0;
+    if (id === "quiz") return lesson.hasNguphapQuestions !== false;
+    if (id === "doc") return lesson.readingPassages.length > 0;
+    if (id === "nghe") return lesson.listeningClips.length > 0;
+    if (id === "viet") return !!lesson.writingPromptMd;
+    if (id === "noi") return !!lesson.speakingMd;
+    return true;
+  });
+
+  const [bottomTab, setBottomTab] = useState<BottomTab>(() => visibleTabs[0]?.id ?? "tuvung");
 
   const handlePronounce = (text: string) => {
     if ("speechSynthesis" in window) {
@@ -60,14 +88,6 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
     setMarked(true);
     onMarkComplete(lesson.id);
   };
-
-  const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-    { id: "tuvung", label: "Từ vựng", Icon: BookOpen },
-    { id: "noi", label: "Nói", Icon: Mic },
-    { id: "quiz", label: "Bài tập ngữ pháp", Icon: HelpCircle },
-    { id: "nghe", label: "Nghe", Icon: Headphones },
-    { id: "doc", label: "Đọc", Icon: FileText },
-  ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -169,7 +189,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
       <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl overflow-hidden">
         {/* Tab bar */}
         <div className="flex border-b border-slate-200/60 bg-white">
-          {BOTTOM_TABS.map(({ id, label, Icon }) => (
+          {visibleTabs.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setBottomTab(id)}
@@ -207,91 +227,66 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
             </div>
           )}
 
-          {/* Nói tab */}
-          {bottomTab === "noi" && (
+          {/* Viết (Schreiben) tab — read-only prompt display for now; a
+              later task replaces this panel body with the full submission
+              form, reusing this same bottomTab === "viet" gate. Hidden
+              entirely via visibleTabs when writingPromptMd is empty. */}
+          {bottomTab === "viet" && lesson.writingPromptMd && (
             <div className="space-y-4">
-              {lesson.speakingMd ? (
-                <MarkdownBlock content={lesson.speakingMd} />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
-                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
-                    <Mic className="w-6 h-6 text-slate-400" />
-                  </div>
-                  <p className="text-sm font-display font-bold text-slate-500">Sắp có</p>
-                  <p className="text-xs text-slate-400">Nội dung luyện nói cho bài học này đang được chuẩn bị.</p>
-                </div>
-              )}
+              <MarkdownBlock content={lesson.writingPromptMd} />
             </div>
           )}
 
-          {/* Nghe tab */}
-          {bottomTab === "nghe" && (
+          {/* Nói (Sprechen) tab — hidden entirely via visibleTabs when
+              speakingMd is empty, so no "Sắp có" fallback needed. */}
+          {bottomTab === "noi" && lesson.speakingMd && (
             <div className="space-y-4">
-              {lesson.listeningClips.length > 0 ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Headphones className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
-                  </div>
-                  <div className="space-y-4">
-                    {lesson.listeningClips.map((clip, idx) => (
-                      <ListeningClipPlayer key={clip.id} lessonId={lesson.id} clip={clip} label={`File ${idx + 1}`} />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
-                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
-                    <Headphones className="w-6 h-6 text-slate-400" />
-                  </div>
-                  <p className="text-sm font-display font-bold text-slate-500">Sắp có</p>
-                  <p className="text-xs text-slate-400">Bài luyện nghe cho bài học này đang được chuẩn bị.</p>
-                </div>
-              )}
-              {lesson.listeningClips.length > 0 && (
-                <div className="flex justify-center pt-2">
-                  <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
-                    Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
-                  </Button>
-                </div>
-              )}
+              <MarkdownBlock content={lesson.speakingMd} />
             </div>
           )}
 
-          {/* Đọc tab */}
-          {bottomTab === "doc" && (
+          {/* Nghe (Hören) tab — hidden entirely via visibleTabs when
+              listeningClips is empty, so no "Sắp có" fallback needed. */}
+          {bottomTab === "nghe" && lesson.listeningClips.length > 0 && (
             <div className="space-y-4">
-              {lesson.readingPassages.length > 0 ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-display font-bold text-slate-800">Bài đọc</span>
+              <div className="flex items-center gap-2 mb-2">
+                <Headphones className="w-4 h-4 text-orange-500" />
+                <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
+              </div>
+              <div className="space-y-4">
+                {lesson.listeningClips.map((clip, idx) => (
+                  <ListeningClipPlayer key={clip.id} lessonId={lesson.id} clip={clip} label={`File ${idx + 1}`} />
+                ))}
+              </div>
+              <div className="flex justify-center pt-2">
+                <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
+                  Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Đọc (Lesen) tab — hidden entirely via visibleTabs when
+              readingPassages is empty, so no "Sắp có" fallback needed. */}
+          {bottomTab === "doc" && lesson.readingPassages.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-orange-500" />
+                <span className="text-sm font-display font-bold text-slate-800">Bài đọc</span>
+              </div>
+              <div className="space-y-4">
+                {lesson.readingPassages.map((passage, idx) => (
+                  <div key={passage.id} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Đoạn {idx + 1}</span>
+                    <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{passage.textDe}</p>
                   </div>
-                  <div className="space-y-4">
-                    {lesson.readingPassages.map((passage, idx) => (
-                      <div key={passage.id} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Đoạn {idx + 1}</span>
-                        <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{passage.textDe}</p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
-                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-slate-400" />
-                  </div>
-                  <p className="text-sm font-display font-bold text-slate-500">Sắp có</p>
-                  <p className="text-xs text-slate-400">Bài đọc hiểu cho bài học này đang được chuẩn bị.</p>
-                </div>
-              )}
-              {lesson.readingPassages.length > 0 && (
-                <div className="flex justify-center pt-2">
-                  <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
-                    Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
-                  </Button>
-                </div>
-              )}
+                ))}
+              </div>
+              <div className="flex justify-center pt-2">
+                <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
+                  Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </div>
             </div>
           )}
 
