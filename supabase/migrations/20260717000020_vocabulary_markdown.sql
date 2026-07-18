@@ -19,11 +19,17 @@ BEGIN
     blocks := ARRAY[]::TEXT[];
 
     FOR vocab_item IN SELECT * FROM jsonb_array_elements(lesson_row.vocabulary) LOOP
-      de := vocab_item->>'de';
+      de := NULLIF(vocab_item->>'de', '');
       vi := NULLIF(vocab_item->>'vi', '');
       pronunciation := NULLIF(vocab_item->>'pronunciation', '');
       example_de := NULLIF(vocab_item->>'exampleDe', '');
       example_vi := NULLIF(vocab_item->>'exampleVi', '');
+
+      -- Skip empty placeholder entries (found in production data for
+      -- a1-l1: trailing {"de":"","vi":"",...} objects) — an item with no
+      -- `de` has nothing to put inside {{...}}, so emitting it would
+      -- produce a bare "### {{}}" heading with no content.
+      CONTINUE WHEN de IS NULL;
 
       block := '### {{' || de || '}}';
       IF vi IS NOT NULL THEN
