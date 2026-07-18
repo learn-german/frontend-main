@@ -281,6 +281,12 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   </div>
                 ))}
               </div>
+              <div className="text-center space-y-2 pt-1">
+                <h3 className="text-sm font-display font-extrabold text-slate-800">Đã đọc kỹ đoạn văn bên trên chưa?</h3>
+                <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
+                  Trả lời câu hỏi trắc nghiệm để kiểm tra khả năng đọc hiểu của bạn.
+                </p>
+              </div>
               <div className="flex justify-center pt-2">
                 <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
                   Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
