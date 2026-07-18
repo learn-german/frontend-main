@@ -162,12 +162,17 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 
       {/* Row 2: Grammar — full width, markdown or legacy structured */}
       <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-        <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
-          Ngữ pháp then chốt
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+            Ngữ pháp then chốt
+          </span>
+          {lesson.grammarMd && (
+            <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
+          )}
+        </div>
 
         {lesson.grammarMd ? (
-          <MarkdownBlock content={lesson.grammarMd} />
+          <MarkdownBlock content={lesson.grammarMd} onWordClick={handlePronounce} />
         ) : (
           <>
             <h3 className="text-base font-display font-bold text-slate-900">{lesson.grammar.title}</h3>
