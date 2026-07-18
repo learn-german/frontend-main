@@ -18,6 +18,7 @@ import {
   Award
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
+import { countHighlightedWords } from "../components/MarkdownBlock";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
 
 interface DashboardPageProps {
@@ -105,7 +106,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </p>
               <div className="flex items-center gap-4 text-xs text-slate-400 mt-2">
                 <span className="flex items-center gap-1">⏰ {nextSuggestedLesson.duration} phút học</span>
-                <span className="flex items-center gap-1">📖 {nextSuggestedLesson.vocabulary.length} từ vựng then chốt</span>
+                <span className="flex items-center gap-1">📖 {countHighlightedWords(nextSuggestedLesson.vocabularyMd)} từ vựng then chốt</span>
               </div>
             </div>
             

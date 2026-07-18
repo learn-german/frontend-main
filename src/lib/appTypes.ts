@@ -10,14 +10,6 @@ export interface UserStats {
   unlockedLevels: Level[];
 }
 
-export interface VocabularyItem {
-  de: string;
-  pronunciation: string;
-  vi: string;
-  exampleDe: string;
-  exampleVi: string;
-}
-
 export interface GrammarExample {
   de: string;
   vi: string;
@@ -57,7 +49,7 @@ export interface Lesson {
   youtubeId?: string;
   orderIndex?: number;
   nextLessonId?: string | null;
-  vocabulary: VocabularyItem[];
+  vocabularyMd?: string;
   grammar: GrammarExplanation;
   grammarMd?: string;
   speakingMd?: string;

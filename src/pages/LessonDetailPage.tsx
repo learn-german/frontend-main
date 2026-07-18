@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
-  Volume2,
   CheckCircle,
   ArrowRight,
   BookOpen,
@@ -17,7 +16,7 @@ import {
 } from "lucide-react";
 import { LevelBadge, Button } from "../components/DesignSystem";
 import { VideoPlayer } from "../components/VideoPlayer";
-import { MarkdownBlock } from "../components/MarkdownBlock";
+import { MarkdownBlock, countHighlightedWords } from "../components/MarkdownBlock";
 import { ListeningClipPlayer } from "../components/ListeningClipPlayer";
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
@@ -62,7 +61,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   // undefined as "has content" so Grammatikübungen is never hidden by
   // mistake.
   const visibleTabs = BOTTOM_TABS.filter(({ id }) => {
-    if (id === "tuvung") return lesson.vocabulary.length > 0;
+    if (id === "tuvung") return !!lesson.vocabularyMd;
     if (id === "quiz") return lesson.hasNguphapQuestions !== false;
     if (id === "doc") return lesson.readingPassages.length > 0;
     if (id === "nghe") return lesson.listeningClips.length > 0;
@@ -291,43 +290,21 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           )}
 
           {/* Từ vựng tab */}
-          {bottomTab === "tuvung" && (
+          {bottomTab === "tuvung" && lesson.vocabularyMd && (
             <section className="space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                 <div className="space-y-1">
                   <h2 className="text-sm font-display font-bold text-slate-900 flex items-center gap-1.5 font-sans">
                     <BookOpen className="w-4 h-4 text-orange-600" /> Từ vựng then chốt
                   </h2>
-                  <p className="text-[10px] text-slate-400">Click loa để nghe phát âm</p>
+                  <p className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</p>
                 </div>
                 <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
-                  {lesson.vocabulary.length} từ
+                  {countHighlightedWords(lesson.vocabularyMd)} từ
                 </span>
               </div>
 
-              <div className="divide-y divide-slate-100">
-                {lesson.vocabulary.map((vocab, index) => (
-                  <div key={index} className="py-3 first:pt-0 last:pb-0 flex items-start gap-2.5">
-                    <button
-                      onClick={() => handlePronounce(vocab.de)}
-                      className="w-7 h-7 mt-0.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-500 flex items-center justify-center transition shrink-0 active:scale-90"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="font-display font-extrabold text-sm text-slate-900">{vocab.de}</span>
-                        <span className="font-mono text-[10px] text-slate-400">{vocab.pronunciation}</span>
-                        <span className="text-xs font-semibold text-slate-600 ml-auto">{vocab.vi}</span>
-                      </div>
-                      <div className="mt-1 bg-slate-50 rounded-lg px-2 py-1.5 text-[10px]">
-                        <p className="font-display font-semibold text-slate-700">🇩🇪 {vocab.exampleDe}</p>
-                        <p className="text-slate-400 italic mt-0.5">🇻🇳 {vocab.exampleVi}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <MarkdownBlock content={lesson.vocabularyMd} onWordClick={handlePronounce} />
             </section>
           )}
         </div>
