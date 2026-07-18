@@ -17,7 +17,6 @@ import {
 import { LevelBadge, Button } from "../components/DesignSystem";
 import { VideoPlayer } from "../components/VideoPlayer";
 import { MarkdownBlock, countHighlightedWords } from "../components/MarkdownBlock";
-import { ListeningClipPlayer } from "../components/ListeningClipPlayer";
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 import { useWritingSubmission } from "../lib/hooks/useWritingSubmission";
@@ -245,18 +244,19 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           )}
 
           {/* Nghe (Hören) tab — hidden entirely via visibleTabs when
-              listeningClips is empty, so no "Sắp có" fallback needed. */}
+              listeningClips is empty, so no "Sắp có" fallback needed. File
+              mp3 không phát trực tiếp ở đây — chỉ phát trong QuizPage lúc
+              làm bài tập nghe. */}
           {bottomTab === "nghe" && lesson.listeningClips.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="space-y-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <Headphones className="w-4 h-4 text-orange-500" />
                 <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
               </div>
-              <div className="space-y-4">
-                {lesson.listeningClips.map((clip, idx) => (
-                  <ListeningClipPlayer key={clip.id} lessonId={lesson.id} clip={clip} label={`File ${idx + 1}`} />
-                ))}
-              </div>
+              <h3 className="text-sm font-display font-extrabold text-slate-800">Sẵn sàng luyện nghe chưa?</h3>
+              <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
+                Bấm bắt đầu để nghe file âm thanh và trả lời câu hỏi trắc nghiệm đi kèm.
+              </p>
               <div className="flex justify-center pt-2">
                 <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
                   Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
