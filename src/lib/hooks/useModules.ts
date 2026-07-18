@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
-import { Module, Lesson, Level, VocabularyItem, GrammarExplanation } from "../appTypes";
+import { Module, Lesson, Level, GrammarExplanation } from "../appTypes";
 
 type SupabaseLesson = {
   id: string;
@@ -14,7 +14,7 @@ type SupabaseLesson = {
   order_index: number;
   xp_reward: number;
   next_lesson_id: string | null;
-  vocabulary: unknown;
+  vocabulary_md: string | null;
   grammar: unknown;
   grammar_md: string | null;
   speaking_md: string | null;
@@ -53,7 +53,7 @@ function transformModule(m: SupabaseModule, nguphapLessonIds: Set<string>): Modu
       youtubeId: l.youtube_id ?? undefined,
       orderIndex: l.order_index,
       nextLessonId: l.next_lesson_id,
-      vocabulary: (l.vocabulary as VocabularyItem[]) ?? [],
+      vocabularyMd: l.vocabulary_md ?? undefined,
       grammar: (l.grammar as GrammarExplanation) ?? { title: "", rule: "", examples: [] },
       grammarMd: l.grammar_md ?? undefined,
       speakingMd: l.speaking_md ?? undefined,
@@ -98,7 +98,7 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
           lessons (
             id, level, title, title_vi, objective, summary,
             youtube_id, duration, order_index, xp_reward,
-            next_lesson_id, vocabulary, grammar,
+            next_lesson_id, vocabulary_md, grammar,
             grammar_md, speaking_md, writing_prompt_md, video_r2_key,
             listening_clips (id, r2_key, order_index),
             reading_passages (id, text_de, order_index)

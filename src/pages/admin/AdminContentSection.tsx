@@ -25,7 +25,7 @@ interface AdminModule {
 }
 
 const LESSON_SELECT = `id, title, title_vi, duration, level, xp_reward, youtube_id,
-                objective, summary, vocabulary, grammar, grammar_md, speaking_md,
+                objective, summary, vocabulary_md, grammar, grammar_md, speaking_md,
                 writing_prompt_md, video_r2_key, order_index, status`;
 
 const SortableLessonRow: React.FC<{
@@ -120,8 +120,7 @@ export const AdminContentSection: React.FC = () => {
 
   useEffect(() => { fetchModules(); }, []);
 
-  const emptyVocabGrammar = (row: unknown): Pick<AdminLesson, "vocabulary" | "grammar"> => ({
-    vocabulary: Array.isArray((row as AdminLesson).vocabulary) ? (row as AdminLesson).vocabulary : [],
+  const emptyGrammar = (row: unknown): Pick<AdminLesson, "grammar"> => ({
     grammar: (row as AdminLesson).grammar && typeof (row as AdminLesson).grammar === "object"
       ? (row as AdminLesson).grammar
       : { title: "", rule: "", examples: [] },
@@ -144,7 +143,6 @@ export const AdminContentSection: React.FC = () => {
         duration: "10 phút",
         xp_reward: 10,
         order_index: n,
-        vocabulary: [],
         grammar: { title: "", rule: "", examples: [] },
         status: "draft",
       })
@@ -158,7 +156,7 @@ export const AdminContentSection: React.FC = () => {
       return;
     }
 
-    setEditing({ ...(data as unknown as AdminLesson), ...emptyVocabGrammar(data) });
+    setEditing({ ...(data as unknown as AdminLesson), ...emptyGrammar(data) });
   };
 
   const handleDeleteLesson = async () => {
@@ -226,7 +224,7 @@ export const AdminContentSection: React.FC = () => {
                       <SortableLessonRow
                         key={lesson.id}
                         lesson={lesson}
-                        onEdit={() => setEditing({ ...lesson, ...emptyVocabGrammar(lesson) })}
+                        onEdit={() => setEditing({ ...lesson, ...emptyGrammar(lesson) })}
                         onDelete={() => setDeleteTarget(lesson)}
                       />
                     ))}

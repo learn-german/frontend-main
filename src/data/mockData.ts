@@ -23,43 +23,35 @@ export const SAMPLE_MODULES: Module[] = [
         duration: "05:40",
         objective: "Học cách chào hỏi cơ bản, giới thiệu tên, tuổi, quê quán bằng tiếng Đức và sử dụng nhuần nhuyễn các ngôi nhân xưng chính.",
         summary: "Trong bài học này, chúng ta sẽ làm quen với các câu chào xã giao phổ biến nhất trong tiếng Đức như 'Guten Tag', 'Hallo' và cách tự giới thiệu bản thân một cách tự nhiên. Bạn sẽ học được cấu trúc hỏi tên người khác và trả lời trang trọng hoặc thân mật.",
-        vocabulary: [
-          {
-            de: "Guten Tag",
-            pronunciation: "['gu:ten ta:k]",
-            vi: "Chào ngày mới / Xin chào (ban ngày)",
-            exampleDe: "Guten Tag, wie geht es Ihnen?",
-            exampleVi: "Xin chào, ngài khỏe không?"
-          },
-          {
-            de: "Wie heißt du?",
-            pronunciation: "[vi: haɪst du:]",
-            vi: "Bạn tên là gì?",
-            exampleDe: "Hallo, ich bin Minh. Wie heißt du?",
-            exampleVi: "Chào bạn, mình là Minh. Bạn tên là gì?"
-          },
-          {
-            de: "Ich komme aus...",
-            pronunciation: "[ɪç 'kɔmə aʊs]",
-            vi: "Tôi đến từ...",
-            exampleDe: "Ich komme aus Vietnam.",
-            exampleVi: "Tôi đến từ Việt Nam."
-          },
-          {
-            de: "Freut mich",
-            pronunciation: "[frɔɪt mɪç]",
-            vi: "Rất vui được làm quen",
-            exampleDe: "Mein Name ist Thomas. - Freut mich!",
-            exampleVi: "Tên tôi là Thomas. - Rất vui được làm quen!"
-          },
-          {
-            de: "Auf Wiedersehen",
-            pronunciation: "['aʊf 'vi:dɐ,ze:ən]",
-            vi: "Tạm biệt (lịch sự)",
-            exampleDe: "Auf Wiedersehen, Frau Schmidt!",
-            exampleVi: "Xin tạm biệt bà Schmidt!"
-          }
-        ],
+        vocabularyMd: `### {{Guten Tag}} — Chào ngày mới / Xin chào (ban ngày)
+*['gu:ten ta:k]*
+
+🇩🇪 Guten Tag, wie geht es Ihnen?
+🇻🇳 Xin chào, ngài khỏe không?
+
+### {{Wie heißt du?}} — Bạn tên là gì?
+*[vi: haɪst du:]*
+
+🇩🇪 Hallo, ich bin Minh. Wie heißt du?
+🇻🇳 Chào bạn, mình là Minh. Bạn tên là gì?
+
+### {{Ich komme aus...}} — Tôi đến từ...
+*[ɪç 'kɔmə aʊs]*
+
+🇩🇪 Ich komme aus Vietnam.
+🇻🇳 Tôi đến từ Việt Nam.
+
+### {{Freut mich}} — Rất vui được làm quen
+*[frɔɪt mɪç]*
+
+🇩🇪 Mein Name ist Thomas. - Freut mich!
+🇻🇳 Tên tôi là Thomas. - Rất vui được làm quen!
+
+### {{Auf Wiedersehen}} — Tạm biệt (lịch sự)
+*['aʊf 'vi:dɐ,ze:ən]*
+
+🇩🇪 Auf Wiedersehen, Frau Schmidt!
+🇻🇳 Xin tạm biệt bà Schmidt!`,
         grammar: {
           title: "Động từ 'heißen' (tên là) & Cách chia động từ ở hiện tại",
           rule: "Trong tiếng Đức, động từ thay đổi đuôi tùy thuộc vào chủ ngữ (ngôi). Hãy chú ý quy tắc chia động từ cơ bản với động từ 'heißen' (nhóm động từ có đuôi đặc biệt): \n- Ich (tôi) -> heiße (đuôi -e)\n- Du (bạn) -> heißt (đuôi -t do có âm 'ß')\n- Er/Sie (anh ấy/cô ấy) -> heißt (đuôi -t)\n- Wir / Sie (chúng tôi / Ngài) -> heißen (đuôi -en).",
@@ -125,36 +117,29 @@ export const SAMPLE_MODULES: Module[] = [
         duration: "04:50",
         objective: "Nắm vững cách phát âm 26 chữ cái cơ bản, 4 ký tự đặc biệt (ä, ö, ü, ß) và hệ thống số đếm từ 0 đến 20.",
         summary: "Bảng chữ cái viết tương đồng tiếng Anh nhưng cách đọc hoàn chỉnh lại mang âm hưởng đặc trưng. Thêm vào đó, tiếng Đức có các nguyên âm biến đổi Umlaut (ä, ö, ü) cần đặc biệt chú ý khẩu hình. Bạn cũng sẽ học cách đếm tiền xu hoặc đọc số điện thoại đơn giản.",
-        vocabulary: [
-          {
-            de: "die Zahlen",
-            pronunciation: "[di: 'tsa:lən]",
-            vi: "Các con số / Số đếm",
-            exampleDe: "Lernen wir heute die Zahlen von eins bis zehn.",
-            exampleVi: "Hôm nay chúng ta cùng học các con số từ một đến mười."
-          },
-          {
-            de: "eins",
-            pronunciation: "[aɪns]",
-            vi: "số 1",
-            exampleDe: "Eins, zwei, drei!",
-            exampleVi: "Một, hai, ba!"
-          },
-          {
-            de: "tschüss",
-            pronunciation: "[tʃʏs]",
-            vi: "Chào tạm biệt (thông dụng, thân mật)",
-            exampleDe: "Tschüss, bis morgen!",
-            exampleVi: "Tạm biệt nhé, hẹn gặp lại ngày mai!"
-          },
-          {
-            de: "Wie ist Ihre Telefonnummer?",
-            pronunciation: "[vi: ɪst 'i:rə tele'fo:n'nʊmɐ]",
-            vi: "Số điện thoại của Ngài là gì?",
-            exampleDe: "Wie ist Ihre Telefonnummer, Herr Koch?",
-            exampleVi: "Số điện thoại của Ngài là gì vậy, ông Koch?"
-          }
-        ],
+        vocabularyMd: `### {{die Zahlen}} — Các con số / Số đếm
+*[di: 'tsa:lən]*
+
+🇩🇪 Lernen wir heute die Zahlen von eins bis zehn.
+🇻🇳 Hôm nay chúng ta cùng học các con số từ một đến mười.
+
+### {{eins}} — số 1
+*[aɪns]*
+
+🇩🇪 Eins, zwei, drei!
+🇻🇳 Một, hai, ba!
+
+### {{tschüss}} — Chào tạm biệt (thông dụng, thân mật)
+*[tʃʏs]*
+
+🇩🇪 Tschüss, bis morgen!
+🇻🇳 Tạm biệt nhé, hẹn gặp lại ngày mai!
+
+### {{Wie ist Ihre Telefonnummer?}} — Số điện thoại của Ngài là gì?
+*[vi: ɪst 'i:rə tele'fo:n'nʊmɐ]*
+
+🇩🇪 Wie ist Ihre Telefonnummer, Herr Koch?
+🇻🇳 Số điện thoại của Ngài là gì vậy, ông Koch?`,
         grammar: {
           title: "Các ký tự đặc biệt Ä, Ö, Ü, ß và quy tắc phát âm",
           rule: "- Ä / ä: Đọc giống âm 'e' hoặc 'ê' trong tiếng Việt. \n- Ö / ö: Tròn môi chữ 'O' nhưng phát âm chữ 'Ê'.\n- Ü / ü: Tròn môi chữ 'U' nhưng phát âm chữ 'I'.\n- ß (Eszett): Đọc như âm 's' kéo dài (không có trong chữ cái viết hoa đầu câu, viết tương đương 'ss').",
@@ -223,36 +208,29 @@ export const SAMPLE_MODULES: Module[] = [
         duration: "06:15",
         objective: "Sử dụng mẫu câu đàm thoại khi mua thực phẩm, hỏi giá cả, cân nặng, hỏi phương thức thanh toán thẻ và tiền mặt tại Đức.",
         summary: "Mua sắm tại Đức đòi hỏi bạn nhạy bén với cấu trúc danh từ số nhiều và các đơn vị tiền tệ. Bài học này mô phỏng chân thực một buổi đi siêu thị mua táo, sữa, bánh mì, cách trả lời khi thu ngân hỏi về hóa đơn hay túi đựng.",
-        vocabulary: [
-          {
-            de: "der Supermarkt",
-            pronunciation: "['zu:pɐ,maːkt]",
-            vi: "Siêu thị",
-            exampleDe: "Ich gehe in den Supermarkt, um Milch zu kaufen.",
-            exampleVi: "Tôi đi vào siêu thị để mua sữa."
-          },
-          {
-            de: "Wie nhiều kostet das?",
-            pronunciation: "[vi: vi:l 'kɔstət das]",
-            vi: "Cái này giá bao nhiêu?",
-            exampleDe: "Entschuldigung, wie viel kostet ein Kilo Äpfel?",
-            exampleVi: "Xin lỗi, một ký táo giá bao nhiêu ạ?"
-          },
-          {
-            de: "mit Karte zahlen",
-            pronunciation: "[mɪt 'kaʁtə 'tsa:lən]",
-            vi: "Thanh toán bằng thẻ",
-            exampleDe: "Kann ich mit Karte zahlen?",
-            exampleVi: "Tôi có thể thanh toán bằng thẻ được không?"
-          },
-          {
-            de: "die Tüte",
-            pronunciation: "['ty:tə]",
-            vi: "Túi đựng (túi nilon/túi giấy)",
-            exampleDe: "Brauchen Sie eine Tüte?",
-            exampleVi: "Bạn có cần một chiếc túi đựng không?"
-          }
-        ],
+        vocabularyMd: `### {{der Supermarkt}} — Siêu thị
+*['zu:pɐ,maːkt]*
+
+🇩🇪 Ich gehe in den Supermarkt, um Milch zu kaufen.
+🇻🇳 Tôi đi vào siêu thị để mua sữa.
+
+### {{Wie nhiều kostet das?}} — Cái này giá bao nhiêu?
+*[vi: vi:l 'kɔstət das]*
+
+🇩🇪 Entschuldigung, wie viel kostet ein Kilo Äpfel?
+🇻🇳 Xin lỗi, một ký táo giá bao nhiêu ạ?
+
+### {{mit Karte zahlen}} — Thanh toán bằng thẻ
+*[mɪt 'kaʁtə 'tsa:lən]*
+
+🇩🇪 Kann ich mit Karte zahlen?
+🇻🇳 Tôi có thể thanh toán bằng thẻ được không?
+
+### {{die Tüte}} — Túi đựng (túi nilon/túi giấy)
+*['ty:tə]*
+
+🇩🇪 Brauchen Sie eine Tüte?
+🇻🇳 Bạn có cần một chiếc túi đựng không?`,
         grammar: {
           title: "Sử dụng Động từ khuyết thiếu 'Können' & 'Möchten' khi mua sắm",
           rule: "Động từ khuyết thiếu đứng ở vị trí thứ 2 trong câu trần thuật hoặc đầu câu hỏi Yes/No, động từ chính mang nghĩa thực sự sẽ bị đẩy xuống cuối câu ở dạng nguyên thể (Infinitiv).\n- Ich möchte bezahlen (Tôi muốn thanh toán).\n- Kann ich bar bezahlen? (Tôi có thể trả bằng tiền mặt không?)",
@@ -325,36 +303,29 @@ export const SAMPLE_MODULES: Module[] = [
         duration: "08:30",
         objective: "Trình bày luận điểm đồng tình hoặc phản đối một cách có cấu trúc học thuật, sử dụng các liên từ bổ trợ phức tạp.",
         summary: "Ở trình độ B1, bạn không chỉ giao tiếp sinh hoạt đơn thuần nữa mà cần thuyết phục đồng nghiệp, cấp trên hoặc đưa ra ý kiến tranh biện về các chủ đề xã hội phổ biến như làm việc từ xa, bảo vệ môi trường hay giao thông công cộng.",
-        vocabulary: [
-          {
-            de: "Meiner Meinung nach...",
-            pronunciation: "['maɪnɐ 'maɪnʊŋ na:x]",
-            vi: "Theo quan điểm của tôi thì...",
-            exampleDe: "Meiner Meinung nach ist Heimarbeit sehr flexibel.",
-            exampleVi: "Theo quan điểm của tôi thì làm việc tại nhà rất linh hoạt."
-          },
-          {
-            de: "Ich stimme dir zu",
-            pronunciation: "[ɪç 'ʃtɪmə di:ɐ 'tsu:]",
-            vi: "Tôi đồng ý với bạn",
-            exampleDe: "Das ist ein guter Punkt. Ich stimme dir zu.",
-            exampleVi: "Đó là một ý kiến hay. Tôi đồng ý với bạn."
-          },
-          {
-            de: "einerseits ... andererseits",
-            pronunciation: "['aɪnɐ'zaɪts ... 'andəʁə'zaɪts]",
-            vi: "Một mặt thì... mặt khác thì...",
-            exampleDe: "Einerseits spart man Zeit, andererseits vermisst man Kollegen.",
-            exampleVi: "Một mặt ta tiết kiệm thời gian, mặt khác ta lại nhớ đồng nghiệp."
-          },
-          {
-            de: "überzeugen",
-            pronunciation: "[y:bɐ'tsɔɪgən]",
-            vi: "Thuyết phục",
-            exampleDe: "Deine Argumente haben mich überzeugt.",
-            exampleVi: "Các luận điểm của bạn đã thuyết phục được tôi."
-          }
-        ],
+        vocabularyMd: `### {{Meiner Meinung nach...}} — Theo quan điểm của tôi thì...
+*['maɪnɐ 'maɪnʊŋ na:x]*
+
+🇩🇪 Meiner Meinung nach ist Heimarbeit sehr flexibel.
+🇻🇳 Theo quan điểm của tôi thì làm việc tại nhà rất linh hoạt.
+
+### {{Ich stimme dir zu}} — Tôi đồng ý với bạn
+*[ɪç 'ʃtɪmə di:ɐ 'tsu:]*
+
+🇩🇪 Das ist ein guter Punkt. Ich stimme dir zu.
+🇻🇳 Đó là một ý kiến hay. Tôi đồng ý với bạn.
+
+### {{einerseits ... andererseits}} — Một mặt thì... mặt khác thì...
+*['aɪnɐ'zaɪts ... 'andəʁə'zaɪts]*
+
+🇩🇪 Einerseits spart man Zeit, andererseits vermisst man Kollegen.
+🇻🇳 Một mặt ta tiết kiệm thời gian, mặt khác ta lại nhớ đồng nghiệp.
+
+### {{überzeugen}} — Thuyết phục
+*[y:bɐ'tsɔɪgən]*
+
+🇩🇪 Deine Argumente haben mich überzeugt.
+🇻🇳 Các luận điểm của bạn đã thuyết phục được tôi.`,
         grammar: {
           title: "Các liên từ phụ thuộc 'dass' (rằng) và 'weil' (bởi vì)",
           rule: "Trong câu phụ (Nebensatz) bắt đầu bằng 'dass', 'weil', hoặc 'obwohl', động từ đã chia (konjugiertes Verb) luôn luôn bị đẩy xuống đứng ở vị trí CUỐI CÙNG của mệnh đề đó.",

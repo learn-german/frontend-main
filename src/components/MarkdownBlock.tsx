@@ -1,5 +1,5 @@
 import React from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CheckSquare, Square } from "lucide-react";
 
@@ -77,6 +77,39 @@ function wrapCalloutLines(content: string): string {
     }
   }
   return result.join("\n");
+}
+
+const VOCAB_WORD_PATTERN = /\{\{([^{}]+)\}\}/g;
+const PRONOUNCE_SCHEME = "pronounce:";
+
+// Counts {{word}} occurrences in raw markdown — used by callers that show a
+// vocabulary count (lesson tab badge, dashboard "next lesson" card) without
+// needing to render the content.
+export function countHighlightedWords(content: string | undefined): number {
+  if (!content) return 0;
+  return (content.match(VOCAB_WORD_PATTERN) ?? []).length;
+}
+
+// Rewrites {{word}} into a markdown link `[word](pronounce:<index>)`, index
+// referencing into `words` (populated in encounter order). An index rather
+// than the URL-encoded word itself avoids markdown link syntax breaking on
+// words containing "(" or ")", which encodeURIComponent does not escape.
+function wrapPronounceWords(content: string, words: string[]): string {
+  return content.replace(VOCAB_WORD_PATTERN, (_match, word: string) => {
+    const index = words.length;
+    words.push(word);
+    return `[${word}](${PRONOUNCE_SCHEME}${index})`;
+  });
+}
+
+// react-markdown sanitizes link URLs by default (defaultUrlTransform),
+// allowing only a small protocol allowlist (http/https/mailto/tel/relative)
+// — an unrecognized scheme like "pronounce:" is silently rewritten to "",
+// which would break the click-to-speak links produced by wrapPronounceWords
+// above. Carve out an exception for our own synthetic scheme; everything
+// else still goes through the default sanitizer.
+function urlTransform(url: string): string {
+  return url.startsWith(PRONOUNCE_SCHEME) ? url : defaultUrlTransform(url);
 }
 
 export function preprocessMarkdown(content: string): string {
@@ -210,11 +243,44 @@ const components: Components = {
   ),
 };
 
-export const MarkdownBlock: React.FC<{ content: string; className?: string }> = ({ content, className }) => {
+export const MarkdownBlock: React.FC<{
+  content: string;
+  className?: string;
+  onWordClick?: (word: string) => void;
+}> = ({ content, className, onWordClick }) => {
+  const pronounceWords: string[] = [];
+  const preprocessed = preprocessMarkdown(content);
+  const processedContent = onWordClick ? wrapPronounceWords(preprocessed, pronounceWords) : preprocessed;
+
+  const activeComponents: Components = onWordClick
+    ? {
+        ...components,
+        a: ({ href, children }) => {
+          if (href?.startsWith(PRONOUNCE_SCHEME)) {
+            const word = pronounceWords[Number(href.slice(PRONOUNCE_SCHEME.length))];
+            return (
+              <button
+                type="button"
+                onClick={() => onWordClick(word)}
+                className="font-display font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 active:scale-95 rounded px-1 -mx-0.5 transition cursor-pointer"
+              >
+                {children}
+              </button>
+            );
+          }
+          return (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-orange-600 underline hover:text-orange-700">
+              {children}
+            </a>
+          );
+        },
+      }
+    : components;
+
   return (
     <div className={`space-y-0.5 ${className ?? ""}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {preprocessMarkdown(content)}
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={activeComponents} urlTransform={urlTransform}>
+        {processedContent}
       </ReactMarkdown>
     </div>
   );

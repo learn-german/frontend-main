@@ -82,6 +82,7 @@ export type Database = {
           title_vi: string
           video_r2_key: string | null
           vocabulary: Json
+          vocabulary_md: string | null
           writing_prompt_md: string | null
           xp_reward: number
           youtube_id: string | null
@@ -107,6 +108,7 @@ export type Database = {
           title_vi: string
           video_r2_key?: string | null
           vocabulary?: Json
+          vocabulary_md?: string | null
           writing_prompt_md?: string | null
           xp_reward?: number
           youtube_id?: string | null
@@ -132,6 +134,7 @@ export type Database = {
           title_vi?: string
           video_r2_key?: string | null
           vocabulary?: Json
+          vocabulary_md?: string | null
           writing_prompt_md?: string | null
           xp_reward?: number
           youtube_id?: string | null
@@ -556,36 +559,6 @@ export type Database = {
           question_text: string | null
           reading_passage_id: string | null
           type: string | null
-        }
-        Insert: {
-          answer_text?: never
-          audio_clip_id?: string | null
-          audio_text?: string | null
-          category?: string | null
-          explanation?: string | null
-          id?: string | null
-          lesson_id?: string | null
-          matching_pairs?: Json | null
-          options?: Json | null
-          order_index?: number | null
-          question_text?: never
-          reading_passage_id?: string | null
-          type?: string | null
-        }
-        Update: {
-          answer_text?: never
-          audio_clip_id?: string | null
-          audio_text?: string | null
-          category?: string | null
-          explanation?: string | null
-          id?: string | null
-          lesson_id?: string | null
-          matching_pairs?: Json | null
-          options?: Json | null
-          order_index?: number | null
-          question_text?: never
-          reading_passage_id?: string | null
-          type?: string | null
         }
         Relationships: [
           {
