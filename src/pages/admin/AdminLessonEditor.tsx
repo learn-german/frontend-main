@@ -387,7 +387,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
                   rows={12}
                   value={data.vocabulary_md ?? ""}
                   onChange={e => upd({ vocabulary_md: e.target.value })}
-                  placeholder={"### {{Guten Tag}} — Chào ngày mới / Xin chào\n*['gu:ten ta:k]*\n\n🇩🇪 Guten Tag, wie geht es Ihnen?\n🇻🇳 Xin chào, ông/bà khoẻ không?"}
+                  placeholder={"### {{Guten Tag}} — Chào ngày mới / Xin chào\n*['gu:ten ta:k]*\n\n🇩🇪 Guten Tag, wie geht es Ihnen?\n\n🇻🇳 Xin chào, ông/bà khoẻ không?"}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
                 />
               </>

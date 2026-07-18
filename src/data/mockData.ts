@@ -27,30 +27,35 @@ export const SAMPLE_MODULES: Module[] = [
 *['gu:ten ta:k]*
 
 🇩🇪 Guten Tag, wie geht es Ihnen?
+
 🇻🇳 Xin chào, ngài khỏe không?
 
 ### {{Wie heißt du?}} — Bạn tên là gì?
 *[vi: haɪst du:]*
 
 🇩🇪 Hallo, ich bin Minh. Wie heißt du?
+
 🇻🇳 Chào bạn, mình là Minh. Bạn tên là gì?
 
 ### {{Ich komme aus...}} — Tôi đến từ...
 *[ɪç 'kɔmə aʊs]*
 
 🇩🇪 Ich komme aus Vietnam.
+
 🇻🇳 Tôi đến từ Việt Nam.
 
 ### {{Freut mich}} — Rất vui được làm quen
 *[frɔɪt mɪç]*
 
 🇩🇪 Mein Name ist Thomas. - Freut mich!
+
 🇻🇳 Tên tôi là Thomas. - Rất vui được làm quen!
 
 ### {{Auf Wiedersehen}} — Tạm biệt (lịch sự)
 *['aʊf 'vi:dɐ,ze:ən]*
 
 🇩🇪 Auf Wiedersehen, Frau Schmidt!
+
 🇻🇳 Xin tạm biệt bà Schmidt!`,
         grammar: {
           title: "Động từ 'heißen' (tên là) & Cách chia động từ ở hiện tại",
@@ -121,24 +126,28 @@ export const SAMPLE_MODULES: Module[] = [
 *[di: 'tsa:lən]*
 
 🇩🇪 Lernen wir heute die Zahlen von eins bis zehn.
+
 🇻🇳 Hôm nay chúng ta cùng học các con số từ một đến mười.
 
 ### {{eins}} — số 1
 *[aɪns]*
 
 🇩🇪 Eins, zwei, drei!
+
 🇻🇳 Một, hai, ba!
 
 ### {{tschüss}} — Chào tạm biệt (thông dụng, thân mật)
 *[tʃʏs]*
 
 🇩🇪 Tschüss, bis morgen!
+
 🇻🇳 Tạm biệt nhé, hẹn gặp lại ngày mai!
 
 ### {{Wie ist Ihre Telefonnummer?}} — Số điện thoại của Ngài là gì?
 *[vi: ɪst 'i:rə tele'fo:n'nʊmɐ]*
 
 🇩🇪 Wie ist Ihre Telefonnummer, Herr Koch?
+
 🇻🇳 Số điện thoại của Ngài là gì vậy, ông Koch?`,
         grammar: {
           title: "Các ký tự đặc biệt Ä, Ö, Ü, ß và quy tắc phát âm",
@@ -212,24 +221,28 @@ export const SAMPLE_MODULES: Module[] = [
 *['zu:pɐ,maːkt]*
 
 🇩🇪 Ich gehe in den Supermarkt, um Milch zu kaufen.
+
 🇻🇳 Tôi đi vào siêu thị để mua sữa.
 
 ### {{Wie nhiều kostet das?}} — Cái này giá bao nhiêu?
 *[vi: vi:l 'kɔstət das]*
 
 🇩🇪 Entschuldigung, wie viel kostet ein Kilo Äpfel?
+
 🇻🇳 Xin lỗi, một ký táo giá bao nhiêu ạ?
 
 ### {{mit Karte zahlen}} — Thanh toán bằng thẻ
 *[mɪt 'kaʁtə 'tsa:lən]*
 
 🇩🇪 Kann ich mit Karte zahlen?
+
 🇻🇳 Tôi có thể thanh toán bằng thẻ được không?
 
 ### {{die Tüte}} — Túi đựng (túi nilon/túi giấy)
 *['ty:tə]*
 
 🇩🇪 Brauchen Sie eine Tüte?
+
 🇻🇳 Bạn có cần một chiếc túi đựng không?`,
         grammar: {
           title: "Sử dụng Động từ khuyết thiếu 'Können' & 'Möchten' khi mua sắm",
@@ -307,24 +320,28 @@ export const SAMPLE_MODULES: Module[] = [
 *['maɪnɐ 'maɪnʊŋ na:x]*
 
 🇩🇪 Meiner Meinung nach ist Heimarbeit sehr flexibel.
+
 🇻🇳 Theo quan điểm của tôi thì làm việc tại nhà rất linh hoạt.
 
 ### {{Ich stimme dir zu}} — Tôi đồng ý với bạn
 *[ɪç 'ʃtɪmə di:ɐ 'tsu:]*
 
 🇩🇪 Das ist ein guter Punkt. Ich stimme dir zu.
+
 🇻🇳 Đó là một ý kiến hay. Tôi đồng ý với bạn.
 
 ### {{einerseits ... andererseits}} — Một mặt thì... mặt khác thì...
 *['aɪnɐ'zaɪts ... 'andəʁə'zaɪts]*
 
 🇩🇪 Einerseits spart man Zeit, andererseits vermisst man Kollegen.
+
 🇻🇳 Một mặt ta tiết kiệm thời gian, mặt khác ta lại nhớ đồng nghiệp.
 
 ### {{überzeugen}} — Thuyết phục
 *[y:bɐ'tsɔɪgən]*
 
 🇩🇪 Deine Argumente haben mich überzeugt.
+
 🇻🇳 Các luận điểm của bạn đã thuyết phục được tôi.`,
         grammar: {
           title: "Các liên từ phụ thuộc 'dass' (rằng) và 'weil' (bởi vì)",
