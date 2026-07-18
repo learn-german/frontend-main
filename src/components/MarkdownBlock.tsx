@@ -1,5 +1,5 @@
 import React from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CheckSquare, Square } from "lucide-react";
 
@@ -100,6 +100,16 @@ function wrapPronounceWords(content: string, words: string[]): string {
     words.push(word);
     return `[${word}](${PRONOUNCE_SCHEME}${index})`;
   });
+}
+
+// react-markdown sanitizes link URLs by default (defaultUrlTransform),
+// allowing only a small protocol allowlist (http/https/mailto/tel/relative)
+// — an unrecognized scheme like "pronounce:" is silently rewritten to "",
+// which would break the click-to-speak links produced by wrapPronounceWords
+// above. Carve out an exception for our own synthetic scheme; everything
+// else still goes through the default sanitizer.
+function urlTransform(url: string): string {
+  return url.startsWith(PRONOUNCE_SCHEME) ? url : defaultUrlTransform(url);
 }
 
 export function preprocessMarkdown(content: string): string {
@@ -269,7 +279,7 @@ export const MarkdownBlock: React.FC<{
 
   return (
     <div className={`space-y-0.5 ${className ?? ""}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={activeComponents}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={activeComponents} urlTransform={urlTransform}>
         {processedContent}
       </ReactMarkdown>
     </div>
