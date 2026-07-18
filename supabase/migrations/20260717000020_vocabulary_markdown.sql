@@ -45,7 +45,11 @@ BEGIN
       END IF;
 
       IF example_vi IS NOT NULL THEN
-        block := block || E'\n' || '🇻🇳 ' || example_vi;
+        -- Blank line (not a single \n) before the VI example: CommonMark
+        -- collapses a single newline within a paragraph into a space, so
+        -- the DE/VI example lines would otherwise render on one line
+        -- instead of two.
+        block := block || E'\n\n' || '🇻🇳 ' || example_vi;
       END IF;
 
       blocks := array_append(blocks, block);
