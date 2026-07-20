@@ -5,6 +5,7 @@ import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import { uploadMedia } from "../../lib/uploadMedia";
 import { useMediaPlaybackUrl } from "../../lib/hooks/useMediaPlaybackUrl";
+import { AdminGrammarExerciseSection } from "./AdminGrammarExerciseSection";
 
 interface QuizQuestion {
   id: string;
@@ -524,6 +525,7 @@ export const AdminQuizSection: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      {activeTab !== "nguphap" && (
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-display font-black text-slate-900">Quản lý bài tập</h1>
         <div className="relative w-64">
@@ -537,6 +539,7 @@ export const AdminQuizSection: React.FC = () => {
           />
         </div>
       </div>
+      )}
 
       <div className="flex gap-2 border-b border-slate-200/60">
         {(Object.keys(CATEGORY_LABELS) as ("nguphap" | "nghe" | "doc")[]).map((val) => (
@@ -554,6 +557,9 @@ export const AdminQuizSection: React.FC = () => {
         ))}
       </div>
 
+      {activeTab === "nguphap" ? (
+        <AdminGrammarExerciseSection />
+      ) : (
       <div className="space-y-3">
         {filteredGroups.map((group) => {
           const filteredQuestions = group.questions.filter((q) => q.category === activeTab);
@@ -669,6 +675,7 @@ export const AdminQuizSection: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Edit / Create modal */}
       {modalOpen && (
