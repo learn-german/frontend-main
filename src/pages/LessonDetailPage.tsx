@@ -30,7 +30,7 @@ interface LessonDetailPageProps {
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
 }
 
-type BottomTab = "quiz" | "nghe" | "doc" | "tuvung" | "noi" | "viet";
+type BottomTab = "nguphapthenchot" | "quiz" | "nghe" | "doc" | "tuvung" | "noi" | "viet";
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   lesson,
@@ -44,6 +44,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   const [marked, setMarked] = useState(isCompleted);
 
   const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
+    { id: "nguphapthenchot", label: "Ngữ pháp then chốt", Icon: GraduationCap },
     { id: "tuvung", label: "Wortschatz", Icon: BookOpen },
     { id: "quiz", label: "Grammatikübungen", Icon: HelpCircle },
     { id: "doc", label: "Lesen", Icon: FileText },
@@ -160,38 +161,6 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Row 2: Grammar — full width, markdown or legacy structured */}
-      <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
-            Ngữ pháp then chốt
-          </span>
-          {lesson.grammarMd && (
-            <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
-          )}
-        </div>
-
-        {lesson.grammarMd ? (
-          <MarkdownBlock content={lesson.grammarMd} onWordClick={handlePronounce} />
-        ) : (
-          <>
-            <h3 className="text-base font-display font-bold text-slate-900">{lesson.grammar.title}</h3>
-            <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-sans">{lesson.grammar.rule}</p>
-            {lesson.grammar.examples.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <span className="text-[10px] font-display font-bold text-slate-400 block uppercase">Ví dụ minh họa:</span>
-                {lesson.grammar.examples.map((ex, i) => (
-                  <div key={i} className="bg-white p-3 rounded-xl border border-slate-150 shadow-sm text-xs">
-                    <p className="font-display font-bold text-slate-900 leading-normal">🇩🇪 {ex.de}</p>
-                    <p className="text-slate-500 mt-1 font-sans italic">🇻🇳 {ex.vi}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
       {/* Bottom tabbed section: Bài tập ngữ pháp / Nghe / Đọc / Từ vựng */}
       <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl overflow-hidden">
         {/* Tab bar */}
@@ -214,6 +183,38 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 
         {/* Tab content */}
         <div className="p-6">
+          {/* Ngữ pháp then chốt tab */}
+          {bottomTab === "nguphapthenchot" && (
+            <div className="space-y-4">
+              {lesson.grammarMd ? (
+                <>
+                  <div className="flex justify-end">
+                    <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
+                  </div>
+                  <MarkdownBlock content={lesson.grammarMd} onWordClick={handlePronounce} />
+                </>
+              ) : lesson.grammar.rule ? (
+                <>
+                  <h3 className="text-base font-display font-bold text-slate-900">{lesson.grammar.title}</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-sans">{lesson.grammar.rule}</p>
+                  {lesson.grammar.examples.length > 0 && (
+                    <div className="space-y-2 mt-4">
+                      <span className="text-[10px] font-display font-bold text-slate-400 block uppercase">Ví dụ minh họa:</span>
+                      {lesson.grammar.examples.map((ex, i) => (
+                        <div key={i} className="bg-white p-3 rounded-xl border border-slate-150 shadow-sm text-xs">
+                          <p className="font-display font-bold text-slate-900 leading-normal">🇩🇪 {ex.de}</p>
+                          <p className="text-slate-500 mt-1 font-sans italic">🇻🇳 {ex.vi}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-slate-400 text-center py-8">Bài học này chưa có nội dung ngữ pháp then chốt.</p>
+              )}
+            </div>
+          )}
+
           {/* Bài tập ngữ pháp tab */}
           {bottomTab === "quiz" && (
             <div className="text-center space-y-4">
