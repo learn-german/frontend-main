@@ -17,6 +17,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
 import { LessonDetailPage } from "./pages/LessonDetailPage";
 import { QuizPage } from "./pages/QuizPage";
+import { GrammarExercisePage } from "./pages/GrammarExercisePage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
@@ -295,14 +296,24 @@ export default function App() {
               )}
 
               {currentPage === "quiz" && user && activeLessonObject && (
-                <QuizPage
-                  lesson={activeLessonObject}
-                  category={activeExerciseCategory}
-                  onQuizFinished={handleQuizFinished}
-                  onNavigateHome={() => handleNavigate("roadmap")}
-                  onNextLesson={handleNextLesson}
-                  onBackToLesson={() => setCurrentPage("lesson-detail")}
-                />
+                activeExerciseCategory === "nguphap" ? (
+                  <GrammarExercisePage
+                    lesson={activeLessonObject}
+                    onQuizFinished={handleQuizFinished}
+                    onNavigateHome={() => handleNavigate("roadmap")}
+                    onNextLesson={handleNextLesson}
+                    onBackToLesson={() => setCurrentPage("lesson-detail")}
+                  />
+                ) : (
+                  <QuizPage
+                    lesson={activeLessonObject}
+                    category={activeExerciseCategory}
+                    onQuizFinished={handleQuizFinished}
+                    onNavigateHome={() => handleNavigate("roadmap")}
+                    onNextLesson={handleNextLesson}
+                    onBackToLesson={() => setCurrentPage("lesson-detail")}
+                  />
+                )
               )}
               {currentPage === "leaderboard" && user && (
                 <LeaderboardPage currentUserId={user.id} />
