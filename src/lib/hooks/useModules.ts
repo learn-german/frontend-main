@@ -107,9 +107,8 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
         .order("order_index")
         .order("order_index", { referencedTable: "lessons" }),
       supabase
-        .from("quiz_questions_public")
-        .select("lesson_id")
-        .eq("category", "nguphap"),
+        .from("grammar_exercises_public")
+        .select("lesson_id"),
     ]).then(([modulesRes, nguphapRes]) => {
       if (cancelled) return;
       if (modulesRes.error) {
