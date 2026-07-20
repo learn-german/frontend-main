@@ -46,6 +46,7 @@ export interface GrammarExercise {
     | "sentence_transformation"
     | "guided_sentence_writing"
     | "classification";
+  groupId?: string;
   promptText?: string;
   transformationHint?: string;
   tokens?: string[];
