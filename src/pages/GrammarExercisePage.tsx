@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Loader2, ArrowRight, RotateCcw } from "lucide-react";
 import { Button, ProgressBar } from "../components/DesignSystem";
-import { Lesson } from "../lib/appTypes";
+import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
+import { groupExercisesIntoPages } from "../lib/grammarExercisePaging";
 import { supabase } from "../lib/supabase";
 
 interface GrammarExercisePageProps {
@@ -20,6 +21,153 @@ interface GrammarResult {
   xp_earned: number;
 }
 
+const ExerciseCard: React.FC<{
+  exercise: GrammarExercise;
+  index: number;
+  selectedTokens: string[];
+  onToggleToken: (token: string, tokenIdx: number) => void;
+  onClearTokens: () => void;
+  textAnswer: string;
+  onTextAnswerChange: (value: string) => void;
+  itemGroups: Record<string, string>;
+  onItemGroupChange: (item: string, group: string) => void;
+}> = ({
+  exercise,
+  index,
+  selectedTokens,
+  onToggleToken,
+  onClearTokens,
+  textAnswer,
+  onTextAnswerChange,
+  itemGroups,
+  onItemGroupChange,
+}) => (
+  <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+    <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">Câu {index + 1}</span>
+
+    {exercise.type === "word_reorder" && (
+      <>
+        <p className="text-xs text-slate-500">Sắp xếp các từ sau thành câu đúng:</p>
+        <div className="flex flex-wrap gap-1.5">
+          {(exercise.tokens ?? []).map((token, i) => {
+            const key = `${i}:${token}`;
+            const selected = selectedTokens.includes(key);
+            return (
+              <button
+                key={key}
+                onClick={() => onToggleToken(token, i)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
+                  selected
+                    ? "bg-orange-50 border-orange-300 text-orange-700"
+                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {token}
+              </button>
+            );
+          })}
+        </div>
+        <div className="min-h-[2.5rem] p-2.5 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-xs font-medium text-slate-800">
+          {selectedTokens.length > 0
+            ? selectedTokens.map((t) => t.split(":").slice(1).join(":")).join(" ")
+            : "Câu của bạn sẽ hiện ở đây..."}
+        </div>
+        {selectedTokens.length > 0 && (
+          <button onClick={onClearTokens} className="text-[11px] font-bold text-slate-400 hover:text-slate-600">
+            Xóa hết
+          </button>
+        )}
+      </>
+    )}
+
+    {exercise.type === "error_correction" && (
+      <>
+        <p className="text-xs text-slate-700">Sửa câu sau cho đúng:</p>
+        <p className="text-xs bg-red-50 text-red-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
+        <input
+          type="text"
+          value={textAnswer}
+          onChange={(e) => onTextAnswerChange(e.target.value)}
+          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          placeholder="Nhập câu đúng..."
+        />
+      </>
+    )}
+
+    {exercise.type === "translation" && (
+      <>
+        <p className="text-xs text-slate-700">Dịch câu sau sang tiếng Đức:</p>
+        <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
+        <input
+          type="text"
+          value={textAnswer}
+          onChange={(e) => onTextAnswerChange(e.target.value)}
+          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          placeholder="Nhập câu tiếng Đức..."
+        />
+      </>
+    )}
+
+    {exercise.type === "sentence_transformation" && (
+      <>
+        <p className="text-xs text-slate-700">Biến đổi câu sau theo yêu cầu:</p>
+        <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
+        {exercise.transformationHint && (
+          <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
+            Yêu cầu: {exercise.transformationHint}
+          </span>
+        )}
+        <input
+          type="text"
+          value={textAnswer}
+          onChange={(e) => onTextAnswerChange(e.target.value)}
+          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          placeholder="Nhập câu sau khi biến đổi..."
+        />
+      </>
+    )}
+
+    {exercise.type === "guided_sentence_writing" && (
+      <>
+        <p className="text-xs text-slate-700">Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:</p>
+        <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
+        <input
+          type="text"
+          value={textAnswer}
+          onChange={(e) => onTextAnswerChange(e.target.value)}
+          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          placeholder="Viết câu hoàn chỉnh..."
+        />
+      </>
+    )}
+
+    {exercise.type === "classification" && (
+      <>
+        <p className="text-xs text-slate-500">Phân loại các item sau vào đúng nhóm:</p>
+        <div className="space-y-1.5">
+          {(exercise.classificationItems ?? []).map((item) => (
+            <div key={item} className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-800 flex-1">{item}</span>
+              <select
+                value={itemGroups[item] ?? ""}
+                onChange={(e) => onItemGroupChange(item, e.target.value)}
+                className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+              >
+                <option value="">-- Chọn nhóm --</option>
+                {(exercise.classificationGroups ?? []).map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+  </div>
+);
+
 export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   lesson,
   onQuizFinished,
@@ -28,59 +176,63 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(lesson.id);
 
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const pages = useMemo(() => groupExercisesIntoPages(exercises), [exercises]);
+
+  const [currentPageIdx, setCurrentPageIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
-  const [textAnswer, setTextAnswer] = useState("");
-  const [itemGroups, setItemGroups] = useState<Record<string, string>>({});
+  const [selectedTokensByExercise, setSelectedTokensByExercise] = useState<Record<string, string[]>>({});
+  const [textAnswerByExercise, setTextAnswerByExercise] = useState<Record<string, string>>({});
+  const [itemGroupsByExercise, setItemGroupsByExercise] = useState<Record<string, Record<string, string>>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);
 
-  const activeExercise = exercises[currentIdx];
-  const isLastExercise = currentIdx === exercises.length - 1;
+  const currentPage = pages[currentPageIdx] ?? [];
+  const isLastPage = currentPageIdx === pages.length - 1;
+  const questionOffset = pages.slice(0, currentPageIdx).reduce((sum, p) => sum + p.length, 0);
 
-  useEffect(() => {
-    setSelectedTokens([]);
-    setTextAnswer("");
-    setItemGroups({});
-  }, [currentIdx, exercises]);
-
-  const toggleToken = (token: string, tokenIdx: number) => {
+  const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
     const key = `${tokenIdx}:${token}`;
-    setSelectedTokens((prev) =>
-      prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key],
-    );
+    setSelectedTokensByExercise((prev) => {
+      const current = prev[exerciseId] ?? [];
+      const next = current.includes(key) ? current.filter((t) => t !== key) : [...current, key];
+      return { ...prev, [exerciseId]: next };
+    });
   };
 
-  const getCurrentAnswerString = (): string => {
-    if (!activeExercise) return "";
-    if (activeExercise.type === "word_reorder") {
-      return selectedTokens.map((t) => t.split(":").slice(1).join(":")).join(" ");
+  const getAnswerStringFor = (exercise: GrammarExercise): string => {
+    if (exercise.type === "word_reorder") {
+      const tokens = selectedTokensByExercise[exercise.id] ?? [];
+      return tokens.map((t) => t.split(":").slice(1).join(":")).join(" ");
     }
-    if (activeExercise.type === "classification") {
-      const items = activeExercise.classificationItems ?? [];
-      if (items.length === 0 || items.some((item) => !itemGroups[item])) return "";
-      return items.map((item) => `${item}:${itemGroups[item]}`).join("|");
+    if (exercise.type === "classification") {
+      const items = exercise.classificationItems ?? [];
+      const groups = itemGroupsByExercise[exercise.id] ?? {};
+      if (items.length === 0 || items.some((item) => !groups[item])) return "";
+      return items.map((item) => `${item}:${groups[item]}`).join("|");
     }
-    return textAnswer.trim();
+    return (textAnswerByExercise[exercise.id] ?? "").trim();
   };
 
-  const hasAnsweredCurrent = (): boolean => getCurrentAnswerString() !== "";
+  const hasAnsweredAllOnPage = (): boolean => currentPage.every((ex) => getAnswerStringFor(ex) !== "");
+
+  const collectPageAnswers = (): Record<string, string> => {
+    const pageAnswers: Record<string, string> = {};
+    for (const ex of currentPage) {
+      pageAnswers[ex.id] = getAnswerStringFor(ex);
+    }
+    return pageAnswers;
+  };
 
   const handleNext = () => {
-    const answer = getCurrentAnswerString();
-    setAnswers((prev) => ({ ...prev, [activeExercise.id]: answer }));
-    if (!isLastExercise) {
-      setCurrentIdx((i) => i + 1);
-    }
+    setAnswers((prev) => ({ ...prev, ...collectPageAnswers() }));
+    setCurrentPageIdx((i) => i + 1);
   };
 
   const handleSubmit = async () => {
-    const answer = getCurrentAnswerString();
-    const finalAnswers = { ...answers, [activeExercise.id]: answer };
+    const finalAnswers = { ...answers, ...collectPageAnswers() };
     setAnswers(finalAnswers);
 
     setSubmitting(true);
@@ -103,11 +255,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   };
 
   const handleRetry = () => {
-    setCurrentIdx(0);
+    setCurrentPageIdx(0);
     setAnswers({});
-    setSelectedTokens([]);
-    setTextAnswer("");
-    setItemGroups({});
+    setSelectedTokensByExercise({});
+    setTextAnswerByExercise({});
+    setItemGroupsByExercise({});
     setResult(null);
     setSubmitError(null);
   };
@@ -216,147 +368,48 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     );
   }
 
-  const progressPercent = Math.round((currentIdx / exercises.length) * 100);
-  const canProceed = hasAnsweredCurrent();
+  const progressPercent = pages.length > 0 ? Math.round((currentPageIdx / pages.length) * 100) : 0;
+  const canProceed = hasAnsweredAllOnPage();
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-300">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
       <div className="flex items-center justify-between gap-6 pb-2 select-none">
         <div className="flex-1">
           <ProgressBar value={progressPercent} className="text-xs" />
         </div>
         <span className="text-xs font-display font-extrabold text-slate-500 shrink-0 bg-slate-100 px-3 py-1.5 rounded-full">
-          Câu hỏi {currentIdx + 1} / {exercises.length}
+          Trang {currentPageIdx + 1} / {pages.length}
         </span>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
-        {activeExercise.type === "word_reorder" && (
-          <>
-            <p className="text-sm text-slate-500">Sắp xếp các từ sau thành câu đúng:</p>
-            <div className="flex flex-wrap gap-2">
-              {(activeExercise.tokens ?? []).map((token, i) => {
-                const key = `${i}:${token}`;
-                const selected = selectedTokens.includes(key);
-                return (
-                  <button
-                    key={key}
-                    onClick={() => toggleToken(token, i)}
-                    className={`px-3 py-2 rounded-xl text-sm font-mono border transition-colors ${
-                      selected
-                        ? "bg-orange-50 border-orange-300 text-orange-700"
-                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    {token}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="min-h-[3rem] p-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 text-sm font-medium text-slate-800">
-              {selectedTokens.length > 0
-                ? selectedTokens.map((t) => t.split(":").slice(1).join(":")).join(" ")
-                : "Câu của bạn sẽ hiện ở đây..."}
-            </div>
-            {selectedTokens.length > 0 && (
-              <button onClick={() => setSelectedTokens([])} className="text-xs font-bold text-slate-400 hover:text-slate-600">
-                Xóa hết
-              </button>
-            )}
-          </>
-        )}
-
-        {activeExercise.type === "error_correction" && (
-          <>
-            <p className="text-sm text-slate-700">Sửa câu sau cho đúng:</p>
-            <p className="text-sm bg-red-50 text-red-700 rounded-xl px-3 py-2">{activeExercise.promptText}</p>
-            <input
-              type="text"
-              value={textAnswer}
-              onChange={(e) => setTextAnswer(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-              placeholder="Nhập câu đúng..."
-            />
-          </>
-        )}
-
-        {activeExercise.type === "translation" && (
-          <>
-            <p className="text-sm text-slate-700">Dịch câu sau sang tiếng Đức:</p>
-            <p className="text-sm bg-slate-50 text-slate-700 rounded-xl px-3 py-2">{activeExercise.promptText}</p>
-            <input
-              type="text"
-              value={textAnswer}
-              onChange={(e) => setTextAnswer(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-              placeholder="Nhập câu tiếng Đức..."
-            />
-          </>
-        )}
-
-        {activeExercise.type === "sentence_transformation" && (
-          <>
-            <p className="text-sm text-slate-700">Biến đổi câu sau theo yêu cầu:</p>
-            <p className="text-sm bg-slate-50 text-slate-700 rounded-xl px-3 py-2">{activeExercise.promptText}</p>
-            {activeExercise.transformationHint && (
-              <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
-                Yêu cầu: {activeExercise.transformationHint}
-              </span>
-            )}
-            <input
-              type="text"
-              value={textAnswer}
-              onChange={(e) => setTextAnswer(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-              placeholder="Nhập câu sau khi biến đổi..."
-            />
-          </>
-        )}
-
-        {activeExercise.type === "guided_sentence_writing" && (
-          <>
-            <p className="text-sm text-slate-700">Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:</p>
-            <p className="text-sm bg-slate-50 text-slate-700 rounded-xl px-3 py-2">{activeExercise.promptText}</p>
-            <input
-              type="text"
-              value={textAnswer}
-              onChange={(e) => setTextAnswer(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-              placeholder="Viết câu hoàn chỉnh..."
-            />
-          </>
-        )}
-
-        {activeExercise.type === "classification" && (
-          <>
-            <p className="text-sm text-slate-500">Phân loại các item sau vào đúng nhóm:</p>
-            <div className="space-y-2">
-              {(activeExercise.classificationItems ?? []).map((item) => (
-                <div key={item} className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-slate-800 flex-1">{item}</span>
-                  <select
-                    value={itemGroups[item] ?? ""}
-                    onChange={(e) => setItemGroups((prev) => ({ ...prev, [item]: e.target.value }))}
-                    className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-                  >
-                    <option value="">-- Chọn nhóm --</option>
-                    {(activeExercise.classificationGroups ?? []).map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {currentPage.map((exercise, i) => (
+          <ExerciseCard
+            key={exercise.id}
+            exercise={exercise}
+            index={questionOffset + i}
+            selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
+            onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
+            onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
+            textAnswer={textAnswerByExercise[exercise.id] ?? ""}
+            onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
+            itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
+            onItemGroupChange={(item, group) =>
+              setItemGroupsByExercise((prev) => ({
+                ...prev,
+                [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: group },
+              }))
+            }
+          />
+        ))}
       </div>
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
       <div className="flex justify-end">
-        <Button variant="primary" disabled={!canProceed || submitting} onClick={isLastExercise ? handleSubmit : handleNext}>
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : !isLastExercise && <ArrowRight className="w-4 h-4 ml-2" />}
-          {isLastExercise ? "Nộp bài" : "Câu tiếp theo"}
+        <Button variant="primary" disabled={!canProceed || submitting} onClick={isLastPage ? handleSubmit : handleNext}>
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : !isLastPage && <ArrowRight className="w-4 h-4 ml-2" />}
+          {isLastPage ? "Nộp bài" : "Trang tiếp theo"}
         </Button>
       </div>
     </div>
