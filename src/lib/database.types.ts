@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      grammar_exercises: {
+        Row: {
+          classification_groups: Json | null
+          classification_items: Json | null
+          correct_answer: string | null
+          explanation: string
+          id: string
+          lesson_id: string
+          order_index: number
+          prompt_text: string | null
+          status: string
+          tokens: Json | null
+          transformation_hint: string | null
+          type: string
+        }
+        Insert: {
+          classification_groups?: Json | null
+          classification_items?: Json | null
+          correct_answer?: string | null
+          explanation?: string
+          id?: string
+          lesson_id: string
+          order_index?: number
+          prompt_text?: string | null
+          status?: string
+          tokens?: Json | null
+          transformation_hint?: string | null
+          type: string
+        }
+        Update: {
+          classification_groups?: Json | null
+          classification_items?: Json | null
+          correct_answer?: string | null
+          explanation?: string
+          id?: string
+          lesson_id?: string
+          order_index?: number
+          prompt_text?: string | null
+          status?: string
+          tokens?: Json | null
+          transformation_hint?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grammar_exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           category: string
