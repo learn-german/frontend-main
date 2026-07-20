@@ -186,14 +186,14 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Ngữ pháp then chốt tab */}
           {bottomTab === "nguphapthenchot" && (
             <div className="space-y-4">
-              {lesson.grammarMd && (
-                <div className="flex justify-end">
-                  <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
-                </div>
-              )}
               {lesson.grammarMd ? (
-                <MarkdownBlock content={lesson.grammarMd} onWordClick={handlePronounce} />
-              ) : (
+                <>
+                  <div className="flex justify-end">
+                    <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
+                  </div>
+                  <MarkdownBlock content={lesson.grammarMd} onWordClick={handlePronounce} />
+                </>
+              ) : lesson.grammar.rule ? (
                 <>
                   <h3 className="text-base font-display font-bold text-slate-900">{lesson.grammar.title}</h3>
                   <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-sans">{lesson.grammar.rule}</p>
@@ -209,6 +209,8 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                     </div>
                   )}
                 </>
+              ) : (
+                <p className="text-sm text-slate-400 text-center py-8">Bài học này chưa có nội dung ngữ pháp then chốt.</p>
               )}
             </div>
           )}

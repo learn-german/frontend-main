@@ -3,7 +3,7 @@ import { Loader2, ArrowRight, RotateCcw } from "lucide-react";
 import { Button, ProgressBar } from "../components/DesignSystem";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
-import { groupExercisesIntoPages } from "../lib/grammarExercisePaging";
+import { groupExercisesIntoPages, numberExercisesWithinType } from "../lib/grammarExercisePaging";
 import { supabase } from "../lib/supabase";
 
 interface GrammarExercisePageProps {
@@ -23,7 +23,7 @@ interface GrammarResult {
 
 const ExerciseCard: React.FC<{
   exercise: GrammarExercise;
-  index: number;
+  questionNumber: number;
   selectedTokens: string[];
   onToggleToken: (token: string, tokenIdx: number) => void;
   onClearTokens: () => void;
@@ -33,7 +33,7 @@ const ExerciseCard: React.FC<{
   onItemGroupChange: (item: string, group: string) => void;
 }> = ({
   exercise,
-  index,
+  questionNumber,
   selectedTokens,
   onToggleToken,
   onClearTokens,
@@ -43,7 +43,7 @@ const ExerciseCard: React.FC<{
   onItemGroupChange,
 }) => (
   <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
-    <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">Câu {index + 1}</span>
+    <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">Câu {questionNumber}</span>
 
     {exercise.type === "word_reorder" && (
       <>
@@ -191,7 +191,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
   const currentPage = pages[currentPageIdx] ?? [];
   const isLastPage = currentPageIdx === pages.length - 1;
-  const questionOffset = pages.slice(0, currentPageIdx).reduce((sum, p) => sum + p.length, 0);
+  const questionNumbers = useMemo(() => numberExercisesWithinType(pages), [pages]);
 
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
     const key = `${tokenIdx}:${token}`;
@@ -337,10 +337,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             Giải thích từng câu hỏi:
           </h4>
           <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1">
-            {exercises.map((ex, idx) => (
+            {pages.flat().map((ex) => (
               <div key={ex.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
                 <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
-                  Câu {idx + 1}: {ex.promptText ?? "Phân loại"}
+                  Câu {questionNumbers.get(ex.id)}: {ex.promptText ?? "Phân loại"}
                 </p>
                 <p className="text-slate-500 text-[11px] leading-relaxed">
                   <b>Giải thích:</b> {ex.explanation}
@@ -383,11 +383,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {currentPage.map((exercise, i) => (
+        {currentPage.map((exercise) => (
           <ExerciseCard
             key={exercise.id}
             exercise={exercise}
-            index={questionOffset + i}
+            questionNumber={questionNumbers.get(exercise.id) ?? 1}
             selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
             onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
             onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}

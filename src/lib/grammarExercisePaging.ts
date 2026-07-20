@@ -26,3 +26,26 @@ export function groupExercisesIntoPages(exercises: GrammarExercise[]): GrammarEx
   }
   return pages;
 }
+
+/**
+ * Đánh số thứ tự cho từng câu, bắt đầu lại từ 1 mỗi khi sang loại bài tập
+ * khác. Giả định `pages` đã được nhóm theo loại (mỗi trang chỉ chứa 1 loại,
+ * các trang cùng loại đứng liên tiếp nhau) — đúng như output của
+ * `groupExercisesIntoPages`.
+ */
+export function numberExercisesWithinType(pages: GrammarExercise[][]): Map<string, number> {
+  const numbers = new Map<string, number>();
+  let previousType: GrammarExercise["type"] | null = null;
+  let counter = 0;
+  for (const page of pages) {
+    for (const exercise of page) {
+      if (exercise.type !== previousType) {
+        counter = 0;
+        previousType = exercise.type;
+      }
+      counter += 1;
+      numbers.set(exercise.id, counter);
+    }
+  }
+  return numbers;
+}
