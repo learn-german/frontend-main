@@ -60,7 +60,7 @@ const ExerciseCard: React.FC<{
   itemGroups,
   onItemGroupChange,
 }) => (
-  <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+  <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
     <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{String.fromCharCode(97 + subIndex)})</span>
 
     {exercise.type === "word_reorder" && (
@@ -390,7 +390,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const canProceed = hasAnsweredAllOnPage();
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
       <div className="flex items-center justify-between gap-6 pb-2 select-none">
         <div className="flex-1">
           <ProgressBar value={progressPercent} className="text-xs" />
@@ -407,7 +407,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
         <p className="text-sm text-slate-500">{currentPage[0] ? GRAMMAR_TYPE_INSTRUCTIONS[currentPage[0].type] : ""}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
         {currentPage.map((exercise, i) => (
           <ExerciseCard
             key={exercise.id}
