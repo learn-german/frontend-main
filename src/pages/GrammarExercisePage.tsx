@@ -59,126 +59,138 @@ const ExerciseCard: React.FC<{
   onTextAnswerChange,
   itemGroups,
   onItemGroupChange,
-}) => (
-  <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
-    <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{String.fromCharCode(97 + subIndex)})</span>
+}) => {
+  const letter = `${String.fromCharCode(97 + subIndex)})`;
 
-    {exercise.type === "word_reorder" && (
-      <>
-        <div className="flex flex-wrap gap-1.5">
-          {(exercise.tokens ?? []).map((token, i) => {
-            const key = `${i}:${token}`;
-            const selected = selectedTokens.includes(key);
-            return (
-              <button
-                key={key}
-                onClick={() => onToggleToken(token, i)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
-                  selected
-                    ? "bg-orange-50 border-orange-300 text-orange-700"
-                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                {token}
-              </button>
-            );
-          })}
-        </div>
-        <div className="min-h-[2.5rem] p-2.5 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-xs font-medium text-slate-800">
-          {selectedTokens.length > 0
-            ? selectedTokens.map((t) => t.split(":").slice(1).join(":")).join(" ")
-            : "Câu của bạn sẽ hiện ở đây..."}
-        </div>
-        {selectedTokens.length > 0 && (
-          <button onClick={onClearTokens} className="text-[11px] font-bold text-slate-400 hover:text-slate-600">
-            Xóa hết
-          </button>
-        )}
-      </>
-    )}
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
+      {exercise.type === "word_reorder" && (
+        <>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-display font-bold text-slate-400 shrink-0">{letter}</span>
+            {(exercise.tokens ?? []).map((token, i) => {
+              const key = `${i}:${token}`;
+              const selected = selectedTokens.includes(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => onToggleToken(token, i)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
+                    selected
+                      ? "bg-orange-50 border-orange-300 text-orange-700"
+                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {token}
+                </button>
+              );
+            })}
+          </div>
+          <div className="min-h-[2.5rem] p-2.5 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-xs font-medium text-slate-800">
+            {selectedTokens.length > 0
+              ? selectedTokens.map((t) => t.split(":").slice(1).join(":")).join(" ")
+              : "Câu của bạn sẽ hiện ở đây..."}
+          </div>
+          {selectedTokens.length > 0 && (
+            <button onClick={onClearTokens} className="text-[11px] font-bold text-slate-400 hover:text-slate-600">
+              Xóa hết
+            </button>
+          )}
+        </>
+      )}
 
-    {exercise.type === "error_correction" && (
-      <>
-        <p className="text-xs bg-red-50 text-red-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
-        <input
-          type="text"
-          value={textAnswer}
-          onChange={(e) => onTextAnswerChange(e.target.value)}
-          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-          placeholder="Nhập câu đúng..."
-        />
-      </>
-    )}
+      {exercise.type === "error_correction" && (
+        <>
+          <p className="text-xs bg-red-50 text-red-700 rounded-lg px-2.5 py-2">
+            <span className="font-bold text-red-400">{letter}</span> {exercise.promptText}
+          </p>
+          <input
+            type="text"
+            value={textAnswer}
+            onChange={(e) => onTextAnswerChange(e.target.value)}
+            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+            placeholder="Nhập câu đúng..."
+          />
+        </>
+      )}
 
-    {exercise.type === "translation" && (
-      <>
-        <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
-        <input
-          type="text"
-          value={textAnswer}
-          onChange={(e) => onTextAnswerChange(e.target.value)}
-          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-          placeholder="Nhập câu tiếng Đức..."
-        />
-      </>
-    )}
+      {exercise.type === "translation" && (
+        <>
+          <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
+            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+          </p>
+          <input
+            type="text"
+            value={textAnswer}
+            onChange={(e) => onTextAnswerChange(e.target.value)}
+            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+            placeholder="Nhập câu tiếng Đức..."
+          />
+        </>
+      )}
 
-    {exercise.type === "sentence_transformation" && (
-      <>
-        <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
-        {exercise.transformationHint && (
-          <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
-            Yêu cầu: {exercise.transformationHint}
-          </span>
-        )}
-        <input
-          type="text"
-          value={textAnswer}
-          onChange={(e) => onTextAnswerChange(e.target.value)}
-          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-          placeholder="Nhập câu sau khi biến đổi..."
-        />
-      </>
-    )}
+      {exercise.type === "sentence_transformation" && (
+        <>
+          <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
+            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+          </p>
+          {exercise.transformationHint && (
+            <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
+              Yêu cầu: {exercise.transformationHint}
+            </span>
+          )}
+          <input
+            type="text"
+            value={textAnswer}
+            onChange={(e) => onTextAnswerChange(e.target.value)}
+            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+            placeholder="Nhập câu sau khi biến đổi..."
+          />
+        </>
+      )}
 
-    {exercise.type === "guided_sentence_writing" && (
-      <>
-        <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
-        <input
-          type="text"
-          value={textAnswer}
-          onChange={(e) => onTextAnswerChange(e.target.value)}
-          className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-          placeholder="Viết câu hoàn chỉnh..."
-        />
-      </>
-    )}
+      {exercise.type === "guided_sentence_writing" && (
+        <>
+          <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
+            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+          </p>
+          <input
+            type="text"
+            value={textAnswer}
+            onChange={(e) => onTextAnswerChange(e.target.value)}
+            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+            placeholder="Viết câu hoàn chỉnh..."
+          />
+        </>
+      )}
 
-    {exercise.type === "classification" && (
-      <>
-        <div className="space-y-1.5">
-          {(exercise.classificationItems ?? []).map((item) => (
-            <div key={item} className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-800 flex-1">{item}</span>
-              <select
-                value={itemGroups[item] ?? ""}
-                onChange={(e) => onItemGroupChange(item, e.target.value)}
-                className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-              >
-                <option value="">-- Chọn nhóm --</option>
-                {(exercise.classificationGroups ?? []).map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-      </>
-    )}
-  </div>
-);
+      {exercise.type === "classification" && (
+        <>
+          <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{letter}</span>
+          <div className="space-y-1.5">
+            {(exercise.classificationItems ?? []).map((item) => (
+              <div key={item} className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-800 flex-1">{item}</span>
+                <select
+                  value={itemGroups[item] ?? ""}
+                  onChange={(e) => onItemGroupChange(item, e.target.value)}
+                  className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                >
+                  <option value="">-- Chọn nhóm --</option>
+                  {(exercise.classificationGroups ?? []).map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   lesson,
@@ -407,7 +419,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
         <p className="text-sm text-slate-500">{currentPage[0] ? GRAMMAR_TYPE_INSTRUCTIONS[currentPage[0].type] : ""}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {currentPage.map((exercise, i) => (
           <ExerciseCard
             key={exercise.id}

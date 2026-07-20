@@ -1,6 +1,6 @@
 import { GrammarExercise } from "./appTypes";
 
-const MAX_QUESTIONS_PER_PAGE = 10;
+const MAX_QUESTIONS_PER_PAGE = 9;
 
 /**
  * Nhóm các bài tập được tạo cùng 1 lần (cùng `groupId`, tức cùng 1 lần bấm
