@@ -84,7 +84,7 @@ const validateForm = (f: EditForm): string | null => {
     if (tokens.length < 2) return "Cần ít nhất 2 từ.";
     if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
     const answerWords = f.correct_answer.split(/\s+/).map(normalizeWord).filter(Boolean).sort();
-    const tokenWords = tokens.map(normalizeWord).sort();
+    const tokenWords = tokens.flatMap((t) => t.split(/\s+/)).map(normalizeWord).filter(Boolean).sort();
     if (JSON.stringify(answerWords) !== JSON.stringify(tokenWords)) {
       return "Các từ cho sẵn không khớp với câu đúng — kiểm tra lại chính tả.";
     }
@@ -120,6 +120,9 @@ const validateForm = (f: EditForm): string | null => {
   }
   if (f.classification_items.length === 0 || f.classification_items.some((it) => !it.item.trim())) {
     return "Cần ít nhất 1 item để phân loại.";
+  }
+  if (f.classification_items.some((it) => !groups.includes(it.group))) {
+    return "Mỗi item phải thuộc một nhóm hợp lệ.";
   }
   return null;
 };
@@ -489,7 +492,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                 <select
                   value={form.type}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...EMPTY_FORM, order_index: prev.order_index, type: e.target.value as EditForm["type"] }))
+                    setForm((prev) => ({ ...EMPTY_FORM, order_index: prev.order_index, status: prev.status, type: e.target.value as EditForm["type"] }))
                   }
                   className={inputCls}
                 >
@@ -742,11 +745,11 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               </Button>
               {editId &&
                 (form.status === "draft" ? (
-                  <Button variant="ghost" size="sm" onClick={handlePublish} className="w-full">
+                  <Button variant="ghost" size="sm" onClick={handlePublish} className="w-full" disabled={saving}>
                     Publish
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="sm" onClick={handleRevertToDraft} className="w-full">
+                  <Button variant="ghost" size="sm" onClick={handleRevertToDraft} className="w-full" disabled={saving}>
                     Chuyển về Nháp
                   </Button>
                 ))}
@@ -776,7 +779,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               </Button>
               <button
                 onClick={handleDelete}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors"
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 Xóa vĩnh viễn
