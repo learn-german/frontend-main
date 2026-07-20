@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, Search } from "lucide-react";
+import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, Search, Eye } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
@@ -138,7 +138,8 @@ const ExerciseTable: React.FC<{
   exercises: GrammarExercise[];
   onEdit: (ex: GrammarExercise) => void;
   onDelete: (ex: GrammarExercise) => void;
-}> = ({ exercises, onEdit, onDelete }) => (
+  onPreview: (ex: GrammarExercise) => void;
+}> = ({ exercises, onEdit, onDelete, onPreview }) => (
   <table className="w-full text-sm">
     <thead>
       <tr className="bg-slate-50">
@@ -170,6 +171,13 @@ const ExerciseTable: React.FC<{
           </td>
           <td className="px-4 py-2.5">
             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => onPreview(ex)}
+                className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-colors"
+                title="Preview"
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </button>
               <button
                 onClick={() => onEdit(ex)}
                 className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
@@ -205,6 +213,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<GrammarExercise | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<GrammarExercise | null>(null);
 
   const fetchExercises = async () => {
     const [exercisesRes, lessonsRes] = await Promise.all([
@@ -448,7 +457,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                 {group.exercises.length === 0 ? (
                   <p className="text-center py-6 text-slate-400 text-sm">Chưa có bài tập nào cho bài học này.</p>
                 ) : (
-                  <ExerciseTable exercises={group.exercises} onEdit={openEdit} onDelete={setDeleteTarget} />
+                  <ExerciseTable exercises={group.exercises} onEdit={openEdit} onDelete={setDeleteTarget} onPreview={setPreviewTarget} />
                 )}
               </div>
             )}
@@ -773,6 +782,92 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                 Xóa vĩnh viễn
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-bold text-slate-900">Xem trước — {TYPE_LABELS[previewTarget.type]}</h3>
+              <button onClick={() => setPreviewTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {previewTarget.type === "word_reorder" && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {(previewTarget.tokens ?? []).map((t, i) => (
+                    <span key={i} className="px-3 py-1.5 bg-slate-100 rounded-lg text-sm font-mono">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-sm text-green-700 font-medium">{previewTarget.correct_answer}</p>
+              </div>
+            )}
+
+            {previewTarget.type === "error_correction" && (
+              <div className="space-y-2">
+                <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2 line-through">{previewTarget.prompt_text}</p>
+                <p className="text-sm text-green-700 bg-green-50 rounded-xl px-3 py-2">{previewTarget.correct_answer}</p>
+              </div>
+            )}
+
+            {previewTarget.type === "translation" && (
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-slate-700 flex-1">{previewTarget.prompt_text}</p>
+                <span className="text-slate-300">→</span>
+                <p className="text-sm text-green-700 flex-1">{previewTarget.correct_answer}</p>
+              </div>
+            )}
+
+            {previewTarget.type === "sentence_transformation" && (
+              <div className="space-y-2">
+                <p className="text-sm text-slate-700">{previewTarget.prompt_text}</p>
+                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
+                  Yêu cầu: {previewTarget.transformation_hint}
+                </span>
+                <p className="text-sm text-green-700 bg-green-50 rounded-xl px-3 py-2">{previewTarget.correct_answer}</p>
+              </div>
+            )}
+
+            {previewTarget.type === "guided_sentence_writing" && (
+              <div className="space-y-2">
+                <p className="text-sm text-slate-700 bg-slate-50 rounded-xl px-3 py-2">{previewTarget.prompt_text}</p>
+                <p className="text-sm text-green-700 bg-green-50 rounded-xl px-3 py-2">{previewTarget.correct_answer}</p>
+              </div>
+            )}
+
+            {previewTarget.type === "classification" && (
+              <div
+                className="grid gap-3"
+                style={{
+                  gridTemplateColumns: `repeat(${(previewTarget.classification_groups ?? []).length || 1}, minmax(0, 1fr))`,
+                }}
+              >
+                {(previewTarget.classification_groups ?? []).map((g) => (
+                  <div key={g} className="space-y-1.5">
+                    <p className="text-xs font-bold text-slate-500 uppercase text-center">{g}</p>
+                    {(previewTarget.classification_items ?? [])
+                      .filter((it) => it.group === g)
+                      .map((it, i) => (
+                        <p key={i} className="text-sm text-center bg-slate-50 rounded-lg px-2 py-1">
+                          {it.item}
+                        </p>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {previewTarget.explanation && (
+              <p className="text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-200">
+                {previewTarget.explanation}
+              </p>
+            )}
           </div>
         </div>
       )}
