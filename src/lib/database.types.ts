@@ -20,6 +20,7 @@ export type Database = {
           classification_items: Json | null
           correct_answer: string | null
           explanation: string
+          group_id: string | null
           id: string
           lesson_id: string
           order_index: number
@@ -34,6 +35,7 @@ export type Database = {
           classification_items?: Json | null
           correct_answer?: string | null
           explanation?: string
+          group_id?: string | null
           id?: string
           lesson_id: string
           order_index?: number
@@ -48,6 +50,7 @@ export type Database = {
           classification_items?: Json | null
           correct_answer?: string | null
           explanation?: string
+          group_id?: string | null
           id?: string
           lesson_id?: string
           order_index?: number
@@ -580,6 +583,7 @@ export type Database = {
           classification_groups: Json | null
           classification_items: Json | null
           explanation: string | null
+          group_id: string | null
           id: string | null
           lesson_id: string | null
           order_index: number | null

@@ -3,7 +3,7 @@ import { Loader2, ArrowRight, RotateCcw } from "lucide-react";
 import { Button, ProgressBar } from "../components/DesignSystem";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
-import { groupExercisesIntoPages, numberExercisesWithinType } from "../lib/grammarExercisePaging";
+import { groupExercisesIntoPages } from "../lib/grammarExercisePaging";
 import { supabase } from "../lib/supabase";
 
 interface GrammarExercisePageProps {
@@ -21,9 +21,18 @@ interface GrammarResult {
   xp_earned: number;
 }
 
+const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
+  word_reorder: "Sắp xếp từ",
+  error_correction: "Sửa câu sai",
+  translation: "Dịch",
+  sentence_transformation: "Biến đổi câu",
+  guided_sentence_writing: "Viết câu gợi ý",
+  classification: "Phân loại",
+};
+
 const ExerciseCard: React.FC<{
   exercise: GrammarExercise;
-  questionNumber: number;
+  subIndex: number;
   selectedTokens: string[];
   onToggleToken: (token: string, tokenIdx: number) => void;
   onClearTokens: () => void;
@@ -33,7 +42,7 @@ const ExerciseCard: React.FC<{
   onItemGroupChange: (item: string, group: string) => void;
 }> = ({
   exercise,
-  questionNumber,
+  subIndex,
   selectedTokens,
   onToggleToken,
   onClearTokens,
@@ -43,7 +52,7 @@ const ExerciseCard: React.FC<{
   onItemGroupChange,
 }) => (
   <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
-    <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">Câu {questionNumber}</span>
+    <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{String.fromCharCode(97 + subIndex)})</span>
 
     {exercise.type === "word_reorder" && (
       <>
@@ -191,7 +200,6 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
   const currentPage = pages[currentPageIdx] ?? [];
   const isLastPage = currentPageIdx === pages.length - 1;
-  const questionNumbers = useMemo(() => numberExercisesWithinType(pages), [pages]);
 
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
     const key = `${tokenIdx}:${token}`;
@@ -336,15 +344,22 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
           <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
             Giải thích từng câu hỏi:
           </h4>
-          <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1">
-            {pages.flat().map((ex) => (
-              <div key={ex.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
-                <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
-                  Câu {questionNumbers.get(ex.id)}: {ex.promptText ?? "Phân loại"}
+          <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
+            {pages.map((page, pageIdx) => (
+              <div key={pageIdx} className="space-y-1.5">
+                <p className="text-xs font-display font-bold text-slate-700">
+                  Câu {pageIdx + 1}: {GRAMMAR_TYPE_LABELS[page[0].type]}
                 </p>
-                <p className="text-slate-500 text-[11px] leading-relaxed">
-                  <b>Giải thích:</b> {ex.explanation}
-                </p>
+                {page.map((ex, i) => (
+                  <div key={ex.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
+                    <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
+                      {String.fromCharCode(97 + i)}) {ex.promptText ?? "Phân loại"}
+                    </p>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      <b>Giải thích:</b> {ex.explanation}
+                    </p>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -378,16 +393,20 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
           <ProgressBar value={progressPercent} className="text-xs" />
         </div>
         <span className="text-xs font-display font-extrabold text-slate-500 shrink-0 bg-slate-100 px-3 py-1.5 rounded-full">
-          Trang {currentPageIdx + 1} / {pages.length}
+          Câu {currentPageIdx + 1} / {pages.length}
         </span>
       </div>
 
+      <span className="inline-flex items-center text-sm font-display font-extrabold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full">
+        Câu {currentPageIdx + 1}: {currentPage[0] ? GRAMMAR_TYPE_LABELS[currentPage[0].type] : ""}
+      </span>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {currentPage.map((exercise) => (
+        {currentPage.map((exercise, i) => (
           <ExerciseCard
             key={exercise.id}
             exercise={exercise}
-            questionNumber={questionNumbers.get(exercise.id) ?? 1}
+            subIndex={i}
             selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
             onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
             onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}

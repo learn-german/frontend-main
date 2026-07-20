@@ -14,6 +14,7 @@ interface GrammarExercise {
     | "sentence_transformation"
     | "guided_sentence_writing"
     | "classification";
+  group_id: string | null;
   status: "draft" | "published";
   prompt_text: string | null;
   transformation_hint: string | null;
@@ -587,7 +588,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     if (editId) {
       ({ error } = await supabase.from("grammar_exercises").update(buildPayload(entries[0])).eq("id", editId));
     } else {
-      const payloads = entries.map((entry) => ({ ...buildPayload(entry), lesson_id: editLessonId }));
+      const groupId = crypto.randomUUID();
+      const payloads = entries.map((entry) => ({ ...buildPayload(entry), lesson_id: editLessonId, group_id: groupId }));
       ({ error } = await supabase.from("grammar_exercises").insert(payloads));
     }
 
