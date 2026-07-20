@@ -296,6 +296,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
         {activeExercise.type === "sentence_transformation" && (
           <>
+            <p className="text-sm text-slate-700">Biến đổi câu sau theo yêu cầu:</p>
             <p className="text-sm bg-slate-50 text-slate-700 rounded-xl px-3 py-2">{activeExercise.promptText}</p>
             {activeExercise.transformationHint && (
               <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
@@ -314,6 +315,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
         {activeExercise.type === "guided_sentence_writing" && (
           <>
+            <p className="text-sm text-slate-700">Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:</p>
             <p className="text-sm bg-slate-50 text-slate-700 rounded-xl px-3 py-2">{activeExercise.promptText}</p>
             <input
               type="text"
