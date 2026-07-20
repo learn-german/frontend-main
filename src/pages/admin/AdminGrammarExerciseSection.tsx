@@ -50,6 +50,80 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
   classification: "bg-teal-50 text-teal-700",
 };
 
+interface EditForm {
+  type: GrammarExercise["type"];
+  status: "draft" | "published";
+  prompt_text: string;
+  transformation_hint: string;
+  correct_answer: string;
+  tokens_input: string;
+  classification_groups: string[];
+  classification_items: { item: string; group: string }[];
+  explanation: string;
+  order_index: number;
+}
+
+const EMPTY_FORM: EditForm = {
+  type: "word_reorder",
+  status: "draft",
+  prompt_text: "",
+  transformation_hint: "",
+  correct_answer: "",
+  tokens_input: "",
+  classification_groups: [],
+  classification_items: [],
+  explanation: "",
+  order_index: 0,
+};
+
+const normalizeWord = (s: string): string => s.toLowerCase().replace(/[.,!?]/g, "").trim();
+
+const validateForm = (f: EditForm): string | null => {
+  if (f.type === "word_reorder") {
+    const tokens = f.tokens_input.split("/").map((t) => t.trim()).filter(Boolean);
+    if (tokens.length < 2) return "Cần ít nhất 2 từ.";
+    if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
+    const answerWords = f.correct_answer.split(/\s+/).map(normalizeWord).filter(Boolean).sort();
+    const tokenWords = tokens.map(normalizeWord).sort();
+    if (JSON.stringify(answerWords) !== JSON.stringify(tokenWords)) {
+      return "Các từ cho sẵn không khớp với câu đúng — kiểm tra lại chính tả.";
+    }
+    return null;
+  }
+  if (f.type === "error_correction") {
+    if (!f.prompt_text.trim()) return "Câu sai không được để trống.";
+    if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
+    if (f.prompt_text.trim() === f.correct_answer.trim()) return "Câu sai và câu đúng giống nhau — không có lỗi để sửa.";
+    return null;
+  }
+  if (f.type === "translation") {
+    if (!f.prompt_text.trim()) return "Câu tiếng Việt không được để trống.";
+    if (!f.correct_answer.trim()) return "Câu tiếng Đức không được để trống.";
+    return null;
+  }
+  if (f.type === "sentence_transformation") {
+    if (!f.prompt_text.trim()) return "Câu gốc không được để trống.";
+    if (!f.transformation_hint.trim()) return "Yêu cầu biến đổi không được để trống.";
+    if (!f.correct_answer.trim()) return "Câu đúng sau biến đổi không được để trống.";
+    return null;
+  }
+  if (f.type === "guided_sentence_writing") {
+    if (!f.prompt_text.trim()) return "Dữ liệu gợi ý không được để trống.";
+    if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
+    return null;
+  }
+  // classification
+  const groups = f.classification_groups.map((g) => g.trim()).filter(Boolean);
+  const uniqueGroups = new Set(groups.map((g) => g.toLowerCase()));
+  if (groups.length < 2 || uniqueGroups.size !== groups.length) {
+    return "Cần ít nhất 2 nhóm phân loại, không trùng tên.";
+  }
+  if (f.classification_items.length === 0 || f.classification_items.some((it) => !it.item.trim())) {
+    return "Cần ít nhất 1 item để phân loại.";
+  }
+  return null;
+};
+
 const previewContent = (ex: GrammarExercise): string => {
   if (ex.type === "classification") {
     return `${ex.classification_items?.length ?? 0} item · ${ex.classification_groups?.length ?? 0} nhóm`;
@@ -124,6 +198,12 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
 
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editLessonId, setEditLessonId] = useState<string>("");
+  const [form, setForm] = useState<EditForm>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+
   const fetchExercises = async () => {
     const [exercisesRes, lessonsRes] = await Promise.all([
       supabase.from("grammar_exercises").select("*").order("lesson_id").order("order_index"),
@@ -150,11 +230,103 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     fetchExercises();
   }, []);
 
+  const openCreate = (lessonId: string, nextOrder: number) => {
+    setEditId(null);
+    setEditLessonId(lessonId);
+    setForm({ ...EMPTY_FORM, order_index: nextOrder });
+    setModalOpen(true);
+  };
+
+  const addGroup = () => setForm((prev) => ({ ...prev, classification_groups: [...prev.classification_groups, ""] }));
+  const setGroup = (i: number, val: string) =>
+    setForm((prev) => {
+      const groups = [...prev.classification_groups];
+      const oldVal = groups[i];
+      groups[i] = val;
+      return {
+        ...prev,
+        classification_groups: groups,
+        classification_items: prev.classification_items.map((it) => (it.group === oldVal ? { ...it, group: val } : it)),
+      };
+    });
+  const removeGroup = (i: number) =>
+    setForm((prev) => {
+      const removed = prev.classification_groups[i];
+      return {
+        ...prev,
+        classification_groups: prev.classification_groups.filter((_, idx) => idx !== i),
+        classification_items: prev.classification_items.map((it) => (it.group === removed ? { ...it, group: "" } : it)),
+      };
+    });
+
+  const addItem = () =>
+    setForm((prev) => ({
+      ...prev,
+      classification_items: [...prev.classification_items, { item: "", group: prev.classification_groups[0] ?? "" }],
+    }));
+  const setItem = (i: number, key: "item" | "group", val: string) =>
+    setForm((prev) => {
+      const items = [...prev.classification_items];
+      items[i] = { ...items[i], [key]: val };
+      return { ...prev, classification_items: items };
+    });
+  const removeItem = (i: number) =>
+    setForm((prev) => ({ ...prev, classification_items: prev.classification_items.filter((_, idx) => idx !== i) }));
+
+  const handleSave = async () => {
+    const errorMsg = validateForm(form);
+    if (errorMsg) {
+      showToast(errorMsg, "warning");
+      return;
+    }
+
+    setSaving(true);
+
+    const payload = {
+      type: form.type,
+      status: form.status,
+      prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
+      transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
+      correct_answer: form.type === "classification" ? null : form.correct_answer,
+      tokens:
+        form.type === "word_reorder"
+          ? form.tokens_input.split("/").map((t) => t.trim()).filter(Boolean)
+          : null,
+      classification_groups:
+        form.type === "classification" ? form.classification_groups.map((g) => g.trim()).filter(Boolean) : null,
+      classification_items:
+        form.type === "classification" ? form.classification_items.filter((it) => it.item.trim()) : null,
+      explanation: form.explanation,
+      order_index: form.order_index,
+    };
+
+    let error;
+    if (editId) {
+      ({ error } = await supabase.from("grammar_exercises").update(payload).eq("id", editId));
+    } else {
+      ({ error } = await supabase.from("grammar_exercises").insert({ ...payload, lesson_id: editLessonId }));
+    }
+
+    setSaving(false);
+
+    if (error) {
+      showToast("Lưu thất bại: " + error.message, "warning");
+    } else {
+      showToast(editId ? "Đã cập nhật bài tập." : "Đã thêm bài tập.", "success");
+      setModalOpen(false);
+      fetchExercises();
+    }
+  };
+
   const filteredGroups = groups.filter(
     (g) =>
       g.lesson_title.toLowerCase().includes(search.toLowerCase()) ||
       g.module_title.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const inputCls =
+    "w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
+  const labelCls = "block text-xs font-bold text-slate-600 mb-1";
 
   if (loading) {
     return (
@@ -201,6 +373,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               <span
                 onClick={(e) => {
                   e.stopPropagation();
+                  openCreate(group.lesson_id, group.exercises.length);
                 }}
                 className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
               >
@@ -225,6 +398,278 @@ export const AdminGrammarExerciseSection: React.FC = () => {
           </div>
         )}
       </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 space-y-4 p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-bold text-slate-900">{editId ? "Chỉnh sửa bài tập" : "Thêm bài tập mới"}</h3>
+              <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Loại bài tập</label>
+                <select
+                  value={form.type}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...EMPTY_FORM, order_index: prev.order_index, type: e.target.value as EditForm["type"] }))
+                  }
+                  className={inputCls}
+                >
+                  {Object.entries(TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Thứ tự (#)</label>
+                <input
+                  type="number"
+                  value={form.order_index}
+                  onChange={(e) => setForm((prev) => ({ ...prev, order_index: parseInt(e.target.value) || 0 }))}
+                  className={inputCls}
+                  min={0}
+                />
+              </div>
+            </div>
+
+            {form.type === "word_reorder" && (
+              <>
+                <div>
+                  <label className={labelCls}>Các từ cho sẵn *</label>
+                  <input
+                    type="text"
+                    value={form.tokens_input}
+                    onChange={(e) => setForm((prev) => ({ ...prev, tokens_input: e.target.value }))}
+                    className={inputCls}
+                    placeholder="am Abend / ich / Musik / höre"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Câu đúng *</label>
+                  <textarea
+                    rows={2}
+                    value={form.correct_answer}
+                    onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Ich höre am Abend Musik."
+                  />
+                </div>
+              </>
+            )}
+
+            {form.type === "error_correction" && (
+              <>
+                <div>
+                  <label className={labelCls}>Câu sai *</label>
+                  <textarea
+                    rows={2}
+                    value={form.prompt_text}
+                    onChange={(e) => setForm((prev) => ({ ...prev, prompt_text: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Ich stehe auf um 7 Uhr."
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Câu đúng *</label>
+                  <textarea
+                    rows={2}
+                    value={form.correct_answer}
+                    onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Ich stehe um 7 Uhr auf."
+                  />
+                </div>
+              </>
+            )}
+
+            {form.type === "translation" && (
+              <>
+                <div>
+                  <label className={labelCls}>Câu tiếng Việt *</label>
+                  <textarea
+                    rows={2}
+                    value={form.prompt_text}
+                    onChange={(e) => setForm((prev) => ({ ...prev, prompt_text: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Tôi học tiếng Đức."
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Câu tiếng Đức *</label>
+                  <textarea
+                    rows={2}
+                    value={form.correct_answer}
+                    onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Ich lerne Deutsch."
+                  />
+                </div>
+              </>
+            )}
+
+            {form.type === "sentence_transformation" && (
+              <>
+                <div>
+                  <label className={labelCls}>Câu gốc *</label>
+                  <textarea
+                    rows={2}
+                    value={form.prompt_text}
+                    onChange={(e) => setForm((prev) => ({ ...prev, prompt_text: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Du kommst heute."
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Yêu cầu biến đổi *</label>
+                  <input
+                    type="text"
+                    value={form.transformation_hint}
+                    onChange={(e) => setForm((prev) => ({ ...prev, transformation_hint: e.target.value }))}
+                    className={inputCls}
+                    placeholder="Ja/Nein-Frage"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Câu đúng sau biến đổi *</label>
+                  <textarea
+                    rows={2}
+                    value={form.correct_answer}
+                    onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Kommst du heute?"
+                  />
+                </div>
+              </>
+            )}
+
+            {form.type === "guided_sentence_writing" && (
+              <>
+                <div>
+                  <label className={labelCls}>Dữ liệu gợi ý *</label>
+                  <textarea
+                    rows={2}
+                    value={form.prompt_text}
+                    onChange={(e) => setForm((prev) => ({ ...prev, prompt_text: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Ich bin müde. Ich arbeite. + aber"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Câu đúng *</label>
+                  <textarea
+                    rows={2}
+                    value={form.correct_answer}
+                    onChange={(e) => setForm((prev) => ({ ...prev, correct_answer: e.target.value }))}
+                    className={inputCls + " resize-none"}
+                    placeholder="Ich bin müde, aber ich arbeite."
+                  />
+                </div>
+              </>
+            )}
+
+            {form.type === "classification" && (
+              <>
+                <div>
+                  <label className={labelCls}>Nhóm phân loại *</label>
+                  <div className="space-y-2">
+                    {form.classification_groups.map((g, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={g}
+                          onChange={(e) => setGroup(i, e.target.value)}
+                          className={inputCls + " flex-1"}
+                          placeholder={`Nhóm ${i + 1}`}
+                        />
+                        <button
+                          onClick={() => removeGroup(i)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={addGroup}
+                      className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Thêm nhóm
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Items *</label>
+                  <div className="space-y-2">
+                    {form.classification_items.map((it, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={it.item}
+                          onChange={(e) => setItem(i, "item", e.target.value)}
+                          className={inputCls + " flex-1"}
+                          placeholder="Tisch"
+                        />
+                        <select
+                          value={it.group}
+                          onChange={(e) => setItem(i, "group", e.target.value)}
+                          className={inputCls + " w-28"}
+                        >
+                          <option value="">--</option>
+                          {form.classification_groups.filter(Boolean).map((g) => (
+                            <option key={g} value={g}>
+                              {g}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => removeItem(i)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={addItem}
+                      disabled={form.classification_groups.filter(Boolean).length === 0}
+                      className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Thêm item
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className={labelCls}>Giải thích</label>
+              <textarea
+                rows={2}
+                value={form.explanation}
+                onChange={(e) => setForm((prev) => ({ ...prev, explanation: e.target.value }))}
+                className={inputCls + " resize-none"}
+                placeholder="Giải thích tại sao đáp án này đúng..."
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>
+                Hủy
+              </Button>
+              <Button variant="primary" className="flex-1" onClick={handleSave}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                {editId ? "Lưu thay đổi" : "Thêm bài tập"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
