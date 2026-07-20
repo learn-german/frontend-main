@@ -36,6 +36,24 @@ export interface QuizQuestion {
   correctAnswer?: string;
 }
 
+export interface GrammarExercise {
+  id: string;
+  lessonId: string;
+  type:
+    | "word_reorder"
+    | "error_correction"
+    | "translation"
+    | "sentence_transformation"
+    | "guided_sentence_writing"
+    | "classification";
+  promptText?: string;
+  transformationHint?: string;
+  tokens?: string[];
+  classificationGroups?: string[];
+  classificationItems?: string[];
+  explanation: string;
+}
+
 export interface Lesson {
   id: string;
   moduleId?: string;
