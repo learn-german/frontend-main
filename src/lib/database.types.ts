@@ -575,6 +575,36 @@ export type Database = {
       }
     }
     Views: {
+      grammar_exercises_public: {
+        Row: {
+          classification_groups: Json | null
+          classification_items: Json | null
+          explanation: string | null
+          id: string | null
+          lesson_id: string | null
+          order_index: number | null
+          prompt_text: string | null
+          tokens: Json | null
+          transformation_hint: string | null
+          type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grammar_exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_positions: {
         Row: {
           id: string | null
