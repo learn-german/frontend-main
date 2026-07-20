@@ -203,6 +203,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [editLessonId, setEditLessonId] = useState<string>("");
   const [form, setForm] = useState<EditForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<GrammarExercise | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchExercises = async () => {
     const [exercisesRes, lessonsRes] = await Promise.all([
@@ -234,6 +236,24 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     setEditId(null);
     setEditLessonId(lessonId);
     setForm({ ...EMPTY_FORM, order_index: nextOrder });
+    setModalOpen(true);
+  };
+
+  const openEdit = (ex: GrammarExercise) => {
+    setEditId(ex.id);
+    setEditLessonId(ex.lesson_id);
+    setForm({
+      type: ex.type,
+      status: ex.status,
+      prompt_text: ex.prompt_text ?? "",
+      transformation_hint: ex.transformation_hint ?? "",
+      correct_answer: ex.correct_answer ?? "",
+      tokens_input: (ex.tokens ?? []).join(" / "),
+      classification_groups: ex.classification_groups ?? [],
+      classification_items: ex.classification_items ?? [],
+      explanation: ex.explanation,
+      order_index: ex.order_index,
+    });
     setModalOpen(true);
   };
 
@@ -318,6 +338,48 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from("grammar_exercises").delete().eq("id", deleteTarget.id);
+    setDeleting(false);
+    if (error) {
+      showToast("Xóa thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã xóa bài tập.", "success");
+      setDeleteTarget(null);
+      fetchExercises();
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!editId) return;
+    setSaving(true);
+    const { error } = await supabase.from("grammar_exercises").update({ status: "published" }).eq("id", editId);
+    setSaving(false);
+    if (error) {
+      showToast("Publish thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã publish bài tập.", "success");
+      setForm((prev) => ({ ...prev, status: "published" }));
+      fetchExercises();
+    }
+  };
+
+  const handleRevertToDraft = async () => {
+    if (!editId) return;
+    setSaving(true);
+    const { error } = await supabase.from("grammar_exercises").update({ status: "draft" }).eq("id", editId);
+    setSaving(false);
+    if (error) {
+      showToast("Chuyển về Nháp thất bại: " + error.message, "warning");
+    } else {
+      showToast("Đã chuyển về Nháp.", "success");
+      setForm((prev) => ({ ...prev, status: "draft" }));
+      fetchExercises();
+    }
+  };
+
   const filteredGroups = groups.filter(
     (g) =>
       g.lesson_title.toLowerCase().includes(search.toLowerCase()) ||
@@ -386,7 +448,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                 {group.exercises.length === 0 ? (
                   <p className="text-center py-6 text-slate-400 text-sm">Chưa có bài tập nào cho bài học này.</p>
                 ) : (
-                  <ExerciseTable exercises={group.exercises} onEdit={() => {}} onDelete={() => {}} />
+                  <ExerciseTable exercises={group.exercises} onEdit={openEdit} onDelete={setDeleteTarget} />
                 )}
               </div>
             )}
@@ -403,7 +465,10 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 space-y-4 p-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-display font-bold text-slate-900">{editId ? "Chỉnh sửa bài tập" : "Thêm bài tập mới"}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display font-bold text-slate-900">{editId ? "Chỉnh sửa bài tập" : "Thêm bài tập mới"}</h3>
+                {editId && <LessonStatusBadge status={form.status} />}
+              </div>
               <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
                 <X className="w-4 h-4" />
               </button>
@@ -666,6 +731,47 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
                 {editId ? "Lưu thay đổi" : "Thêm bài tập"}
               </Button>
+              {editId &&
+                (form.status === "draft" ? (
+                  <Button variant="ghost" size="sm" onClick={handlePublish} className="w-full">
+                    Publish
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={handleRevertToDraft} className="w-full">
+                    Chuyển về Nháp
+                  </Button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-slate-900">Xóa bài tập?</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Hành động này không thể hoàn tác.</p>
+              </div>
+            </div>
+            <div className="bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700 line-clamp-2">
+              {previewContent(deleteTarget)}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setDeleteTarget(null)}>
+                Hủy
+              </Button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-display font-bold rounded-xl transition-colors"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Xóa vĩnh viễn
+              </button>
             </div>
           </div>
         </div>
