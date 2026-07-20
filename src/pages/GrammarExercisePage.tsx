@@ -30,6 +30,15 @@ const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   classification: "Phân loại",
 };
 
+const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
+  word_reorder: "Sắp xếp các từ sau thành câu đúng:",
+  error_correction: "Sửa câu sau cho đúng:",
+  translation: "Dịch câu sau sang tiếng Đức:",
+  sentence_transformation: "Biến đổi câu sau theo yêu cầu:",
+  guided_sentence_writing: "Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:",
+  classification: "Phân loại các item sau vào đúng nhóm:",
+};
+
 const ExerciseCard: React.FC<{
   exercise: GrammarExercise;
   subIndex: number;
@@ -56,7 +65,6 @@ const ExerciseCard: React.FC<{
 
     {exercise.type === "word_reorder" && (
       <>
-        <p className="text-xs text-slate-500">Sắp xếp các từ sau thành câu đúng:</p>
         <div className="flex flex-wrap gap-1.5">
           {(exercise.tokens ?? []).map((token, i) => {
             const key = `${i}:${token}`;
@@ -91,7 +99,6 @@ const ExerciseCard: React.FC<{
 
     {exercise.type === "error_correction" && (
       <>
-        <p className="text-xs text-slate-700">Sửa câu sau cho đúng:</p>
         <p className="text-xs bg-red-50 text-red-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
         <input
           type="text"
@@ -105,7 +112,6 @@ const ExerciseCard: React.FC<{
 
     {exercise.type === "translation" && (
       <>
-        <p className="text-xs text-slate-700">Dịch câu sau sang tiếng Đức:</p>
         <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
         <input
           type="text"
@@ -119,7 +125,6 @@ const ExerciseCard: React.FC<{
 
     {exercise.type === "sentence_transformation" && (
       <>
-        <p className="text-xs text-slate-700">Biến đổi câu sau theo yêu cầu:</p>
         <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
         {exercise.transformationHint && (
           <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
@@ -138,7 +143,6 @@ const ExerciseCard: React.FC<{
 
     {exercise.type === "guided_sentence_writing" && (
       <>
-        <p className="text-xs text-slate-700">Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:</p>
         <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">{exercise.promptText}</p>
         <input
           type="text"
@@ -152,7 +156,6 @@ const ExerciseCard: React.FC<{
 
     {exercise.type === "classification" && (
       <>
-        <p className="text-xs text-slate-500">Phân loại các item sau vào đúng nhóm:</p>
         <div className="space-y-1.5">
           {(exercise.classificationItems ?? []).map((item) => (
             <div key={item} className="flex items-center gap-2">
@@ -397,9 +400,12 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
         </span>
       </div>
 
-      <span className="inline-flex items-center text-sm font-display font-extrabold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full">
-        Câu {currentPageIdx + 1}: {currentPage[0] ? GRAMMAR_TYPE_LABELS[currentPage[0].type] : ""}
-      </span>
+      <div className="space-y-1">
+        <span className="inline-flex items-center text-sm font-display font-extrabold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full">
+          Câu {currentPageIdx + 1}: {currentPage[0] ? GRAMMAR_TYPE_LABELS[currentPage[0].type] : ""}
+        </span>
+        <p className="text-sm text-slate-500">{currentPage[0] ? GRAMMAR_TYPE_INSTRUCTIONS[currentPage[0].type] : ""}</p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {currentPage.map((exercise, i) => (
