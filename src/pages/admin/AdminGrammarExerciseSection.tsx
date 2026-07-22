@@ -3,6 +3,8 @@ import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, Search, Ey
 import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
+import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
+import { AdminModuleGroup } from "./AdminModuleGroup";
 
 interface GrammarExercise {
   id: string;
@@ -495,7 +497,9 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [moduleExpanded, setModuleExpanded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
+  const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -652,7 +656,17 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       g.module_title.toLowerCase().includes(search.toLowerCase()),
   );
 
-  if (loading) {
+  const moduleSections = moduleOrder
+    .map((mod) => ({
+      id: mod.id,
+      level: mod.level,
+      lessonGroups: mod.lessonIds
+        .map((lid) => filteredGroups.find((g) => g.lesson_id === lid))
+        .filter((g): g is LessonGroup => !!g),
+    }))
+    .filter((mod) => mod.lessonGroups.length > 0);
+
+  if (loading || moduleOrderLoading) {
     return (
       <div className="flex items-center justify-center min-h-48">
         <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
@@ -677,44 +691,54 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {filteredGroups.map((group) => (
-          <div key={group.lesson_id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-            <button
-              onClick={() => setExpanded((prev) => ({ ...prev, [group.lesson_id]: !prev[group.lesson_id] }))}
-              className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors"
-            >
-              {expanded[group.lesson_id] ? (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              )}
-              <div className="flex-1">
-                <p className="font-display font-bold text-slate-900 text-sm">{group.lesson_title}</p>
-                <p className="text-xs text-slate-400">
-                  {group.module_title} · {group.exercises.length} bài tập
-                </p>
-              </div>
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openCreate(group.lesson_id, group.exercises.length);
-                }}
-                className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" /> Thêm bài tập
-              </span>
-            </button>
+        {moduleSections.map((mod) => (
+          <AdminModuleGroup
+            key={mod.id}
+            title={mod.level}
+            subtitle={`${mod.lessonGroups.length} bài học`}
+            expanded={!!moduleExpanded[mod.id]}
+            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+          >
+            {mod.lessonGroups.map((group) => (
+              <div key={group.lesson_id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                <button
+                  onClick={() => setExpanded((prev) => ({ ...prev, [group.lesson_id]: !prev[group.lesson_id] }))}
+                  className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors"
+                >
+                  {expanded[group.lesson_id] ? (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-display font-bold text-slate-900 text-sm">{group.lesson_title}</p>
+                    <p className="text-xs text-slate-400">
+                      {group.exercises.length} bài tập
+                    </p>
+                  </div>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openCreate(group.lesson_id, group.exercises.length);
+                    }}
+                    className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Thêm bài tập
+                  </span>
+                </button>
 
-            {expanded[group.lesson_id] && (
-              <div className="border-t border-slate-100 p-4 space-y-3">
-                {group.exercises.length === 0 ? (
-                  <p className="text-center py-6 text-slate-400 text-sm">Chưa có bài tập nào cho bài học này.</p>
-                ) : (
-                  <ExerciseTable exercises={group.exercises} onEdit={openEdit} onDelete={setDeleteTarget} onPreview={setPreviewTarget} />
+                {expanded[group.lesson_id] && (
+                  <div className="border-t border-slate-100 p-4 space-y-3">
+                    {group.exercises.length === 0 ? (
+                      <p className="text-center py-6 text-slate-400 text-sm">Chưa có bài tập nào cho bài học này.</p>
+                    ) : (
+                      <ExerciseTable exercises={group.exercises} onEdit={openEdit} onDelete={setDeleteTarget} onPreview={setPreviewTarget} />
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
+            ))}
+          </AdminModuleGroup>
         ))}
         {filteredGroups.length === 0 && (
           <div className="text-center py-10 text-slate-400 text-sm">
