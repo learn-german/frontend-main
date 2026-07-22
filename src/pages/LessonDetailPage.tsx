@@ -44,7 +44,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   const [marked, setMarked] = useState(isCompleted);
 
   const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-    { id: "nguphapthenchot", label: "Ngữ pháp then chốt", Icon: GraduationCap },
+    { id: "nguphapthenchot", label: "Schlüsselgrammatik", Icon: GraduationCap },
     { id: "tuvung", label: "Wortschatz", Icon: BookOpen },
     { id: "quiz", label: "Grammatikübungen", Icon: HelpCircle },
     { id: "doc", label: "Lesen", Icon: FileText },
