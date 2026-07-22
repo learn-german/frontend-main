@@ -79,3 +79,12 @@ export function moveGroup<T>(items: readonly T[], active: T, over: T): T[] {
   next.splice(toIndex, 0, moved);
   return next;
 }
+
+export function resolveAppendGroupId(
+  groupId: string | null | undefined,
+  createId: () => string,
+): { groupId: string; assignedLegacyId: boolean } {
+  return groupId
+    ? { groupId, assignedLegacyId: false }
+    : { groupId: createId(), assignedLegacyId: true };
+}
