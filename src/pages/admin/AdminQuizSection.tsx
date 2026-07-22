@@ -250,7 +250,7 @@ export const AdminQuizSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [moduleExpanded, setModuleExpanded] = useState<Record<string, boolean>>({});
-  const { modules: moduleOrder } = useModuleOrder();
+  const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
   const [activeTab, setActiveTab] = useState<"nguphap" | "nghe" | "doc">("nguphap");
   const [search, setSearch] = useState("");
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
@@ -529,7 +529,7 @@ export const AdminQuizSection: React.FC = () => {
     }))
     .filter((mod) => mod.lessonGroups.length > 0);
 
-  if (loading) {
+  if (loading || moduleOrderLoading) {
     return (
       <div className="flex items-center justify-center min-h-48">
         <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
