@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from "react";
-import { Loader2, ArrowRight, RotateCcw } from "lucide-react";
-import { Button, ProgressBar } from "../components/DesignSystem";
+import { Loader2, ArrowRight, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Button } from "../components/DesignSystem";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
-import { groupExercisesIntoPages } from "../lib/grammarExercisePaging";
+import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
 import { supabase } from "../lib/supabase";
 
 interface GrammarExercisePageProps {
@@ -41,7 +41,7 @@ const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
 
 const ExerciseCard: React.FC<{
   exercise: GrammarExercise;
-  subIndex: number;
+  numberLabel: string;
   selectedTokens: string[];
   onToggleToken: (token: string, tokenIdx: number) => void;
   onClearTokens: () => void;
@@ -51,7 +51,7 @@ const ExerciseCard: React.FC<{
   onItemGroupChange: (item: string, group: string) => void;
 }> = ({
   exercise,
-  subIndex,
+  numberLabel,
   selectedTokens,
   onToggleToken,
   onClearTokens,
@@ -60,7 +60,7 @@ const ExerciseCard: React.FC<{
   itemGroups,
   onItemGroupChange,
 }) => {
-  const letter = `${String.fromCharCode(97 + subIndex)})`;
+  const letter = numberLabel;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
@@ -200,10 +200,8 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(lesson.id);
 
-  const pages = useMemo(() => groupExercisesIntoPages(exercises), [exercises]);
-
-  const [currentPageIdx, setCurrentPageIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
 
   const [selectedTokensByExercise, setSelectedTokensByExercise] = useState<Record<string, string[]>>({});
   const [textAnswerByExercise, setTextAnswerByExercise] = useState<Record<string, string>>({});
@@ -212,9 +210,6 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);
-
-  const currentPage = pages[currentPageIdx] ?? [];
-  const isLastPage = currentPageIdx === pages.length - 1;
 
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
     const key = `${tokenIdx}:${token}`;
@@ -239,24 +234,13 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     return (textAnswerByExercise[exercise.id] ?? "").trim();
   };
 
-  const hasAnsweredAllOnPage = (): boolean => currentPage.every((ex) => getAnswerStringFor(ex) !== "");
+  const allAnswered = exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
 
-  const collectPageAnswers = (): Record<string, string> => {
-    const pageAnswers: Record<string, string> = {};
-    for (const ex of currentPage) {
-      pageAnswers[ex.id] = getAnswerStringFor(ex);
-    }
-    return pageAnswers;
-  };
-
-  const handleNext = () => {
-    setAnswers((prev) => ({ ...prev, ...collectPageAnswers() }));
-    setCurrentPageIdx((i) => i + 1);
-  };
+  const collectAllAnswers = (): Record<string, string> =>
+    Object.fromEntries(exercises.map((exercise) => [exercise.id, getAnswerStringFor(exercise)]));
 
   const handleSubmit = async () => {
-    const finalAnswers = { ...answers, ...collectPageAnswers() };
-    setAnswers(finalAnswers);
+    const finalAnswers = collectAllAnswers();
 
     setSubmitting(true);
     setSubmitError(null);
@@ -278,8 +262,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   };
 
   const handleRetry = () => {
-    setCurrentPageIdx(0);
-    setAnswers({});
+    setExpandedGroupKeys(new Set());
     setSelectedTokensByExercise({});
     setTextAnswerByExercise({});
     setItemGroupsByExercise({});
@@ -360,15 +343,15 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             Giải thích từng câu hỏi:
           </h4>
           <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
-            {pages.map((page, pageIdx) => (
-              <div key={pageIdx} className="space-y-1.5">
+            {groups.map((group, groupIndex) => (
+              <div key={group.key} className="space-y-1.5">
                 <p className="text-xs font-display font-bold text-slate-700">
-                  Câu {pageIdx + 1}: {GRAMMAR_TYPE_LABELS[page[0].type]}
+                  Câu {groupIndex + 1}: {GRAMMAR_TYPE_LABELS[group.type]}
                 </p>
-                {page.map((ex, i) => (
+                {group.exercises.map((ex, childIndex) => (
                   <div key={ex.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
                     <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
-                      {String.fromCharCode(97 + i)}) {ex.promptText ?? "Phân loại"}
+                      {groupIndex + 1}.{childIndex + 1} {ex.promptText ?? "Phân loại"}
                     </p>
                     <p className="text-slate-500 text-[11px] leading-relaxed">
                       <b>Giải thích:</b> {ex.explanation}
@@ -398,55 +381,70 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     );
   }
 
-  const progressPercent = pages.length > 0 ? Math.round((currentPageIdx / pages.length) * 100) : 0;
-  const canProceed = hasAnsweredAllOnPage();
-
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between gap-6 pb-2 select-none">
-        <div className="flex-1">
-          <ProgressBar value={progressPercent} className="text-xs" />
-        </div>
-        <span className="text-xs font-display font-extrabold text-slate-500 shrink-0 bg-slate-100 px-3 py-1.5 rounded-full">
-          Câu {currentPageIdx + 1} / {pages.length}
-        </span>
-      </div>
-
       <div className="space-y-1">
-        <span className="inline-flex items-center text-sm font-display font-extrabold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full">
-          Câu {currentPageIdx + 1}: {currentPage[0] ? GRAMMAR_TYPE_LABELS[currentPage[0].type] : ""}
-        </span>
-        <p className="text-sm text-slate-500">{currentPage[0] ? GRAMMAR_TYPE_INSTRUCTIONS[currentPage[0].type] : ""}</p>
+        <h2 className="text-xl font-display font-black text-slate-900">Bài tập ngữ pháp</h2>
+        <p className="text-sm text-slate-500">Bấm vào câu lớn để hiển thị các câu hỏi con.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {currentPage.map((exercise, i) => (
-          <ExerciseCard
-            key={exercise.id}
-            exercise={exercise}
-            subIndex={i}
-            selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
-            onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
-            onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
-            textAnswer={textAnswerByExercise[exercise.id] ?? ""}
-            onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
-            itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
-            onItemGroupChange={(item, group) =>
-              setItemGroupsByExercise((prev) => ({
-                ...prev,
-                [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: group },
-              }))
-            }
-          />
-        ))}
+      <div className="space-y-3">
+        {groups.map((group, groupIndex) => {
+          const isExpanded = expandedGroupKeys.has(group.key);
+          const isComplete = group.exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
+          return (
+            <section key={group.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <button
+                type="button"
+                onClick={() => setExpandedGroupKeys((previous) => {
+                  const next = new Set(previous);
+                  if (next.has(group.key)) next.delete(group.key);
+                  else next.add(group.key);
+                  return next;
+                })}
+                className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-slate-50"
+              >
+                {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronRight className="h-5 w-5 text-slate-400" />}
+                <span className="text-base font-display font-black text-slate-900">Câu {groupIndex + 1}</span>
+                <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{GRAMMAR_TYPE_LABELS[group.type]}</span>
+                <span className="text-xs text-slate-400">{group.exercises.length} câu con</span>
+                {isComplete && <CheckCircle2 className="ml-auto h-5 w-5 text-green-500" />}
+              </button>
+              {isExpanded && (
+                <div className="space-y-3 border-t border-slate-100 p-4">
+                  <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.exercises.map((exercise, childIndex) => (
+                      <ExerciseCard
+                        key={exercise.id}
+                        exercise={exercise}
+                        numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
+                        selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
+                        onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
+                        onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
+                        textAnswer={textAnswerByExercise[exercise.id] ?? ""}
+                        onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
+                        itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
+                        onItemGroupChange={(item, itemGroup) => setItemGroupsByExercise((prev) => ({
+                          ...prev,
+                          [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: itemGroup },
+                        }))}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
       <div className="flex justify-end">
-        <Button variant="primary" disabled={!canProceed || submitting} onClick={isLastPage ? handleSubmit : handleNext}>
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : !isLastPage && <ArrowRight className="w-4 h-4 ml-2" />}
-          {isLastPage ? "Nộp bài" : "Trang tiếp theo"}
+        <Button variant="primary" disabled={!allAnswered || submitting} onClick={handleSubmit}>
+          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Nộp bài
         </Button>
       </div>
     </div>
