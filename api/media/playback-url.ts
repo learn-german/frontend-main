@@ -68,14 +68,24 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
   const type = typeof req.query.type === "string" ? req.query.type : undefined;
   const clipId = typeof req.query.clipId === "string" ? req.query.clipId : undefined;
 
-  if (!lessonId || (type !== "video" && type !== "audio")) {
-    res.status(400).json({ error: "lessonId and type (video|audio) required" });
+  if (!lessonId || (type !== "video" && type !== "audio" && type !== "image")) {
+    res.status(400).json({ error: "lessonId and type (video|audio|image) required" });
     return;
   }
 
   let objectKey: string | undefined;
 
-  if (type === "audio" && clipId) {
+  if (type === "image") {
+    const rawKey = typeof req.query.objectKey === "string" ? req.query.objectKey : undefined;
+    const prefix = `images/${lessonId}/`;
+    const suffix = rawKey?.startsWith(prefix) ? rawKey.slice(prefix.length) : undefined;
+    const validSuffix = suffix !== undefined && /^[a-f0-9-]+\.(jpg|jpeg|png|webp)$/i.test(suffix);
+    if (!rawKey || !validSuffix) {
+      res.status(400).json({ error: "Invalid objectKey" });
+      return;
+    }
+    objectKey = rawKey;
+  } else if (type === "audio" && clipId) {
     const clipRes = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/listening_clips?id=eq.${encodeURIComponent(clipId)}&select=r2_key,lesson_id`,
       {
