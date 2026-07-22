@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Loader2, ArrowRight, RotateCcw } from "lucide-react";
 import { Button, ProgressBar } from "../components/DesignSystem";
+import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupExercisesIntoPages } from "../lib/grammarExercisePaging";
@@ -418,6 +419,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
         </span>
         <p className="text-sm text-slate-500">{currentPage[0] ? GRAMMAR_TYPE_INSTRUCTIONS[currentPage[0].type] : ""}</p>
       </div>
+
+      <GrammarExerciseHint
+        hint={currentPage[0]?.hint}
+        groupKey={currentPage[0]?.groupId ?? currentPage[0]?.id ?? ""}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {currentPage.map((exercise, i) => (

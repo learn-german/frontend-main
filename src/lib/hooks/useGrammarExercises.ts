@@ -18,7 +18,7 @@ export function useGrammarExercises(lessonId: string) {
 
     supabase
       .from("grammar_exercises_public")
-      .select("id, lesson_id, type, group_id, prompt_text, transformation_hint, tokens, classification_groups, classification_items, explanation, order_index")
+      .select("id, lesson_id, type, group_id, hint, prompt_text, transformation_hint, tokens, classification_groups, classification_items, explanation, order_index")
       .eq("lesson_id", lessonId)
       .order("order_index")
       .then(({ data, error: fetchError }) => {
@@ -31,6 +31,7 @@ export function useGrammarExercises(lessonId: string) {
               lessonId: e.lesson_id as string,
               type: e.type as GrammarExercise["type"],
               groupId: (e.group_id as string | null) ?? undefined,
+              hint: (e.hint as string | null) ?? undefined,
               promptText: (e.prompt_text as string | null) ?? undefined,
               transformationHint: (e.transformation_hint as string | null) ?? undefined,
               tokens: (e.tokens as string[] | null) ?? undefined,
