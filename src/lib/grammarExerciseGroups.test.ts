@@ -4,6 +4,7 @@ import {
   getGroupSelectionState,
   groupGrammarExercises,
   moveGroup,
+  resolveAppendGroupId,
   toggleGroupSelection,
 } from "./grammarExerciseGroups";
 
@@ -39,3 +40,15 @@ assert.deepEqual([...toggleGroupSelection(["a", "b"], new Set(["a", "b", "x"]))]
 
 assert.deepEqual(moveGroup(["1", "2", "3", "4", "5"], "5", "2"), ["1", "5", "2", "3", "4"]);
 assert.deepEqual(moveGroup(["1", "2"], "missing", "1"), ["1", "2"]);
+
+let createIdCalls = 0;
+assert.deepEqual(resolveAppendGroupId("existing", () => { createIdCalls += 1; return "new"; }), {
+  groupId: "existing",
+  assignedLegacyId: false,
+});
+assert.equal(createIdCalls, 0);
+assert.deepEqual(resolveAppendGroupId(null, () => { createIdCalls += 1; return "new"; }), {
+  groupId: "new",
+  assignedLegacyId: true,
+});
+assert.equal(createIdCalls, 1);
