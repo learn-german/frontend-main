@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useRef, useState } from "react";
 import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CheckSquare, Square } from "lucide-react";
@@ -195,13 +195,14 @@ function TaskCheckbox({ checked }: { checked?: boolean }) {
 
 function R2Image({ objectKey, lessonId, alt }: { objectKey: string; lessonId: string; alt?: string }) {
   const { url, loading, error } = useMediaPlaybackUrl(lessonId, "image", objectKey);
+  const [loadError, setLoadError] = useState(false);
   if (loading) {
     return <div className="rounded-lg bg-slate-100 animate-pulse w-full h-40 my-1" />;
   }
-  if (error || !url) {
+  if (error || !url || loadError) {
     return <p className="text-xs text-red-500 my-1">Không tải được ảnh</p>;
   }
-  return <img src={url} alt={alt} className="rounded-lg max-w-full my-1" />;
+  return <img src={url} alt={alt} className="rounded-lg max-w-full my-1" onError={() => setLoadError(true)} />;
 }
 
 function ContentImage({ src, alt, lessonId }: { src?: string; alt?: string; lessonId?: string }) {
@@ -268,18 +269,24 @@ export const MarkdownBlock: React.FC<{
   lessonId?: string;
   onWordClick?: (word: string) => void;
 }> = ({ content, className, lessonId, onWordClick }) => {
-  const pronounceWords: string[] = [];
+  // Mutated in place (not reassigned) so its identity stays stable across
+  // renders — the `a` component below is memoized and must be able to read
+  // freshly-populated words at click time without becoming a useMemo dep
+  // itself (a plain array literal would be a new reference every render,
+  // defeating the memoization).
+  const pronounceWordsRef = useRef<string[]>([]);
+  pronounceWordsRef.current = [];
   const preprocessed = preprocessMarkdown(content);
-  const processedContent = onWordClick ? wrapPronounceWords(preprocessed, pronounceWords) : preprocessed;
+  const processedContent = onWordClick ? wrapPronounceWords(preprocessed, pronounceWordsRef.current) : preprocessed;
 
-  const activeComponents: Components = {
+  const activeComponents: Components = useMemo(() => ({
     ...components,
     img: ({ src, alt }) => <ContentImage src={src} alt={alt} lessonId={lessonId} />,
     ...(onWordClick
       ? {
           a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
             if (href?.startsWith(PRONOUNCE_SCHEME)) {
-              const word = pronounceWords[Number(href.slice(PRONOUNCE_SCHEME.length))];
+              const word = pronounceWordsRef.current[Number(href.slice(PRONOUNCE_SCHEME.length))];
               return (
                 <button
                   type="button"
@@ -298,7 +305,7 @@ export const MarkdownBlock: React.FC<{
           },
         }
       : {}),
-  };
+  }), [lessonId, onWordClick]);
 
   return (
     <div className={`space-y-0.5 ${className ?? ""}`}>

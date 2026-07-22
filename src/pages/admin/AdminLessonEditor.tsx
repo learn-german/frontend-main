@@ -85,12 +85,13 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
   const insertGrammarImage = (objectKey: string) => {
     const textarea = grammarTextareaRef.current;
-    const current = data.grammar_md ?? "";
-    const start = textarea?.selectionStart ?? current.length;
-    const end = textarea?.selectionEnd ?? current.length;
     const snippet = `![](r2img:${objectKey})`;
-    const next = `${current.slice(0, start)}${snippet}${current.slice(end)}`;
-    upd({ grammar_md: next });
+    setData(prev => {
+      const current = prev.grammar_md ?? "";
+      const start = textarea?.selectionStart ?? current.length;
+      const end = textarea?.selectionEnd ?? current.length;
+      return { ...prev, grammar_md: `${current.slice(0, start)}${snippet}${current.slice(end)}` };
+    });
     setGrammarTab("preview");
   };
 
