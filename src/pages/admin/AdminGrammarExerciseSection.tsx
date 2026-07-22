@@ -4,6 +4,11 @@ import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
+import {
+  GRAMMAR_EXERCISE_HINT_MAX_LENGTH,
+  normalizeGrammarHint,
+  validateGrammarHint,
+} from "../../lib/grammarExerciseHint";
 import { AdminModuleGroup } from "./AdminModuleGroup";
 
 interface GrammarExercise {
@@ -25,6 +30,7 @@ interface GrammarExercise {
   classification_groups: string[] | null;
   classification_items: { item: string; group: string }[] | null;
   explanation: string;
+  hint: string | null;
   order_index: number;
 }
 
@@ -503,7 +509,9 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
+  const [hint, setHint] = useState("");
   const [entries, setEntries] = useState<EditForm[]>([EMPTY_FORM]);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<GrammarExercise | null>(null);
@@ -538,14 +546,18 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
   const openCreate = (lessonId: string, nextOrder: number) => {
     setEditId(null);
+    setEditGroupId(null);
     setEditLessonId(lessonId);
+    setHint("");
     setEntries([{ ...EMPTY_FORM, order_index: nextOrder }]);
     setModalOpen(true);
   };
 
   const openEdit = (ex: GrammarExercise) => {
     setEditId(ex.id);
+    setEditGroupId(ex.group_id);
     setEditLessonId(ex.lesson_id);
+    setHint(ex.hint ?? "");
     setEntries([
       {
         type: ex.type,
@@ -578,6 +590,12 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     setEntries((prev) => prev.map((e, i) => (i === idx ? updater(e) : e)));
 
   const handleSave = async () => {
+    const hintError = validateGrammarHint(hint);
+    if (hintError) {
+      showToast(hintError, "warning");
+      return;
+    }
+
     for (let i = 0; i < entries.length; i++) {
       const errorMsg = validateForm(entries[i]);
       if (errorMsg) {
@@ -588,12 +606,31 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
     setSaving(true);
 
+    const normalizedHint = normalizeGrammarHint(hint);
     let error;
     if (editId) {
-      ({ error } = await supabase.from("grammar_exercises").update(buildPayload(entries[0])).eq("id", editId));
+      ({ error } = await supabase
+        .from("grammar_exercises")
+        .update({
+          ...buildPayload(entries[0]),
+          ...(editGroupId ? {} : { hint: normalizedHint }),
+        })
+        .eq("id", editId));
+
+      if (!error && editGroupId) {
+        ({ error } = await supabase
+          .from("grammar_exercises")
+          .update({ hint: normalizedHint })
+          .eq("group_id", editGroupId));
+      }
     } else {
       const groupId = crypto.randomUUID();
-      const payloads = entries.map((entry) => ({ ...buildPayload(entry), lesson_id: editLessonId, group_id: groupId }));
+      const payloads = entries.map((entry) => ({
+        ...buildPayload(entry),
+        lesson_id: editLessonId,
+        group_id: groupId,
+        hint: normalizedHint,
+      }));
       ({ error } = await supabase.from("grammar_exercises").insert(payloads));
     }
 
@@ -775,6 +812,24 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               </select>
             </div>
 
+            <div>
+              <label className={labelCls}>Gợi ý</label>
+              <textarea
+                rows={3}
+                value={hint}
+                onChange={(e) => setHint(e.target.value)}
+                className={`${inputCls} resize-y`}
+                placeholder="Nhắc lại quy tắc hoặc hướng dẫn cách làm cho học viên..."
+              />
+              <p
+                className={`mt-1 text-right text-[11px] ${
+                  hint.length > GRAMMAR_EXERCISE_HINT_MAX_LENGTH ? "font-bold text-red-500" : "text-slate-400"
+                }`}
+              >
+                {hint.length}/{GRAMMAR_EXERCISE_HINT_MAX_LENGTH}
+              </p>
+            </div>
+
             {entries.map((entry, idx) => (
               <div key={idx} className="border border-slate-100 rounded-xl p-3 space-y-3">
                 <div className="flex items-center justify-between">
@@ -815,7 +870,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>
                 Hủy
               </Button>
-              <Button variant="primary" className="flex-1" onClick={handleSave}>
+              <Button variant="primary" className="flex-1" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
                 {editId ? "Lưu thay đổi" : entries.length > 1 ? `Thêm ${entries.length} bài tập` : "Thêm bài tập"}
               </Button>
