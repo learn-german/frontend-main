@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   ArrowLeft, Save,
   GraduationCap, Video, Loader2,
-  Globe, EyeOff,
+  Globe, EyeOff, Image as ImageIcon,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
@@ -62,6 +62,8 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
   const [writingTab, setWritingTab] = useState<"edit" | "preview">("edit");
   const [vocabTab, setVocabTab] = useState<"edit" | "preview">("edit");
   const [videoUploadPct, setVideoUploadPct] = useState<number | null>(null);
+  const [imageUploadPct, setImageUploadPct] = useState<number | null>(null);
+  const grammarTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
 
@@ -76,6 +78,50 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     } finally {
       setVideoUploadPct(null);
     }
+  };
+
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+  const insertGrammarImage = (objectKey: string) => {
+    const textarea = grammarTextareaRef.current;
+    const snippet = `![](r2img:${objectKey})`;
+    setData(prev => {
+      const current = prev.grammar_md ?? "";
+      const start = textarea?.selectionStart ?? current.length;
+      const end = textarea?.selectionEnd ?? current.length;
+      return { ...prev, grammar_md: `${current.slice(0, start)}${snippet}${current.slice(end)}` };
+    });
+    setGrammarTab("preview");
+  };
+
+  const handleGrammarImageUpload = async (file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      showToast("Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP", "warning");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      showToast("Ảnh vượt quá 5MB", "warning");
+      return;
+    }
+    setImageUploadPct(0);
+    try {
+      const objectKey = await uploadMedia(file, data.id, "image", setImageUploadPct);
+      insertGrammarImage(objectKey);
+      showToast("Đã thêm ảnh vào nội dung.", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Tải ảnh lên thất bại", "warning");
+    } finally {
+      setImageUploadPct(null);
+    }
+  };
+
+  const handleGrammarPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const item = Array.from(e.clipboardData.items).find(it => it.type.startsWith("image/"));
+    if (!item) return;
+    e.preventDefault();
+    const file = item.getAsFile();
+    if (file) handleGrammarImageUpload(file);
   };
 
   const handleSave = async () => {
@@ -238,20 +284,33 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
           {/* Grammar — Markdown editor */}
           <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
                 Ngữ pháp then chốt
               </span>
-              <div className="flex rounded-lg overflow-hidden border border-slate-200">
-                {(["edit", "preview"] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setGrammarTab(tab)}
-                    className={`px-3 py-1 text-[11px] font-bold transition-colors ${grammarTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
-                  >
-                    {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-slate-50 transition">
+                  <ImageIcon className="w-3.5 h-3.5 text-orange-500" />
+                  {imageUploadPct !== null ? `Đang tải... ${imageUploadPct}%` : "Thêm ảnh"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={imageUploadPct !== null}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleGrammarImageUpload(f); e.target.value = ""; }}
+                  />
+                </label>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                  {(["edit", "preview"] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setGrammarTab(tab)}
+                      className={`px-3 py-1 text-[11px] font-bold transition-colors ${grammarTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                    >
+                      {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -259,9 +318,11 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
               <>
                 <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách (lồng nhau được), - [ ] checkbox, bảng, ```code block```, blockquote, và callout 💡 ⚠️ ❗ ✅ ℹ️. Bọc từ cần luyện phát âm trong <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{...}}"}</code>, ví dụ <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{heißen}}"}</code> — học viên click vào sẽ nghe phát âm.</p>
                 <textarea
+                  ref={grammarTextareaRef}
                   rows={12}
                   value={data.grammar_md ?? ""}
                   onChange={e => upd({ grammar_md: e.target.value })}
+                  onPaste={handleGrammarPaste}
                   placeholder={"## Mạo từ (Artikel)\n\nTiếng Đức có 3 mạo từ: **der** (nam), **die** (nữ), **das** (trung)\n\n### Ví dụ\n- **der** Mann (người đàn ông)\n- **die** Frau (người phụ nữ)\n- **das** Kind (đứa trẻ)"}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
                 />
@@ -269,7 +330,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             ) : (
               <div className="min-h-32 bg-white border border-slate-200 rounded-xl p-4">
                 {data.grammar_md ? (
-                  <MarkdownBlock content={data.grammar_md} />
+                  <MarkdownBlock content={data.grammar_md} lessonId={data.id} />
                 ) : (
                   <p className="text-xs text-slate-400 italic">Chưa có nội dung ngữ pháp.</p>
                 )}

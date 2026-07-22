@@ -3,7 +3,7 @@ import { supabase } from "../supabase";
 
 export function useMediaPlaybackUrl(
   lessonId: string,
-  type: "video" | "audio",
+  type: "video" | "audio" | "image",
   objectKey: string | undefined,
   clipId?: string,
 ): { url: string | null; loading: boolean; error: string | null } {
@@ -31,7 +31,8 @@ export function useMediaPlaybackUrl(
       }
       try {
         const clipParam = clipId ? `&clipId=${encodeURIComponent(clipId)}` : "";
-        const res = await fetch(`/api/media/playback-url?lessonId=${encodeURIComponent(lessonId)}&type=${type}${clipParam}`, {
+        const objectKeyParam = type === "image" ? `&objectKey=${encodeURIComponent(objectKey)}` : "";
+        const res = await fetch(`/api/media/playback-url?lessonId=${encodeURIComponent(lessonId)}&type=${type}${clipParam}${objectKeyParam}`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

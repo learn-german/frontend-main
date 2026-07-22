@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 export async function uploadMedia(
   file: File,
   lessonId: string,
-  mediaType: "video" | "audio",
+  mediaType: "video" | "audio" | "image",
   onProgress: (pct: number) => void,
   clipId?: string,
 ): Promise<string> {
