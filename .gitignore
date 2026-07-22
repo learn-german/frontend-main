@@ -32,6 +32,7 @@ Thumbs.db
 .cache/
 .parcel-cache/
 .turbo/
+.worktrees/
 
 # TypeScript
 *.tsbuildinfo
