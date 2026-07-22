@@ -191,7 +191,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   <div className="flex justify-end">
                     <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
                   </div>
-                  <MarkdownBlock content={lesson.grammarMd} onWordClick={handlePronounce} />
+                  <MarkdownBlock content={lesson.grammarMd} lessonId={lesson.id} onWordClick={handlePronounce} />
                 </>
               ) : lesson.grammar.rule ? (
                 <>
