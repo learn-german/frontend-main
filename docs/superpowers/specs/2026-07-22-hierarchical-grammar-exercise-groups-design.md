@@ -14,6 +14,7 @@ Admin hiện có thể tạo nhiều bài tập ngữ pháp cùng loại trong m
 4. Cho phép admin chọn và xoá hàng loạt ở cả cấp câu lớn lẫn câu con.
 5. Tự động gán thứ tự khi tạo câu hỏi, không yêu cầu admin nhập số thủ công.
 6. Đổi nhãn tab `Ngữ pháp then chốt` thành `Schlüsselgrammatik`.
+7. Cho phép admin kéo thả câu lớn để đổi thứ tự xuất hiện và lưu thứ tự đó cho màn hình học viên.
 
 ## Quyết định thiết kế
 
@@ -23,6 +24,7 @@ Admin hiện có thể tạo nhiều bài tập ngữ pháp cùng loại trong m
 - Thứ tự hiển thị dựa trên `order_index`, với `id` làm tie-breaker ổn định khi dữ liệu cũ có số trùng.
 - Số `1`, `1.1` chỉ là số trình bày được suy ra từ vị trí sau khi sắp xếp; không lưu các số này vào DB.
 - Không đặt giới hạn phía UI hoặc validation cho số câu con. Modal tạo mới tiếp tục cho phép thêm câu cùng loại tùy ý.
+- Dùng dependency `@dnd-kit` đã có trong dự án để kéo thả câu lớn; không thêm package mới.
 
 ## Kiến trúc và đơn vị xử lý
 
@@ -50,6 +52,7 @@ Trong mỗi bài học, thay bảng phẳng bằng danh sách accordion nhóm:
 - Khi có lựa chọn, hiển thị thanh hành động `Xóa N câu đã chọn`.
 - Xoá hàng loạt luôn qua modal xác nhận. Sau xác nhận, gọi delete với toàn bộ ID đã chọn, đóng modal, xoá selection đã thành công và fetch lại dữ liệu. Nếu lỗi, giữ selection để admin thử lại và hiển thị toast cảnh báo.
 - Xoá đơn lẻ tiếp tục dùng modal hiện có; có thể dùng chung hàm xoá theo danh sách ID để tránh hai luồng hành vi khác nhau.
+- Mỗi header câu lớn có drag handle. Admin chỉ bắt đầu kéo từ handle để thao tác mở/đóng và checkbox không xung đột với drag.
 
 Selection được lưu bằng `Set<string>` theo exercise ID. Khi fetch lại, các ID không còn tồn tại phải được loại khỏi selection.
 
@@ -61,6 +64,16 @@ Selection được lưu bằng `Set<string>` theo exercise ID. Khi fetch lại, 
 - Khi lưu, payload được gán `order_index = startOrder + childIndex` bất kể state UI cũ, đảm bảo cả nhóm mới liên tục.
 - Khi sửa một câu, giữ nguyên `order_index` đã có; việc sửa nội dung không làm thay đổi vị trí.
 - Sau khi xoá không cần cập nhật lại toàn bộ `order_index`. Số hiển thị vẫn tự động liên tục vì được suy ra từ vị trí danh sách.
+
+### Kéo thả thứ tự câu lớn
+
+- Phạm vi kéo thả nằm trong từng bài học; không cho kéo nhóm sang bài học khác.
+- Khi thả, client đổi vị trí nhóm trong danh sách ngay. Ví dụ nhóm đang hiển thị số `5` được kéo lên vị trí `2` thì nhóm đó lập tức mang số `2`, câu con `5.1` thành `2.1`, và các nhóm cũ ở vị trí `2` đến `4` tự dịch xuống.
+- Sau khi có thứ tự nhóm mới, client flatten toàn bộ nhóm theo thứ tự mới, giữ nguyên thứ tự câu con trong từng nhóm, rồi gán lại `order_index` liên tiếp `0..n-1` cho tất cả bài tập của bài học.
+- Lưu các giá trị `order_index` bằng upsert/update theo ID. Trong lúc lưu, khóa thao tác kéo tiếp theo và hiển thị trạng thái đang lưu.
+- Nếu lưu thành công, giữ thứ tự mới và fetch lại để xác nhận dữ liệu server.
+- Nếu lưu thất bại, rollback về thứ tự trước khi kéo và hiển thị toast cảnh báo. Không để UI hiển thị thứ tự chưa được lưu.
+- Màn hình học viên đã fetch theo `order_index`, vì vậy lần tải tiếp theo sẽ dùng đúng thứ tự admin đã lưu mà không đổi contract API.
 
 ### Màn hình học viên
 
@@ -84,8 +97,9 @@ Trong `LessonDetailPage`, đổi label tab từ `Ngữ pháp then chốt` thành
 1. Supabase trả về danh sách bài tập phẳng.
 2. Client sắp xếp và gom bằng tiện ích dùng chung.
 3. UI suy ra số câu lớn và câu con từ index của mảng nhóm.
-4. Admin selection chỉ lưu exercise ID; thao tác xoá gửi đúng các ID được chọn.
-5. Học viên lưu đáp án theo exercise ID và gửi contract hiện hữu khi toàn bộ nhóm hoàn thành.
+4. Khi admin kéo thả, client flatten thứ tự mới và cập nhật `order_index` của toàn bộ bài tập trong bài học.
+5. Admin selection chỉ lưu exercise ID; thao tác xoá gửi đúng các ID được chọn.
+6. Học viên lưu đáp án theo exercise ID và gửi contract hiện hữu khi toàn bộ nhóm hoàn thành.
 
 ## Xử lý lỗi và trường hợp biên
 
@@ -95,7 +109,9 @@ Trong `LessonDetailPage`, đổi label tab từ `Ngữ pháp then chốt` thành
 - Nhóm dữ liệu lỗi chứa nhiều loại: tách theo `group_id + type`.
 - Xoá hàng loạt thất bại: không xoá selection khỏi UI, không giả định dữ liệu đã mất, hiển thị lỗi Supabase qua toast.
 - Danh sách rỗng sau khi xoá: hiển thị empty state hiện có.
+- Sau khi xoá câu con hoặc cả nhóm, số câu lớn và câu con được suy ra lại từ danh sách mới nên tự động liền số, không cần ghi lại số hiển thị vào DB.
 - Số câu con lớn: render toàn bộ khi mở, không đặt giới hạn nghiệp vụ; accordion đóng giúp giảm nhiễu khi chưa cần xem.
+- Kéo thả lưu thất bại: rollback thứ tự UI và giữ nguyên thứ tự server.
 
 ## Kiểm thử và xác minh
 
@@ -109,7 +125,11 @@ Các trường hợp bắt buộc:
 - Số hiển thị liên tục dù `order_index` bị hở hoặc trùng.
 - Checkbox nhóm chọn toàn bộ con, bỏ chọn toàn bộ con và hiển thị indeterminate khi chọn một phần.
 - Xoá nhiều nhóm/câu con gửi đúng tập ID và refresh đúng sau thành công.
+- Xoá `1.2` khiến câu `1.3` cũ hiển thị thành `1.2`; xoá cả nhóm `2` khiến nhóm `3` cũ hiển thị thành `2`.
 - Modal tạo số lượng câu con lớn hơn 10 và lưu với `order_index` liên tiếp.
+- Kéo nhóm `5` lên vị trí `2` đổi số nhóm thành `2`, đổi `5.1` thành `2.1`, dịch các nhóm giữa xuống và lưu `order_index` liên tiếp.
+- Tải lại admin và màn hình học viên sau khi kéo thả vẫn giữ đúng thứ tự đã lưu.
+- Giả lập lỗi lưu reorder xác nhận UI rollback và hiển thị toast.
 - Mở/đóng nhóm học viên không làm mất đáp án.
 - Không thể nộp khi còn bất kỳ câu con nào chưa trả lời; payload nộp bài không đổi.
 - Tab hiển thị đúng `Schlüsselgrammatik`.
@@ -118,7 +138,7 @@ Các trường hợp bắt buộc:
 ## Ngoài phạm vi
 
 - Tiêu đề hoặc mô tả tùy chỉnh cho câu lớn.
-- Kéo thả sắp xếp nhóm/câu con.
+- Kéo thả sắp xếp câu con bên trong một câu lớn.
 - Publish/draft ở cấp câu lớn.
 - Migration để chuẩn hóa dữ liệu `group_id = null` cũ.
 - Thay đổi Edge Function `grammar-submit` hoặc thuật toán chấm điểm.
