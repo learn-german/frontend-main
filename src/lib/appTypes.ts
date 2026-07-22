@@ -39,6 +39,7 @@ export interface QuizQuestion {
 export interface GrammarExercise {
   id: string;
   lessonId: string;
+  orderIndex: number;
   type:
     | "word_reorder"
     | "error_correction"

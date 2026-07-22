@@ -1,7 +1,8 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "node:crypto";
 
-type MediaType = "video" | "audio";
+type MediaType = "video" | "audio" | "image";
 
 interface VercelRequestLike {
   method?: string;
@@ -16,15 +17,19 @@ interface VercelResponseLike {
 const ALLOWED_EXT: Record<MediaType, string[]> = {
   video: ["mp4"],
   audio: ["mp3", "m4a", "wav"],
+  image: ["jpg", "jpeg", "png", "webp"],
 };
 
 export function isAllowedExt(mediaType: MediaType, ext: string): boolean {
   return ALLOWED_EXT[mediaType].includes(ext.toLowerCase());
 }
 
-export function buildObjectKey(mediaType: MediaType, lessonId: string, ext: string, clipId?: string): string {
+export function buildObjectKey(mediaType: MediaType, lessonId: string, ext: string, clipId?: string, randomId?: string): string {
   if (mediaType === "video") {
     return `videos/${lessonId}.${ext.toLowerCase()}`;
+  }
+  if (mediaType === "image") {
+    return `images/${lessonId}/${randomId}.${ext.toLowerCase()}`;
   }
   return `audio/${lessonId}/${clipId}.${ext.toLowerCase()}`;
 }
@@ -91,8 +96,8 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
   const { lessonId, fileExt, clipId } = body;
   const mediaType = body.mediaType;
 
-  if (!lessonId || (mediaType !== "video" && mediaType !== "audio") || !fileExt) {
-    res.status(400).json({ error: "lessonId, mediaType (video|audio), fileExt required" });
+  if (!lessonId || (mediaType !== "video" && mediaType !== "audio" && mediaType !== "image") || !fileExt) {
+    res.status(400).json({ error: "lessonId, mediaType (video|audio|image), fileExt required" });
     return;
   }
   if (mediaType === "audio" && !clipId) {
@@ -104,7 +109,7 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const objectKey = buildObjectKey(mediaType, lessonId, fileExt, clipId);
+  const objectKey = buildObjectKey(mediaType, lessonId, fileExt, clipId, mediaType === "image" ? randomUUID() : undefined);
 
   const s3 = new S3Client({
     region: "auto",

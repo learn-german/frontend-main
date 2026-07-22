@@ -44,7 +44,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   const [marked, setMarked] = useState(isCompleted);
 
   const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-    { id: "nguphapthenchot", label: "Ngữ pháp then chốt", Icon: GraduationCap },
+    { id: "nguphapthenchot", label: "Schlüsselgrammatik", Icon: GraduationCap },
     { id: "tuvung", label: "Wortschatz", Icon: BookOpen },
     { id: "quiz", label: "Grammatikübungen", Icon: HelpCircle },
     { id: "doc", label: "Lesen", Icon: FileText },
@@ -191,7 +191,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   <div className="flex justify-end">
                     <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
                   </div>
-                  <MarkdownBlock content={lesson.grammarMd} onWordClick={handlePronounce} />
+                  <MarkdownBlock content={lesson.grammarMd} lessonId={lesson.id} onWordClick={handlePronounce} />
                 </>
               ) : lesson.grammar.rule ? (
                 <>

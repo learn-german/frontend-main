@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useMemo, useRef, useState } from "react";
 import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CheckSquare, Square } from "lucide-react";
+import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 
 const CALLOUT_STYLES: Record<string, string> = {
   "💡": "bg-amber-50 border-amber-400 text-amber-800",
@@ -81,6 +82,7 @@ function wrapCalloutLines(content: string): string {
 
 const VOCAB_WORD_PATTERN = /\{\{([^{}]+)\}\}/g;
 const PRONOUNCE_SCHEME = "pronounce:";
+const R2IMG_SCHEME = "r2img:";
 
 // Counts {{word}} occurrences in raw markdown — used by callers that show a
 // vocabulary count (lesson tab badge, dashboard "next lesson" card) without
@@ -109,7 +111,7 @@ function wrapPronounceWords(content: string, words: string[]): string {
 // above. Carve out an exception for our own synthetic scheme; everything
 // else still goes through the default sanitizer.
 function urlTransform(url: string): string {
-  return url.startsWith(PRONOUNCE_SCHEME) ? url : defaultUrlTransform(url);
+  return url.startsWith(PRONOUNCE_SCHEME) || url.startsWith(R2IMG_SCHEME) ? url : defaultUrlTransform(url);
 }
 
 export function preprocessMarkdown(content: string): string {
@@ -191,6 +193,25 @@ function TaskCheckbox({ checked }: { checked?: boolean }) {
   );
 }
 
+function R2Image({ objectKey, lessonId, alt }: { objectKey: string; lessonId: string; alt?: string }) {
+  const { url, loading, error } = useMediaPlaybackUrl(lessonId, "image", objectKey);
+  const [loadError, setLoadError] = useState(false);
+  if (loading) {
+    return <div className="rounded-lg bg-slate-100 animate-pulse w-full h-40 my-1" />;
+  }
+  if (error || !url || loadError) {
+    return <p className="text-xs text-red-500 my-1">Không tải được ảnh</p>;
+  }
+  return <img src={url} alt={alt} className="rounded-lg max-w-full my-1" onError={() => setLoadError(true)} />;
+}
+
+function ContentImage({ src, alt, lessonId }: { src?: string; alt?: string; lessonId?: string }) {
+  if (src?.startsWith(R2IMG_SCHEME) && lessonId) {
+    return <R2Image objectKey={src.slice(R2IMG_SCHEME.length)} lessonId={lessonId} alt={alt} />;
+  }
+  return <img src={src} alt={alt} className="rounded-lg max-w-full my-1" />;
+}
+
 function CodeBlock({ className, children }: { className?: string; children?: React.ReactNode }) {
   const isBlock = /language-/.test(className ?? "") || String(children).includes("\n");
   if (isBlock) {
@@ -227,7 +248,6 @@ const components: Components = {
       {children}
     </a>
   ),
-  img: ({ src, alt }) => <img src={src} alt={alt} className="rounded-lg max-w-full my-1" />,
   table: ({ children }) => (
     <div className="overflow-x-auto my-2">
       <table className="w-full text-xs border-collapse table-fixed">{children}</table>
@@ -246,36 +266,46 @@ const components: Components = {
 export const MarkdownBlock: React.FC<{
   content: string;
   className?: string;
+  lessonId?: string;
   onWordClick?: (word: string) => void;
-}> = ({ content, className, onWordClick }) => {
-  const pronounceWords: string[] = [];
+}> = ({ content, className, lessonId, onWordClick }) => {
+  // Mutated in place (not reassigned) so its identity stays stable across
+  // renders — the `a` component below is memoized and must be able to read
+  // freshly-populated words at click time without becoming a useMemo dep
+  // itself (a plain array literal would be a new reference every render,
+  // defeating the memoization).
+  const pronounceWordsRef = useRef<string[]>([]);
+  pronounceWordsRef.current = [];
   const preprocessed = preprocessMarkdown(content);
-  const processedContent = onWordClick ? wrapPronounceWords(preprocessed, pronounceWords) : preprocessed;
+  const processedContent = onWordClick ? wrapPronounceWords(preprocessed, pronounceWordsRef.current) : preprocessed;
 
-  const activeComponents: Components = onWordClick
-    ? {
-        ...components,
-        a: ({ href, children }) => {
-          if (href?.startsWith(PRONOUNCE_SCHEME)) {
-            const word = pronounceWords[Number(href.slice(PRONOUNCE_SCHEME.length))];
+  const activeComponents: Components = useMemo(() => ({
+    ...components,
+    img: ({ src, alt }) => <ContentImage src={src} alt={alt} lessonId={lessonId} />,
+    ...(onWordClick
+      ? {
+          a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+            if (href?.startsWith(PRONOUNCE_SCHEME)) {
+              const word = pronounceWordsRef.current[Number(href.slice(PRONOUNCE_SCHEME.length))];
+              return (
+                <button
+                  type="button"
+                  onClick={() => onWordClick(word)}
+                  className="font-display font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 active:scale-95 rounded px-1 -mx-0.5 transition cursor-pointer"
+                >
+                  {children}
+                </button>
+              );
+            }
             return (
-              <button
-                type="button"
-                onClick={() => onWordClick(word)}
-                className="font-display font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 active:scale-95 rounded px-1 -mx-0.5 transition cursor-pointer"
-              >
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-orange-600 underline hover:text-orange-700">
                 {children}
-              </button>
+              </a>
             );
-          }
-          return (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="text-orange-600 underline hover:text-orange-700">
-              {children}
-            </a>
-          );
-        },
-      }
-    : components;
+          },
+        }
+      : {}),
+  }), [lessonId, onWordClick]);
 
   return (
     <div className={`space-y-0.5 ${className ?? ""}`}>

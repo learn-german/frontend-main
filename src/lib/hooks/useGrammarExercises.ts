@@ -29,6 +29,7 @@ export function useGrammarExercises(lessonId: string) {
             (data ?? []).map((e) => ({
               id: e.id as string,
               lessonId: e.lesson_id as string,
+              orderIndex: e.order_index as number,
               type: e.type as GrammarExercise["type"],
               groupId: (e.group_id as string | null) ?? undefined,
               hint: (e.hint as string | null) ?? undefined,
