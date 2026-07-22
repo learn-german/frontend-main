@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Loader2, ArrowRight, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/DesignSystem";
+import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
@@ -412,6 +413,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
               </button>
               {isExpanded && (
                 <div className="space-y-3 border-t border-slate-100 p-4">
+                  <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
                   <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {group.exercises.map((exercise, childIndex) => (
