@@ -5,7 +5,9 @@ import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import { uploadMedia } from "../../lib/uploadMedia";
 import { useMediaPlaybackUrl } from "../../lib/hooks/useMediaPlaybackUrl";
+import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
 import { AdminGrammarExerciseSection } from "./AdminGrammarExerciseSection";
+import { AdminModuleGroup } from "./AdminModuleGroup";
 
 interface QuizQuestion {
   id: string;
@@ -247,6 +249,8 @@ export const AdminQuizSection: React.FC = () => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [moduleExpanded, setModuleExpanded] = useState<Record<string, boolean>>({});
+  const { modules: moduleOrder } = useModuleOrder();
   const [activeTab, setActiveTab] = useState<"nguphap" | "nghe" | "doc">("nguphap");
   const [search, setSearch] = useState("");
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
@@ -515,6 +519,16 @@ export const AdminQuizSection: React.FC = () => {
       g.module_title.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const moduleSections = moduleOrder
+    .map((mod) => ({
+      id: mod.id,
+      level: mod.level,
+      lessonGroups: mod.lessonIds
+        .map((lid) => filteredGroups.find((g) => g.lesson_id === lid))
+        .filter((g): g is LessonGroup => !!g),
+    }))
+    .filter((mod) => mod.lessonGroups.length > 0);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-48">
@@ -561,114 +575,124 @@ export const AdminQuizSection: React.FC = () => {
         <AdminGrammarExerciseSection />
       ) : (
       <div className="space-y-3">
-        {filteredGroups.map((group) => {
-          const filteredQuestions = group.questions.filter((q) => q.category === activeTab);
-          return (
-          <div key={group.lesson_id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-            <button
-              onClick={() => setExpanded((prev) => ({ ...prev, [group.lesson_id]: !prev[group.lesson_id] }))}
-              className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors"
-            >
-              {expanded[group.lesson_id] ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-              <div className="flex-1">
-                <p className="font-display font-bold text-slate-900 text-sm">{group.lesson_title}</p>
-                <p className="text-xs text-slate-400">
-                  {group.module_title} · {filteredQuestions.length} câu hỏi
-                  {activeTab === "nghe" && ` · ${group.clips.length} file mp3`}
-                  {activeTab === "doc" && ` · ${group.passages.length} đoạn văn`}
-                </p>
-              </div>
-              {activeTab !== "nghe" && activeTab !== "doc" && (
-                <span
-                  onClick={(e) => { e.stopPropagation(); openCreate(group.lesson_id, filteredQuestions.length); }}
-                  className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
+        {moduleSections.map((mod) => (
+          <AdminModuleGroup
+            key={mod.id}
+            title={mod.level}
+            subtitle={`${mod.lessonGroups.length} bài học`}
+            expanded={!!moduleExpanded[mod.id]}
+            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+          >
+            {mod.lessonGroups.map((group) => {
+              const filteredQuestions = group.questions.filter((q) => q.category === activeTab);
+              return (
+              <div key={group.lesson_id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                <button
+                  onClick={() => setExpanded((prev) => ({ ...prev, [group.lesson_id]: !prev[group.lesson_id] }))}
+                  className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
-                </span>
-              )}
-            </button>
-
-            {expanded[group.lesson_id] && (
-              <div className="border-t border-slate-100 p-4 space-y-3">
-                {activeTab === "nghe" ? (
-                  <>
-                    <label className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-slate-100 transition w-fit">
-                      <Headphones className="w-4 h-4 text-orange-500 shrink-0" />
-                      <span className="text-xs font-bold text-slate-600">
-                        {uploadingFor === group.lesson_id
-                          ? `Đang tải lên... ${uploadPct}%`
-                          : "Tải file mp3 mới (.mp3 / .m4a / .wav)"}
-                      </span>
-                      <input
-                        type="file"
-                        accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
-                        className="hidden"
-                        disabled={uploadingFor !== null}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handleUploadClip(group.lesson_id, f);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    {group.clips.length === 0 ? (
-                      <p className="text-center py-6 text-slate-400 text-sm">Chưa có file mp3 nào cho bài học này.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {group.clips.map((clip, idx) => (
-                          <ClipCard
-                            key={clip.id}
-                            lessonId={group.lesson_id}
-                            clip={clip}
-                            index={idx}
-                            questions={filteredQuestions.filter((q) => q.audio_clip_id === clip.id)}
-                            onDeleteClip={setDeleteClipTarget}
-                            onAddQuestion={openCreate}
-                            onEditQuestion={openEdit}
-                            onDeleteQuestion={setDeleteTarget}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : activeTab === "doc" ? (
-                  <>
-                    <button
-                      onClick={() => handleAddPassage(group.lesson_id)}
-                      className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors w-fit"
+                  {expanded[group.lesson_id] ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                  <div className="flex-1">
+                    <p className="font-display font-bold text-slate-900 text-sm">{group.lesson_title}</p>
+                    <p className="text-xs text-slate-400">
+                      {filteredQuestions.length} câu hỏi
+                      {activeTab === "nghe" && ` · ${group.clips.length} file mp3`}
+                      {activeTab === "doc" && ` · ${group.passages.length} đoạn văn`}
+                    </p>
+                  </div>
+                  {activeTab !== "nghe" && activeTab !== "doc" && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); openCreate(group.lesson_id, filteredQuestions.length); }}
+                      className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Thêm đoạn văn mới
-                    </button>
-                    {group.passages.length === 0 ? (
-                      <p className="text-center py-6 text-slate-400 text-sm">Chưa có đoạn văn nào cho bài học này.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {group.passages.map((passage, idx) => (
-                          <PassageCard
-                            key={passage.id}
-                            lessonId={group.lesson_id}
-                            passage={passage}
-                            index={idx}
-                            questions={filteredQuestions.filter((q) => q.reading_passage_id === passage.id)}
-                            saving={savingPassageId === passage.id}
-                            onSavePassage={handleSavePassage}
-                            onDeletePassage={setDeletePassageTarget}
-                            onAddQuestion={openCreate}
-                            onEditQuestion={openEdit}
-                            onDeleteQuestion={setDeleteTarget}
+                      <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
+                    </span>
+                  )}
+                </button>
+
+                {expanded[group.lesson_id] && (
+                  <div className="border-t border-slate-100 p-4 space-y-3">
+                    {activeTab === "nghe" ? (
+                      <>
+                        <label className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-slate-100 transition w-fit">
+                          <Headphones className="w-4 h-4 text-orange-500 shrink-0" />
+                          <span className="text-xs font-bold text-slate-600">
+                            {uploadingFor === group.lesson_id
+                              ? `Đang tải lên... ${uploadPct}%`
+                              : "Tải file mp3 mới (.mp3 / .m4a / .wav)"}
+                          </span>
+                          <input
+                            type="file"
+                            accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
+                            className="hidden"
+                            disabled={uploadingFor !== null}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleUploadClip(group.lesson_id, f);
+                              e.target.value = "";
+                            }}
                           />
-                        ))}
-                      </div>
+                        </label>
+                        {group.clips.length === 0 ? (
+                          <p className="text-center py-6 text-slate-400 text-sm">Chưa có file mp3 nào cho bài học này.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {group.clips.map((clip, idx) => (
+                              <ClipCard
+                                key={clip.id}
+                                lessonId={group.lesson_id}
+                                clip={clip}
+                                index={idx}
+                                questions={filteredQuestions.filter((q) => q.audio_clip_id === clip.id)}
+                                onDeleteClip={setDeleteClipTarget}
+                                onAddQuestion={openCreate}
+                                onEditQuestion={openEdit}
+                                onDeleteQuestion={setDeleteTarget}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : activeTab === "doc" ? (
+                      <>
+                        <button
+                          onClick={() => handleAddPassage(group.lesson_id)}
+                          className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors w-fit"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Thêm đoạn văn mới
+                        </button>
+                        {group.passages.length === 0 ? (
+                          <p className="text-center py-6 text-slate-400 text-sm">Chưa có đoạn văn nào cho bài học này.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {group.passages.map((passage, idx) => (
+                              <PassageCard
+                                key={passage.id}
+                                lessonId={group.lesson_id}
+                                passage={passage}
+                                index={idx}
+                                questions={filteredQuestions.filter((q) => q.reading_passage_id === passage.id)}
+                                saving={savingPassageId === passage.id}
+                                onSavePassage={handleSavePassage}
+                                onDeletePassage={setDeletePassageTarget}
+                                onAddQuestion={openCreate}
+                                onEditQuestion={openEdit}
+                                onDeleteQuestion={setDeleteTarget}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <QuestionTable questions={filteredQuestions} onEdit={openEdit} onDelete={setDeleteTarget} />
                     )}
-                  </>
-                ) : (
-                  <QuestionTable questions={filteredQuestions} onEdit={openEdit} onDelete={setDeleteTarget} />
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-          );
-        })}
+              );
+            })}
+          </AdminModuleGroup>
+        ))}
         {filteredGroups.length === 0 && (
           <div className="text-center py-10 text-slate-400 text-sm">
             Không tìm thấy bài học nào khớp với "{search}".
