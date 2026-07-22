@@ -69,3 +69,13 @@ export function toggleGroupSelection(
 
   return next;
 }
+
+export function moveGroup<T>(items: readonly T[], active: T, over: T): T[] {
+  const fromIndex = items.indexOf(active);
+  const toIndex = items.indexOf(over);
+  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return [...items];
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}

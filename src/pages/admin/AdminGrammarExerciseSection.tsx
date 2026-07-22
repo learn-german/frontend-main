@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, Search, Eye } from "lucide-react";
+import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, Search, Eye, GripVertical } from "lucide-react";
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
@@ -7,8 +10,11 @@ import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
 import { AdminModuleGroup } from "./AdminModuleGroup";
 import {
   getGroupSelectionState,
+  flattenGroupsWithOrder,
   groupGrammarExercises,
+  moveGroup,
   toggleGroupSelection,
+  type GrammarExerciseGroup,
 } from "../../lib/grammarExerciseGroups";
 
 interface GrammarExercise {
@@ -218,6 +224,65 @@ const GroupCheckbox: React.FC<{
   return <input ref={ref} type="checkbox" checked={state === "all"} onChange={onChange} className="h-4 w-4 accent-orange-500" />;
 };
 
+interface ExerciseGroupRowProps {
+  exerciseGroup: GrammarExerciseGroup<GrammarExercise>;
+  groupIndex: number;
+  isExpanded: boolean;
+  selectedIds: ReadonlySet<string>;
+  disabled: boolean;
+  onToggleExpanded: (key: string) => void;
+  onToggleGroup: (ids: string[]) => void;
+  onToggleExercise: (id: string) => void;
+  onEdit: (ex: GrammarExercise) => void;
+  onDelete: (ex: GrammarExercise) => void;
+  onPreview: (ex: GrammarExercise) => void;
+}
+
+const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
+  exerciseGroup, groupIndex, isExpanded, selectedIds, disabled, onToggleExpanded,
+  onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview,
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: exerciseGroup.key,
+    disabled,
+  });
+  const ids = exerciseGroup.exercises.map((exercise) => exercise.id);
+  const selectionState = getGroupSelectionState(ids, selectedIds);
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${isDragging ? "z-10 opacity-60 shadow-lg" : ""}`}>
+      <div className="flex items-center gap-3 bg-slate-50 px-3 py-2.5">
+        <button type="button" {...attributes} {...listeners} disabled={disabled} className="cursor-grab touch-none text-slate-300 hover:text-slate-500 disabled:cursor-wait" title="Kéo để đổi thứ tự">
+          {disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : <GripVertical className="h-4 w-4" />}
+        </button>
+        <GroupCheckbox state={selectionState} onChange={() => onToggleGroup(ids)} />
+        <button type="button" onClick={() => onToggleExpanded(exerciseGroup.key)} className="flex flex-1 items-center gap-3 text-left">
+          {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+          <span className="text-sm font-black text-slate-700">{groupIndex + 1}</span>
+          <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${TYPE_COLORS[exerciseGroup.type]}`}>{TYPE_LABELS[exerciseGroup.type]}</span>
+          <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu con</span>
+        </button>
+      </div>
+      {isExpanded && (
+        <div className="divide-y divide-slate-100">
+          {exerciseGroup.exercises.map((ex, childIndex) => (
+            <div key={ex.id} className="group flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50/50">
+              <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => onToggleExercise(ex.id)} className="h-4 w-4 accent-orange-500" />
+              <span className="w-10 shrink-0 text-xs font-bold text-slate-400">{groupIndex + 1}.{childIndex + 1}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{previewContent(ex)}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${ex.status === "published" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>{ex.status === "published" ? "Đã publish" : "Nháp"}</span>
+              <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <button onClick={() => onPreview(ex)} className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600" title="Preview"><Eye className="w-3.5 h-3.5" /></button>
+                <button onClick={() => onEdit(ex)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600" title="Chỉnh sửa"><Pencil className="w-3.5 h-3.5" /></button>
+                <button onClick={() => onDelete(ex)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600" title="Xóa"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ExerciseGroupList: React.FC<{
   exercises: GrammarExercise[];
   expandedKeys: ReadonlySet<string>;
@@ -228,68 +293,24 @@ const ExerciseGroupList: React.FC<{
   onEdit: (ex: GrammarExercise) => void;
   onDelete: (ex: GrammarExercise) => void;
   onPreview: (ex: GrammarExercise) => void;
-}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview }) => {
+  onReorder: (activeKey: string, overKey: string) => void;
+  reorderSaving: boolean;
+}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving }) => {
   const exerciseGroups = groupGrammarExercises(exercises);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (over && active.id !== over.id) onReorder(String(active.id), String(over.id));
+  };
   return (
-    <div className="space-y-2">
-      {exerciseGroups.map((exerciseGroup, groupIndex) => {
-        const ids = exerciseGroup.exercises.map((exercise) => exercise.id);
-        const selectionState = getGroupSelectionState(ids, selectedIds);
-        const isExpanded = expandedKeys.has(exerciseGroup.key);
-        return (
-          <div key={exerciseGroup.key} className="overflow-hidden rounded-xl border border-slate-200">
-            <div className="flex items-center gap-3 bg-slate-50 px-3 py-2.5">
-              <GroupCheckbox state={selectionState} onChange={() => onToggleGroup(ids)} />
-              <button type="button" onClick={() => onToggleExpanded(exerciseGroup.key)} className="flex flex-1 items-center gap-3 text-left">
-                {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-                <span className="text-sm font-black text-slate-700">{groupIndex + 1}</span>
-                <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${TYPE_COLORS[exerciseGroup.type]}`}>
-                  {TYPE_LABELS[exerciseGroup.type]}
-                </span>
-                <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu con</span>
-              </button>
-            </div>
-            {isExpanded && (
-              <div className="divide-y divide-slate-100">
-                {exerciseGroup.exercises.map((ex, childIndex) => (
-                  <div key={ex.id} className="group flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50/50">
-                    <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => onToggleExercise(ex.id)} className="h-4 w-4 accent-orange-500" />
-                    <span className="w-10 shrink-0 text-xs font-bold text-slate-400">{groupIndex + 1}.{childIndex + 1}</span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{previewContent(ex)}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${ex.status === "published" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>
-                      {ex.status === "published" ? "Đã publish" : "Nháp"}
-                    </span>
-                    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <button
-                onClick={() => onPreview(ex)}
-                className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition-colors"
-                title="Preview"
-              >
-                <Eye className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => onEdit(ex)}
-                className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
-                title="Chỉnh sửa"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => onDelete(ex)}
-                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
-                title="Xóa"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={exerciseGroups.map((group) => group.key)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2">
+          {exerciseGroups.map((exerciseGroup, groupIndex) => (
+            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 };
 
@@ -538,6 +559,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedExerciseGroups, setExpandedExerciseGroups] = useState<Set<string>>(new Set());
+  const [reorderSavingLessonId, setReorderSavingLessonId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [previewTarget, setPreviewTarget] = useState<GrammarExercise | null>(null);
 
@@ -690,6 +712,46 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       return next;
     });
 
+  const handleReorderGroups = async (lessonId: string, activeKey: string, overKey: string) => {
+    const lessonGroup = groups.find((group) => group.lesson_id === lessonId);
+    if (!lessonGroup || reorderSavingLessonId) return;
+    const previousExercises = lessonGroup.exercises;
+    const exerciseGroups = groupGrammarExercises(previousExercises);
+    const reorderedKeys = moveGroup(exerciseGroups.map((group) => group.key), activeKey, overKey);
+    const reorderedGroups = reorderedKeys
+      .map((key) => exerciseGroups.find((group) => group.key === key))
+      .filter((group): group is GrammarExerciseGroup<GrammarExercise> => !!group);
+    const ordered = flattenGroupsWithOrder(reorderedGroups);
+    const nextExercises = ordered.map(({ exercise, orderIndex }) => ({
+      ...exercise,
+      order_index: orderIndex,
+      orderIndex,
+    }));
+
+    setGroups((previous) => previous.map((group) => group.lesson_id === lessonId ? { ...group, exercises: nextExercises } : group));
+    setReorderSavingLessonId(lessonId);
+    const results = await Promise.all(
+      ordered.map(({ exercise, orderIndex }) =>
+        supabase.from("grammar_exercises").update({ order_index: orderIndex }).eq("id", exercise.id),
+      ),
+    );
+    const firstError = results.find((result) => result.error)?.error;
+    if (firstError) {
+      await Promise.all(
+        previousExercises.map((exercise) =>
+          supabase.from("grammar_exercises").update({ order_index: exercise.order_index }).eq("id", exercise.id),
+        ),
+      );
+      setGroups((previous) => previous.map((group) => group.lesson_id === lessonId ? { ...group, exercises: previousExercises } : group));
+      showToast("Không thể lưu thứ tự mới: " + firstError.message, "warning");
+      setReorderSavingLessonId(null);
+      return;
+    }
+    await fetchExercises();
+    setReorderSavingLessonId(null);
+    showToast("Đã cập nhật thứ tự câu hỏi.", "success");
+  };
+
   const handlePublish = async () => {
     if (!editId) return;
     setSaving(true);
@@ -825,6 +887,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                         onEdit={openEdit}
                         onDelete={setDeleteTarget}
                         onPreview={setPreviewTarget}
+                        onReorder={(activeKey, overKey) => handleReorderGroups(group.lesson_id, activeKey, overKey)}
+                        reorderSaving={reorderSavingLessonId === group.lesson_id}
                       />
                     )}
                   </div>

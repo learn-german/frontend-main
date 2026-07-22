@@ -3,6 +3,7 @@ import {
   flattenGroupsWithOrder,
   getGroupSelectionState,
   groupGrammarExercises,
+  moveGroup,
   toggleGroupSelection,
 } from "./grammarExerciseGroups";
 
@@ -35,3 +36,6 @@ assert.equal(getGroupSelectionState(["a", "b"], new Set(["a", "b"])), "all");
 
 assert.deepEqual([...toggleGroupSelection(["a", "b"], new Set(["a"]))].sort(), ["a", "b"]);
 assert.deepEqual([...toggleGroupSelection(["a", "b"], new Set(["a", "b", "x"]))].sort(), ["x"]);
+
+assert.deepEqual(moveGroup(["1", "2", "3", "4", "5"], "5", "2"), ["1", "5", "2", "3", "4"]);
+assert.deepEqual(moveGroup(["1", "2"], "missing", "1"), ["1", "2"]);
