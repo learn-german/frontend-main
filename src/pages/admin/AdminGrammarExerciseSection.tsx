@@ -13,6 +13,7 @@ import {
   flattenGroupsWithOrder,
   groupGrammarExercises,
   moveGroup,
+  resolveAppendGroupId,
   toggleGroupSelection,
   type GrammarExerciseGroup,
 } from "../../lib/grammarExerciseGroups";
@@ -77,6 +78,14 @@ interface EditForm {
   classification_items: { item: string; group: string }[];
   explanation: string;
   order_index: number;
+}
+
+type ModalMode = "create-group" | "append-children" | "edit";
+
+interface AppendContext {
+  groupId: string | null;
+  legacyExerciseIds: string[];
+  groupNumber: number;
 }
 
 const EMPTY_FORM: EditForm = {
@@ -236,11 +245,12 @@ interface ExerciseGroupRowProps {
   onEdit: (ex: GrammarExercise) => void;
   onDelete: (ex: GrammarExercise) => void;
   onPreview: (ex: GrammarExercise) => void;
+  onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
 }
 
 const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
   exerciseGroup, groupIndex, isExpanded, selectedIds, disabled, onToggleExpanded,
-  onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview,
+  onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onAddChildren,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: exerciseGroup.key,
@@ -260,6 +270,17 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
           <span className="text-sm font-black text-slate-700">{groupIndex + 1}</span>
           <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${TYPE_COLORS[exerciseGroup.type]}`}>{TYPE_LABELS[exerciseGroup.type]}</span>
           <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu con</span>
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAddChildren(exerciseGroup, groupIndex);
+          }}
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-600 hover:bg-orange-50 disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" /> Thêm câu con
         </button>
       </div>
       {isExpanded && (
@@ -295,7 +316,8 @@ const ExerciseGroupList: React.FC<{
   onPreview: (ex: GrammarExercise) => void;
   onReorder: (activeKey: string, overKey: string) => void;
   reorderSaving: boolean;
-}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving }) => {
+  onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
+}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving, onAddChildren }) => {
   const exerciseGroups = groupGrammarExercises(exercises);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -306,7 +328,7 @@ const ExerciseGroupList: React.FC<{
       <SortableContext items={exerciseGroups.map((group) => group.key)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {exerciseGroups.map((exerciseGroup, groupIndex) => (
-            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} />
+            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} onAddChildren={onAddChildren} />
           ))}
         </div>
       </SortableContext>
@@ -550,6 +572,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>("create-group");
+  const [appendContext, setAppendContext] = useState<AppendContext | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
   const [entries, setEntries] = useState<EditForm[]>([EMPTY_FORM]);
@@ -597,6 +621,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   }, []);
 
   const openCreate = (lessonId: string, nextOrder: number) => {
+    setModalMode("create-group");
+    setAppendContext(null);
     setEditId(null);
     setEditLessonId(lessonId);
     setCreateStartOrder(nextOrder);
@@ -605,6 +631,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   };
 
   const openEdit = (ex: GrammarExercise) => {
+    setModalMode("edit");
+    setAppendContext(null);
     setEditId(ex.id);
     setEditLessonId(ex.lesson_id);
     setEntries([
@@ -621,6 +649,30 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         order_index: ex.order_index,
       },
     ]);
+    setModalOpen(true);
+  };
+
+  const openAppendChildren = (
+    lessonId: string,
+    exerciseGroup: GrammarExerciseGroup<GrammarExercise>,
+    groupNumber: number,
+  ) => {
+    const lesson = groups.find((group) => group.lesson_id === lessonId);
+    const nextOrder = (lesson?.exercises ?? []).reduce(
+      (max, exercise) => Math.max(max, exercise.order_index),
+      -1,
+    ) + 1;
+    const firstExercise = exerciseGroup.exercises[0];
+    setModalMode("append-children");
+    setAppendContext({
+      groupId: firstExercise.groupId,
+      legacyExerciseIds: firstExercise.groupId ? [] : exerciseGroup.exercises.map((exercise) => exercise.id),
+      groupNumber,
+    });
+    setEditId(null);
+    setEditLessonId(lessonId);
+    setCreateStartOrder(nextOrder);
+    setEntries([{ ...EMPTY_FORM, type: exerciseGroup.type, order_index: nextOrder }]);
     setModalOpen(true);
   };
 
@@ -649,10 +701,10 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
     setSaving(true);
 
-    let error;
-    if (editId) {
+    let error: { message: string } | null = null;
+    if (modalMode === "edit" && editId) {
       ({ error } = await supabase.from("grammar_exercises").update(buildPayload(entries[0])).eq("id", editId));
-    } else {
+    } else if (modalMode === "create-group") {
       const groupId = crypto.randomUUID();
       const payloads = entries.map((entry, index) => ({
         ...buildPayload(entry),
@@ -661,6 +713,37 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         order_index: createStartOrder + index,
       }));
       ({ error } = await supabase.from("grammar_exercises").insert(payloads));
+    } else if (appendContext) {
+      const resolved = resolveAppendGroupId(appendContext.groupId, () => crypto.randomUUID());
+      if (resolved.assignedLegacyId) {
+        const legacyUpdate = await supabase
+          .from("grammar_exercises")
+          .update({ group_id: resolved.groupId })
+          .in("id", appendContext.legacyExerciseIds);
+        error = legacyUpdate.error;
+      }
+
+      if (!error) {
+        const payloads = entries.map((entry, index) => ({
+          ...buildPayload(entry),
+          lesson_id: editLessonId,
+          group_id: resolved.groupId,
+          order_index: createStartOrder + index,
+        }));
+        const insertResult = await supabase.from("grammar_exercises").insert(payloads);
+        error = insertResult.error;
+
+        if (error && resolved.assignedLegacyId) {
+          const rollback = await supabase
+            .from("grammar_exercises")
+            .update({ group_id: null })
+            .in("id", appendContext.legacyExerciseIds);
+          if (rollback.error) {
+            error = { message: `${error.message}. Rollback nhóm cũ thất bại: ${rollback.error.message}` };
+            await fetchExercises();
+          }
+        }
+      }
     }
 
     setSaving(false);
@@ -668,7 +751,12 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     if (error) {
       showToast("Lưu thất bại: " + error.message, "warning");
     } else {
-      showToast(editId ? "Đã cập nhật bài tập." : `Đã thêm ${entries.length} bài tập.`, "success");
+      const successMessage = modalMode === "edit"
+        ? "Đã cập nhật bài tập."
+        : modalMode === "append-children"
+          ? `Đã thêm ${entries.length} câu con.`
+          : `Đã thêm ${entries.length} bài tập.`;
+      showToast(successMessage, "success");
       setModalOpen(false);
       fetchExercises();
     }
@@ -889,6 +977,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                         onPreview={setPreviewTarget}
                         onReorder={(activeKey, overKey) => handleReorderGroups(group.lesson_id, activeKey, overKey)}
                         reorderSaving={reorderSavingLessonId === group.lesson_id}
+                        onAddChildren={(exerciseGroup, groupIndex) => openAppendChildren(group.lesson_id, exerciseGroup, groupIndex + 1)}
                       />
                     )}
                   </div>
@@ -909,8 +998,14 @@ export const AdminGrammarExerciseSection: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 space-y-4 p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h3 className="font-display font-bold text-slate-900">{editId ? "Chỉnh sửa bài tập" : "Thêm bài tập mới"}</h3>
-                {editId && <LessonStatusBadge status={entries[0].status} />}
+                <h3 className="font-display font-bold text-slate-900">
+                  {modalMode === "edit"
+                    ? "Chỉnh sửa bài tập"
+                    : modalMode === "append-children"
+                      ? `Thêm câu con vào Câu ${appendContext?.groupNumber ?? ""}`
+                      : "Thêm bài tập mới"}
+                </h3>
+                {modalMode === "edit" && <LessonStatusBadge status={entries[0].status} />}
               </div>
               <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
                 <X className="w-4 h-4" />
@@ -922,7 +1017,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               <select
                 value={entries[0].type}
                 onChange={(e) => handleTypeChange(e.target.value as EditForm["type"])}
-                className={inputCls}
+                disabled={modalMode === "append-children"}
+                className={`${inputCls} disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500`}
               >
                 {Object.entries(TYPE_LABELS).map(([val, label]) => (
                   <option key={val} value={val}>
@@ -951,7 +1047,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               </div>
             ))}
 
-            {!editId && (
+            {modalMode !== "edit" && (
               <button
                 onClick={addEntry}
                 className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1.5 rounded-lg hover:bg-orange-50 transition-colors"
@@ -966,9 +1062,15 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               </Button>
               <Button variant="primary" className="flex-1" onClick={handleSave}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                {editId ? "Lưu thay đổi" : entries.length > 1 ? `Thêm ${entries.length} bài tập` : "Thêm bài tập"}
+                {modalMode === "edit"
+                  ? "Lưu thay đổi"
+                  : modalMode === "append-children"
+                    ? `Thêm ${entries.length} câu con`
+                    : entries.length > 1
+                      ? `Thêm ${entries.length} bài tập`
+                      : "Thêm bài tập"}
               </Button>
-              {editId &&
+              {modalMode === "edit" && editId &&
                 (entries[0].status === "draft" ? (
                   <Button variant="ghost" size="sm" onClick={handlePublish} className="w-full" disabled={saving}>
                     Publish
