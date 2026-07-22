@@ -54,3 +54,18 @@ export function getGroupSelectionState(
   if (selectedCount === ids.length) return "all";
   return "some";
 }
+
+export function toggleGroupSelection(
+  ids: readonly string[],
+  selectedIds: ReadonlySet<string>,
+): Set<string> {
+  const next = new Set(selectedIds);
+  const allSelected = ids.every((id) => next.has(id));
+
+  for (const id of ids) {
+    if (allSelected) next.delete(id);
+    else next.add(id);
+  }
+
+  return next;
+}
