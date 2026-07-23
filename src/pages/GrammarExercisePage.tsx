@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Loader2, ArrowRight, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/DesignSystem";
+import { ExercisePageHeader } from "../components/ExercisePageHeader";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
@@ -198,6 +199,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   onQuizFinished,
   onNavigateHome,
   onNextLesson,
+  onBackToLesson,
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(lesson.id);
 
@@ -273,17 +275,22 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
   if (exercisesLoading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      <div className="max-w-5xl mx-auto space-y-8">
+        <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
+        <div className="flex items-center justify-center min-h-64">
+          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+        </div>
       </div>
     );
   }
 
   if (exercisesError || exercises.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto text-center space-y-4 py-12">
-        <p className="text-slate-500">Bài tập ngữ pháp cho bài học này chưa được soạn.</p>
-        <Button variant="secondary" onClick={onNavigateHome}>Quay về Lộ trình</Button>
+      <div className="max-w-5xl mx-auto space-y-8">
+        <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
+        <div className="text-center py-12">
+          <p className="text-slate-500">Bài tập ngữ pháp cho bài học này chưa được soạn.</p>
+        </div>
       </div>
     );
   }
@@ -293,10 +300,12 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     const correctCount = Math.round((score / 100) * total);
 
     return (
-      <div
-        id="grammar-result-card"
-        className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/60 p-6 sm:p-10 shadow-sm text-center space-y-6 animate-in zoom-in duration-300"
-      >
+      <div className="max-w-5xl mx-auto space-y-8">
+        <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
+        <div
+          id="grammar-result-card"
+          className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/60 p-6 sm:p-10 shadow-sm text-center space-y-6 animate-in zoom-in duration-300"
+        >
         <div className="space-y-2">
           {passed ? (
             <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mx-auto text-4xl animate-bounce">
@@ -364,7 +373,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button variant="secondary" className="flex-1" onClick={handleRetry}>
             <RotateCcw className="w-4 h-4 mr-2" /> Làm lại bài Test
           </Button>
@@ -377,6 +386,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
               Quay về Lộ trình
             </Button>
           )}
+          </div>
         </div>
       </div>
     );
@@ -384,10 +394,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
-      <div className="space-y-1">
-        <h2 className="text-xl font-display font-black text-slate-900">Bài tập ngữ pháp</h2>
-        <p className="text-sm text-slate-500">Bấm vào câu lớn để hiển thị các câu hỏi con.</p>
-      </div>
+      <ExercisePageHeader
+        title="Bài tập ngữ pháp"
+        subtitle="Bấm vào câu lớn để hiển thị các câu hỏi con."
+        onBackToLesson={onBackToLesson}
+      />
 
       <div className="space-y-3">
         {groups.map((group, groupIndex) => {
