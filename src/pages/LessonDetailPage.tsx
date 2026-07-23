@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
+  BookOpen,
   CheckCircle,
   ArrowRight,
-  BookOpen,
   GraduationCap,
   PlayCircle,
   Video,
   Headphones,
   FileText,
-  HelpCircle,
-  Mic,
-  PenLine,
   Loader2,
 } from "lucide-react";
 import { LevelBadge, Button } from "../components/DesignSystem";
@@ -20,6 +17,7 @@ import { MarkdownBlock, countHighlightedWords } from "../components/MarkdownBloc
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 import { useWritingSubmission } from "../lib/hooks/useWritingSubmission";
+import { BOTTOM_TABS, BottomTab } from "./lessonBottomTabs";
 
 interface LessonDetailPageProps {
   lesson: Lesson;
@@ -29,8 +27,6 @@ interface LessonDetailPageProps {
   onMarkComplete: (lessonId: string) => void;
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
 }
-
-type BottomTab = "nguphapthenchot" | "quiz" | "nghe" | "doc" | "tuvung" | "noi" | "viet";
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   lesson,
@@ -42,16 +38,6 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 }) => {
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
-
-  const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-    { id: "nguphapthenchot", label: "Schlüsselgrammatik", Icon: GraduationCap },
-    { id: "tuvung", label: "Wortschatz", Icon: BookOpen },
-    { id: "quiz", label: "Grammatikübungen", Icon: HelpCircle },
-    { id: "doc", label: "Lesen", Icon: FileText },
-    { id: "nghe", label: "Hören", Icon: Headphones },
-    { id: "viet", label: "Schreiben", Icon: PenLine },
-    { id: "noi", label: "Sprechen", Icon: Mic },
-  ];
 
   // Any tab lacking available content for this lesson is hidden entirely
   // (no "Sắp có" placeholder tab shown anymore) — extends the content-gated

@@ -8,6 +8,7 @@ import {
   Headphones,
 } from "lucide-react";
 import { Button, ProgressBar } from "../components/DesignSystem";
+import { ExercisePageHeader } from "../components/ExercisePageHeader";
 import { Lesson } from "../lib/appTypes";
 import { useQuizQuestions } from "../lib/hooks/useQuizQuestions";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
@@ -110,6 +111,10 @@ export const QuizPage: React.FC<QuizPageProps> = ({
     ? (lesson.readingPassages ?? []).find((p) => p.id === activeQuestion.readingPassageId)
     : undefined;
   const audioPlayback = useMediaPlaybackUrl(lesson.id, "audio", activeClip?.r2Key, activeClip?.id);
+  const exerciseTitle =
+    category === "nghe" ? "Bài tập Hören"
+    : category === "doc" ? "Bài tập Lesen"
+    : "Quiz kiểm tra";
 
   // Initialize matching UI when question changes
   useEffect(() => {
@@ -247,8 +252,11 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 
   if (questionsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      <div className="max-w-3xl mx-auto space-y-8">
+        <ExercisePageHeader title={exerciseTitle} onBackToLesson={onBackToLesson} />
+        <div className="flex items-center justify-center min-h-64">
+          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+        </div>
       </div>
     );
   }
@@ -259,13 +267,11 @@ export const QuizPage: React.FC<QuizPageProps> = ({
       : category === "doc" ? "Bài tập đọc cho bài học này chưa được soạn."
       : "Không tải được câu hỏi quiz. Vui lòng thử lại sau.";
     return (
-      <div className="max-w-2xl mx-auto text-center space-y-4 py-12">
-        <p className="text-slate-500">{emptyMessage}</p>
-        {category === "nguphap" ? (
-          <Button variant="secondary" onClick={onNavigateHome}>Quay về Lộ trình</Button>
-        ) : (
-          <Button variant="secondary" onClick={onBackToLesson}>Quay lại bài học</Button>
-        )}
+      <div className="max-w-3xl mx-auto space-y-8">
+        <ExercisePageHeader title={exerciseTitle} onBackToLesson={onBackToLesson} />
+        <div className="text-center py-12">
+          <p className="text-slate-500">{emptyMessage}</p>
+        </div>
       </div>
     );
   }
@@ -277,10 +283,12 @@ export const QuizPage: React.FC<QuizPageProps> = ({
     const correctCount = Math.round((score / 100) * total);
 
     return (
-      <div
-        id="quiz-result-card"
-        className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/60 p-6 sm:p-10 shadow-sm text-center space-y-6 animate-in zoom-in duration-300"
-      >
+      <div className="max-w-3xl mx-auto space-y-8">
+        <ExercisePageHeader title={exerciseTitle} onBackToLesson={onBackToLesson} />
+        <div
+          id="quiz-result-card"
+          className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/60 p-6 sm:p-10 shadow-sm text-center space-y-6 animate-in zoom-in duration-300"
+        >
         <div className="space-y-2">
           {passed ? (
             <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mx-auto text-4xl animate-bounce">
@@ -348,7 +356,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button id="btn-quiz-retry" variant="secondary" className="flex-1" onClick={handleRetry}>
             <RotateCcw className="w-4 h-4 mr-2" /> Làm lại bài Test
           </Button>
@@ -377,6 +385,7 @@ export const QuizPage: React.FC<QuizPageProps> = ({
               Quay lại bài học
             </Button>
           )}
+          </div>
         </div>
       </div>
     );
@@ -390,6 +399,8 @@ export const QuizPage: React.FC<QuizPageProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-300">
+      <ExercisePageHeader title={exerciseTitle} onBackToLesson={onBackToLesson} />
+
       {/* Progress row */}
       <div className="flex items-center justify-between gap-6 pb-2 select-none">
         <div className="flex-1">
