@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BOTTOM_TABS } from "./LessonDetailPage";
+import { BOTTOM_TABS } from "./lessonBottomTabs";
 
 test("labels grammar theory as Grammatik and keeps exercises distinct", () => {
   assert.equal(BOTTOM_TABS.find(({ id }) => id === "nguphapthenchot")?.label, "Grammatik");

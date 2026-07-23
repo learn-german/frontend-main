@@ -10,7 +10,7 @@ test("renders the exercise title and top return-to-lesson action", () => {
   );
 
   assert.match(html, />Bài tập ngữ pháp</);
-  assert.match(html, />Trở về bài học</);
+  assert.match(html, /Trở về bài học</);
   assert.match(html, /id="btn-exercise-back-to-lesson"/);
 });
 
