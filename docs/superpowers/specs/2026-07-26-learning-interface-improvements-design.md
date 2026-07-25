@@ -50,8 +50,8 @@ draft-vs-live content columns.
 - **"Lưu nháp"** (rename the existing "Lưu bài học" button): saves **all**
   fields and sets `status: "draft"`; **stays on the editor** (toast only, no
   `onSaved()`).
-- **"Public"**: saves all fields + `status: "published"` (unchanged behavior;
-  may still navigate back via `onSaved()`).
+- **"Public"**: saves all fields + `status: "published"`, then navigates back to
+  the lesson list via `onSaved()` (unchanged — publishing is a "done" action).
 - **"Chuyển về Nháp"** (shown when published): saves **all** fields +
   `status: "draft"`; **stays on the editor** (no longer discards field edits).
 - The back arrow (`onBack`) remains the explicit way to return to the list.
@@ -158,10 +158,13 @@ view show past submissions and their past comments.
 **Admin UI (`src/pages/admin/AdminWritingSection.tsx`):**
 - Group rows by `(user_id, lesson_id)`; the table shows one entry per group with
   the latest attempt and an attempt count (e.g. "3/6").
-- The grading modal gets a **history sub-section** ("Các lần nộp trước") showing
-  each past attempt's content and its saved comment/score. Grading targets the
-  latest ungraded attempt (each attempt row can still hold its own
-  score/comment).
+- The admin grades **only the latest attempt** of a group; the score/comment is
+  saved on that latest attempt row. Older attempts are **view-only** (never
+  graded).
+- The grading modal grades the latest attempt and includes a **history
+  sub-section** ("Các lần nộp trước") that shows each earlier attempt's content
+  read-only. (Earlier attempts carry no grade under this model, so only their
+  content/submitted time is shown.)
 
 ### Verification
 - A user submits 6 times → 6 rows; the 7th INSERT is rejected (server) and the
