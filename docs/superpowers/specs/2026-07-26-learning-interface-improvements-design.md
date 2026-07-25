@@ -47,14 +47,20 @@ back and loses the edits.
 Lesson keeps its single `status: "draft" | "published"`. No separate
 draft-vs-live content columns.
 
-- **"Lưu nháp"** (rename the existing "Lưu bài học" button): saves **all**
-  fields and sets `status: "draft"`; **stays on the editor** (toast only, no
-  `onSaved()`).
-- **"Public"**: saves all fields + `status: "published"`, then navigates back to
-  the lesson list via `onSaved()` (unchanged — publishing is a "done" action).
+- **"Lưu bài học"** (always shown): saves **all** fields, **keeps the current
+  `status`** (a draft stays draft, a published lesson stays published), and
+  **stays on the editor** (toast only, no `onSaved()`). This is the plain save
+  that no longer loses edits or navigates away.
+- **"Public"** (shown when draft): saves all fields + `status: "published"`,
+  then navigates back to the lesson list via `onSaved()` (publishing is a "done"
+  action).
 - **"Chuyển về Nháp"** (shown when published): saves **all** fields +
-  `status: "draft"`; **stays on the editor** (no longer discards field edits).
+  `status: "draft"`; **stays on the editor** (no longer discards field edits, no
+  longer navigates away).
 - The back arrow (`onBack`) remains the explicit way to return to the list.
+
+Because a draft lesson's "Lưu bài học" keeps it `draft`, edited content is not
+shown to users until "Public" is clicked — matching the requirement.
 
 A newly created lesson is `draft`, so it is not shown to users until "Public"
 is clicked — this satisfies "content only appears to users after Public".
