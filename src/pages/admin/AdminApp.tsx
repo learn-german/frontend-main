@@ -136,7 +136,7 @@ export const AdminApp: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <NotificationBell dark onNavigate={handleNotificationNavigate} />
+            <NotificationBell dark forAdmin onNavigate={handleNotificationNavigate} />
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
               <span>{user.email}</span>

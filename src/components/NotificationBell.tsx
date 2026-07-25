@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { Bell } from "lucide-react";
 import { useNotifications, type AppNotification } from "../lib/hooks/useNotifications";
 
-export const NotificationBell: React.FC<{ dark?: boolean; onNavigate?: (n: AppNotification) => void }> = ({ dark = false, onNavigate }) => {
-  const { notifications, unreadCount, markRead } = useNotifications();
+export const NotificationBell: React.FC<{ dark?: boolean; forAdmin?: boolean; onNavigate?: (n: AppNotification) => void }> = ({ dark = false, forAdmin = false, onNavigate }) => {
+  const { notifications, unreadCount, markRead } = useNotifications(forAdmin);
   const [open, setOpen] = useState(false);
 
   return (
