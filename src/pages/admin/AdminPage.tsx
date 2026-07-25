@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -17,11 +17,13 @@ import { AdminContentSection } from "./AdminContentSection";
 import { AdminQuizSection } from "./AdminQuizSection";
 import { AdminWritingSection } from "./AdminWritingSection";
 
-type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing";
+export type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing";
 
 interface AdminPageProps {
   userRole: string;
   onNavigateHome: () => void;
+  section: AdminSection;
+  onSectionChange: (s: AdminSection) => void;
 }
 
 const NAV_ITEMS: { id: AdminSection; label: string; Icon: React.FC<{ className?: string }> }[] = [
@@ -32,9 +34,7 @@ const NAV_ITEMS: { id: AdminSection; label: string; Icon: React.FC<{ className?:
   { id: "writing", label: "Chấm bài viết", Icon: PenLine },
 ];
 
-export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome }) => {
-  const [section, setSection] = useState<AdminSection>("dashboard");
-
+export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, section, onSectionChange }) => {
   // Guard: redirect non-admins
   if (userRole !== "admin") {
     return (
@@ -58,7 +58,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome }
           {NAV_ITEMS.map(({ id, label, Icon }) => (
             <button
               key={id}
-              onClick={() => setSection(id)}
+              onClick={() => onSectionChange(id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-display font-semibold transition-colors ${
                 section === id
                   ? "bg-orange-50 text-orange-700 border border-orange-200"

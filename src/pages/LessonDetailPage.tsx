@@ -26,6 +26,7 @@ interface LessonDetailPageProps {
   onBack: () => void;
   onMarkComplete: (lessonId: string) => void;
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
+  initialTab?: BottomTab;
 }
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
@@ -35,6 +36,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   onBack,
   onMarkComplete,
   onStartQuiz,
+  initialTab,
 }) => {
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
@@ -56,7 +58,9 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
     return true;
   });
 
-  const [bottomTab, setBottomTab] = useState<BottomTab>(() => visibleTabs[0]?.id ?? "tuvung");
+  const [bottomTab, setBottomTab] = useState<BottomTab>(
+    () => (initialTab && visibleTabs.some((t) => t.id === initialTab) ? initialTab : (visibleTabs[0]?.id ?? "tuvung")),
+  );
 
   const handlePronounce = (text: string) => {
     if ("speechSynthesis" in window) {
