@@ -19,6 +19,7 @@ export function useNotifications() {
     supabase
       .from("notifications")
       .select("id, type, lesson_id, message, read_at, created_at")
+      .eq("for_admin", false)
       .order("created_at", { ascending: false })
       .limit(30)
       .then(({ data }) => {
