@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       grammar_exercises: {
         Row: {
+          acceptable_answers: Json | null
           classification_groups: Json | null
           classification_items: Json | null
           correct_answer: string | null
@@ -32,6 +33,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          acceptable_answers?: Json | null
           classification_groups?: Json | null
           classification_items?: Json | null
           correct_answer?: string | null
@@ -48,6 +50,7 @@ export type Database = {
           type: string
         }
         Update: {
+          acceptable_answers?: Json | null
           classification_groups?: Json | null
           classification_items?: Json | null
           correct_answer?: string | null
