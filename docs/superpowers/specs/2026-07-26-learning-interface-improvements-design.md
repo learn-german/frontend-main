@@ -166,12 +166,46 @@ view show past submissions and their past comments.
   read-only. (Earlier attempts carry no grade under this model, so only their
   content/submitted time is shown.)
 
+### Notification click → jump to grading location
+Clicking a writing notification navigates straight to where the grade/submission
+is handled, on both sides.
+
+**Shared (`src/components/NotificationBell.tsx`):** add an optional
+`onNavigate?: (n: AppNotification) => void` prop. On a notification click:
+`markRead(n.id)`, close the dropdown, then call `onNavigate?.(n)`. When the prop
+is absent, behavior is unchanged (mark-read only).
+
+**Student:**
+- `writing_graded` notifications carry `lessonId`. Clicking one opens that
+  lesson's detail page with the **"viet"** (writing) tab active, where the
+  graded box + attempt history are shown.
+- Wiring: `App.tsx` extends its lesson-open handler to accept an optional
+  initial tab — `handleSelectLesson(lessonId, initialTab?)` — stored in state and
+  passed to `LessonDetailPage` as an `initialTab` prop
+  (`useState(() => initialTab ?? visibleTabs[0]?.id)`; the page already remounts
+  on lesson change via its `key`). `Navigation` forwards an `onNavigate` to
+  `NotificationBell` that, for `writing_graded`, calls
+  `handleSelectLesson(n.lessonId, "viet")`. Other types are a no-op.
+
+**Admin:**
+- `writing_submitted` broadcasts carry `lessonId` (no user). Clicking one
+  switches the admin app to the **"Chấm bài viết"** section
+  (`AdminWritingSection`). It lands on the section list (no per-lesson filter —
+  the list already orders newest-first).
+- Wiring: lift the `section` state from `AdminPage.tsx` up to `AdminApp.tsx`
+  (pass `section` + `setSection` down as props) so the header's
+  `NotificationBell` can receive an `onNavigate` that sets `section` to
+  `"writing"` for `writing_submitted`.
+
 ### Verification
 - A user submits 6 times → 6 rows; the 7th INSERT is rejected (server) and the
   button is disabled with the note showing 6/6.
 - Each attempt appears in the user history with its own grade/comment once
   graded.
 - Admin grading modal lists past attempts and their old comments.
+- Clicking a `writing_graded` notification (student) opens the lesson on the
+  "viet" tab; clicking a `writing_submitted` notification (admin) switches to
+  the "Chấm bài viết" section.
 - `npm run lint` passes; migration applies cleanly.
 
 ---
