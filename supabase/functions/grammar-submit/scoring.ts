@@ -2,6 +2,7 @@ export interface ScorableGrammarExercise {
   id: string;
   type: string;
   correct_answer: string | null;
+  acceptable_answers: string[] | null;
   classification_items: { item: string; group: string }[] | null;
 }
 
@@ -38,8 +39,15 @@ export function computeGrammarScore(
 
     total += 1;
     const userAnswer = normalizeWord(answers[ex.id] ?? "");
-    const correctAnswer = normalizeWord(ex.correct_answer ?? "");
-    if (userAnswer === correctAnswer) correct++;
+    if (ex.type === "translation") {
+      const accepted = [ex.correct_answer ?? "", ...(ex.acceptable_answers ?? [])]
+        .map(normalizeWord)
+        .filter((s) => s.length > 0);
+      if (accepted.includes(userAnswer)) correct++;
+    } else {
+      const correctAnswer = normalizeWord(ex.correct_answer ?? "");
+      if (userAnswer === correctAnswer) correct++;
+    }
   }
 
   const score = total > 0 ? Math.round((correct / total) * 100) : 0;
