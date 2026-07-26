@@ -6,6 +6,15 @@ import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
+import {
+  applyChipToBlank,
+  applyTypedBlankAnswer,
+  countBlankMarkers,
+  findBlankTarget,
+  getUsedWordIndexes,
+  type BlankAssignments,
+  type BlankFocus,
+} from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
 
 interface GrammarExercisePageProps {
@@ -21,6 +30,7 @@ interface GrammarResult {
   total: number;
   passed: boolean;
   xp_earned: number;
+  blankResults: Record<string, boolean[]>;
 }
 
 const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
@@ -30,6 +40,7 @@ const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   sentence_transformation: "Biến đổi câu",
   guided_sentence_writing: "Viết câu gợi ý",
   classification: "Phân loại",
+  fill_in_the_blank: "Điền vào ô trống",
 };
 
 const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
@@ -39,6 +50,7 @@ const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
   sentence_transformation: "Biến đổi câu sau theo yêu cầu:",
   guided_sentence_writing: "Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:",
   classification: "Phân loại các item sau vào đúng nhóm:",
+  fill_in_the_blank: "Điền từ thích hợp vào từng ô trống:",
 };
 
 const ExerciseCard: React.FC<{
@@ -51,6 +63,10 @@ const ExerciseCard: React.FC<{
   onTextAnswerChange: (value: string) => void;
   itemGroups: Record<string, string>;
   onItemGroupChange: (item: string, group: string) => void;
+  blankAnswers: string[];
+  onBlankFocus: (blankIndex: number) => void;
+  onBlankAnswerChange: (blankIndex: number, value: string) => void;
+  blankResults?: boolean[];
 }> = ({
   exercise,
   numberLabel,
@@ -61,6 +77,10 @@ const ExerciseCard: React.FC<{
   onTextAnswerChange,
   itemGroups,
   onItemGroupChange,
+  blankAnswers,
+  onBlankFocus,
+  onBlankAnswerChange,
+  blankResults,
 }) => {
   const letter = numberLabel;
 
@@ -190,6 +210,32 @@ const ExerciseCard: React.FC<{
           </div>
         </>
       )}
+
+      {exercise.type === "fill_in_the_blank" && (
+        <div className="text-xs leading-9 text-slate-700">
+          <span className="mr-1 font-bold text-slate-400">{letter}</span>
+          {(exercise.promptText ?? "").split("___").map((segment, index, segments) => (
+            <React.Fragment key={`${index}:${segment}`}>
+              <span className="whitespace-pre-wrap">{segment}</span>
+              {index < segments.length - 1 && (
+                <input
+                  type="text"
+                  value={blankAnswers[index] ?? ""}
+                  onFocus={() => onBlankFocus(index)}
+                  onChange={(event) => onBlankAnswerChange(index, event.target.value)}
+                  className={`mx-1 inline-block w-28 rounded-lg border px-2 py-1.5 text-center text-xs focus:outline-none focus:ring-2 ${
+                    blankResults?.[index] === true
+                      ? "border-green-400 bg-green-50 text-green-800 focus:ring-green-500/20"
+                      : blankResults?.[index] === false
+                        ? "border-red-400 bg-red-50 text-red-800 focus:ring-red-500/20"
+                        : "border-slate-200 bg-white focus:border-orange-500 focus:ring-orange-500/20"
+                  }`}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -209,6 +255,9 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const [selectedTokensByExercise, setSelectedTokensByExercise] = useState<Record<string, string[]>>({});
   const [textAnswerByExercise, setTextAnswerByExercise] = useState<Record<string, string>>({});
   const [itemGroupsByExercise, setItemGroupsByExercise] = useState<Record<string, Record<string, string>>>({});
+  const [blankAnswersByExercise, setBlankAnswersByExercise] = useState<Record<string, string[]>>({});
+  const [blankAssignments, setBlankAssignments] = useState<BlankAssignments>({});
+  const [focusedBlank, setFocusedBlank] = useState<BlankFocus | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -233,6 +282,12 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
       const groups = itemGroupsByExercise[exercise.id] ?? {};
       if (items.length === 0 || items.some((item) => !groups[item])) return "";
       return items.map((item) => `${item}:${groups[item]}`).join("|");
+    }
+    if (exercise.type === "fill_in_the_blank") {
+      const blankCount = countBlankMarkers(exercise.promptText ?? "");
+      const blankAnswers = blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill("");
+      if (blankCount === 0 || blankAnswers.some((answer) => !answer.trim())) return "";
+      return JSON.stringify(blankAnswers);
     }
     return (textAnswerByExercise[exercise.id] ?? "").trim();
   };
@@ -269,6 +324,9 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setSelectedTokensByExercise({});
     setTextAnswerByExercise({});
     setItemGroupsByExercise({});
+    setBlankAnswersByExercise({});
+    setBlankAssignments({});
+    setFocusedBlank(null);
     setResult(null);
     setSubmitError(null);
   };
@@ -363,6 +421,24 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                     <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
                       {groupIndex + 1}.{childIndex + 1} {ex.promptText ?? "Phân loại"}
                     </p>
+                    {ex.type === "fill_in_the_blank" && (
+                      <div className="mb-2 text-xs leading-9 text-slate-700">
+                        {(ex.promptText ?? "").split("___").map((segment, index, segments) => (
+                          <React.Fragment key={`${index}:${segment}`}>
+                            <span className="whitespace-pre-wrap">{segment}</span>
+                            {index < segments.length - 1 && (
+                              <span className={`mx-1 inline-block min-w-20 rounded-md border px-2 py-1 text-center font-bold ${
+                                result.blankResults?.[ex.id]?.[index]
+                                  ? "border-green-300 bg-green-50 text-green-700"
+                                  : "border-red-300 bg-red-50 text-red-700"
+                              }`}>
+                                {blankAnswersByExercise[ex.id]?.[index] ?? "—"}
+                              </span>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-slate-500 text-[11px] leading-relaxed">
                       <b>Giải thích:</b> {ex.explanation}
                     </p>
@@ -404,6 +480,12 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
         {groups.map((group, groupIndex) => {
           const isExpanded = expandedGroupKeys.has(group.key);
           const isComplete = group.exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
+          const wordBank = group.exercises[0]?.wordBank;
+          const groupExerciseIds = new Set(group.exercises.map((exercise) => exercise.id));
+          const groupAssignments = Object.fromEntries(
+            Object.entries(blankAssignments).filter(([key]) => groupExerciseIds.has(key.slice(0, key.lastIndexOf(":")))),
+          );
+          const usedWordIndexes = getUsedWordIndexes(groupAssignments);
           return (
             <section key={group.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <button
@@ -426,6 +508,52 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                 <div className="space-y-3 border-t border-slate-100 p-4">
                   <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
                   <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+                  {group.type === "fill_in_the_blank" && wordBank && (
+                    <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
+                      {wordBank.words.map((word, wordIndex) => {
+                        const used = usedWordIndexes.has(wordIndex);
+                        const disabled = wordBank.mode === "single_use" && used;
+                        return (
+                          <button
+                            key={`${wordIndex}:${word}`}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                              const answersWithDefaults = Object.fromEntries(group.exercises.map((exercise) => [
+                                exercise.id,
+                                blankAnswersByExercise[exercise.id]
+                                  ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
+                              ]));
+                              const target = findBlankTarget(
+                                group.exercises.map((exercise) => exercise.id),
+                                answersWithDefaults,
+                                focusedBlank,
+                              );
+                              if (!target) return;
+                              const next = applyChipToBlank(
+                                { ...blankAnswersByExercise, ...answersWithDefaults },
+                                blankAssignments,
+                                target,
+                                wordIndex,
+                                word,
+                                wordBank.mode,
+                              );
+                              setBlankAnswersByExercise(next.answers);
+                              setBlankAssignments(next.assignments);
+                              setFocusedBlank(target);
+                            }}
+                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                              used
+                                ? "border-orange-200 bg-orange-100 text-orange-500 opacity-60"
+                                : "border-orange-300 bg-white text-orange-700 hover:bg-orange-100"
+                            } disabled:cursor-not-allowed`}
+                          >
+                            {word}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {group.exercises.map((exercise, childIndex) => (
                       <ExerciseCard
@@ -442,6 +570,20 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                           ...prev,
                           [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: itemGroup },
                         }))}
+                        blankAnswers={blankAnswersByExercise[exercise.id]
+                          ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill("")}
+                        onBlankFocus={(blankIndex) => setFocusedBlank({ exerciseId: exercise.id, blankIndex })}
+                        onBlankAnswerChange={(blankIndex, value) => {
+                          const target = { exerciseId: exercise.id, blankIndex };
+                          const answersWithDefaults = {
+                            ...blankAnswersByExercise,
+                            [exercise.id]: blankAnswersByExercise[exercise.id]
+                              ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
+                          };
+                          const next = applyTypedBlankAnswer(answersWithDefaults, blankAssignments, target, value);
+                          setBlankAnswersByExercise(next.answers);
+                          setBlankAssignments(next.assignments);
+                        }}
                       />
                     ))}
                   </div>

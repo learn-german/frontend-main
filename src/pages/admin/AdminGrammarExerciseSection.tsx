@@ -22,6 +22,15 @@ import {
   toggleGroupSelection,
   type GrammarExerciseGroup,
 } from "../../lib/grammarExerciseGroups";
+import {
+  countBlankMarkers,
+  normalizeBlankDefinitions,
+  normalizeWordBank,
+  syncBlankDefinitions,
+  type BlankDefinition,
+  type WordBank,
+  type WordBankMode,
+} from "../../lib/grammarFillInBlank";
 
 interface GrammarExercise {
   id: string;
@@ -32,7 +41,8 @@ interface GrammarExercise {
     | "translation"
     | "sentence_transformation"
     | "guided_sentence_writing"
-    | "classification";
+    | "classification"
+    | "fill_in_the_blank";
   group_id: string | null;
   status: "draft" | "published";
   prompt_text: string | null;
@@ -42,6 +52,8 @@ interface GrammarExercise {
   tokens: string[] | null;
   classification_groups: string[] | null;
   classification_items: { item: string; group: string }[] | null;
+  blanks: BlankDefinition[] | null;
+  word_bank: WordBank | null;
   explanation: string;
   hint: string | null;
   order_index: number;
@@ -63,6 +75,7 @@ const TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   sentence_transformation: "Biến đổi câu",
   guided_sentence_writing: "Viết câu gợi ý",
   classification: "Phân loại",
+  fill_in_the_blank: "Điền vào ô trống",
 };
 
 const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
@@ -72,6 +85,7 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
   sentence_transformation: "bg-purple-50 text-purple-700",
   guided_sentence_writing: "bg-amber-50 text-amber-700",
   classification: "bg-teal-50 text-teal-700",
+  fill_in_the_blank: "bg-orange-50 text-orange-700",
 };
 
 interface EditForm {
@@ -84,6 +98,7 @@ interface EditForm {
   tokens_input: string;
   classification_groups: string[];
   classification_items: { item: string; group: string }[];
+  blanks: BlankDefinition[];
   explanation: string;
   order_index: number;
 }
@@ -106,6 +121,7 @@ const EMPTY_FORM: EditForm = {
   tokens_input: "",
   classification_groups: [],
   classification_items: [],
+  blanks: [],
   explanation: "",
   order_index: 0,
 };
@@ -150,6 +166,13 @@ const validateForm = (f: EditForm): string | null => {
     if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
     return null;
   }
+  if (f.type === "fill_in_the_blank") {
+    const blankCount = countBlankMarkers(f.prompt_text);
+    if (blankCount < 1) return "Cần ít nhất 1 marker ___.";
+    if (f.blanks.length !== blankCount) return "Số editor đáp án phải khớp số marker ___.";
+    if (!normalizeBlankDefinitions(f.blanks)) return "Mỗi ô trống cần ít nhất 1 đáp án hợp lệ.";
+    return null;
+  }
   // classification
   const groups = f.classification_groups.map((g) => g.trim()).filter(Boolean);
   const uniqueGroups = new Set(groups.map((g) => g.toLowerCase()));
@@ -170,7 +193,7 @@ const buildPayload = (form: EditForm) => ({
   status: form.status,
   prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
   transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
-  correct_answer: form.type === "classification" ? null : form.correct_answer,
+  correct_answer: form.type === "classification" || form.type === "fill_in_the_blank" ? null : form.correct_answer,
   acceptable_answers:
     form.type === "translation"
       ? form.acceptable_answers.map((a) => a.trim()).filter(Boolean)
@@ -183,6 +206,7 @@ const buildPayload = (form: EditForm) => ({
     form.type === "classification" ? form.classification_groups.map((g) => g.trim()).filter(Boolean) : null,
   classification_items:
     form.type === "classification" ? form.classification_items.filter((it) => it.item.trim()) : null,
+  blanks: form.type === "fill_in_the_blank" ? normalizeBlankDefinitions(form.blanks) : null,
   explanation: form.explanation,
   order_index: form.order_index,
 });
@@ -531,6 +555,79 @@ const ExerciseEntryFields: React.FC<{
       </>
     )}
 
+    {entry.type === "fill_in_the_blank" && (
+      <>
+        <div>
+          <label className={labelCls}>Câu có ô trống *</label>
+          <p className="mb-1.5 text-[11px] text-slate-400">Dùng ___ để đánh dấu từng ô trống.</p>
+          <textarea
+            rows={3}
+            value={entry.prompt_text}
+            onChange={(event) => onChange((prev) => ({
+              ...prev,
+              prompt_text: event.target.value,
+              blanks: syncBlankDefinitions(event.target.value, prev.blanks),
+            }))}
+            className={inputCls + " resize-y"}
+            placeholder="Das ist ___ Computer. ___ Computer ist teuer."
+          />
+        </div>
+        <div className="space-y-3">
+          {entry.blanks.map((blank, blankIndex) => (
+            <div key={blankIndex} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+              <label className={labelCls}>Đáp án ô {blankIndex + 1} *</label>
+              <div className="space-y-2">
+                {blank.acceptedAnswers.map((answer, answerIndex) => (
+                  <div key={answerIndex} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={answer}
+                      onChange={(event) => onChange((prev) => ({
+                        ...prev,
+                        blanks: prev.blanks.map((item, itemIndex) => itemIndex === blankIndex
+                          ? {
+                              acceptedAnswers: item.acceptedAnswers.map((value, valueIndex) =>
+                                valueIndex === answerIndex ? event.target.value : value),
+                            }
+                          : item),
+                      }))}
+                      className={inputCls}
+                      placeholder="lerne"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onChange((prev) => ({
+                        ...prev,
+                        blanks: prev.blanks.map((item, itemIndex) => itemIndex === blankIndex
+                          ? { acceptedAnswers: item.acceptedAnswers.filter((_, valueIndex) => valueIndex !== answerIndex) }
+                          : item),
+                      }))}
+                      className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                      aria-label={`Xóa đáp án ô ${blankIndex + 1}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => onChange((prev) => ({
+                    ...prev,
+                    blanks: prev.blanks.map((item, itemIndex) => itemIndex === blankIndex
+                      ? { acceptedAnswers: [...item.acceptedAnswers, ""] }
+                      : item),
+                  }))}
+                  className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Thêm đáp án hợp lệ
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+
     {entry.type === "classification" && (
       <>
         <div>
@@ -633,6 +730,9 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
   const [hint, setHint] = useState("");
+  const [wordBankEnabled, setWordBankEnabled] = useState(false);
+  const [wordBankWords, setWordBankWords] = useState<string[]>([]);
+  const [wordBankMode, setWordBankMode] = useState<WordBankMode>("single_use");
   const [entries, setEntries] = useState<EditForm[]>([EMPTY_FORM]);
   const [createStartOrder, setCreateStartOrder] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -684,6 +784,9 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     setEditGroupId(null);
     setEditLessonId(lessonId);
     setHint("");
+    setWordBankEnabled(false);
+    setWordBankWords([]);
+    setWordBankMode("single_use");
     setCreateStartOrder(nextOrder);
     setEntries([{ ...EMPTY_FORM, order_index: nextOrder }]);
     setModalOpen(true);
@@ -696,6 +799,9 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     setEditGroupId(ex.group_id);
     setEditLessonId(ex.lesson_id);
     setHint(ex.hint ?? "");
+    setWordBankEnabled(!!ex.word_bank);
+    setWordBankWords(ex.word_bank?.words ?? []);
+    setWordBankMode(ex.word_bank?.mode ?? "single_use");
     setEntries([
       {
         type: ex.type,
@@ -707,6 +813,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         tokens_input: (ex.tokens ?? []).join(" / "),
         classification_groups: ex.classification_groups ?? [],
         classification_items: ex.classification_items ?? [],
+        blanks: ex.blanks ?? [],
         explanation: ex.explanation,
         order_index: ex.order_index,
       },
@@ -735,13 +842,21 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     setEditGroupId(firstExercise.groupId);
     setEditLessonId(lessonId);
     setHint(firstExercise.hint ?? "");
+    setWordBankEnabled(!!firstExercise.word_bank);
+    setWordBankWords(firstExercise.word_bank?.words ?? []);
+    setWordBankMode(firstExercise.word_bank?.mode ?? "single_use");
     setCreateStartOrder(nextOrder);
     setEntries([{ ...EMPTY_FORM, type: exerciseGroup.type, order_index: nextOrder }]);
     setModalOpen(true);
   };
 
-  const handleTypeChange = (newType: EditForm["type"]) =>
+  const handleTypeChange = (newType: EditForm["type"]) => {
     setEntries((prev) => [{ ...EMPTY_FORM, order_index: prev[0]?.order_index ?? 0, status: prev[0]?.status ?? "draft", type: newType }]);
+    if (newType !== "fill_in_the_blank") {
+      setWordBankEnabled(false);
+      setWordBankWords([]);
+    }
+  };
 
   const addEntry = () =>
     setEntries((prev) => [
@@ -768,6 +883,13 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         return;
       }
     }
+    const sharedWordBank = entries[0]?.type === "fill_in_the_blank"
+      ? normalizeWordBank(wordBankEnabled, wordBankWords, wordBankMode)
+      : null;
+    if (entries[0]?.type === "fill_in_the_blank" && wordBankEnabled && !sharedWordBank) {
+      showToast("Word bank đã bật nên cần ít nhất 1 từ.", "warning");
+      return;
+    }
 
     setSaving(true);
 
@@ -778,6 +900,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         .from("grammar_exercises")
         .update({
           ...buildPayload(entries[0]),
+          word_bank: sharedWordBank,
           ...(editGroupId ? {} : { hint: normalizedHint }),
         })
         .eq("id", editId));
@@ -785,7 +908,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       if (!error && editGroupId) {
         ({ error } = await supabase
           .from("grammar_exercises")
-          .update({ hint: normalizedHint })
+          .update({ hint: normalizedHint, word_bank: sharedWordBank })
           .eq("group_id", editGroupId));
       }
     } else if (modalMode === "create-group") {
@@ -795,6 +918,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         lesson_id: editLessonId,
         group_id: groupId,
         hint: normalizedHint,
+        word_bank: sharedWordBank,
         order_index: createStartOrder + index,
       }));
       ({ error } = await supabase.from("grammar_exercises").insert(payloads));
@@ -811,7 +935,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       if (!error) {
         const hintUpdate = await supabase
           .from("grammar_exercises")
-          .update({ hint: normalizedHint })
+          .update({ hint: normalizedHint, word_bank: sharedWordBank })
           .eq("group_id", resolved.groupId);
         error = hintUpdate.error;
       }
@@ -822,6 +946,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
           lesson_id: editLessonId,
           group_id: resolved.groupId,
           hint: normalizedHint,
+          word_bank: sharedWordBank,
           order_index: createStartOrder + index,
         }));
         const insertResult = await supabase.from("grammar_exercises").insert(payloads);
@@ -1140,6 +1265,70 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               </p>
             </div>
 
+            {entries[0].type === "fill_in_the_blank" && (
+              <div className="space-y-3 rounded-xl border border-orange-100 bg-orange-50/40 p-3">
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={wordBankEnabled}
+                    onChange={(event) => {
+                      setWordBankEnabled(event.target.checked);
+                      if (event.target.checked && wordBankWords.length === 0) setWordBankWords([""]);
+                    }}
+                    className="h-4 w-4 accent-orange-500"
+                  />
+                  Bật word bank dùng chung cho nhóm
+                </label>
+                {wordBankEnabled && (
+                  <>
+                    <div className="space-y-2">
+                      {wordBankWords.map((word, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={word}
+                            onChange={(event) => setWordBankWords((previous) =>
+                              previous.map((value, valueIndex) => valueIndex === index ? event.target.value : value))}
+                            className={inputCls}
+                            placeholder="lerne"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setWordBankWords((previous) => previous.filter((_, valueIndex) => valueIndex !== index))}
+                            className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            aria-label="Xóa từ trong word bank"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setWordBankWords((previous) => [...previous, ""])}
+                        className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Thêm từ
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {(["single_use", "multiple_use"] as const).map((mode) => (
+                        <label key={mode} className="flex items-center gap-2 text-xs text-slate-600">
+                          <input
+                            type="radio"
+                            name="word-bank-mode"
+                            checked={wordBankMode === mode}
+                            onChange={() => setWordBankMode(mode)}
+                            className="accent-orange-500"
+                          />
+                          {mode === "single_use" ? "Mỗi chip dùng một lần" : "Chip được dùng nhiều lần"}
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {entries.map((entry, idx) => (
               <div key={idx} className="border border-slate-100 rounded-xl p-3 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1304,6 +1493,35 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               <div className="space-y-2">
                 <p className="text-sm text-slate-700 bg-slate-50 rounded-xl px-3 py-2">{previewTarget.prompt_text}</p>
                 <p className="text-sm text-green-700 bg-green-50 rounded-xl px-3 py-2">{previewTarget.correct_answer}</p>
+              </div>
+            )}
+
+            {previewTarget.type === "fill_in_the_blank" && (
+              <div className="space-y-3">
+                {previewTarget.word_bank && (
+                  <div className="flex flex-wrap gap-2 rounded-xl bg-orange-50 p-3">
+                    {previewTarget.word_bank.words.map((word, index) => (
+                      <span key={`${index}:${word}`} className="rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-bold text-orange-700">
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="text-sm leading-10 text-slate-700">
+                  {(previewTarget.prompt_text ?? "").split("___").map((segment, index, segments) => (
+                    <React.Fragment key={`${index}:${segment}`}>
+                      <span className="whitespace-pre-wrap">{segment}</span>
+                      {index < segments.length - 1 && (
+                        <input
+                          type="text"
+                          readOnly
+                          className="mx-1 inline-block w-28 rounded-lg border border-slate-200 px-2 py-1.5"
+                          aria-label={`Ô trống ${index + 1}`}
+                        />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
             )}
 

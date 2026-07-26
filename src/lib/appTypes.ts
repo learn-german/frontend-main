@@ -46,7 +46,8 @@ export interface GrammarExercise {
     | "translation"
     | "sentence_transformation"
     | "guided_sentence_writing"
-    | "classification";
+    | "classification"
+    | "fill_in_the_blank";
   groupId?: string;
   hint?: string;
   promptText?: string;
@@ -54,6 +55,7 @@ export interface GrammarExercise {
   tokens?: string[];
   classificationGroups?: string[];
   classificationItems?: string[];
+  wordBank?: { words: string[]; mode: "single_use" | "multiple_use" };
   explanation: string;
 }
 
