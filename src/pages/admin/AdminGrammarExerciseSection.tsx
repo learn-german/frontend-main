@@ -38,6 +38,7 @@ interface GrammarExercise {
   prompt_text: string | null;
   transformation_hint: string | null;
   correct_answer: string | null;
+  acceptable_answers: string[] | null;
   tokens: string[] | null;
   classification_groups: string[] | null;
   classification_items: { item: string; group: string }[] | null;
@@ -79,6 +80,7 @@ interface EditForm {
   prompt_text: string;
   transformation_hint: string;
   correct_answer: string;
+  acceptable_answers: string[];
   tokens_input: string;
   classification_groups: string[];
   classification_items: { item: string; group: string }[];
@@ -100,6 +102,7 @@ const EMPTY_FORM: EditForm = {
   prompt_text: "",
   transformation_hint: "",
   correct_answer: "",
+  acceptable_answers: [],
   tokens_input: "",
   classification_groups: [],
   classification_items: [],
@@ -168,6 +171,10 @@ const buildPayload = (form: EditForm) => ({
   prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
   transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
   correct_answer: form.type === "classification" ? null : form.correct_answer,
+  acceptable_answers:
+    form.type === "translation"
+      ? form.acceptable_answers.map((a) => a.trim()).filter(Boolean)
+      : null,
   tokens:
     form.type === "word_reorder"
       ? form.tokens_input.split("/").map((t) => t.trim()).filter(Boolean)
@@ -419,6 +426,48 @@ const ExerciseEntryFields: React.FC<{
             placeholder="Ich lerne Deutsch."
           />
         </div>
+        <div>
+          <label className={labelCls}>Đáp án khác chấp nhận được</label>
+          <p className="text-[11px] text-slate-400 mb-1.5">Các câu tiếng Đức khác cũng được tính đúng (không phân biệt hoa thường, dấu câu).</p>
+          <div className="space-y-2">
+            {entry.acceptable_answers.map((ans, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={ans}
+                  onChange={(e) =>
+                    onChange((prev) => ({
+                      ...prev,
+                      acceptable_answers: prev.acceptable_answers.map((a, j) => (j === i ? e.target.value : a)),
+                    }))
+                  }
+                  className={inputCls}
+                  placeholder="Ich studiere Deutsch."
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange((prev) => ({
+                      ...prev,
+                      acceptable_answers: prev.acceptable_answers.filter((_, j) => j !== i),
+                    }))
+                  }
+                  className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+                  aria-label="Xóa đáp án"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, acceptable_answers: [...prev.acceptable_answers, ""] }))}
+              className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700"
+            >
+              <Plus className="w-3.5 h-3.5" /> Thêm đáp án
+            </button>
+          </div>
+        </div>
       </>
     )}
 
@@ -654,6 +703,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         prompt_text: ex.prompt_text ?? "",
         transformation_hint: ex.transformation_hint ?? "",
         correct_answer: ex.correct_answer ?? "",
+        acceptable_answers: ex.acceptable_answers ?? [],
         tokens_input: (ex.tokens ?? []).join(" / "),
         classification_groups: ex.classification_groups ?? [],
         classification_items: ex.classification_items ?? [],

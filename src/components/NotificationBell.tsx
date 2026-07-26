@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Bell } from "lucide-react";
-import { useNotifications } from "../lib/hooks/useNotifications";
+import { useNotifications, type AppNotification } from "../lib/hooks/useNotifications";
 
-export const NotificationBell: React.FC<{ dark?: boolean }> = ({ dark = false }) => {
-  const { notifications, unreadCount, markRead } = useNotifications();
+export const NotificationBell: React.FC<{ dark?: boolean; forAdmin?: boolean; onNavigate?: (n: AppNotification) => void }> = ({ dark = false, forAdmin = false, onNavigate }) => {
+  const { notifications, unreadCount, markRead } = useNotifications(forAdmin);
   const [open, setOpen] = useState(false);
 
   return (
@@ -30,7 +30,7 @@ export const NotificationBell: React.FC<{ dark?: boolean }> = ({ dark = false })
               notifications.map((n) => (
                 <button
                   key={n.id}
-                  onClick={() => markRead(n.id)}
+                  onClick={() => { markRead(n.id); setOpen(false); onNavigate?.(n); }}
                   className={`w-full text-left px-4 py-2.5 text-xs font-sans hover:bg-slate-50 transition ${n.readAt ? "text-slate-400" : "text-slate-800 font-semibold bg-orange-50/40"}`}
                 >
                   {n.message}

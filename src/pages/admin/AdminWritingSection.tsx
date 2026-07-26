@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Loader2, X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
@@ -17,10 +17,17 @@ interface WritingSubmissionRow {
   profiles: { email: string; full_name: string | null } | null;
 }
 
+interface WritingGroup {
+  key: string;
+  latest: WritingSubmissionRow;      // newest attempt — the one admin grades
+  earlier: WritingSubmissionRow[];   // older attempts, read-only, newest-first
+  attemptCount: number;
+}
+
 export const AdminWritingSection: React.FC = () => {
   const [rows, setRows] = useState<WritingSubmissionRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [grading, setGrading] = useState<WritingSubmissionRow | null>(null);
+  const [grading, setGrading] = useState<WritingGroup | null>(null);
   const [score, setScore] = useState("");
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,10 +46,26 @@ export const AdminWritingSection: React.FC = () => {
 
   useEffect(() => { fetchRows(); }, []);
 
-  const openGrade = (row: WritingSubmissionRow) => {
-    setGrading(row);
-    setScore(row.score !== null ? String(row.score) : "");
-    setComment(row.comment ?? "");
+  // rows are newest-first; group by (user_id, lesson_id), first seen = latest.
+  const groups = useMemo<WritingGroup[]>(() => {
+    const map = new Map<string, WritingSubmissionRow[]>();
+    for (const r of rows) {
+      const k = `${r.user_id}::${r.lesson_id}`;
+      const arr = map.get(k);
+      if (arr) arr.push(r); else map.set(k, [r]);
+    }
+    return Array.from(map.entries()).map(([key, list]) => ({
+      key,
+      latest: list[0],
+      earlier: list.slice(1),
+      attemptCount: list.length,
+    }));
+  }, [rows]);
+
+  const openGrade = (g: WritingGroup) => {
+    setGrading(g);
+    setScore(g.latest.score !== null ? String(g.latest.score) : "");
+    setComment(g.latest.comment ?? "");
   };
 
   const handleSaveGrade = async () => {
@@ -56,7 +79,7 @@ export const AdminWritingSection: React.FC = () => {
     const { error } = await supabase
       .from("writing_submissions")
       .update({ score: parsedScore, comment: comment || null, graded_at: new Date().toISOString() })
-      .eq("id", grading.id);
+      .eq("id", grading.latest.id);
     setSaving(false);
     if (error) {
       showToast("Lưu điểm thất bại: " + error.message, "warning");
@@ -85,33 +108,35 @@ export const AdminWritingSection: React.FC = () => {
               <th className="px-4 py-2.5">Học viên</th>
               <th className="px-4 py-2.5">Bài học</th>
               <th className="px-4 py-2.5">Nộp lúc</th>
+              <th className="px-4 py-2.5">Lần nộp</th>
               <th className="px-4 py-2.5">Trạng thái</th>
               <th className="px-4 py-2.5"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {rows.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50/50">
-                <td className="px-4 py-2.5 text-slate-700">{row.profiles?.full_name || row.profiles?.email || row.user_id}</td>
-                <td className="px-4 py-2.5 text-slate-700">{row.lessons?.title_vi ?? row.lesson_id}</td>
-                <td className="px-4 py-2.5 text-slate-500">{new Date(row.submitted_at).toLocaleString("vi-VN")}</td>
+            {groups.map((g) => (
+              <tr key={g.key} className="hover:bg-slate-50/50">
+                <td className="px-4 py-2.5 text-slate-700">{g.latest.profiles?.full_name || g.latest.profiles?.email || g.latest.user_id}</td>
+                <td className="px-4 py-2.5 text-slate-700">{g.latest.lessons?.title_vi ?? g.latest.lesson_id}</td>
+                <td className="px-4 py-2.5 text-slate-500">{new Date(g.latest.submitted_at).toLocaleString("vi-VN")}</td>
+                <td className="px-4 py-2.5 text-slate-500">{g.attemptCount}/6</td>
                 <td className="px-4 py-2.5">
-                  {row.graded_at ? (
-                    <span className="text-xs font-bold text-emerald-600">Đã chấm ({row.score}/100)</span>
+                  {g.latest.graded_at ? (
+                    <span className="text-xs font-bold text-emerald-600">Đã chấm ({g.latest.score}/100)</span>
                   ) : (
                     <span className="text-xs font-bold text-amber-600">Chưa chấm</span>
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-right">
-                  <button onClick={() => openGrade(row)} className="text-xs font-bold text-orange-600 hover:text-orange-700">
-                    {row.graded_at ? "Sửa điểm" : "Chấm điểm"}
+                  <button onClick={() => openGrade(g)} className="text-xs font-bold text-orange-600 hover:text-orange-700">
+                    {g.latest.graded_at ? "Sửa điểm" : "Chấm điểm"}
                   </button>
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {groups.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-400 text-sm">Chưa có bài viết nào được nộp.</td>
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 text-sm">Chưa có bài viết nào được nộp.</td>
               </tr>
             )}
           </tbody>
@@ -122,11 +147,11 @@ export const AdminWritingSection: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-xl space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-display font-extrabold text-slate-900">Chấm bài viết</h2>
+              <h2 className="text-sm font-display font-extrabold text-slate-900">Chấm bài viết — lần {grading.attemptCount}</h2>
               <button onClick={() => setGrading(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-700 whitespace-pre-wrap max-h-64 overflow-y-auto font-sans">
-              {grading.content}
+              {grading.latest.content}
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Điểm (0-100)</label>
@@ -149,6 +174,22 @@ export const AdminWritingSection: React.FC = () => {
                 placeholder="Nhận xét cho học viên (không bắt buộc)..."
               />
             </div>
+
+            {grading.earlier.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Các lần nộp trước (chỉ xem)</h3>
+                {grading.earlier.map((e, i) => (
+                  <div key={e.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-500">Lần {grading.earlier.length - i}</span>
+                      <span className="text-[11px] text-slate-400">{new Date(e.submitted_at).toLocaleString("vi-VN")}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 whitespace-pre-wrap font-sans">{e.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <Button variant="secondary" className="flex-1" onClick={() => setGrading(null)}>Hủy</Button>
               <Button variant="primary" className="flex-1" onClick={handleSaveGrade} disabled={saving}>

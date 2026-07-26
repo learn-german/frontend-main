@@ -51,7 +51,7 @@ serve(async (req) => {
 
     const { data: exercises, error: exErr } = await supabase
       .from("grammar_exercises")
-      .select("id, type, correct_answer, classification_items")
+      .select("id, type, correct_answer, acceptable_answers, classification_items")
       .eq("lesson_id", lesson_id)
       .eq("status", "published");
 

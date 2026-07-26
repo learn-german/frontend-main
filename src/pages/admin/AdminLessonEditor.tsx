@@ -147,7 +147,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
       showToast("Lưu thất bại: " + error.message, "warning");
     } else {
       showToast("Đã lưu bài học.", "success");
-      onSaved();
+      // Stay on the editor — do NOT call onSaved()/navigate away.
     }
   };
 
@@ -181,14 +181,30 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
   const handleRevertToDraft = async () => {
     setSaving(true);
-    const { error } = await supabase.from("lessons").update({ status: "draft" }).eq("id", data.id);
+    const { error } = await supabase.from("lessons").update({
+      title: data.title,
+      title_vi: data.title_vi,
+      duration: data.duration,
+      youtube_id: data.youtube_id || null,
+      xp_reward: data.xp_reward,
+      objective: data.objective || null,
+      summary: data.summary || null,
+      vocabulary_md: data.vocabulary_md || null,
+      grammar: data.grammar,
+      grammar_md: data.grammar_md || null,
+      speaking_md: data.speaking_md || null,
+      writing_prompt_md: data.writing_prompt_md || null,
+      video_r2_key: data.video_r2_key || null,
+      status: "draft",
+    }).eq("id", data.id);
     setSaving(false);
 
     if (error) {
       showToast("Chuyển về Nháp thất bại: " + error.message, "warning");
     } else {
-      showToast("Đã chuyển về Nháp.", "success");
-      onSaved();
+      showToast("Đã lưu và chuyển về Nháp.", "success");
+      setData(prev => ({ ...prev, status: "draft" }));
+      // Stay on the editor so the status badge updates in place.
     }
   };
 

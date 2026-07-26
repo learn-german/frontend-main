@@ -24,6 +24,8 @@ import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
 import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
+import { BottomTab } from "./pages/lessonBottomTabs";
+import type { AppNotification } from "./lib/hooks/useNotifications";
 
 export default function App() {
   // Authentication states
@@ -37,6 +39,7 @@ export default function App() {
   // Router page state
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
   const [selectedLessonId, setSelectedLessonId] = useState<string>("a1-l1");
+  const [initialLessonTab, setInitialLessonTab] = useState<BottomTab | undefined>(undefined);
   const [activeExerciseCategory, setActiveExerciseCategory] = useState<"nguphap" | "nghe" | "doc">("nguphap");
 
   // Custom Toast state
@@ -122,9 +125,16 @@ export default function App() {
   };
 
   // Select particular lesson to view
-  const handleSelectLesson = (lessonId: string) => {
+  const handleSelectLesson = (lessonId: string, initialTab?: BottomTab) => {
     setSelectedLessonId(lessonId);
+    setInitialLessonTab(initialTab);
     setCurrentPage("lesson-detail");
+  };
+
+  const handleNotificationNavigate = (n: AppNotification) => {
+    if (n.type === "writing_graded" && n.lessonId) {
+      handleSelectLesson(n.lessonId, "viet");
+    }
   };
 
   // Awards the "mark complete" bonus via Edge Function (server-side XP + streak).
@@ -198,6 +208,7 @@ export default function App() {
           onLogout={handleLogout}
           streak={stats.streak}
           xp={stats.xp}
+          onNotificationNavigate={handleNotificationNavigate}
         />
       )}
 
@@ -273,6 +284,7 @@ export default function App() {
                   lesson={activeLessonObject}
                   stats={stats}
                   userId={user.id}
+                  initialTab={initialLessonTab}
                   onBack={() => handleNavigate("roadmap")}
                   onMarkComplete={handleMarkComplete}
                   onStartQuiz={(lessonId, category = "nguphap") => {

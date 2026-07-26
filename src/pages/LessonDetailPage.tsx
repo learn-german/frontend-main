@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -16,7 +16,7 @@ import { VideoPlayer } from "../components/VideoPlayer";
 import { MarkdownBlock, countHighlightedWords } from "../components/MarkdownBlock";
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
-import { useWritingSubmission } from "../lib/hooks/useWritingSubmission";
+import { useWritingSubmission, MAX_WRITING_ATTEMPTS } from "../lib/hooks/useWritingSubmission";
 import { BOTTOM_TABS, BottomTab } from "./lessonBottomTabs";
 
 interface LessonDetailPageProps {
@@ -26,6 +26,7 @@ interface LessonDetailPageProps {
   onBack: () => void;
   onMarkComplete: (lessonId: string) => void;
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
+  initialTab?: BottomTab;
 }
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
@@ -35,6 +36,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   onBack,
   onMarkComplete,
   onStartQuiz,
+  initialTab,
 }) => {
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
@@ -56,7 +58,9 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
     return true;
   });
 
-  const [bottomTab, setBottomTab] = useState<BottomTab>(() => visibleTabs[0]?.id ?? "tuvung");
+  const [bottomTab, setBottomTab] = useState<BottomTab>(
+    () => (initialTab && visibleTabs.some((t) => t.id === initialTab) ? initialTab : (visibleTabs[0]?.id ?? "tuvung")),
+  );
 
   const handlePronounce = (text: string) => {
     if ("speechSynthesis" in window) {
@@ -313,17 +317,13 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 };
 
 const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: string }> = ({ lessonId, userId, promptMd }) => {
-  const { submission, loading, submit } = useWritingSubmission(lessonId, userId);
+  const { attempts, attemptCount, canSubmit, loading, submit } = useWritingSubmission(lessonId, userId);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    setContent(submission?.content ?? "");
-  }, [submission?.id, submission?.content]);
-
   const handleSubmit = async () => {
     if (!content.trim()) {
-      showToast("Bài viết không được để trống.", "warning");
+      showToast("Vui lòng viết bài trước khi nộp.", "warning");
       return;
     }
     setSubmitting(true);
@@ -333,6 +333,7 @@ const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: st
       showToast("Nộp bài thất bại: " + error, "warning");
     } else {
       showToast("Đã nộp bài viết.", "success");
+      setContent("");
     }
   };
 
@@ -348,32 +349,49 @@ const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: st
     <div className="space-y-4">
       <MarkdownBlock content={promptMd} />
 
-      {submission?.gradedAt && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-1">
-          <p className="text-xs font-display font-bold text-emerald-700">Đã chấm: {submission.score}/100</p>
-          {submission.comment && (
-            <p className="text-xs text-emerald-800 font-sans whitespace-pre-wrap">{submission.comment}</p>
-          )}
-        </div>
-      )}
-      {submission && !submission.gradedAt && (
-        <p className="text-xs text-slate-400 font-sans">Đã nộp bài, đang chờ admin chấm điểm.</p>
-      )}
-
       <textarea
         id="writing-submission-textarea"
         rows={10}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Viết bài của bạn ở đây..."
-        className="w-full px-4 py-3 bg-white border border-slate-250 rounded-xl font-sans text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition duration-150 resize-y"
+        disabled={!canSubmit}
+        className="w-full px-4 py-3 bg-white border border-slate-250 rounded-xl font-sans text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition duration-150 resize-y disabled:bg-slate-50 disabled:text-slate-400"
       />
+
+      <p className="text-xs text-slate-400 font-sans text-center">
+        Học viên chỉ được nộp tối đa {MAX_WRITING_ATTEMPTS} lần bài viết. Đã nộp {attemptCount}/{MAX_WRITING_ATTEMPTS} lần.
+      </p>
+
       <div className="flex justify-center">
-        <Button id="btn-writing-submit" variant="primary" onClick={handleSubmit} disabled={submitting}>
+        <Button id="btn-writing-submit" variant="primary" onClick={handleSubmit} disabled={submitting || !canSubmit}>
           {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
-          {submission ? "Nộp lại" : "Nộp bài"}
+          {canSubmit ? "Nộp bài" : "Đã hết lượt nộp"}
         </Button>
       </div>
+
+      {attempts.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <h4 className="text-xs font-display font-bold text-slate-500 uppercase tracking-wider">Các lần đã nộp</h4>
+          {attempts.map((a, i) => (
+            <div key={a.id} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600">Lần {attempts.length - i}</span>
+                <span className="text-[11px] text-slate-400">{new Date(a.submittedAt).toLocaleString("vi-VN")}</span>
+              </div>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap font-sans">{a.content}</p>
+              {a.gradedAt ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-1">
+                  <p className="text-xs font-display font-bold text-emerald-700">Đã chấm: {a.score}/100</p>
+                  {a.comment && <p className="text-xs text-emerald-800 font-sans whitespace-pre-wrap">{a.comment}</p>}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 font-sans">Đang chờ admin chấm điểm.</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

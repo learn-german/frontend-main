@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { GraduationCap, LogOut, Loader2, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import { AdminPage } from "./AdminPage";
+import { AdminPage, type AdminSection } from "./AdminPage";
 import { NotificationBell } from "../../components/NotificationBell";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { ToastType } from "../../lib/toast";
+import type { AppNotification } from "../../lib/hooks/useNotifications";
 import { AnimatePresence, motion } from "motion/react";
 
 export const AdminApp: React.FC = () => {
   const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
+  const [section, setSection] = useState<AdminSection>("dashboard");
   const [authLoading, setAuthLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -105,6 +107,10 @@ export const AdminApp: React.FC = () => {
     setPassword("");
   };
 
+  const handleNotificationNavigate = (n: AppNotification) => {
+    if (n.type === "writing_submitted") setSection("writing");
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -130,7 +136,7 @@ export const AdminApp: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <NotificationBell dark />
+            <NotificationBell dark forAdmin onNavigate={handleNotificationNavigate} />
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
               <span>{user.email}</span>
@@ -145,7 +151,7 @@ export const AdminApp: React.FC = () => {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <AdminPage userRole={user.role} onNavigateHome={() => window.location.href = "/"} />
+          <AdminPage userRole={user.role} onNavigateHome={() => window.location.href = "/"} section={section} onSectionChange={setSection} />
         </main>
 
         {/* Toast */}

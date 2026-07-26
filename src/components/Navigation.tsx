@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { Button } from "./DesignSystem";
+import type { AppNotification } from "../lib/hooks/useNotifications";
 
 interface NavigationProps {
   currentPage: string;
@@ -28,6 +29,7 @@ interface NavigationProps {
   onLogout: () => void;
   streak: number;
   xp: number;
+  onNotificationNavigate?: (n: AppNotification) => void;
 }
 
 export const Navbar: React.FC<NavigationProps> = ({
@@ -36,7 +38,8 @@ export const Navbar: React.FC<NavigationProps> = ({
   user,
   onLogout,
   streak,
-  xp
+  xp,
+  onNotificationNavigate
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -128,7 +131,7 @@ export const Navbar: React.FC<NavigationProps> = ({
               <span className="text-xs font-display font-bold">{xp} XP</span>
             </div>
 
-            <NotificationBell />
+            <NotificationBell onNavigate={onNotificationNavigate} />
 
             <div className="h-4 w-[1px] bg-slate-200" />
 

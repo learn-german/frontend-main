@@ -10,7 +10,7 @@ export interface AppNotification {
   createdAt: string;
 }
 
-export function useNotifications() {
+export function useNotifications(forAdmin: boolean = false) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,6 +19,7 @@ export function useNotifications() {
     supabase
       .from("notifications")
       .select("id, type, lesson_id, message, read_at, created_at")
+      .eq("for_admin", forAdmin)
       .order("created_at", { ascending: false })
       .limit(30)
       .then(({ data }) => {
@@ -34,7 +35,7 @@ export function useNotifications() {
         );
         setLoading(false);
       });
-  }, []);
+  }, [forAdmin]);
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
