@@ -414,7 +414,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             {groups.map((group, groupIndex) => (
               <div key={group.key} className="space-y-1.5">
                 <p className="text-xs font-display font-bold text-slate-700">
-                  Câu {groupIndex + 1}: {GRAMMAR_TYPE_LABELS[group.type]}
+                  Bài {groupIndex + 1}: {GRAMMAR_TYPE_LABELS[group.type]}
                 </p>
                 {group.exercises.map((ex, childIndex) => (
                   <div key={ex.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
@@ -472,7 +472,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
       <ExercisePageHeader
         title="Bài tập ngữ pháp"
-        subtitle="Bấm vào câu lớn để hiển thị các câu hỏi con."
+        subtitle="Bấm vào bài để hiển thị các câu."
         onBackToLesson={onBackToLesson}
       />
 
@@ -499,9 +499,9 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                 className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-slate-50"
               >
                 {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronRight className="h-5 w-5 text-slate-400" />}
-                <span className="text-base font-display font-black text-slate-900">Câu {groupIndex + 1}</span>
+                <span className="text-base font-display font-black text-slate-900">Bài {groupIndex + 1}</span>
                 <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{GRAMMAR_TYPE_LABELS[group.type]}</span>
-                <span className="text-xs text-slate-400">{group.exercises.length} câu con</span>
+                <span className="text-xs text-slate-400">{group.exercises.length} câu</span>
                 {isComplete && <CheckCircle2 className="ml-auto h-5 w-5 text-green-500" />}
               </button>
               {isExpanded && (

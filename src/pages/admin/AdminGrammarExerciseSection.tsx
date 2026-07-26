@@ -304,9 +304,9 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
         <GroupCheckbox state={selectionState} onChange={() => onToggleGroup(ids)} />
         <button type="button" onClick={() => onToggleExpanded(exerciseGroup.key)} className="flex flex-1 items-center gap-3 text-left">
           {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-          <span className="text-sm font-black text-slate-700">{groupIndex + 1}</span>
+          <span className="text-sm font-black text-slate-700">Bài {groupIndex + 1}</span>
           <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${TYPE_COLORS[exerciseGroup.type]}`}>{TYPE_LABELS[exerciseGroup.type]}</span>
-          <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu con</span>
+          <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu</span>
         </button>
         <button
           type="button"
@@ -317,7 +317,7 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
           }}
           className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-600 hover:bg-orange-50 disabled:opacity-40"
         >
-          <Plus className="h-3.5 w-3.5" /> Thêm câu con
+          <Plus className="h-3.5 w-3.5" /> Thêm câu
         </button>
       </div>
       {isExpanded && (
@@ -973,7 +973,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       const successMessage = modalMode === "edit"
         ? "Đã cập nhật bài tập."
         : modalMode === "append-children"
-          ? `Đã thêm ${entries.length} câu con.`
+          ? `Đã thêm ${entries.length} câu.`
           : `Đã thêm ${entries.length} bài tập.`;
       showToast(successMessage, "success");
       setModalOpen(false);
@@ -1221,7 +1221,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                   {modalMode === "edit"
                     ? "Chỉnh sửa bài tập"
                     : modalMode === "append-children"
-                      ? `Thêm câu con vào Câu ${appendContext?.groupNumber ?? ""}`
+                      ? `Thêm câu vào Bài ${appendContext?.groupNumber ?? ""}`
                       : "Thêm bài tập mới"}
                 </h3>
                 {modalMode === "edit" && <LessonStatusBadge status={entries[0].status} />}
@@ -1366,7 +1366,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                 {modalMode === "edit"
                   ? "Lưu thay đổi"
                   : modalMode === "append-children"
-                    ? `Thêm ${entries.length} câu con`
+                    ? `Thêm ${entries.length} câu`
                     : entries.length > 1
                       ? `Thêm ${entries.length} bài tập`
                       : "Thêm bài tập"}
