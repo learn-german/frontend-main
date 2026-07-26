@@ -1,7 +1,7 @@
 # Fill in the Blank — dạng bài Ngữ pháp thứ 7
 
 **Ngày:** 2026-07-26
-**Trạng thái:** Đã duyệt thiết kế, chờ review spec
+**Trạng thái:** Đã triển khai và deploy production
 
 ## Mục tiêu
 
@@ -136,8 +136,35 @@ Apply thẳng prod (ref `awdhqlgxnjwymwgxltlw`), rồi `npm run gen:types`.
   - Sai umlaut (không có accepted answer tương ứng) → sai.
   - Nhiều ô, đúng một phần → điểm từng ô chính xác, `blankResults` khớp.
   - Đáp án thiếu ô / JSON lỗi → ô đó sai, không crash.
-- **Component `GrammarExercisePage`:** render fill + word bank; click chip điền ô focus;
-  single_use tiêu chip / trả lại pool; multiple_use tái dùng.
+  - JSON parse thành công nhưng kết quả là object, string hoặc `null` → toàn bộ ô tương ứng
+    bị coi là sai, không crash.
+  - Phần tử trong mảng đáp án không phải string → ô tương ứng bị coi là sai, không crash.
+  - `blanks` là `null`, mảng rỗng hoặc có cấu trúc malformed → xử lý defensive,
+    không làm Edge Function crash.
+- **Component `GrammarExercisePage`:**
+  - Render câu fill có một/nhiều ô và word bank ở đầu nhóm.
+  - Click chip điền đúng ô đang focus.
+  - Khi chưa có ô focus, click chip điền vào ô trống đầu tiên theo thứ tự toàn nhóm.
+  - Khi không còn ô trống và chưa focus ô cụ thể, click chip không thay đổi đáp án.
+  - `single_use`: chip được tiêu khi click để điền; xóa nội dung khỏi ô trả chip về pool.
+  - `single_use`: hai chip có cùng nội dung vẫn là hai chip độc lập; dùng một chip không
+    làm tiêu chip còn lại.
+  - `single_use`: thay chip A trong một ô bằng chip B trả A về pool và chỉ tiêu B.
+  - Gõ tay, kể cả gõ nội dung trùng với một chip, không tiêu chip; chỉ thao tác click chip
+    mới tạo quan hệ sử dụng chip.
+  - `multiple_use`: cùng một chip có thể điền lại cho nhiều ô.
+  - Sau submit, render đúng màu/trạng thái từng ô theo `blankResults`, bao gồm trường hợp
+    một câu có cả ô đúng và ô sai.
+  - Retry reset đáp án, focus ô và toàn bộ trạng thái chip đã sử dụng.
+- **Admin `AdminGrammarExerciseSection`:**
+  - Create group nhiều câu con ghi cùng một `word_bank` lên mọi row, trong khi `blanks`
+    vẫn riêng theo từng row.
+  - Edit word bank từ một câu con cập nhật cùng giá trị cho mọi row có chung `group_id`.
+  - Append câu con kế thừa word bank hiện tại của group và không làm các row trong group
+    bị lệch cấu hình.
+  - Tắt word bank cập nhật `word_bank = null` cho mọi row trong group.
+  - Validation chặn số editor đáp án khác số marker `___`, blank không có accepted answer,
+    và word bank được bật nhưng không có word.
 
 ## Phạm vi loại trừ (YAGNI)
 

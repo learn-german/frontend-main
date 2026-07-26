@@ -12,11 +12,37 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       grammar_exercises: {
         Row: {
           acceptable_answers: Json | null
+          blanks: Json | null
           classification_groups: Json | null
           classification_items: Json | null
           correct_answer: string | null
@@ -31,9 +57,11 @@ export type Database = {
           tokens: Json | null
           transformation_hint: string | null
           type: string
+          word_bank: Json | null
         }
         Insert: {
           acceptable_answers?: Json | null
+          blanks?: Json | null
           classification_groups?: Json | null
           classification_items?: Json | null
           correct_answer?: string | null
@@ -48,9 +76,11 @@ export type Database = {
           tokens?: Json | null
           transformation_hint?: string | null
           type: string
+          word_bank?: Json | null
         }
         Update: {
           acceptable_answers?: Json | null
+          blanks?: Json | null
           classification_groups?: Json | null
           classification_items?: Json | null
           correct_answer?: string | null
@@ -65,6 +95,7 @@ export type Database = {
           tokens?: Json | null
           transformation_hint?: string | null
           type?: string
+          word_bank?: Json | null
         }
         Relationships: [
           {
@@ -598,6 +629,7 @@ export type Database = {
           tokens: Json | null
           transformation_hint: string | null
           type: string | null
+          word_bank: Json | null
         }
         Relationships: [
           {
@@ -826,6 +858,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
