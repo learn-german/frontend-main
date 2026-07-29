@@ -415,10 +415,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setRetrying(true);
   };
 
-  // A saved attempt exists and is about to be poured into `result` by the hydrate
-  // effect above, but that effect only runs after this render commits — without
-  // this, the blank form paints for one frame before the results card appears.
-  const awaitingHydration = attempt !== null && !retrying && result === null;
+  // Mirrors the hydrate effect's own guard exactly: true only when that effect
+  // is guaranteed to run and set `result` next — otherwise (e.g. exercises were
+  // deleted after the attempt was saved) we must fall through to another view
+  // instead of spinning forever waiting for a `result` that will never arrive.
+  const awaitingHydration = attempt !== null && !retrying && exercises.length > 0 && result === null;
 
   if (exercisesLoading || attemptLoading || awaitingHydration) {
     return (
