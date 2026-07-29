@@ -14,6 +14,7 @@ export interface ScoreResult {
   score: number;
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
+  exerciseResults: Record<string, boolean>;
 }
 
 function normalizeWord(s: string): string {
@@ -44,11 +45,13 @@ export function computeGrammarScore(
   let total = 0;
   const blankResults: Record<string, boolean[]> = {};
   const choiceResults: Record<string, boolean> = {};
+  const exerciseResults: Record<string, boolean> = {};
 
   for (const ex of exercises) {
     if (ex.type === "multiple_choice") {
       const isCorrect = isChoiceCorrect(ex, answers[ex.id] ?? "");
       choiceResults[ex.id] = isCorrect;
+      exerciseResults[ex.id] = isCorrect;
       total += 1;
       if (isCorrect) correct++;
       continue;
@@ -81,6 +84,7 @@ export function computeGrammarScore(
       blankResults[ex.id] = results;
       total += results.length;
       correct += results.filter(Boolean).length;
+      exerciseResults[ex.id] = results.length > 0 && results.every(Boolean);
       continue;
     }
 
@@ -91,25 +95,30 @@ export function computeGrammarScore(
         .split("|")
         .map((pair) => pair.split(":").map((s) => s.trim()));
       const userMap = new Map(userPairs.map(([item, group]) => [item, group ?? ""]));
+      let itemsCorrect = 0;
       for (const it of items) {
-        if (normalizeWord(userMap.get(it.item) ?? "") === normalizeWord(it.group)) correct++;
+        if (normalizeWord(userMap.get(it.item) ?? "") === normalizeWord(it.group)) itemsCorrect++;
       }
+      correct += itemsCorrect;
+      exerciseResults[ex.id] = items.length > 0 && itemsCorrect === items.length;
       continue;
     }
 
     total += 1;
     const userAnswer = normalizeWord(answers[ex.id] ?? "");
+    let isCorrect: boolean;
     if (ex.type === "translation") {
       const accepted = [ex.correct_answer ?? "", ...(ex.acceptable_answers ?? [])]
         .map(normalizeWord)
         .filter((s) => s.length > 0);
-      if (accepted.includes(userAnswer)) correct++;
+      isCorrect = accepted.includes(userAnswer);
     } else {
-      const correctAnswer = normalizeWord(ex.correct_answer ?? "");
-      if (userAnswer === correctAnswer) correct++;
+      isCorrect = userAnswer === normalizeWord(ex.correct_answer ?? "");
     }
+    exerciseResults[ex.id] = isCorrect;
+    if (isCorrect) correct++;
   }
 
   const score = total > 0 ? Math.round((correct / total) * 100) : 0;
-  return { correct, total, score, blankResults, choiceResults };
+  return { correct, total, score, blankResults, choiceResults, exerciseResults };
 }

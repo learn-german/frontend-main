@@ -49,7 +49,14 @@ const fill = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExerc
 
 test("fill: accepts a configured answer independent of a word bank", () => {
   const r = computeGrammarScore([fill()], { f1: JSON.stringify(["LERNE"]) });
-  assert.deepEqual(r, { correct: 1, total: 1, score: 100, blankResults: { f1: [true] }, choiceResults: {} });
+  assert.deepEqual(r, {
+    correct: 1,
+    total: 1,
+    score: 100,
+    blankResults: { f1: [true] },
+    choiceResults: {},
+    exerciseResults: { f1: true },
+  });
 });
 
 test("fill: accepts alternatives and collapses whitespace", () => {
@@ -73,7 +80,14 @@ test("fill: grades every blank independently", () => {
     ],
   });
   const r = computeGrammarScore([ex], { f1: JSON.stringify(["das", "die", "teuer"]) });
-  assert.deepEqual(r, { correct: 2, total: 3, score: 67, blankResults: { f1: [true, false, true] }, choiceResults: {} });
+  assert.deepEqual(r, {
+    correct: 2,
+    total: 3,
+    score: 67,
+    blankResults: { f1: [true, false, true] },
+    choiceResults: {},
+    exerciseResults: { f1: false },
+  });
 });
 
 test("fill: missing entries and invalid JSON are wrong without crashing", () => {
@@ -163,4 +177,83 @@ test("multiple_choice: cộng dồn đúng khi trộn với dạng khác", () =>
   assert.equal(r.correct, 2);
   assert.equal(r.score, 67);
   assert.deepEqual(r.choiceResults, { c1: true, c2: false });
+});
+
+const reorder = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
+  id: "w1",
+  type: "word_reorder",
+  correct_answer: "Ich lerne Deutsch",
+  acceptable_answers: null,
+  classification_items: null,
+  blanks: null,
+  options: null,
+  ...over,
+});
+
+const classify = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
+  id: "c1",
+  type: "classification",
+  correct_answer: null,
+  acceptable_answers: null,
+  classification_items: [
+    { item: "der Tisch", group: "maskulin" },
+    { item: "die Lampe", group: "feminin" },
+  ],
+  blanks: null,
+  options: null,
+  ...over,
+});
+
+test("exerciseResults: loại text được chấm đúng/sai theo từng bài", () => {
+  const r = computeGrammarScore([reorder()], { w1: "Ich lerne Deutsch" });
+  assert.equal(r.exerciseResults.w1, true);
+
+  const wrong = computeGrammarScore([reorder()], { w1: "Deutsch lerne Ich" });
+  assert.equal(wrong.exerciseResults.w1, false);
+});
+
+test("exerciseResults: translation chấp nhận acceptable_answers", () => {
+  const ex = translation({ acceptable_answers: ["Ich studiere Deutsch"] });
+  const r = computeGrammarScore([ex], { t1: "Ich studiere Deutsch" });
+  assert.equal(r.exerciseResults.t1, true);
+});
+
+test("exerciseResults: classification chỉ true khi mọi item đúng", () => {
+  const allRight = computeGrammarScore([classify()], {
+    c1: "der Tisch:maskulin|die Lampe:feminin",
+  });
+  assert.equal(allRight.exerciseResults.c1, true);
+  assert.equal(allRight.correct, 2);
+
+  const partial = computeGrammarScore([classify()], {
+    c1: "der Tisch:maskulin|die Lampe:maskulin",
+  });
+  assert.equal(partial.exerciseResults.c1, false);
+  assert.equal(partial.correct, 1);
+});
+
+test("exerciseResults: fill_in_the_blank chỉ true khi mọi blank đúng", () => {
+  const ex = fill();
+  const results = computeGrammarScore([ex], { f1: JSON.stringify(["ein", "eine"]) });
+  assert.equal(results.exerciseResults.f1, results.blankResults.f1.every(Boolean));
+});
+
+test("exerciseResults: multiple_choice khớp choiceResults", () => {
+  const ex: ScorableGrammarExercise = {
+    id: "m1",
+    type: "multiple_choice",
+    correct_answer: "1",
+    acceptable_answers: null,
+    classification_items: null,
+    blanks: null,
+    options: ["a", "b", "c"],
+  };
+  const r = computeGrammarScore([ex], { m1: "1" });
+  assert.equal(r.exerciseResults.m1, true);
+  assert.equal(r.exerciseResults.m1, r.choiceResults.m1);
+});
+
+test("exerciseResults: có key cho mọi bài được chấm", () => {
+  const r = computeGrammarScore([translation(), reorder(), classify()], {});
+  assert.deepEqual(Object.keys(r.exerciseResults).sort(), ["c1", "t1", "w1"]);
 });
