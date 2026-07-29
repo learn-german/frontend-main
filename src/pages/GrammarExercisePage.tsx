@@ -17,6 +17,8 @@ import {
   type BlankFocus,
 } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
+import { emptyAnswer, parseAnswer, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
+import { useGrammarAttempt } from "../lib/hooks/useGrammarAttempt";
 
 interface GrammarExercisePageProps {
   lesson: Lesson;
@@ -31,8 +33,11 @@ interface GrammarResult {
   total: number;
   passed: boolean;
   xp_earned: number;
+  best_score: number;
+  attempt_count: number;
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
+  exerciseResults: Record<string, boolean>;
 }
 
 const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
@@ -271,6 +276,27 @@ const ExerciseCard: React.FC<{
   );
 };
 
+/** Read-only echo of what the learner typed, tinted by whether it was graded correct. */
+const SubmittedAnswer: React.FC<{ value: string; correct: boolean | undefined }> = ({
+  value,
+  correct,
+}) => (
+  <div
+    className={`mb-2 rounded-lg border px-2.5 py-2 text-xs font-medium whitespace-pre-wrap ${
+      correct === true
+        ? "border-green-300 bg-green-50 text-green-800"
+        : correct === false
+          ? "border-red-300 bg-red-50 text-red-800"
+          : "border-slate-200 bg-slate-50 text-slate-700"
+    }`}
+  >
+    <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wider opacity-60">
+      Bài làm của bạn
+    </span>
+    {value.trim() ? value : "— chưa trả lời —"}
+  </div>
+);
+
 export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   lesson,
   onQuizFinished,
@@ -279,6 +305,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   onBackToLesson,
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(lesson.id);
+  const { attempt, loading: attemptLoading } = useGrammarAttempt(lesson.id);
 
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
@@ -295,6 +322,52 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);
 
+  // Single source of truth for the results card's submitted-answer echo, for
+  // both the live-submit path and the post-refresh hydrate path. Keyed by
+  // exercise id, wire-format strings exactly as sent to / read from the server.
+  const [submittedAnswerSnapshot, setSubmittedAnswerSnapshot] = useState<Record<string, string>>({});
+
+  // Set when the learner hits "Làm lại": keeps the hydrate effect from pouring
+  // the saved attempt back into the form they just cleared.
+  const [retrying, setRetrying] = useState(false);
+
+  React.useEffect(() => {
+    if (!attempt || retrying || exercises.length === 0) return;
+
+    setResult({
+      score: attempt.score,
+      total: attempt.total,
+      passed: attempt.score >= 80,
+      xp_earned: 0,
+      best_score: attempt.bestScore,
+      attempt_count: attempt.attemptCount,
+      blankResults: attempt.blankResults,
+      choiceResults: attempt.choiceResults,
+      exerciseResults: attempt.exerciseResults,
+    });
+
+    const textAnswers: Record<string, string> = {};
+    const blankAnswers: Record<string, string[]> = {};
+    const itemGroups: Record<string, Record<string, string>> = {};
+    const choices: Record<string, number> = {};
+
+    for (const exercise of exercises) {
+      const raw = attempt.answers[exercise.id];
+      const parsed: ParsedAnswer =
+        raw === undefined ? emptyAnswer(exercise) : parseAnswer(exercise, raw);
+      if (parsed.kind === "text") textAnswers[exercise.id] = parsed.value;
+      else if (parsed.kind === "blanks") blankAnswers[exercise.id] = parsed.values;
+      else if (parsed.kind === "groups") itemGroups[exercise.id] = parsed.values;
+      else if (parsed.index !== undefined) choices[exercise.id] = parsed.index;
+    }
+
+    setTextAnswerByExercise(textAnswers);
+    setBlankAnswersByExercise(blankAnswers);
+    setItemGroupsByExercise(itemGroups);
+    setChoiceByExercise(choices);
+    setSubmittedAnswerSnapshot(attempt.answers ?? {});
+  }, [attempt, retrying, exercises]);
+
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
     const key = `${tokenIdx}:${token}`;
     setSelectedTokensByExercise((prev) => {
@@ -304,28 +377,37 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     });
   };
 
-  const getAnswerStringFor = (exercise: GrammarExercise): string => {
+  const getParsedAnswerFor = (exercise: GrammarExercise): ParsedAnswer => {
     if (exercise.type === "word_reorder") {
       const tokens = selectedTokensByExercise[exercise.id] ?? [];
-      return tokens.map((t) => t.split(":").slice(1).join(":")).join(" ");
+      return { kind: "text", value: tokens.map((t) => t.split(":").slice(1).join(":")).join(" ") };
     }
     if (exercise.type === "classification") {
-      const items = exercise.classificationItems ?? [];
-      const groups = itemGroupsByExercise[exercise.id] ?? {};
-      if (items.length === 0 || items.some((item) => !groups[item])) return "";
-      return items.map((item) => `${item}:${groups[item]}`).join("|");
+      return { kind: "groups", values: itemGroupsByExercise[exercise.id] ?? {} };
     }
     if (exercise.type === "fill_in_the_blank") {
       const blankCount = countBlankMarkers(exercise.promptText ?? "");
-      const blankAnswers = blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill("");
-      if (blankCount === 0 || blankAnswers.some((answer) => !answer.trim())) return "";
-      return JSON.stringify(blankAnswers);
+      return {
+        kind: "blanks",
+        values: blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill(""),
+      };
     }
     if (exercise.type === "multiple_choice") {
-      const selected = choiceByExercise[exercise.id];
-      return selected === undefined ? "" : String(selected);
+      return { kind: "choice", index: choiceByExercise[exercise.id] };
     }
-    return (textAnswerByExercise[exercise.id] ?? "").trim();
+    return { kind: "text", value: textAnswerByExercise[exercise.id] ?? "" };
+  };
+
+  const getAnswerStringFor = (exercise: GrammarExercise): string =>
+    serializeAnswer(exercise, getParsedAnswerFor(exercise));
+
+  /** Text-typed submitted answer for the results card, read from the one
+   * snapshot shared by the live-submit and hydrate-after-refresh paths. */
+  const getSubmittedTextFor = (exercise: GrammarExercise): string => {
+    const raw = submittedAnswerSnapshot[exercise.id];
+    if (raw === undefined) return "";
+    const parsed = parseAnswer(exercise, raw);
+    return parsed.kind === "text" ? parsed.value : "";
   };
 
   const allAnswered = exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
@@ -352,7 +434,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
     const res = data as GrammarResult;
     setResult(res);
-    onQuizFinished(res.score, res.xp_earned);
+    setSubmittedAnswerSnapshot(finalAnswers);
+    // Report the best score, not the latest one: local progress (and the
+    // Roadmap's completedLessons derivation) must not regress when a learner
+    // who already passed retries and scores lower this time.
+    onQuizFinished(res.best_score, res.xp_earned);
   };
 
   const handleRetry = () => {
@@ -366,9 +452,16 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setChoiceByExercise({});
     setResult(null);
     setSubmitError(null);
+    setRetrying(true);
   };
 
-  if (exercisesLoading) {
+  // Mirrors the hydrate effect's own guard exactly: true only when that effect
+  // is guaranteed to run and set `result` next — otherwise (e.g. exercises were
+  // deleted after the attempt was saved) we must fall through to another view
+  // instead of spinning forever waiting for a `result` that will never arrive.
+  const awaitingHydration = attempt !== null && !retrying && exercises.length > 0 && result === null;
+
+  if (exercisesLoading || attemptLoading || awaitingHydration) {
     return (
       <div className="max-w-5xl mx-auto space-y-8">
         <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
@@ -431,6 +524,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             </span>
             <span className="text-sm font-bold text-slate-500">({correctCount}/{total} câu)</span>
           </div>
+          <p className="text-[11px] text-slate-500 mt-1.5">
+            Điểm cao nhất: <b className="text-slate-700">{result.best_score}%</b> · Đã làm{" "}
+            <b className="text-slate-700">{result.attempt_count}</b> lần
+          </p>
           {xp_earned > 0 && (
             <span className="inline-block text-[10px] font-display font-bold px-2.5 py-0.5 rounded-full mt-2.5 uppercase bg-green-50 text-green-700">
               +{xp_earned} XP Tích lũy
@@ -458,6 +555,34 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                     <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
                       {groupIndex + 1}.{childIndex + 1} {ex.promptText ?? "Phân loại"}
                     </p>
+                    {(ex.type === "word_reorder"
+                      || ex.type === "error_correction"
+                      || ex.type === "translation"
+                      || ex.type === "sentence_transformation"
+                      || ex.type === "guided_sentence_writing") && (
+                      <SubmittedAnswer
+                        value={getSubmittedTextFor(ex)}
+                        correct={result.exerciseResults?.[ex.id]}
+                      />
+                    )}
+                    {ex.type === "classification" && (
+                      <div className="mb-2 space-y-1">
+                        {(ex.classificationItems ?? []).map((item) => (
+                          <div key={item} className="flex items-center gap-2 text-xs">
+                            <span className="flex-1 text-slate-700">{item}</span>
+                            <span
+                              className={`rounded-md border px-2 py-1 font-bold ${
+                                result.exerciseResults?.[ex.id]
+                                  ? "border-green-300 bg-green-50 text-green-700"
+                                  : "border-slate-200 bg-slate-50 text-slate-600"
+                              }`}
+                            >
+                              {itemGroupsByExercise[ex.id]?.[item] ?? "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {ex.type === "fill_in_the_blank" && (
                       <div className="mb-2 text-xs leading-9 text-slate-700">
                         {(ex.promptText ?? "").split("___").map((segment, index, segments) => (
@@ -501,7 +626,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
           <Button variant="secondary" className="flex-1" onClick={handleRetry}>
             <RotateCcw className="w-4 h-4 mr-2" /> Làm lại bài Test
           </Button>
-          {passed ? (
+          {result.best_score >= 80 ? (
             <Button variant="primary" className="flex-1" onClick={onNextLesson}>
               Học bài tiếp theo <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

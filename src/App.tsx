@@ -310,6 +310,7 @@ export default function App() {
               {currentPage === "quiz" && user && activeLessonObject && (
                 activeExerciseCategory === "nguphap" ? (
                   <GrammarExercisePage
+                    key={activeLessonObject.id}
                     lesson={activeLessonObject}
                     onQuizFinished={handleQuizFinished}
                     onNavigateHome={() => handleNavigate("roadmap")}
