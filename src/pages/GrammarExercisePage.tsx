@@ -276,6 +276,27 @@ const ExerciseCard: React.FC<{
   );
 };
 
+/** Read-only echo of what the learner typed, tinted by whether it was graded correct. */
+const SubmittedAnswer: React.FC<{ value: string; correct: boolean | undefined }> = ({
+  value,
+  correct,
+}) => (
+  <div
+    className={`mb-2 rounded-lg border px-2.5 py-2 text-xs font-medium whitespace-pre-wrap ${
+      correct === true
+        ? "border-green-300 bg-green-50 text-green-800"
+        : correct === false
+          ? "border-red-300 bg-red-50 text-red-800"
+          : "border-slate-200 bg-slate-50 text-slate-700"
+    }`}
+  >
+    <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wider opacity-60">
+      Bài làm của bạn
+    </span>
+    {value.trim() ? value : "— chưa trả lời —"}
+  </div>
+);
+
 export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   lesson,
   onQuizFinished,
@@ -515,6 +536,34 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                     <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
                       {groupIndex + 1}.{childIndex + 1} {ex.promptText ?? "Phân loại"}
                     </p>
+                    {(ex.type === "word_reorder"
+                      || ex.type === "error_correction"
+                      || ex.type === "translation"
+                      || ex.type === "sentence_transformation"
+                      || ex.type === "guided_sentence_writing") && (
+                      <SubmittedAnswer
+                        value={textAnswerByExercise[ex.id] ?? ""}
+                        correct={result.exerciseResults?.[ex.id]}
+                      />
+                    )}
+                    {ex.type === "classification" && (
+                      <div className="mb-2 space-y-1">
+                        {(ex.classificationItems ?? []).map((item) => (
+                          <div key={item} className="flex items-center gap-2 text-xs">
+                            <span className="flex-1 text-slate-700">{item}</span>
+                            <span
+                              className={`rounded-md border px-2 py-1 font-bold ${
+                                result.exerciseResults?.[ex.id]
+                                  ? "border-green-300 bg-green-50 text-green-700"
+                                  : "border-slate-200 bg-slate-50 text-slate-600"
+                              }`}
+                            >
+                              {itemGroupsByExercise[ex.id]?.[item] ?? "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {ex.type === "fill_in_the_blank" && (
                       <div className="mb-2 text-xs leading-9 text-slate-700">
                         {(ex.promptText ?? "").split("___").map((segment, index, segments) => (
