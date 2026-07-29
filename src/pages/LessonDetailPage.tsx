@@ -317,7 +317,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 };
 
 const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: string }> = ({ lessonId, userId, promptMd }) => {
-  const { attempts, attemptCount, canSubmit, loading, submit } = useWritingSubmission(lessonId, userId);
+  const { attempts, attemptCount, canSubmit, hasPendingAttempt, loading, submit } = useWritingSubmission(lessonId, userId);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -332,7 +332,7 @@ const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: st
     if (error) {
       showToast("Nộp bài thất bại: " + error, "warning");
     } else {
-      showToast("Đã nộp bài viết.", "success");
+      showToast(hasPendingAttempt ? "Đã cập nhật bài viết." : "Đã nộp bài viết.", "success");
       setContent("");
     }
   };
@@ -359,6 +359,12 @@ const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: st
         className="w-full px-4 py-3 bg-white border border-slate-250 rounded-xl font-sans text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition duration-150 resize-y disabled:bg-slate-50 disabled:text-slate-400"
       />
 
+      {hasPendingAttempt && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 font-sans text-center">
+          Lần nộp gần nhất chưa được chấm — nộp lại sẽ ghi đè lên bài đó, không tính thêm lượt.
+        </p>
+      )}
+
       <p className="text-xs text-slate-400 font-sans text-center">
         Học viên chỉ được nộp tối đa {MAX_WRITING_ATTEMPTS} lần bài viết. Đã nộp {attemptCount}/{MAX_WRITING_ATTEMPTS} lần.
       </p>
@@ -366,7 +372,7 @@ const WritingTabPanel: React.FC<{ lessonId: string; userId: string; promptMd: st
       <div className="flex justify-center">
         <Button id="btn-writing-submit" variant="primary" onClick={handleSubmit} disabled={submitting || !canSubmit}>
           {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
-          {canSubmit ? "Nộp bài" : "Đã hết lượt nộp"}
+          {!canSubmit ? "Đã hết lượt nộp" : hasPendingAttempt ? "Nộp lại (ghi đè)" : "Nộp bài"}
         </Button>
       </div>
 
