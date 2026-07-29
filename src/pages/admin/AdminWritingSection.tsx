@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
@@ -21,8 +21,11 @@ interface WritingGroup {
   key: string;
   latest: WritingSubmissionRow;      // newest attempt — the one admin grades
   earlier: WritingSubmissionRow[];   // older attempts, read-only, newest-first
+  attempts: WritingSubmissionRow[];  // every attempt, newest-first
   attemptCount: number;
 }
+
+const CONTENT_PREVIEW_LENGTH = 180;
 
 export const AdminWritingSection: React.FC = () => {
   const [rows, setRows] = useState<WritingSubmissionRow[]>([]);
@@ -31,6 +34,20 @@ export const AdminWritingSection: React.FC = () => {
   const [score, setScore] = useState("");
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [expandedSubmissionIds, setExpandedSubmissionIds] = useState<Set<string>>(new Set());
+
+  const toggleInSet = (
+    setState: React.Dispatch<React.SetStateAction<Set<string>>>,
+    value: string,
+  ) => {
+    setState((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
 
   const fetchRows = () => {
     setLoading(true);
@@ -58,6 +75,7 @@ export const AdminWritingSection: React.FC = () => {
       key,
       latest: list[0],
       earlier: list.slice(1),
+      attempts: list,
       attemptCount: list.length,
     }));
   }, [rows]);
@@ -114,26 +132,99 @@ export const AdminWritingSection: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {groups.map((g) => (
-              <tr key={g.key} className="hover:bg-slate-50/50">
-                <td className="px-4 py-2.5 text-slate-700">{g.latest.profiles?.full_name || g.latest.profiles?.email || g.latest.user_id}</td>
-                <td className="px-4 py-2.5 text-slate-700">{g.latest.lessons?.title_vi ?? g.latest.lesson_id}</td>
-                <td className="px-4 py-2.5 text-slate-500">{new Date(g.latest.submitted_at).toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-slate-500">{g.attemptCount}/6</td>
-                <td className="px-4 py-2.5">
-                  {g.latest.graded_at ? (
-                    <span className="text-xs font-bold text-emerald-600">Đã chấm ({g.latest.score}/100)</span>
-                  ) : (
-                    <span className="text-xs font-bold text-amber-600">Chưa chấm</span>
+            {groups.map((g) => {
+              const isExpanded = expandedKeys.has(g.key);
+              return (
+                <React.Fragment key={g.key}>
+                  <tr
+                    className="hover:bg-slate-50/50 cursor-pointer"
+                    onClick={() => toggleInSet(setExpandedKeys, g.key)}
+                  >
+                    <td className="px-4 py-2.5 text-slate-700">
+                      <span className="flex items-center gap-1.5">
+                        {isExpanded ? (
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        )}
+                        {g.latest.profiles?.full_name || g.latest.profiles?.email || g.latest.user_id}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-700">{g.latest.lessons?.title_vi ?? g.latest.lesson_id}</td>
+                    <td className="px-4 py-2.5 text-slate-500">{new Date(g.latest.submitted_at).toLocaleString("vi-VN")}</td>
+                    <td className="px-4 py-2.5 text-slate-500">{g.attemptCount}/6</td>
+                    <td className="px-4 py-2.5">
+                      {g.latest.graded_at ? (
+                        <span className="text-xs font-bold text-emerald-600">Đã chấm ({g.latest.score}/100)</span>
+                      ) : (
+                        <span className="text-xs font-bold text-amber-600">Chưa chấm</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openGrade(g); }}
+                        className="text-xs font-bold text-orange-600 hover:text-orange-700"
+                      >
+                        {g.latest.graded_at ? "Sửa điểm" : "Chấm điểm"}
+                      </button>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className="bg-slate-50/60">
+                      <td colSpan={6} className="px-4 py-3">
+                        <div className="space-y-2">
+                          <h3 className="text-[11px] font-display font-bold text-slate-500 uppercase tracking-wider">
+                            Lịch sử nộp bài ({g.attemptCount} lần)
+                          </h3>
+                          {g.attempts.map((attempt, index) => {
+                            const attemptNumber = g.attemptCount - index;
+                            const isContentExpanded = expandedSubmissionIds.has(attempt.id);
+                            const isTruncatable = attempt.content.length > CONTENT_PREVIEW_LENGTH;
+                            return (
+                              <div key={attempt.id} className="bg-white border border-slate-200 rounded-xl p-3 space-y-1.5">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-[11px] font-bold text-slate-600">Lần {attemptNumber}</span>
+                                  <span className="text-[11px] text-slate-400">
+                                    {new Date(attempt.submitted_at).toLocaleString("vi-VN")}
+                                  </span>
+                                  <span className="ml-auto text-[11px] font-bold">
+                                    {attempt.graded_at ? (
+                                      <span className="text-emerald-600">{attempt.score}/100</span>
+                                    ) : (
+                                      <span className="text-amber-600">Chưa chấm</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleInSet(setExpandedSubmissionIds, attempt.id)}
+                                  className="w-full text-left"
+                                >
+                                  <p className="text-xs text-slate-700 whitespace-pre-wrap font-sans">
+                                    {isContentExpanded || !isTruncatable
+                                      ? attempt.content
+                                      : `${attempt.content.slice(0, CONTENT_PREVIEW_LENGTH)}…`}
+                                  </p>
+                                  {isTruncatable && (
+                                    <span className="text-[11px] font-bold text-orange-600 hover:text-orange-700">
+                                      {isContentExpanded ? "Thu gọn" : "Xem toàn bộ bài viết"}
+                                    </span>
+                                  )}
+                                </button>
+                                <p className="text-xs text-slate-500">
+                                  <span className="font-bold">Nhận xét:</span>{" "}
+                                  {attempt.comment?.trim() ? attempt.comment : "Chưa có nhận xét."}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <button onClick={() => openGrade(g)} className="text-xs font-bold text-orange-600 hover:text-orange-700">
-                    {g.latest.graded_at ? "Sửa điểm" : "Chấm điểm"}
-                  </button>
-                </td>
-              </tr>
-            ))}
+                </React.Fragment>
+              );
+            })}
             {groups.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-slate-400 text-sm">Chưa có bài viết nào được nộp.</td>

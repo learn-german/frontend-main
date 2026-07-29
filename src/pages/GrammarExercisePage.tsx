@@ -53,6 +53,36 @@ const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
   fill_in_the_blank: "Điền từ thích hợp vào từng ô trống:",
 };
 
+/** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */
+const TextAnswerField: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}> = ({ value, onChange, placeholder }) => {
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  React.useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      rows={2}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.preventDefault();
+      }}
+      className="w-full resize-none overflow-hidden break-words px-2.5 py-2 text-xs leading-relaxed border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+      placeholder={placeholder}
+    />
+  );
+};
+
 const ExerciseCard: React.FC<{
   exercise: GrammarExercise;
   numberLabel: string;
@@ -126,13 +156,7 @@ const ExerciseCard: React.FC<{
           <p className="text-xs bg-red-50 text-red-700 rounded-lg px-2.5 py-2">
             <span className="font-bold text-red-400">{letter}</span> {exercise.promptText}
           </p>
-          <input
-            type="text"
-            value={textAnswer}
-            onChange={(e) => onTextAnswerChange(e.target.value)}
-            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-            placeholder="Nhập câu đúng..."
-          />
+          <TextAnswerField value={textAnswer} onChange={onTextAnswerChange} placeholder="Nhập câu đúng..." />
         </>
       )}
 
@@ -141,13 +165,7 @@ const ExerciseCard: React.FC<{
           <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
             <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
           </p>
-          <input
-            type="text"
-            value={textAnswer}
-            onChange={(e) => onTextAnswerChange(e.target.value)}
-            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-            placeholder="Nhập câu tiếng Đức..."
-          />
+          <TextAnswerField value={textAnswer} onChange={onTextAnswerChange} placeholder="Nhập câu tiếng Đức..." />
         </>
       )}
 
@@ -161,13 +179,7 @@ const ExerciseCard: React.FC<{
               Yêu cầu: {exercise.transformationHint}
             </span>
           )}
-          <input
-            type="text"
-            value={textAnswer}
-            onChange={(e) => onTextAnswerChange(e.target.value)}
-            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-            placeholder="Nhập câu sau khi biến đổi..."
-          />
+          <TextAnswerField value={textAnswer} onChange={onTextAnswerChange} placeholder="Nhập câu sau khi biến đổi..." />
         </>
       )}
 
@@ -176,13 +188,7 @@ const ExerciseCard: React.FC<{
           <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
             <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
           </p>
-          <input
-            type="text"
-            value={textAnswer}
-            onChange={(e) => onTextAnswerChange(e.target.value)}
-            className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-            placeholder="Viết câu hoàn chỉnh..."
-          />
+          <TextAnswerField value={textAnswer} onChange={onTextAnswerChange} placeholder="Viết câu hoàn chỉnh..." />
         </>
       )}
 

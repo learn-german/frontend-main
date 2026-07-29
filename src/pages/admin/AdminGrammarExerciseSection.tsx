@@ -1159,7 +1159,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                   <div className="flex-1">
                     <p className="font-display font-bold text-slate-900 text-sm">{group.lesson_title}</p>
                     <p className="text-xs text-slate-400">
-                      {group.exercises.length} bài tập
+                      {groupGrammarExercises(group.exercises).length} bài - {group.exercises.length} câu
                     </p>
                   </div>
                   <span
