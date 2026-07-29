@@ -433,7 +433,7 @@ const ExerciseEntryFields: React.FC<{
         <div>
           <label className={labelCls}>Câu tiếng Việt *</label>
           <textarea
-            rows={2}
+            rows={3}
             value={entry.prompt_text}
             onChange={(e) => onChange((prev) => ({ ...prev, prompt_text: e.target.value }))}
             className={inputCls + " resize-none"}
@@ -443,7 +443,7 @@ const ExerciseEntryFields: React.FC<{
         <div>
           <label className={labelCls}>Câu tiếng Đức *</label>
           <textarea
-            rows={2}
+            rows={3}
             value={entry.correct_answer}
             onChange={(e) => onChange((prev) => ({ ...prev, correct_answer: e.target.value }))}
             className={inputCls + " resize-none"}
@@ -455,9 +455,9 @@ const ExerciseEntryFields: React.FC<{
           <p className="text-[11px] text-slate-400 mb-1.5">Các câu tiếng Đức khác cũng được tính đúng (không phân biệt hoa thường, dấu câu).</p>
           <div className="space-y-2">
             {entry.acceptable_answers.map((ans, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="text"
+              <div key={i} className="flex items-start gap-2">
+                <textarea
+                  rows={3}
                   value={ans}
                   onChange={(e) =>
                     onChange((prev) => ({
@@ -465,7 +465,7 @@ const ExerciseEntryFields: React.FC<{
                       acceptable_answers: prev.acceptable_answers.map((a, j) => (j === i ? e.target.value : a)),
                     }))
                   }
-                  className={inputCls}
+                  className={inputCls + " resize-none"}
                   placeholder="Ich studiere Deutsch."
                 />
                 <button
