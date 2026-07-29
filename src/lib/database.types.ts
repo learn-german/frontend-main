@@ -51,6 +51,7 @@ export type Database = {
           hint: string | null
           id: string
           lesson_id: string
+          options: Json | null
           order_index: number
           prompt_text: string | null
           status: string
@@ -70,6 +71,7 @@ export type Database = {
           hint?: string | null
           id?: string
           lesson_id: string
+          options?: Json | null
           order_index?: number
           prompt_text?: string | null
           status?: string
@@ -89,6 +91,7 @@ export type Database = {
           hint?: string | null
           id?: string
           lesson_id?: string
+          options?: Json | null
           order_index?: number
           prompt_text?: string | null
           status?: string
@@ -624,6 +627,7 @@ export type Database = {
           hint: string | null
           id: string | null
           lesson_id: string | null
+          options: Json | null
           order_index: number | null
           prompt_text: string | null
           tokens: Json | null
