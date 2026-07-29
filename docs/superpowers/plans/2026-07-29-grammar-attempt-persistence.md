@@ -82,24 +82,24 @@ CREATE POLICY "grammar_attempts: admin all"
   WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 ```
 
-- [ ] **Step 2: Áp migration vào Supabase local**
+- [ ] **Step 2: Áp migration vào Supabase local — HOÃN, cần Docker**
 
-Run: `supabase db reset` (hoặc `supabase migration up` nếu đã có dữ liệu local muốn giữ)
+Run: `supabase db reset` (hoặc `supabase migration up` nếu muốn giữ dữ liệu local)
 Expected: migration chạy không lỗi, bảng `grammar_attempts` xuất hiện.
 
-Nếu Supabase local không chạy được trong môi trường này, dừng lại và báo cho người dùng — các Task 7-9 cần `database.types.ts` đã cập nhật thì `npm run lint` mới pass.
+**Tại thời điểm viết plan, Docker daemon không chạy nên bước này không thực hiện được.** Bỏ qua và ghi nhận; người dùng sẽ chạy sau khi bật Docker. Đây **không** phải blocker cho các task còn lại: `src/lib/supabase.ts` tạo client **không** gắn generic `Database`, và `src/lib/database.types.ts` không được import ở đâu trong `src/`, nên `supabase.from("grammar_attempts")` vẫn type-check được. Chỉ việc chạy thật trên browser là bị chặn.
 
-- [ ] **Step 3: Regenerate types**
+- [ ] **Step 3: Regenerate types — HOÃN, cần Docker**
 
 Run: `npm run gen:types`
 Expected: `src/lib/database.types.ts` có thêm entry `grammar_attempts`.
 
-Kiểm tra: `grep -c "grammar_attempts" src/lib/database.types.ts` trả về số > 0.
+Cùng lý do như Step 2. **Không** sửa tay `database.types.ts` để thay thế.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add supabase/migrations/20260729000004_grammar_attempts.sql src/lib/database.types.ts
+git add supabase/migrations/20260729000004_grammar_attempts.sql
 git commit -m "$(cat <<'EOF'
 feat(db): bảng grammar_attempts lưu snapshot bài tập ngữ pháp
 
@@ -1007,7 +1007,7 @@ export function useGrammarAttempt(lessonId: string): {
 - [ ] **Step 2: Type check**
 
 Run: `npm run lint`
-Expected: PASS. Nếu báo `grammar_attempts` không tồn tại trong type của `supabase.from(...)`, nghĩa là Task 1 Step 3 (`npm run gen:types`) chưa chạy — quay lại chạy nó, không sửa tay `database.types.ts`.
+Expected: PASS. Client Supabase trong repo không gắn generic `Database` nên `.from("grammar_attempts")` type-check được kể cả khi `database.types.ts` chưa regenerate — đó là lý do hook phải cast từng field như `useGrammarExercises` đang làm.
 
 - [ ] **Step 3: Commit**
 
