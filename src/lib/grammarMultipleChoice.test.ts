@@ -6,6 +6,7 @@ import {
   createEmptyChoiceForm,
   moveOption,
   normalizeOptions,
+  normalizeOptionsFromDb,
   optionLabel,
   parseCorrectIndex,
   removeOption,
@@ -99,4 +100,20 @@ test("buildMultipleChoicePayload trả options đã trim và correct_answer là 
 test("buildMultipleChoicePayload trả options null khi dữ liệu không hợp lệ", () => {
   assert.deepEqual(buildMultipleChoicePayload(form(["der"], 0)), { options: null, correct_answer: "0" });
   assert.deepEqual(buildMultipleChoicePayload(form(["der", " "], 0)), { options: null, correct_answer: "0" });
+});
+
+test("normalizeOptionsFromDb giữ nguyên mảng chuỗi hợp lệ", () => {
+  assert.deepEqual(normalizeOptionsFromDb(["der", "die", "das"]), ["der", "die", "das"]);
+});
+
+test("normalizeOptionsFromDb lọc bỏ phần tử không phải chuỗi thay vì crash", () => {
+  assert.deepEqual(normalizeOptionsFromDb(["der", 1, { a: 1 }, null, "die"]), ["der", "die"]);
+});
+
+test("normalizeOptionsFromDb trả undefined khi không phải mảng hoặc mảng rỗng sau khi lọc", () => {
+  assert.equal(normalizeOptionsFromDb(null), undefined);
+  assert.equal(normalizeOptionsFromDb(undefined), undefined);
+  assert.equal(normalizeOptionsFromDb("der"), undefined);
+  assert.equal(normalizeOptionsFromDb({ a: 1 }), undefined);
+  assert.equal(normalizeOptionsFromDb([1, 2, {}]), undefined);
 });

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import { GrammarExercise } from "../appTypes";
+import { normalizeOptionsFromDb } from "../grammarMultipleChoice";
 
 export function useGrammarExercises(lessonId: string) {
   const [exercises, setExercises] = useState<GrammarExercise[]>([]);
@@ -39,7 +40,7 @@ export function useGrammarExercises(lessonId: string) {
               classificationGroups: (e.classification_groups as string[] | null) ?? undefined,
               classificationItems: (e.classification_items as string[] | null) ?? undefined,
               wordBank: (e.word_bank as GrammarExercise["wordBank"] | null) ?? undefined,
-              options: (e.options as string[] | null) ?? undefined,
+              options: normalizeOptionsFromDb(e.options),
               explanation: (e.explanation as string | null) ?? "",
             })),
           );

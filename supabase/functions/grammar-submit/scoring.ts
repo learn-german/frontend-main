@@ -26,7 +26,7 @@ function normalizeBlank(s: string): string {
 
 function isChoiceCorrect(ex: ScorableGrammarExercise, rawAnswer: string): boolean {
   const options = Array.isArray(ex.options) ? ex.options : [];
-  const answer = (rawAnswer ?? "").trim();
+  const answer = String(rawAnswer ?? "").trim();
   const expected = (ex.correct_answer ?? "").trim();
   if (options.length === 0) return false;
   if (!/^\d+$/.test(answer) || !/^\d+$/.test(expected)) return false;

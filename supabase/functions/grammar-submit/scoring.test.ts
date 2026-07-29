@@ -144,6 +144,16 @@ test("multiple_choice: options null hoặc correct_answer hỏng đều sai, kh�
   assert.deepEqual(computeGrammarScore([choice({ correct_answer: "x" })], { c1: "1" }).choiceResults, { c1: false });
 });
 
+test("multiple_choice: giá trị answer không phải chuỗi (vd. number) bị tính sai, không throw", () => {
+  // body.answers không được validate ở index.ts — client có thể gửi number thay vì string.
+  // Ép kiểu qua đúng entry point (Record<string, string>) như request thật sự sẽ đi qua.
+  const answers = { c1: 2 } as unknown as Record<string, string>;
+  assert.doesNotThrow(() => computeGrammarScore([choice()], answers));
+  const r = computeGrammarScore([choice()], answers);
+  assert.equal(r.correct, 0);
+  assert.deepEqual(r.choiceResults, { c1: false });
+});
+
 test("multiple_choice: cộng dồn đúng khi trộn với dạng khác", () => {
   const r = computeGrammarScore(
     [choice({ id: "c1" }), choice({ id: "c2", correct_answer: "0" }), translation({ id: "t9" })],

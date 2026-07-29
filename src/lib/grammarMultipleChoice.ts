@@ -73,3 +73,14 @@ export function buildMultipleChoicePayload(form: ChoiceForm): {
 } {
   return { options: normalizeOptions(form.options), correct_answer: String(form.correctIndex) };
 }
+
+/**
+ * Chuẩn hóa `options` đọc từ DB: chỉ giữ lại các phần tử là chuỗi.
+ * Dữ liệu bất thường (không phải mảng, hoặc chứa phần tử không phải chuỗi)
+ * sẽ bị lọc thay vì làm crash trang thay vì throw.
+ */
+export function normalizeOptionsFromDb(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const strings = value.filter((option): option is string => typeof option === "string");
+  return strings.length > 0 ? strings : undefined;
+}
