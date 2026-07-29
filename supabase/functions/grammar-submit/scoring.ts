@@ -5,6 +5,7 @@ export interface ScorableGrammarExercise {
   acceptable_answers: string[] | null;
   classification_items: { item: string; group: string }[] | null;
   blanks: { acceptedAnswers: string[] }[] | null;
+  options: string[] | null;
 }
 
 export interface ScoreResult {
@@ -12,6 +13,7 @@ export interface ScoreResult {
   total: number;
   score: number;
   blankResults: Record<string, boolean[]>;
+  choiceResults: Record<string, boolean>;
 }
 
 function normalizeWord(s: string): string {
@@ -22,6 +24,18 @@ function normalizeBlank(s: string): string {
   return s.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+function isChoiceCorrect(ex: ScorableGrammarExercise, rawAnswer: string): boolean {
+  const options = Array.isArray(ex.options) ? ex.options : [];
+  const answer = String(rawAnswer ?? "").trim();
+  const expected = (ex.correct_answer ?? "").trim();
+  if (options.length === 0) return false;
+  if (!/^\d+$/.test(answer) || !/^\d+$/.test(expected)) return false;
+  const answerIndex = Number(answer);
+  const expectedIndex = Number(expected);
+  if (answerIndex >= options.length || expectedIndex >= options.length) return false;
+  return answerIndex === expectedIndex;
+}
+
 export function computeGrammarScore(
   exercises: ScorableGrammarExercise[],
   answers: Record<string, string>,
@@ -29,8 +43,17 @@ export function computeGrammarScore(
   let correct = 0;
   let total = 0;
   const blankResults: Record<string, boolean[]> = {};
+  const choiceResults: Record<string, boolean> = {};
 
   for (const ex of exercises) {
+    if (ex.type === "multiple_choice") {
+      const isCorrect = isChoiceCorrect(ex, answers[ex.id] ?? "");
+      choiceResults[ex.id] = isCorrect;
+      total += 1;
+      if (isCorrect) correct++;
+      continue;
+    }
+
     if (ex.type === "fill_in_the_blank") {
       const blanks = Array.isArray(ex.blanks) ? ex.blanks : [];
       let parsedAnswers: unknown = [];
@@ -88,5 +111,5 @@ export function computeGrammarScore(
   }
 
   const score = total > 0 ? Math.round((correct / total) * 100) : 0;
-  return { correct, total, score, blankResults };
+  return { correct, total, score, blankResults, choiceResults };
 }

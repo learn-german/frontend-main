@@ -31,6 +31,17 @@ import {
   type WordBank,
   type WordBankMode,
 } from "../../lib/grammarFillInBlank";
+import {
+  addOption,
+  buildMultipleChoicePayload,
+  createEmptyChoiceForm,
+  moveOption,
+  optionLabel,
+  parseCorrectIndex,
+  removeOption,
+  setOption,
+  validateChoiceForm,
+} from "../../lib/grammarMultipleChoice";
 
 interface GrammarExercise {
   id: string;
@@ -42,7 +53,8 @@ interface GrammarExercise {
     | "sentence_transformation"
     | "guided_sentence_writing"
     | "classification"
-    | "fill_in_the_blank";
+    | "fill_in_the_blank"
+    | "multiple_choice";
   group_id: string | null;
   status: "draft" | "published";
   prompt_text: string | null;
@@ -54,6 +66,7 @@ interface GrammarExercise {
   classification_items: { item: string; group: string }[] | null;
   blanks: BlankDefinition[] | null;
   word_bank: WordBank | null;
+  options: string[] | null;
   explanation: string;
   hint: string | null;
   order_index: number;
@@ -76,6 +89,7 @@ const TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   guided_sentence_writing: "Viết câu gợi ý",
   classification: "Phân loại",
   fill_in_the_blank: "Điền vào ô trống",
+  multiple_choice: "Trắc nghiệm",
 };
 
 const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
@@ -86,6 +100,7 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
   guided_sentence_writing: "bg-amber-50 text-amber-700",
   classification: "bg-teal-50 text-teal-700",
   fill_in_the_blank: "bg-orange-50 text-orange-700",
+  multiple_choice: "bg-indigo-50 text-indigo-700",
 };
 
 interface EditForm {
@@ -99,6 +114,8 @@ interface EditForm {
   classification_groups: string[];
   classification_items: { item: string; group: string }[];
   blanks: BlankDefinition[];
+  options: string[];
+  correct_option_index: number;
   explanation: string;
   order_index: number;
 }
@@ -122,6 +139,8 @@ const EMPTY_FORM: EditForm = {
   classification_groups: [],
   classification_items: [],
   blanks: [],
+  options: createEmptyChoiceForm().options,
+  correct_option_index: -1,
   explanation: "",
   order_index: 0,
 };
@@ -166,6 +185,9 @@ const validateForm = (f: EditForm): string | null => {
     if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
     return null;
   }
+  if (f.type === "multiple_choice") {
+    return validateChoiceForm(f.prompt_text, { options: f.options, correctIndex: f.correct_option_index });
+  }
   if (f.type === "fill_in_the_blank") {
     const blankCount = countBlankMarkers(f.prompt_text);
     if (blankCount < 1) return "Cần ít nhất 1 marker ___.";
@@ -188,28 +210,40 @@ const validateForm = (f: EditForm): string | null => {
   return null;
 };
 
-const buildPayload = (form: EditForm) => ({
-  type: form.type,
-  status: form.status,
-  prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
-  transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
-  correct_answer: form.type === "classification" || form.type === "fill_in_the_blank" ? null : form.correct_answer,
-  acceptable_answers:
-    form.type === "translation"
-      ? form.acceptable_answers.map((a) => a.trim()).filter(Boolean)
-      : null,
-  tokens:
-    form.type === "word_reorder"
-      ? form.tokens_input.split("/").map((t) => t.trim()).filter(Boolean)
-      : null,
-  classification_groups:
-    form.type === "classification" ? form.classification_groups.map((g) => g.trim()).filter(Boolean) : null,
-  classification_items:
-    form.type === "classification" ? form.classification_items.filter((it) => it.item.trim()) : null,
-  blanks: form.type === "fill_in_the_blank" ? normalizeBlankDefinitions(form.blanks) : null,
-  explanation: form.explanation,
-  order_index: form.order_index,
-});
+const buildPayload = (form: EditForm) => {
+  const choicePayload = buildMultipleChoicePayload({
+    options: form.options,
+    correctIndex: form.correct_option_index,
+  });
+  return {
+    type: form.type,
+    status: form.status,
+    prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
+    transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
+    correct_answer:
+      form.type === "classification" || form.type === "fill_in_the_blank"
+        ? null
+        : form.type === "multiple_choice"
+          ? choicePayload.correct_answer
+          : form.correct_answer,
+    acceptable_answers:
+      form.type === "translation"
+        ? form.acceptable_answers.map((a) => a.trim()).filter(Boolean)
+        : null,
+    tokens:
+      form.type === "word_reorder"
+        ? form.tokens_input.split("/").map((t) => t.trim()).filter(Boolean)
+        : null,
+    classification_groups:
+      form.type === "classification" ? form.classification_groups.map((g) => g.trim()).filter(Boolean) : null,
+    classification_items:
+      form.type === "classification" ? form.classification_items.filter((it) => it.item.trim()) : null,
+    blanks: form.type === "fill_in_the_blank" ? normalizeBlankDefinitions(form.blanks) : null,
+    options: form.type === "multiple_choice" ? choicePayload.options : null,
+    explanation: form.explanation,
+    order_index: form.order_index,
+  };
+};
 
 const addGroupToForm = (f: EditForm): EditForm => ({ ...f, classification_groups: [...f.classification_groups, ""] });
 
@@ -373,10 +407,58 @@ const ExerciseGroupList: React.FC<{
   );
 };
 
+const SortableOptionRow: React.FC<{
+  id: string;
+  index: number;
+  value: string;
+  checked: boolean;
+  onChangeValue: (value: string) => void;
+  onSelectCorrect: () => void;
+  onRemove: () => void;
+}> = ({ id, index, value, checked, onChangeValue, onSelectCorrect, onRemove }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-2 rounded-xl border border-slate-100 bg-white p-2 ${isDragging ? "z-10 opacity-60 shadow-lg" : ""}`}
+    >
+      <button type="button" className="cursor-grab p-1 text-slate-300 hover:text-slate-500" {...attributes} {...listeners} aria-label={`Kéo phương án ${optionLabel(index)}`}>
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="w-5 shrink-0 text-center text-xs font-display font-bold text-slate-400">{optionLabel(index)}</span>
+      <input
+        type="radio"
+        checked={checked}
+        onChange={onSelectCorrect}
+        className="h-4 w-4 accent-orange-500"
+        aria-label={`Đáp án đúng là phương án ${optionLabel(index)}`}
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(event) => onChangeValue(event.target.value)}
+        className={inputCls + " flex-1"}
+        placeholder={`Phương án ${optionLabel(index)}`}
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-400"
+        aria-label={`Xóa phương án ${optionLabel(index)}`}
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+};
+
 const ExerciseEntryFields: React.FC<{
   entry: EditForm;
   onChange: (updater: (prev: EditForm) => EditForm) => void;
-}> = ({ entry, onChange }) => (
+}> = ({ entry, onChange }) => {
+  const optionSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  return (
   <>
     {entry.type === "word_reorder" && (
       <>
@@ -628,6 +710,75 @@ const ExerciseEntryFields: React.FC<{
       </>
     )}
 
+    {entry.type === "multiple_choice" && (
+      <>
+        <div>
+          <label className={labelCls}>Nội dung câu hỏi *</label>
+          <textarea
+            rows={2}
+            value={entry.prompt_text}
+            onChange={(event) => onChange((prev) => ({ ...prev, prompt_text: event.target.value }))}
+            className={inputCls + " resize-none"}
+            placeholder="Das ist ___ Computer."
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Phương án * (chọn radio để đánh dấu đáp án đúng)</label>
+          <p className="mb-1.5 text-[11px] text-slate-400">Tối thiểu 2 phương án. Kéo để đổi thứ tự; nhãn A/B/C tự sinh theo vị trí.</p>
+          <DndContext
+            sensors={optionSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event: DragEndEvent) => {
+              const { active, over } = event;
+              if (!over || active.id === over.id) return;
+              onChange((prev) => {
+                const from = prev.options.findIndex((_, i) => `option-${i}` === active.id);
+                const to = prev.options.findIndex((_, i) => `option-${i}` === over.id);
+                const moved = moveOption({ options: prev.options, correctIndex: prev.correct_option_index }, from, to);
+                return { ...prev, options: moved.options, correct_option_index: moved.correctIndex };
+              });
+            }}
+          >
+            <SortableContext items={entry.options.map((_, i) => `option-${i}`)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {entry.options.map((option, index) => (
+                  <SortableOptionRow
+                    key={`option-${index}`}
+                    id={`option-${index}`}
+                    index={index}
+                    value={option}
+                    checked={entry.correct_option_index === index}
+                    onChangeValue={(value) => onChange((prev) => ({
+                      ...prev,
+                      options: setOption({ options: prev.options, correctIndex: prev.correct_option_index }, index, value).options,
+                    }))}
+                    onSelectCorrect={() => onChange((prev) => ({ ...prev, correct_option_index: index }))}
+                    onRemove={() => onChange((prev) => {
+                      const next = removeOption({ options: prev.options, correctIndex: prev.correct_option_index }, index);
+                      return { ...prev, options: next.options, correct_option_index: next.correctIndex };
+                    })}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+          <button
+            type="button"
+            onClick={() => onChange((prev) => ({
+              ...prev,
+              options: addOption({ options: prev.options, correctIndex: prev.correct_option_index }).options,
+            }))}
+            className="mt-2 flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700"
+          >
+            <Plus className="h-3.5 w-3.5" /> Thêm phương án
+          </button>
+          {entry.correct_option_index < 0 && (
+            <p className="mt-1.5 text-[11px] font-bold text-rose-500">Chưa chọn đáp án đúng.</p>
+          )}
+        </div>
+      </>
+    )}
+
     {entry.type === "classification" && (
       <>
         <div>
@@ -713,7 +864,8 @@ const ExerciseEntryFields: React.FC<{
       />
     </div>
   </>
-);
+  );
+};
 
 export const AdminGrammarExerciseSection: React.FC = () => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
@@ -814,6 +966,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         classification_groups: ex.classification_groups ?? [],
         classification_items: ex.classification_items ?? [],
         blanks: ex.blanks ?? [],
+        options: ex.options ?? [],
+        correct_option_index: parseCorrectIndex(ex.correct_answer, (ex.options ?? []).length),
         explanation: ex.explanation,
         order_index: ex.order_index,
       },
@@ -1520,6 +1674,22 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                         />
                       )}
                     </React.Fragment>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {previewTarget.type === "multiple_choice" && (
+              <div className="space-y-2">
+                <p className="text-sm text-slate-700">{previewTarget.prompt_text}</p>
+                <div className="space-y-1.5">
+                  {(previewTarget.options ?? []).map((option, index) => (
+                    <div key={index} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] font-bold">
+                        {optionLabel(index)}
+                      </span>
+                      <span>{option}</span>
+                    </div>
                   ))}
                 </div>
               </div>

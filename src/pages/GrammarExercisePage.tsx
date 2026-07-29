@@ -3,6 +3,7 @@ import { Loader2, ArrowRight, RotateCcw, ChevronDown, ChevronRight, CheckCircle2
 import { Button } from "../components/DesignSystem";
 import { ExercisePageHeader } from "../components/ExercisePageHeader";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
+import { MultipleChoiceOptions } from "../components/MultipleChoiceOptions";
 import { Lesson, GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
@@ -31,6 +32,7 @@ interface GrammarResult {
   passed: boolean;
   xp_earned: number;
   blankResults: Record<string, boolean[]>;
+  choiceResults: Record<string, boolean>;
 }
 
 const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
@@ -41,6 +43,7 @@ const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   guided_sentence_writing: "Viết câu gợi ý",
   classification: "Phân loại",
   fill_in_the_blank: "Điền vào ô trống",
+  multiple_choice: "Trắc nghiệm",
 };
 
 const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
@@ -51,6 +54,7 @@ const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
   guided_sentence_writing: "Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:",
   classification: "Phân loại các item sau vào đúng nhóm:",
   fill_in_the_blank: "Điền từ thích hợp vào từng ô trống:",
+  multiple_choice: "Chọn một đáp án đúng cho mỗi câu:",
 };
 
 /** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */
@@ -97,6 +101,9 @@ const ExerciseCard: React.FC<{
   onBlankFocus: (blankIndex: number) => void;
   onBlankAnswerChange: (blankIndex: number, value: string) => void;
   blankResults?: boolean[];
+  selectedChoice: number | undefined;
+  onSelectChoice: (index: number) => void;
+  choiceResult?: boolean;
 }> = ({
   exercise,
   numberLabel,
@@ -111,6 +118,9 @@ const ExerciseCard: React.FC<{
   onBlankFocus,
   onBlankAnswerChange,
   blankResults,
+  selectedChoice,
+  onSelectChoice,
+  choiceResult,
 }) => {
   const letter = numberLabel;
 
@@ -242,6 +252,21 @@ const ExerciseCard: React.FC<{
           ))}
         </div>
       )}
+
+      {exercise.type === "multiple_choice" && (
+        <>
+          <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
+            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+          </p>
+          <MultipleChoiceOptions
+            options={exercise.options ?? []}
+            selectedIndex={selectedChoice}
+            onSelect={onSelectChoice}
+            exerciseId={exercise.id}
+            result={choiceResult}
+          />
+        </>
+      )}
     </div>
   );
 };
@@ -264,6 +289,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const [blankAnswersByExercise, setBlankAnswersByExercise] = useState<Record<string, string[]>>({});
   const [blankAssignments, setBlankAssignments] = useState<BlankAssignments>({});
   const [focusedBlank, setFocusedBlank] = useState<BlankFocus | null>(null);
+  const [choiceByExercise, setChoiceByExercise] = useState<Record<string, number>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -294,6 +320,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
       const blankAnswers = blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill("");
       if (blankCount === 0 || blankAnswers.some((answer) => !answer.trim())) return "";
       return JSON.stringify(blankAnswers);
+    }
+    if (exercise.type === "multiple_choice") {
+      const selected = choiceByExercise[exercise.id];
+      return selected === undefined ? "" : String(selected);
     }
     return (textAnswerByExercise[exercise.id] ?? "").trim();
   };
@@ -333,6 +363,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setBlankAnswersByExercise({});
     setBlankAssignments({});
     setFocusedBlank(null);
+    setChoiceByExercise({});
     setResult(null);
     setSubmitError(null);
   };
@@ -443,6 +474,17 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                             )}
                           </React.Fragment>
                         ))}
+                      </div>
+                    )}
+                    {ex.type === "multiple_choice" && (
+                      <div className="mb-2">
+                        <MultipleChoiceOptions
+                          options={ex.options ?? []}
+                          selectedIndex={choiceByExercise[ex.id]}
+                          onSelect={() => {}}
+                          exerciseId={ex.id}
+                          result={result.choiceResults?.[ex.id]}
+                        />
                       </div>
                     )}
                     <p className="text-slate-500 text-[11px] leading-relaxed">
@@ -590,6 +632,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                           setBlankAnswersByExercise(next.answers);
                           setBlankAssignments(next.assignments);
                         }}
+                        selectedChoice={choiceByExercise[exercise.id]}
+                        onSelectChoice={(index) =>
+                          setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: index }))
+                        }
+                        choiceResult={result?.choiceResults?.[exercise.id]}
                       />
                     ))}
                   </div>

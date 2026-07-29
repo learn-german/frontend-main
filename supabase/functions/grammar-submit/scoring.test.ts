@@ -9,6 +9,7 @@ const translation = (over: Partial<ScorableGrammarExercise> = {}): ScorableGramm
   acceptable_answers: null,
   classification_items: null,
   blanks: null,
+  options: null,
   ...over,
 });
 
@@ -42,12 +43,13 @@ const fill = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExerc
   acceptable_answers: null,
   classification_items: null,
   blanks: [{ acceptedAnswers: ["lerne"] }],
+  options: null,
   ...over,
 });
 
 test("fill: accepts a configured answer independent of a word bank", () => {
   const r = computeGrammarScore([fill()], { f1: JSON.stringify(["LERNE"]) });
-  assert.deepEqual(r, { correct: 1, total: 1, score: 100, blankResults: { f1: [true] } });
+  assert.deepEqual(r, { correct: 1, total: 1, score: 100, blankResults: { f1: [true] }, choiceResults: {} });
 });
 
 test("fill: accepts alternatives and collapses whitespace", () => {
@@ -71,7 +73,7 @@ test("fill: grades every blank independently", () => {
     ],
   });
   const r = computeGrammarScore([ex], { f1: JSON.stringify(["das", "die", "teuer"]) });
-  assert.deepEqual(r, { correct: 2, total: 3, score: 67, blankResults: { f1: [true, false, true] } });
+  assert.deepEqual(r, { correct: 2, total: 3, score: 67, blankResults: { f1: [true, false, true] }, choiceResults: {} });
 });
 
 test("fill: missing entries and invalid JSON are wrong without crashing", () => {
@@ -94,4 +96,71 @@ test("fill: malformed blanks are ignored defensively", () => {
     assert.equal(r.correct, 0);
     assert.deepEqual(r.blankResults.f1, blanks && blanks.length > 0 ? [false] : []);
   }
+});
+
+const choice = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
+  id: "c1",
+  type: "multiple_choice",
+  correct_answer: "1",
+  acceptable_answers: null,
+  classification_items: null,
+  blanks: null,
+  options: ["der", "die", "das"],
+  ...over,
+});
+
+test("multiple_choice: chọn đúng index được tính điểm", () => {
+  const r = computeGrammarScore([choice()], { c1: "1" });
+  assert.equal(r.correct, 1);
+  assert.equal(r.total, 1);
+  assert.deepEqual(r.choiceResults, { c1: true });
+});
+
+test("multiple_choice: chọn sai index không được điểm", () => {
+  const r = computeGrammarScore([choice()], { c1: "0" });
+  assert.equal(r.correct, 0);
+  assert.equal(r.total, 1);
+  assert.deepEqual(r.choiceResults, { c1: false });
+});
+
+test("multiple_choice: đáp án rỗng, chữ, số âm hoặc ngoài biên đều sai", () => {
+  for (const answer of ["", "abc", "-1", "3", "1.0", " "]) {
+    const r = computeGrammarScore([choice()], { c1: answer });
+    assert.equal(r.correct, 0, `answer=${answer}`);
+    assert.deepEqual(r.choiceResults, { c1: false }, `answer=${answer}`);
+  }
+});
+
+test("multiple_choice: thiếu đáp án trong payload vẫn tính total", () => {
+  const r = computeGrammarScore([choice()], {});
+  assert.equal(r.correct, 0);
+  assert.equal(r.total, 1);
+  assert.deepEqual(r.choiceResults, { c1: false });
+});
+
+test("multiple_choice: options null hoặc correct_answer hỏng đều sai, không crash", () => {
+  assert.deepEqual(computeGrammarScore([choice({ options: null })], { c1: "1" }).choiceResults, { c1: false });
+  assert.deepEqual(computeGrammarScore([choice({ correct_answer: null })], { c1: "1" }).choiceResults, { c1: false });
+  assert.deepEqual(computeGrammarScore([choice({ correct_answer: "x" })], { c1: "1" }).choiceResults, { c1: false });
+});
+
+test("multiple_choice: giá trị answer không phải chuỗi (vd. number) bị tính sai, không throw", () => {
+  // body.answers không được validate ở index.ts — client có thể gửi number thay vì string.
+  // Ép kiểu qua đúng entry point (Record<string, string>) như request thật sự sẽ đi qua.
+  const answers = { c1: 2 } as unknown as Record<string, string>;
+  assert.doesNotThrow(() => computeGrammarScore([choice()], answers));
+  const r = computeGrammarScore([choice()], answers);
+  assert.equal(r.correct, 0);
+  assert.deepEqual(r.choiceResults, { c1: false });
+});
+
+test("multiple_choice: cộng dồn đúng khi trộn với dạng khác", () => {
+  const r = computeGrammarScore(
+    [choice({ id: "c1" }), choice({ id: "c2", correct_answer: "0" }), translation({ id: "t9" })],
+    { c1: "1", c2: "2", t9: "Ich lerne Deutsch" },
+  );
+  assert.equal(r.total, 3);
+  assert.equal(r.correct, 2);
+  assert.equal(r.score, 67);
+  assert.deepEqual(r.choiceResults, { c1: true, c2: false });
 });
