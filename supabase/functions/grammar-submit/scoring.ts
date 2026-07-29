@@ -17,6 +17,36 @@ export interface ScoreResult {
   exerciseResults: Record<string, boolean>;
 }
 
+// Generous cap: the longest realistic answer is a fill_in_the_blank JSON array
+// of several German words/phrases (e.g. `["...", "...", "..."]`), which comes
+// nowhere near this. Anything past it is not a legitimate answer being
+// truncated — it's abuse (a learner POSTing megabytes of garbage under their
+// own row) being contained.
+const MAX_ANSWER_LENGTH = 2000;
+
+/**
+ * Projects a caller-supplied answers payload down to exactly the exercises
+ * that were actually loaded from the database for this lesson, coercing each
+ * value to a string and capping its length. This must run before the answers
+ * are used for scoring AND before they are persisted, so the stored snapshot
+ * is exactly the set the hydrate path iterates — no unknown exercise ids, no
+ * non-string values reaching normalizeWord/JSON.parse, no unbounded payloads
+ * landing in the grammar_attempts row.
+ */
+export function projectAnswers(
+  exercises: { id: string }[],
+  rawAnswers: Record<string, unknown> | null | undefined,
+): Record<string, string> {
+  const source = rawAnswers ?? {};
+  const projected: Record<string, string> = {};
+  for (const ex of exercises) {
+    const raw = source[ex.id];
+    const value = typeof raw === "string" ? raw : "";
+    projected[ex.id] = value.slice(0, MAX_ANSWER_LENGTH);
+  }
+  return projected;
+}
+
 function normalizeWord(s: string): string {
   return s.toLowerCase().replace(/[.,!?]/g, "").trim();
 }

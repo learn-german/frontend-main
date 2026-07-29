@@ -52,6 +52,13 @@ export function useGrammarAttempt(lessonId: string): {
             : null,
         );
         setLoading(false);
+      }, () => {
+        // supabase-js resolves rather than rejects on HTTP errors, but guard
+        // against a thrown error inside the handler leaving loading stuck true.
+        // (The query builder's thenable isn't a real Promise, so it exposes no
+        // .catch — the onRejected argument of .then is the only hook available.)
+        setAttempt(null);
+        setLoading(false);
       });
   }, [lessonId]);
 

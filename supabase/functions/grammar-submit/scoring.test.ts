@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { computeGrammarScore, type ScorableGrammarExercise } from "./scoring.ts";
+import { computeGrammarScore, projectAnswers, type ScorableGrammarExercise } from "./scoring.ts";
 
 const translation = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
   id: "t1",
@@ -256,4 +256,30 @@ test("exerciseResults: multiple_choice khớp choiceResults", () => {
 test("exerciseResults: có key cho mọi bài được chấm", () => {
   const r = computeGrammarScore([translation(), reorder(), classify()], {});
   assert.deepEqual(Object.keys(r.exerciseResults).sort(), ["c1", "t1", "w1"]);
+});
+
+test("projectAnswers: chỉ giữ lại các exercise id thực sự tồn tại", () => {
+  const exercises = [{ id: "t1" }, { id: "w1" }];
+  const projected = projectAnswers(exercises, { t1: "Ich lerne Deutsch", unknown_id: "hack" });
+  assert.deepEqual(projected, { t1: "Ich lerne Deutsch", w1: "" });
+});
+
+test("projectAnswers: ép giá trị không phải chuỗi thành chuỗi rỗng thay vì throw", () => {
+  const exercises = [{ id: "t1" }];
+  const rawAnswers = { t1: 12345 } as unknown as Record<string, unknown>;
+  assert.doesNotThrow(() => projectAnswers(exercises, rawAnswers));
+  assert.deepEqual(projectAnswers(exercises, rawAnswers), { t1: "" });
+});
+
+test("projectAnswers: cắt bớt câu trả lời dài quá mức thay vì lưu nguyên", () => {
+  const exercises = [{ id: "t1" }];
+  const huge = "a".repeat(5000);
+  const projected = projectAnswers(exercises, { t1: huge });
+  assert.equal(projected.t1.length, 2000);
+});
+
+test("projectAnswers: answers null/undefined không throw, trả về rỗng cho mọi exercise", () => {
+  const exercises = [{ id: "t1" }, { id: "c1" }];
+  assert.deepEqual(projectAnswers(exercises, null), { t1: "", c1: "" });
+  assert.deepEqual(projectAnswers(exercises, undefined), { t1: "", c1: "" });
 });

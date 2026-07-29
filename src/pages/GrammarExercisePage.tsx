@@ -322,6 +322,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);
 
+  // Single source of truth for the results card's submitted-answer echo, for
+  // both the live-submit path and the post-refresh hydrate path. Keyed by
+  // exercise id, wire-format strings exactly as sent to / read from the server.
+  const [submittedAnswerSnapshot, setSubmittedAnswerSnapshot] = useState<Record<string, string>>({});
+
   // Set when the learner hits "Làm lại": keeps the hydrate effect from pouring
   // the saved attempt back into the form they just cleared.
   const [retrying, setRetrying] = useState(false);
@@ -360,6 +365,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setBlankAnswersByExercise(blankAnswers);
     setItemGroupsByExercise(itemGroups);
     setChoiceByExercise(choices);
+    setSubmittedAnswerSnapshot(attempt.answers ?? {});
   }, [attempt, retrying, exercises]);
 
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
@@ -395,6 +401,15 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const getAnswerStringFor = (exercise: GrammarExercise): string =>
     serializeAnswer(exercise, getParsedAnswerFor(exercise));
 
+  /** Text-typed submitted answer for the results card, read from the one
+   * snapshot shared by the live-submit and hydrate-after-refresh paths. */
+  const getSubmittedTextFor = (exercise: GrammarExercise): string => {
+    const raw = submittedAnswerSnapshot[exercise.id];
+    if (raw === undefined) return "";
+    const parsed = parseAnswer(exercise, raw);
+    return parsed.kind === "text" ? parsed.value : "";
+  };
+
   const allAnswered = exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
 
   const collectAllAnswers = (): Record<string, string> =>
@@ -419,7 +434,11 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
     const res = data as GrammarResult;
     setResult(res);
-    onQuizFinished(res.score, res.xp_earned);
+    setSubmittedAnswerSnapshot(finalAnswers);
+    // Report the best score, not the latest one: local progress (and the
+    // Roadmap's completedLessons derivation) must not regress when a learner
+    // who already passed retries and scores lower this time.
+    onQuizFinished(res.best_score, res.xp_earned);
   };
 
   const handleRetry = () => {
@@ -542,7 +561,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                       || ex.type === "sentence_transformation"
                       || ex.type === "guided_sentence_writing") && (
                       <SubmittedAnswer
-                        value={textAnswerByExercise[ex.id] ?? ""}
+                        value={getSubmittedTextFor(ex)}
                         correct={result.exerciseResults?.[ex.id]}
                       />
                     )}
@@ -607,7 +626,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
           <Button variant="secondary" className="flex-1" onClick={handleRetry}>
             <RotateCcw className="w-4 h-4 mr-2" /> Làm lại bài Test
           </Button>
-          {passed ? (
+          {result.best_score >= 80 ? (
             <Button variant="primary" className="flex-1" onClick={onNextLesson}>
               Học bài tiếp theo <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

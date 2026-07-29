@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { computeGrammarScore } from "./scoring.ts";
+import { computeGrammarScore, projectAnswers } from "./scoring.ts";
 import { computeAttemptUpdate } from "./attemptUpdate.ts";
 
 const corsHeaders = {
@@ -27,9 +27,11 @@ serve(async (req) => {
 
     const body = await req.json();
     const lesson_id: string = body.lesson_id;
-    const answers: Record<string, string> = body.answers;
+    // Not yet validated against the loaded exercises — projectAnswers() below
+    // does that once we know which exercise ids are legitimate for this lesson.
+    const rawAnswers: Record<string, unknown> | undefined = body.answers;
 
-    if (!lesson_id || !answers) {
+    if (!lesson_id || !rawAnswers) {
       return new Response(JSON.stringify({ error: "lesson_id and answers required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -63,6 +65,13 @@ serve(async (req) => {
       });
     }
 
+    // Project down to exercise ids that actually exist for this lesson, coerce
+    // to strings, and cap length, BEFORE scoring or persisting. This keeps a
+    // malformed/oversized/unknown-id payload out of both the grader and the
+    // stored row, and guarantees the persisted snapshot is exactly the set the
+    // hydrate path (useGrammarAttempt) iterates.
+    const answers = projectAnswers(exercises, rawAnswers);
+
     const { total, score, blankResults, choiceResults, exerciseResults } = computeGrammarScore(
       exercises,
       answers,
@@ -78,7 +87,18 @@ serve(async (req) => {
 
     const update = computeAttemptUpdate(existingAttempt, score, XP_REWARD, PASS_THRESHOLD);
 
-    await supabase.from("grammar_attempts").upsert(
+    // Award XP BEFORE persisting best_score. best_score is exactly the flag
+    // that suppresses future XP awards (reachedPassNow checks previousBest
+    // against the pass threshold in computeAttemptUpdate). If the process died
+    // between these two writes with the order reversed, the learner would
+    // become permanently ineligible for XP they never actually received. A
+    // duplicate award on a retried request is a strictly better failure mode
+    // than a silent permanent forfeiture — do not "tidy" this back.
+    if (update.xp_earned > 0) {
+      await supabase.rpc("increment_xp", { p_user_id: user.id, p_amount: update.xp_earned });
+    }
+
+    const { error: attemptError } = await supabase.from("grammar_attempts").upsert(
       {
         lesson_id,
         user_id: user.id,
@@ -95,14 +115,21 @@ serve(async (req) => {
       { onConflict: "lesson_id,user_id" },
     );
 
+    if (attemptError) {
+      // The whole point of this table is to survive a refresh. If we can't
+      // persist it, we must not report success — the client would show a
+      // result card that silently disappears on the next load, exactly the
+      // bug this table exists to fix.
+      return new Response(JSON.stringify({ error: "Failed to save attempt" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     await supabase.from("lesson_progress").upsert(
       { user_id: user.id, lesson_id, category: "nguphap", quiz_score: update.best_score },
       { onConflict: "user_id,lesson_id,category" },
     );
-
-    if (update.xp_earned > 0) {
-      await supabase.rpc("increment_xp", { p_user_id: user.id, p_amount: update.xp_earned });
-    }
 
     return new Response(
       JSON.stringify({
