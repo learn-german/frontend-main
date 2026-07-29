@@ -65,6 +65,15 @@ test("fill_in_the_blank: JSON hỏng parse ra mảng rỗng đúng số blank", 
   assert.deepEqual(parseAnswer(ex, JSON.stringify([1, 2])), { kind: "blanks", values: ["", ""] });
 });
 
+test("fill_in_the_blank: mảng lệch số lượng blank parse ra mảng rỗng đúng số blank", () => {
+  const ex = base({ type: "fill_in_the_blank", promptText: "Das ist ___ Tisch und ___ Lampe." });
+  assert.deepEqual(parseAnswer(ex, JSON.stringify(["ein"])), { kind: "blanks", values: ["", ""] });
+  assert.deepEqual(parseAnswer(ex, JSON.stringify(["ein", "eine", "extra"])), {
+    kind: "blanks",
+    values: ["", ""],
+  });
+});
+
 test("classification: round-trip cặp item:group", () => {
   const ex = base({
     type: "classification",

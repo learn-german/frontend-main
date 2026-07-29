@@ -58,7 +58,11 @@ export function parseAnswer(exercise: GrammarExercise, raw: string): ParsedAnswe
     } catch {
       return fallback;
     }
-    if (!Array.isArray(parsed) || !parsed.every((value) => typeof value === "string")) {
+    if (
+      !Array.isArray(parsed)
+      || parsed.length !== blankCount
+      || !parsed.every((value) => typeof value === "string")
+    ) {
       return fallback;
     }
     return { kind: "blanks", values: parsed as string[] };
