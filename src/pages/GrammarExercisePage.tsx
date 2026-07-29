@@ -17,6 +17,7 @@ import {
   type BlankFocus,
 } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
+import { serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
 
 interface GrammarExercisePageProps {
   lesson: Lesson;
@@ -304,29 +305,29 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     });
   };
 
-  const getAnswerStringFor = (exercise: GrammarExercise): string => {
+  const getParsedAnswerFor = (exercise: GrammarExercise): ParsedAnswer => {
     if (exercise.type === "word_reorder") {
       const tokens = selectedTokensByExercise[exercise.id] ?? [];
-      return tokens.map((t) => t.split(":").slice(1).join(":")).join(" ");
+      return { kind: "text", value: tokens.map((t) => t.split(":").slice(1).join(":")).join(" ") };
     }
     if (exercise.type === "classification") {
-      const items = exercise.classificationItems ?? [];
-      const groups = itemGroupsByExercise[exercise.id] ?? {};
-      if (items.length === 0 || items.some((item) => !groups[item])) return "";
-      return items.map((item) => `${item}:${groups[item]}`).join("|");
+      return { kind: "groups", values: itemGroupsByExercise[exercise.id] ?? {} };
     }
     if (exercise.type === "fill_in_the_blank") {
       const blankCount = countBlankMarkers(exercise.promptText ?? "");
-      const blankAnswers = blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill("");
-      if (blankCount === 0 || blankAnswers.some((answer) => !answer.trim())) return "";
-      return JSON.stringify(blankAnswers);
+      return {
+        kind: "blanks",
+        values: blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill(""),
+      };
     }
     if (exercise.type === "multiple_choice") {
-      const selected = choiceByExercise[exercise.id];
-      return selected === undefined ? "" : String(selected);
+      return { kind: "choice", index: choiceByExercise[exercise.id] };
     }
-    return (textAnswerByExercise[exercise.id] ?? "").trim();
+    return { kind: "text", value: textAnswerByExercise[exercise.id] ?? "" };
   };
+
+  const getAnswerStringFor = (exercise: GrammarExercise): string =>
+    serializeAnswer(exercise, getParsedAnswerFor(exercise));
 
   const allAnswered = exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
 
