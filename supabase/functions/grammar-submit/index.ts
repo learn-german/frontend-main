@@ -51,7 +51,7 @@ serve(async (req) => {
 
     const { data: exercises, error: exErr } = await supabase
       .from("grammar_exercises")
-      .select("id, type, correct_answer, acceptable_answers, classification_items, blanks")
+      .select("id, type, correct_answer, acceptable_answers, classification_items, blanks, options")
       .eq("lesson_id", lesson_id)
       .eq("status", "published");
 
@@ -62,7 +62,7 @@ serve(async (req) => {
       });
     }
 
-    const { total, score, blankResults } = computeGrammarScore(exercises, answers);
+    const { total, score, blankResults, choiceResults } = computeGrammarScore(exercises, answers);
     const passed = score >= PASS_THRESHOLD;
 
     const { data: existing } = await supabase
@@ -86,7 +86,7 @@ serve(async (req) => {
     );
 
     return new Response(
-      JSON.stringify({ score, total, passed, xp_earned, blankResults }),
+      JSON.stringify({ score, total, passed, xp_earned, blankResults, choiceResults }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (_err) {
