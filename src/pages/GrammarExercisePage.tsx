@@ -17,7 +17,8 @@ import {
   type BlankFocus,
 } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
-import { serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
+import { emptyAnswer, parseAnswer, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
+import { useGrammarAttempt } from "../lib/hooks/useGrammarAttempt";
 
 interface GrammarExercisePageProps {
   lesson: Lesson;
@@ -32,8 +33,11 @@ interface GrammarResult {
   total: number;
   passed: boolean;
   xp_earned: number;
+  best_score: number;
+  attempt_count: number;
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
+  exerciseResults: Record<string, boolean>;
 }
 
 const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
@@ -280,6 +284,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   onBackToLesson,
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(lesson.id);
+  const { attempt, loading: attemptLoading } = useGrammarAttempt(lesson.id);
 
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
@@ -295,6 +300,46 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);
+
+  // Set when the learner hits "Làm lại": keeps the hydrate effect from pouring
+  // the saved attempt back into the form they just cleared.
+  const [retrying, setRetrying] = useState(false);
+
+  React.useEffect(() => {
+    if (!attempt || retrying || exercises.length === 0) return;
+
+    setResult({
+      score: attempt.score,
+      total: attempt.total,
+      passed: attempt.score >= 80,
+      xp_earned: 0,
+      best_score: attempt.bestScore,
+      attempt_count: attempt.attemptCount,
+      blankResults: attempt.blankResults,
+      choiceResults: attempt.choiceResults,
+      exerciseResults: attempt.exerciseResults,
+    });
+
+    const textAnswers: Record<string, string> = {};
+    const blankAnswers: Record<string, string[]> = {};
+    const itemGroups: Record<string, Record<string, string>> = {};
+    const choices: Record<string, number> = {};
+
+    for (const exercise of exercises) {
+      const raw = attempt.answers[exercise.id];
+      const parsed: ParsedAnswer =
+        raw === undefined ? emptyAnswer(exercise) : parseAnswer(exercise, raw);
+      if (parsed.kind === "text") textAnswers[exercise.id] = parsed.value;
+      else if (parsed.kind === "blanks") blankAnswers[exercise.id] = parsed.values;
+      else if (parsed.kind === "groups") itemGroups[exercise.id] = parsed.values;
+      else if (parsed.index !== undefined) choices[exercise.id] = parsed.index;
+    }
+
+    setTextAnswerByExercise(textAnswers);
+    setBlankAnswersByExercise(blankAnswers);
+    setItemGroupsByExercise(itemGroups);
+    setChoiceByExercise(choices);
+  }, [attempt, retrying, exercises]);
 
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
     const key = `${tokenIdx}:${token}`;
@@ -353,6 +398,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
     const res = data as GrammarResult;
     setResult(res);
+    setRetrying(false);
     onQuizFinished(res.score, res.xp_earned);
   };
 
@@ -367,9 +413,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setChoiceByExercise({});
     setResult(null);
     setSubmitError(null);
+    setRetrying(true);
   };
 
-  if (exercisesLoading) {
+  if (exercisesLoading || attemptLoading) {
     return (
       <div className="max-w-5xl mx-auto space-y-8">
         <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
@@ -432,6 +479,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             </span>
             <span className="text-sm font-bold text-slate-500">({correctCount}/{total} câu)</span>
           </div>
+          <p className="text-[11px] text-slate-500 mt-1.5">
+            Điểm cao nhất: <b className="text-slate-700">{result.best_score}%</b> · Đã làm{" "}
+            <b className="text-slate-700">{result.attempt_count}</b> lần
+          </p>
           {xp_earned > 0 && (
             <span className="inline-block text-[10px] font-display font-bold px-2.5 py-0.5 rounded-full mt-2.5 uppercase bg-green-50 text-green-700">
               +{xp_earned} XP Tích lũy
