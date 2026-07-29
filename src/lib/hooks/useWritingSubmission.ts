@@ -51,8 +51,25 @@ export function useWritingSubmission(lessonId: string, userId: string | null) {
 
   useEffect(() => { fetchAttempts(); }, [fetchAttempts]);
 
+  // attempts is newest-first, so attempts[0] is the one a resubmit overwrites.
+  const pendingAttempt = attempts[0]?.gradedAt === null ? attempts[0] : null;
+
   const submit = async (content: string): Promise<{ error: string | null }> => {
     if (!userId) return { error: "Chưa đăng nhập." };
+
+    // Resubmitting over an ungraded attempt overwrites it rather than burning
+    // another of the 6 slots — the admin has nothing to lose there yet.
+    if (pendingAttempt) {
+      const now = new Date().toISOString();
+      const { error: updateErr } = await supabase
+        .from("writing_submissions")
+        .update({ content, submitted_at: now, updated_at: now })
+        .eq("id", pendingAttempt.id);
+      if (updateErr) return { error: updateErr.message };
+      fetchAttempts();
+      return { error: null };
+    }
+
     if (attempts.length >= MAX_WRITING_ATTEMPTS) {
       return { error: "Bạn đã dùng hết 6 lần nộp cho bài viết này." };
     }
@@ -78,7 +95,8 @@ export function useWritingSubmission(lessonId: string, userId: string | null) {
   };
 
   const attemptCount = attempts.length;
-  const canSubmit = attemptCount < MAX_WRITING_ATTEMPTS;
+  // Overwriting a pending attempt stays allowed even at the cap: it consumes no slot.
+  const canSubmit = attemptCount < MAX_WRITING_ATTEMPTS || pendingAttempt !== null;
 
-  return { attempts, attemptCount, canSubmit, loading, error, submit };
+  return { attempts, attemptCount, canSubmit, hasPendingAttempt: pendingAttempt !== null, loading, error, submit };
 }

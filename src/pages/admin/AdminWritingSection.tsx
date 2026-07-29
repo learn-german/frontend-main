@@ -134,19 +134,26 @@ export const AdminWritingSection: React.FC = () => {
           <tbody className="divide-y divide-slate-100">
             {groups.map((g) => {
               const isExpanded = expandedKeys.has(g.key);
+              const isUngraded = !g.latest.graded_at;
               return (
                 <React.Fragment key={g.key}>
                   <tr
                     className="hover:bg-slate-50/50 cursor-pointer"
-                    onClick={() => toggleInSet(setExpandedKeys, g.key)}
+                    // An ungraded row is work waiting to be done: clicking it goes
+                    // straight to grading. Graded rows expand the attempt history.
+                    onClick={() => (isUngraded ? openGrade(g) : toggleInSet(setExpandedKeys, g.key))}
                   >
                     <td className="px-4 py-2.5 text-slate-700">
                       <span className="flex items-center gap-1.5">
-                        {isExpanded ? (
-                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        ) : (
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        )}
+                        {/* Its own control so the history stays reachable on ungraded rows too. */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleInSet(setExpandedKeys, g.key); }}
+                          className="text-slate-400 hover:text-slate-600 shrink-0"
+                          aria-label={isExpanded ? "Ẩn lịch sử nộp bài" : "Xem lịch sử nộp bài"}
+                        >
+                          {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        </button>
                         {g.latest.profiles?.full_name || g.latest.profiles?.email || g.latest.user_id}
                       </span>
                     </td>
