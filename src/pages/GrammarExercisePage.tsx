@@ -398,7 +398,6 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
     const res = data as GrammarResult;
     setResult(res);
-    setRetrying(false);
     onQuizFinished(res.score, res.xp_earned);
   };
 
@@ -416,7 +415,12 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setRetrying(true);
   };
 
-  if (exercisesLoading || attemptLoading) {
+  // A saved attempt exists and is about to be poured into `result` by the hydrate
+  // effect above, but that effect only runs after this render commits — without
+  // this, the blank form paints for one frame before the results card appears.
+  const awaitingHydration = attempt !== null && !retrying && result === null;
+
+  if (exercisesLoading || attemptLoading || awaitingHydration) {
     return (
       <div className="max-w-5xl mx-auto space-y-8">
         <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
