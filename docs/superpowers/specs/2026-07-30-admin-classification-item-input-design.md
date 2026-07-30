@@ -135,9 +135,9 @@ hướng xử lý, chốt khi viết spec Phase 2:
 
 ## Định nghĩa hoàn thành
 
-- [ ] Ô nhập nội dung item hiện đúng chiều rộng, gõ thấy chữ.
-- [ ] Dropdown chọn nhóm giữ đúng 112px.
-- [ ] Mọi chỗ khác dùng `inputCls` không đổi giao diện.
-- [ ] Bốn nút khối phân loại có `type="button"`.
-- [ ] Test Playwright pass.
-- [ ] `npm run lint` sạch.
+- [x] Ô nhập nội dung item hiện đúng chiều rộng, gõ thấy chữ.
+- [x] Dropdown chọn nhóm giữ đúng 112px.
+- [x] Mọi chỗ khác dùng `inputCls` không đổi giao diện.
+- [x] Bốn nút khối phân loại có `type="button"`.
+- [x] Test Playwright pass.
+- [x] `npm run lint` sạch.
