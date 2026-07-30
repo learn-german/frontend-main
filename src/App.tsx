@@ -358,6 +358,7 @@ export default function App() {
                   stats={stats}
                   userId={user.id}
                   initialTab={initialLessonTab}
+                  onTabChange={setInitialLessonTab}
                   onBack={() => handleNavigate("roadmap")}
                   onMarkComplete={handleMarkComplete}
                   onStartQuiz={(lessonId, category = "nguphap") => {

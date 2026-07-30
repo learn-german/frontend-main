@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -27,6 +27,7 @@ interface LessonDetailPageProps {
   onMarkComplete: (lessonId: string) => void;
   onStartQuiz: (lessonId: string, category?: "nguphap" | "nghe" | "doc") => void;
   initialTab?: BottomTab;
+  onTabChange?: (tab: BottomTab) => void;
 }
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
@@ -37,6 +38,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   onMarkComplete,
   onStartQuiz,
   initialTab,
+  onTabChange,
 }) => {
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
@@ -62,6 +64,16 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
     () => (initialTab && visibleTabs.some((t) => t.id === initialTab) ? initialTab : (visibleTabs[0]?.id ?? "tuvung")),
   );
 
+  // Nút Back/Forward của trình duyệt đổi initialTab từ bên ngoài — kéo tab
+  // hiển thị theo. Không tạo vòng lặp: giá trị set vào bằng đúng giá trị vừa
+  // báo lên qua onTabChange nên effect chạy lại cũng không đổi gì.
+  useEffect(() => {
+    if (initialTab && visibleTabs.some((t) => t.id === initialTab)) {
+      setBottomTab(initialTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
+
   const handlePronounce = (text: string) => {
     if ("speechSynthesis" in window) {
       try {
@@ -80,6 +92,11 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   const handleCompleteClick = () => {
     setMarked(true);
     onMarkComplete(lesson.id);
+  };
+
+  const handleSelectTab = (tab: BottomTab) => {
+    setBottomTab(tab);
+    onTabChange?.(tab);
   };
 
   return (
@@ -158,7 +175,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {visibleTabs.map(({ id, label, Icon }) => (
             <button
               key={id}
-              onClick={() => setBottomTab(id)}
+              onClick={() => handleSelectTab(id)}
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-display font-bold transition-colors border-b-2 ${
                 bottomTab === id
                   ? "border-orange-500 text-orange-600 bg-orange-50/50"
