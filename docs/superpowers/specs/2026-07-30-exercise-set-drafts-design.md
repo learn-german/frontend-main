@@ -34,7 +34,7 @@ riêng Ngữ pháp), nên khi Phase 4 port Nghe/Đọc sang dùng chung
 
 ```sql
 CREATE TABLE exercise_set_drafts (
-  user_id    UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL DEFAULT auth.uid() REFERENCES profiles(id) ON DELETE CASCADE,
   set_id     UUID        NOT NULL REFERENCES exercise_sets(id) ON DELETE CASCADE,
   answers    JSONB       NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -59,6 +59,14 @@ không cần qua Edge Function (khác `exercise_set_attempts`, vốn phải qua
 vì điều kiện là `user_id = auth.uid()` (không phải kiểm tra role admin
 không kèm điều kiện owner), nên không có đường nào một user đọc/ghi được
 draft của user khác.
+
+`DEFAULT auth.uid()` trên `user_id` — phát hiện lúc dịch sang code: đúng
+pattern hiện có trong toàn bộ hook liên quan bài tập
+(`useExerciseSetAttempt`, `useGrammarExercises`), `GrammarExercisePage`
+**không** nhận `user.id` qua prop, chỉ dựa vào RLS lọc theo hàng của chính
+mình. Nếu không có default này, client không có `user_id` để đưa vào payload
+upsert. Giữ nguyên pattern thay vì thêm prop-drilling `user.id` xuyên nhiều
+tầng component chỉ để phục vụ 1 câu insert.
 
 ## Quy tắc ưu tiên hiển thị
 
