@@ -30,6 +30,12 @@ export async function startHarnessServer(): Promise<Harness> {
   const server: ViteDevServer = await createServer({
     root: REPO_ROOT,
     envDir: HARNESS_ROOT,
+    // File env giả của harness được đặt tên `.env.test` (thay vì `.env`) vì
+    // `.gitignore` gốc của repo chặn pattern `.env` — commit thẳng `.env` sẽ
+    // không được git track được. Vite mặc định chỉ đọc `.env`/`.env.local`
+    // ở mode "development"; cần chỉ định mode "test" tường minh để nó nạp
+    // đúng `.env.test`.
+    mode: "test",
     configFile: false,
     logLevel: "error",
     plugins: [react(), tailwindcss()],
