@@ -6,8 +6,10 @@
 import React, { useEffect } from "react";
 import { Check, Lock, Play, ArrowRight, LockKeyhole, Clock } from "lucide-react";
 import { ProgressBar } from "../components/DesignSystem";
-import { UserStats, Lesson, Module, LessonPosition } from "../lib/appTypes";
+import { UserStats, Module, LessonPosition } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
+import { buildRoadmapItems } from "../lib/lessonOrder";
+import { computeLessonStatuses } from "../lib/completion";
 
 interface RoadmapPageProps {
   stats: UserStats;
@@ -16,65 +18,35 @@ interface RoadmapPageProps {
   onSelectLesson: (lessonId: string) => void;
 }
 
-type RoadmapItem =
-  | { kind: "lesson"; lesson: Lesson }
-  | { kind: "draft"; id: string };
-
 export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   stats,
   modules,
   positions,
   onSelectLesson
 }) => {
-  const unlockedModules = modules.filter(m => stats.unlockedLevels.includes(m.level));
-  const unlockedModuleIds = new Set(unlockedModules.map(m => m.id));
-  const draftPositions = positions.filter(p => p.status === "draft" && unlockedModuleIds.has(p.moduleId));
+  const { items, orderedLessons } = React.useMemo(
+    () => buildRoadmapItems(modules, positions, stats.unlockedLevels),
+    [modules, positions, stats.unlockedLevels],
+  );
 
-  const orderedItems: RoadmapItem[] = [];
-  unlockedModules.forEach(m => {
-    const draftsInModule = draftPositions.filter(p => p.moduleId === m.id);
-    const combined: { orderIndex: number; item: RoadmapItem }[] = [
-      ...m.lessons.map(l => ({ orderIndex: l.orderIndex ?? 0, item: { kind: "lesson" as const, lesson: l } })),
-      ...draftsInModule.map(p => ({ orderIndex: p.orderIndex, item: { kind: "draft" as const, id: p.id } })),
-    ];
-    combined.sort((a, b) => a.orderIndex - b.orderIndex);
-    combined.forEach(c => orderedItems.push(c.item));
-  });
-
-  const allLessons: { item: RoadmapItem; indexInAll: number }[] =
-    orderedItems.map((item, indexInAll) => ({ item, indexInAll }));
-
-  const idOf = (item: RoadmapItem): string => (item.kind === "lesson" ? item.lesson.id : item.id);
-
-  const getLessonStatus = (lessonId: string, indexInAll: number) => {
-    if (stats.completedLessons.includes(lessonId)) {
-      return "completed";
-    }
-    if (indexInAll === 0) {
-      return "current";
-    }
-    // Check if the previous lesson was completed
-    const prevLessonId = idOf(allLessons[indexInAll - 1].item);
-    if (stats.completedLessons.includes(prevLessonId)) {
-      return "current"; // Highlight current uncompleted lesson
-    }
-    return "locked";
-  };
+  const statuses = React.useMemo(
+    () => computeLessonStatuses(orderedLessons, stats.completedLessons),
+    [orderedLessons, stats.completedLessons],
+  );
 
   useEffect(() => {
-    if (allLessons.length === 0) return;
-    const current = allLessons.find(({ item, indexInAll }) => {
-      if (item.kind !== "lesson") return false;
-      return getLessonStatus(item.lesson.id, indexInAll) === "current";
-    });
-    if (!current) return;
-    const id = idOf(current.item);
-    document.getElementById(`roadmap-lesson-card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    // Only run once per fresh lesson list (e.g. on mount / module unlock change) — not on every render.
+    const current = items.find(
+      (item) => item.kind === "lesson" && statuses[item.lesson.id] === "current",
+    );
+    if (!current || current.kind !== "lesson") return;
+    document
+      .getElementById(`roadmap-lesson-card-${current.lesson.id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Chỉ chạy khi danh sách bài đổi (mount / mở khóa level), không chạy mỗi lần render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allLessons.length]);
+  }, [items.length]);
 
-  const totalLessons = allLessons.length;
+  const totalLessons = items.length;
   const completedTotal = stats.completedLessons.length;
   const overAllProgress = totalLessons > 0 ? Math.round((completedTotal / totalLessons) * 100) : 0;
 
@@ -117,7 +89,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 pl-0 sm:pl-11 relative z-10">
-            {allLessons.map(({ item, indexInAll }) => {
+            {items.map((item, indexInAll) => {
               if (item.kind === "draft") {
                 return (
                   <div
@@ -152,7 +124,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
               }
 
               const lesson = item.lesson;
-              const status = getLessonStatus(lesson.id, indexInAll);
+              const status = statuses[lesson.id] ?? "locked";
 
               const cardStyles = {
                 completed: "border-green-250 bg-white hover:border-green-300 shadow-sm hover:shadow",
