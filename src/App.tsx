@@ -67,13 +67,23 @@ export default function App() {
 
   // Deep-link vào bài chưa mở khóa thì đẩy về Lộ trình. Chỉ xét sau khi
   // modules đã tải xong, nếu không sẽ chặn nhầm lúc dữ liệu chưa về.
+  //
+  // lessonStatuses chỉ được build từ orderedLessons (đã lọc level mở khóa,
+  // bỏ draft), còn activeLessonObject tra cứu trên flatLessons (mọi level).
+  // Một bài thuộc level CHƯA mở khóa (hoặc draft) sẽ không có mặt trong
+  // lessonStatuses -> id undefined, khác với "locked" -> phải tự suy ra là
+  // bị khóa nếu bài đó vẫn tồn tại trong flatLessons, nếu không thì để lọt
+  // xuống nhánh "Bài học không khả dụng" (bài đã bị xoá/chuyển về draft).
   useEffect(() => {
     if (!user || modulesLoading) return;
     if (currentPage !== "lesson-detail" && currentPage !== "quiz") return;
-    if (lessonStatuses[selectedLessonId] !== "locked") return;
+    const status = lessonStatuses[selectedLessonId];
+    const existsInFlatLessons = flatLessons.some((l) => l.id === selectedLessonId);
+    const isLocked = status === "locked" || (status === undefined && existsInFlatLessons);
+    if (!isLocked) return;
     showToast("Hãy hoàn thành bài học trước để mở bài này.", "warning");
     setCurrentPage("roadmap");
-  }, [user, modulesLoading, currentPage, selectedLessonId, lessonStatuses]);
+  }, [user, modulesLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons]);
 
   const currentRoute: AppRoute = useMemo(() => {
     if (currentPage === "lesson-detail") {

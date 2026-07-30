@@ -96,6 +96,14 @@ export const AdminUsersSection: React.FC = () => {
       supabase.from("grammar_exercises_public").select("lesson_id"),
       supabase.from("quiz_questions_public").select("lesson_id, category"),
     ]).then(([modulesRes, nguphapRes, quizRes]) => {
+      // Nếu 2 query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
+      // không có câu hỏi" -> mọi học viên hiện "Đã xong" sai trên bảng admin.
+      // Không có error state riêng cho phần này, nên để orderedLessons rỗng
+      // (bảng tiến độ trống) còn hơn build từ dữ liệu sai lệch.
+      if (modulesRes.error || nguphapRes.error || quizRes.error) {
+        setOrderedLessons([]);
+        return;
+      }
       const nguphapLessonIds = new Set((nguphapRes.data ?? []).map((r) => r.lesson_id as string));
       const quizCategoriesByLesson = new Map<string, Set<string>>();
       for (const row of (quizRes.data ?? []) as { lesson_id: string; category: string }[]) {

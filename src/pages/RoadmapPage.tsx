@@ -47,7 +47,13 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   }, [items.length]);
 
   const totalLessons = items.length;
-  const completedTotal = stats.completedLessons.length;
+  // stats.completedLessons is computed over flatLessons (mọi module, kể cả
+  // level chưa mở khóa), nhưng totalLessons chỉ đếm items đã mở khóa. Đếm
+  // giao của hai tập để tránh hiển thị quá 100% (VD "37 / 10 Bài học").
+  const completedTotal = React.useMemo(() => {
+    const completedSet = new Set(stats.completedLessons);
+    return orderedLessons.filter((l) => completedSet.has(l.id)).length;
+  }, [orderedLessons, stats.completedLessons]);
   const overAllProgress = totalLessons > 0 ? Math.round((completedTotal / totalLessons) * 100) : 0;
 
   return (

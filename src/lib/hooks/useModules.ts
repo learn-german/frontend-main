@@ -124,6 +124,11 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
       if (cancelled) return;
       if (modulesRes.error) {
         setError(modulesRes.error.message);
+      } else if (nguphapRes.error || quizRes.error) {
+        // Nếu 2 query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
+        // không có câu hỏi" -> tự động hoàn thành sai. Coi lỗi này nghiêm
+        // trọng như lỗi modulesRes, không build flags từ tập rỗng.
+        setError((nguphapRes.error ?? quizRes.error)?.message ?? "Không thể tải dữ liệu câu hỏi.");
       } else {
         const nguphapLessonIds = new Set((nguphapRes.data ?? []).map((r) => r.lesson_id as string));
         const quizCategoriesByLesson = new Map<string, Set<string>>();
