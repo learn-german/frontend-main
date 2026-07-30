@@ -8,6 +8,7 @@ import {
   furthestCompletedLesson,
   computeLessonStatuses,
   buildScoresByLesson,
+  applicableCategories,
   LessonProgressRow,
 } from "../../lib/completion";
 
@@ -17,8 +18,9 @@ interface ProgressLesson {
   titleVi: string;
   moduleTitle: string;
   level: string;
-  listeningClips: { id: string }[];
-  readingPassages: { id: string }[];
+  hasNguphapQuestions: boolean;
+  hasNgheQuestions: boolean;
+  hasDocQuestions: boolean;
 }
 
 interface AdminUser {
@@ -82,30 +84,49 @@ export const AdminUsersSection: React.FC = () => {
   useEffect(() => { fetchUsers(); }, []);
 
   useEffect(() => {
-    supabase
-      .from("modules")
-      .select(`
-        id, order_index, title_vi, level,
-        lessons (id, title, title_vi, order_index, status, listening_clips(id), reading_passages(id))
-      `)
-      .order("order_index")
-      .order("order_index", { referencedTable: "lessons" })
-      .then(({ data }) => {
-        const flat: ProgressLesson[] = (data ?? []).flatMap((m) =>
-          (m.lessons ?? [])
-            .filter((l: { status: string }) => l.status === "published")
-            .map((l: { id: string; title: string; title_vi: string; listening_clips: { id: string }[] | null; reading_passages: { id: string }[] | null }) => ({
-              id: l.id,
-              title: l.title,
-              titleVi: l.title_vi,
-              moduleTitle: m.title_vi,
-              level: m.level,
-              listeningClips: l.listening_clips ?? [],
-              readingPassages: l.reading_passages ?? [],
-            })),
-        );
-        setOrderedLessons(flat);
-      });
+    Promise.all([
+      supabase
+        .from("modules")
+        .select(`
+          id, order_index, title_vi, level,
+          lessons (id, title, title_vi, order_index, status)
+        `)
+        .order("order_index")
+        .order("order_index", { referencedTable: "lessons" }),
+      supabase.from("grammar_exercises_public").select("lesson_id"),
+      supabase.from("quiz_questions_public").select("lesson_id, category"),
+    ]).then(([modulesRes, nguphapRes, quizRes]) => {
+      // Nếu 2 query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
+      // không có câu hỏi" -> mọi học viên hiện "Đã xong" sai trên bảng admin.
+      // Không có error state riêng cho phần này, nên để orderedLessons rỗng
+      // (bảng tiến độ trống) còn hơn build từ dữ liệu sai lệch.
+      if (modulesRes.error || nguphapRes.error || quizRes.error) {
+        setOrderedLessons([]);
+        return;
+      }
+      const nguphapLessonIds = new Set((nguphapRes.data ?? []).map((r) => r.lesson_id as string));
+      const quizCategoriesByLesson = new Map<string, Set<string>>();
+      for (const row of (quizRes.data ?? []) as { lesson_id: string; category: string }[]) {
+        const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
+        categories.add(row.category);
+        quizCategoriesByLesson.set(row.lesson_id, categories);
+      }
+      const flat: ProgressLesson[] = (modulesRes.data ?? []).flatMap((m) =>
+        (m.lessons ?? [])
+          .filter((l: { status: string }) => l.status === "published")
+          .map((l: { id: string; title: string; title_vi: string }) => ({
+            id: l.id,
+            title: l.title,
+            titleVi: l.title_vi,
+            moduleTitle: m.title_vi,
+            level: m.level,
+            hasNguphapQuestions: nguphapLessonIds.has(l.id),
+            hasNgheQuestions: quizCategoriesByLesson.get(l.id)?.has("nghe") ?? false,
+            hasDocQuestions: quizCategoriesByLesson.get(l.id)?.has("doc") ?? false,
+          })),
+      );
+      setOrderedLessons(flat);
+    });
 
     supabase
       .from("lesson_progress")
@@ -512,8 +533,10 @@ export const AdminUsersSection: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {unlockedLessons.map((l) => {
-                      const hasNghe = l.listeningClips.length > 0;
-                      const hasDoc = l.readingPassages.length > 0;
+                      const categories = applicableCategories(l);
+                      const hasNguphap = categories.includes("nguphap");
+                      const hasNghe = categories.includes("nghe");
+                      const hasDoc = categories.includes("doc");
                       return (
                         <tr key={l.id}>
                           <td className="px-3 py-2">
@@ -525,7 +548,7 @@ export const AdminUsersSection: React.FC = () => {
                               {statusLabel[statuses[l.id]]}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-center">{scoreCell(l.id, "nguphap", true)}</td>
+                          <td className="px-3 py-2 text-center">{scoreCell(l.id, "nguphap", hasNguphap)}</td>
                           <td className="px-3 py-2 text-center">{scoreCell(l.id, "nghe", hasNghe)}</td>
                           <td className="px-3 py-2 text-center">{scoreCell(l.id, "doc", hasDoc)}</td>
                         </tr>

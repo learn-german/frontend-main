@@ -80,6 +80,8 @@ export interface Lesson {
   speakingMd?: string;
   writingPromptMd?: string;
   hasNguphapQuestions?: boolean;
+  hasNgheQuestions?: boolean;
+  hasDocQuestions?: boolean;
   videoR2Key?: string;
   listeningClips: { id: string; r2Key: string }[];
   readingPassages: { id: string; textDe: string }[];

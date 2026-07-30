@@ -9,27 +9,32 @@ export interface LessonProgressRow {
   completed_at?: string;
 }
 
-export interface LessonContentFlags {
+export interface LessonQuizFlags {
   id: string;
-  listeningClips?: { id: string }[];
-  readingPassages?: { id: string }[];
+  hasNguphapQuestions?: boolean;
+  hasNgheQuestions?: boolean;
+  hasDocQuestions?: boolean;
 }
 
 /**
- * Which quiz categories actually apply to a lesson. Ngữ pháp always applies;
- * Nghe/Đọc only apply if the lesson has at least one listening clip / at
- * least one reading passage (mirrors the content-gated "Bắt đầu bài tập"
- * buttons on LessonDetailPage).
+ * Which quiz categories a lesson must pass to count as complete. A category
+ * only counts if the lesson actually has questions in it — a lesson can ship
+ * with a listening clip or a reading passage whose questions have not been
+ * authored yet, and such a category must never block progression.
+ *
+ * Only `=== true` counts. An undefined flag means "no questions", so Lesson
+ * objects built outside useModules (mock data, tests) never lock the chain.
  */
-export function applicableCategories(lesson: LessonContentFlags): QuizCategory[] {
-  const categories: QuizCategory[] = ["nguphap"];
-  if ((lesson.listeningClips?.length ?? 0) > 0) categories.push("nghe");
-  if ((lesson.readingPassages?.length ?? 0) > 0) categories.push("doc");
+export function applicableCategories(lesson: LessonQuizFlags): QuizCategory[] {
+  const categories: QuizCategory[] = [];
+  if (lesson.hasNguphapQuestions === true) categories.push("nguphap");
+  if (lesson.hasNgheQuestions === true) categories.push("nghe");
+  if (lesson.hasDocQuestions === true) categories.push("doc");
   return categories;
 }
 
 export function isLessonComplete(
-  lesson: LessonContentFlags,
+  lesson: LessonQuizFlags,
   scoresByCategory: Partial<Record<QuizCategory, number>>,
 ): boolean {
   return applicableCategories(lesson).every(
@@ -53,7 +58,7 @@ export function buildScoresByLesson(
 }
 
 export function computeCompletedLessons(
-  lessons: LessonContentFlags[],
+  lessons: LessonQuizFlags[],
   progressRows: LessonProgressRow[],
 ): string[] {
   const scoresByLesson = buildScoresByLesson(progressRows);

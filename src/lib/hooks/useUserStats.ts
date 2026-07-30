@@ -5,7 +5,7 @@ import {
   computeCompletedLessons,
   buildScoresByLesson,
   LessonProgressRow,
-  LessonContentFlags,
+  LessonQuizFlags,
   QuizCategory,
 } from "../completion";
 
@@ -19,7 +19,7 @@ const EMPTY_BASE: BaseStats = { xp: 0, streak: 0, unlockedLevels: [] };
 
 export function useUserStats(
   userId: string | null,
-  lessons: LessonContentFlags[],
+  lessons: LessonQuizFlags[],
 ): {
   stats: UserStats;
   statsLoading: boolean;
