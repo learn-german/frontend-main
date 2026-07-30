@@ -103,7 +103,7 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
   multiple_choice: "bg-indigo-50 text-indigo-700",
 };
 
-interface EditForm {
+export interface EditForm {
   type: GrammarExercise["type"];
   status: "draft" | "published";
   prompt_text: string;
@@ -128,7 +128,7 @@ interface AppendContext {
   groupNumber: number;
 }
 
-const EMPTY_FORM: EditForm = {
+export const EMPTY_FORM: EditForm = {
   type: "word_reorder",
   status: "draft",
   prompt_text: "",
@@ -453,7 +453,7 @@ const SortableOptionRow: React.FC<{
   );
 };
 
-const ExerciseEntryFields: React.FC<{
+export const ExerciseEntryFields: React.FC<{
   entry: EditForm;
   onChange: (updater: (prev: EditForm) => EditForm) => void;
 }> = ({ entry, onChange }) => {
