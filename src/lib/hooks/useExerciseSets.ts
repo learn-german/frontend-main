@@ -31,27 +31,27 @@ const fromRow = (row: ExerciseSetRow): ExerciseSet => ({
   status: row.status,
 });
 
-export function useExerciseSets(lessonId: string | null) {
+// Không lọc theo 1 lesson — trang admin hiển thị danh sách bài tập của
+// NHIỀU lesson cùng lúc (mỗi group trong list có thể thuộc lesson khác
+// nhau), nên cần tra cứu set theo id cho bất kỳ lesson nào đang render,
+// giống cách fetchExercises() đã tải toàn bộ grammar_exercises không lọc
+// theo lesson.
+export function useExerciseSets() {
   const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(() => {
-    if (!lessonId) {
-      setSets([]);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     supabase
       .from("exercise_sets")
       .select("id, lesson_id, category, title, order_index, status")
-      .eq("lesson_id", lessonId)
+      .order("lesson_id")
       .order("order_index")
       .then(({ data }) => {
         setSets(((data ?? []) as ExerciseSetRow[]).map(fromRow));
         setLoading(false);
       });
-  }, [lessonId]);
+  }, []);
 
   useEffect(() => { refetch(); }, [refetch]);
 
@@ -76,12 +76,13 @@ export function useExerciseSets(lessonId: string | null) {
     category: string,
     orderIndex: number,
   ): Promise<{ data: ExerciseSet | null; error: string | null }> => {
+    const existingCountForLesson = sets.filter((s) => s.lessonId === forLessonId).length;
     const { data, error } = await supabase
       .from("exercise_sets")
       .insert({
         lesson_id: forLessonId,
         category,
-        title: nextDefaultSetTitle(sets.length),
+        title: nextDefaultSetTitle(existingCountForLesson),
         order_index: orderIndex,
         status: "draft",
       })
