@@ -9,6 +9,7 @@ import { useModules } from "./lib/hooks/useModules";
 import { useLessonPositions } from "./lib/hooks/useLessonPositions";
 import { useUserStats } from "./lib/hooks/useUserStats";
 import { buildRoadmapItems } from "./lib/lessonOrder";
+import { computeLessonStatuses } from "./lib/completion";
 import { AppLoadingSkeleton } from "./components/Skeleton";
 import { Navbar, Sidebar } from "./components/Navigation";
 import { Button } from "./components/DesignSystem";
@@ -45,6 +46,11 @@ export default function App() {
     [modules, positions, stats.unlockedLevels],
   );
 
+  const lessonStatuses = useMemo(
+    () => computeLessonStatuses(orderedLessons, stats.completedLessons),
+    [orderedLessons, stats.completedLessons],
+  );
+
   // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
   // nhưng lần đầu load thì đọc ngược từ URL để refresh/deep-link giữ đúng trang.
   const initialRoute = useMemo(() => parseRoute(window.location.pathname), []);
@@ -58,6 +64,16 @@ export default function App() {
   const [activeExerciseCategory, setActiveExerciseCategory] = useState<"nguphap" | "nghe" | "doc">(
     initialRoute.page === "quiz" ? initialRoute.category : "nguphap",
   );
+
+  // Deep-link vào bài chưa mở khóa thì đẩy về Lộ trình. Chỉ xét sau khi
+  // modules đã tải xong, nếu không sẽ chặn nhầm lúc dữ liệu chưa về.
+  useEffect(() => {
+    if (!user || modulesLoading) return;
+    if (currentPage !== "lesson-detail" && currentPage !== "quiz") return;
+    if (lessonStatuses[selectedLessonId] !== "locked") return;
+    showToast("Hãy hoàn thành bài học trước để mở bài này.", "warning");
+    setCurrentPage("roadmap");
+  }, [user, modulesLoading, currentPage, selectedLessonId, lessonStatuses]);
 
   const currentRoute: AppRoute = useMemo(() => {
     if (currentPage === "lesson-detail") {
