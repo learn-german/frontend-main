@@ -103,7 +103,7 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
   multiple_choice: "bg-indigo-50 text-indigo-700",
 };
 
-interface EditForm {
+export interface EditForm {
   type: GrammarExercise["type"];
   status: "draft" | "published";
   prompt_text: string;
@@ -128,7 +128,7 @@ interface AppendContext {
   groupNumber: number;
 }
 
-const EMPTY_FORM: EditForm = {
+export const EMPTY_FORM: EditForm = {
   type: "word_reorder",
   status: "draft",
   prompt_text: "",
@@ -145,8 +145,9 @@ const EMPTY_FORM: EditForm = {
   order_index: 0,
 };
 
-const inputCls =
-  "w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
+const inputBaseCls =
+  "px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
+const inputCls = `w-full ${inputBaseCls}`;
 const labelCls = "block text-xs font-bold text-slate-600 mb-1";
 
 const normalizeWord = (s: string): string => s.toLowerCase().replace(/[.,!?]/g, "").trim();
@@ -453,7 +454,7 @@ const SortableOptionRow: React.FC<{
   );
 };
 
-const ExerciseEntryFields: React.FC<{
+export const ExerciseEntryFields: React.FC<{
   entry: EditForm;
   onChange: (updater: (prev: EditForm) => EditForm) => void;
 }> = ({ entry, onChange }) => {
@@ -794,6 +795,7 @@ const ExerciseEntryFields: React.FC<{
                   placeholder={`Nhóm ${i + 1}`}
                 />
                 <button
+                  type="button"
                   onClick={() => onChange((prev) => removeGroupFromForm(prev, i))}
                   className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
                 >
@@ -802,6 +804,7 @@ const ExerciseEntryFields: React.FC<{
               </div>
             ))}
             <button
+              type="button"
               onClick={() => onChange(addGroupToForm)}
               className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
             >
@@ -818,13 +821,13 @@ const ExerciseEntryFields: React.FC<{
                   type="text"
                   value={it.item}
                   onChange={(e) => onChange((prev) => setItemInForm(prev, i, "item", e.target.value))}
-                  className={inputCls + " flex-1"}
+                  className={`${inputBaseCls} flex-1 min-w-0`}
                   placeholder="Tisch"
                 />
                 <select
                   value={it.group}
                   onChange={(e) => onChange((prev) => setItemInForm(prev, i, "group", e.target.value))}
-                  className={inputCls + " w-28"}
+                  className={`${inputBaseCls} w-28 shrink-0`}
                 >
                   <option value="">--</option>
                   {entry.classification_groups.filter(Boolean).map((g) => (
@@ -834,6 +837,7 @@ const ExerciseEntryFields: React.FC<{
                   ))}
                 </select>
                 <button
+                  type="button"
                   onClick={() => onChange((prev) => removeItemFromForm(prev, i))}
                   className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
                 >
@@ -842,6 +846,7 @@ const ExerciseEntryFields: React.FC<{
               </div>
             ))}
             <button
+              type="button"
               onClick={() => onChange(addItemToForm)}
               disabled={entry.classification_groups.filter(Boolean).length === 0}
               className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
