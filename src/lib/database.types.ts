@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      exercise_set_attempts: {
+        Row: {
+          answers: Json
+          attempt_count: number
+          best_score: number
+          blank_results: Json
+          category: string
+          choice_results: Json
+          exercise_results: Json
+          id: string
+          is_passed: boolean
+          last_submission_id: string
+          revealed: boolean
+          score: number
+          set_id: string
+          submitted_at: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          attempt_count?: number
+          best_score: number
+          blank_results?: Json
+          category: string
+          choice_results?: Json
+          exercise_results?: Json
+          id?: string
+          is_passed: boolean
+          last_submission_id: string
+          revealed?: boolean
+          score: number
+          set_id: string
+          submitted_at?: string
+          total: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          attempt_count?: number
+          best_score?: number
+          blank_results?: Json
+          category?: string
+          choice_results?: Json
+          exercise_results?: Json
+          id?: string
+          is_passed?: boolean
+          last_submission_id?: string
+          revealed?: boolean
+          score?: number
+          set_id?: string
+          submitted_at?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_set_attempts_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_set_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_sets: {
         Row: {
           category: string
@@ -52,73 +124,6 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      grammar_attempts: {
-        Row: {
-          answers: Json
-          attempt_count: number
-          best_score: number
-          blank_results: Json
-          choice_results: Json
-          exercise_results: Json
-          id: string
-          lesson_id: string
-          score: number
-          submitted_at: string
-          total: number
-          user_id: string
-        }
-        Insert: {
-          answers: Json
-          attempt_count?: number
-          best_score: number
-          blank_results?: Json
-          choice_results?: Json
-          exercise_results?: Json
-          id?: string
-          lesson_id: string
-          score: number
-          submitted_at?: string
-          total: number
-          user_id: string
-        }
-        Update: {
-          answers?: Json
-          attempt_count?: number
-          best_score?: number
-          blank_results?: Json
-          choice_results?: Json
-          exercise_results?: Json
-          id?: string
-          lesson_id?: string
-          score?: number
-          submitted_at?: string
-          total?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "grammar_attempts_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lesson_positions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grammar_attempts_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grammar_attempts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -713,7 +718,6 @@ export type Database = {
         Row: {
           classification_groups: Json | null
           classification_items: Json | null
-          explanation: string | null
           group_id: string | null
           hint: string | null
           id: string | null
