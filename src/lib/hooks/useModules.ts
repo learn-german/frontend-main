@@ -34,7 +34,11 @@ type SupabaseModule = {
   lessons: SupabaseLesson[];
 };
 
-function transformModule(m: SupabaseModule, nguphapLessonIds: Set<string>): Module {
+function transformModule(
+  m: SupabaseModule,
+  nguphapLessonIds: Set<string>,
+  quizCategoriesByLesson: Map<string, Set<string>>,
+): Module {
   return {
     id: m.id,
     level: m.level as Level,
@@ -59,6 +63,10 @@ function transformModule(m: SupabaseModule, nguphapLessonIds: Set<string>): Modu
       speakingMd: l.speaking_md ?? undefined,
       writingPromptMd: l.writing_prompt_md ?? undefined,
       hasNguphapQuestions: nguphapLessonIds.has(l.id),
+      // Nghe/Đọc chỉ bắt buộc pass khi đã có câu hỏi được soạn — có file mp3
+      // hay đoạn văn thôi thì chưa đủ, nếu không bài học sẽ khóa vĩnh viễn.
+      hasNgheQuestions: quizCategoriesByLesson.get(l.id)?.has("nghe") ?? false,
+      hasDocQuestions: quizCategoriesByLesson.get(l.id)?.has("doc") ?? false,
       videoR2Key: l.video_r2_key ?? undefined,
       // Sorted client-side rather than relying on a 3-level-deep Supabase
       // nested .order() call (modules -> lessons -> listening_clips), which
@@ -109,13 +117,31 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
       supabase
         .from("grammar_exercises_public")
         .select("lesson_id"),
-    ]).then(([modulesRes, nguphapRes]) => {
+      supabase
+        .from("quiz_questions_public")
+        .select("lesson_id, category"),
+    ]).then(([modulesRes, nguphapRes, quizRes]) => {
       if (cancelled) return;
       if (modulesRes.error) {
         setError(modulesRes.error.message);
+      } else if (nguphapRes.error || quizRes.error) {
+        // Nếu 2 query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
+        // không có câu hỏi" -> tự động hoàn thành sai. Coi lỗi này nghiêm
+        // trọng như lỗi modulesRes, không build flags từ tập rỗng.
+        setError((nguphapRes.error ?? quizRes.error)?.message ?? "Không thể tải dữ liệu câu hỏi.");
       } else {
         const nguphapLessonIds = new Set((nguphapRes.data ?? []).map((r) => r.lesson_id as string));
-        setModules((modulesRes.data ?? []).map(m => transformModule(m as SupabaseModule, nguphapLessonIds)));
+        const quizCategoriesByLesson = new Map<string, Set<string>>();
+        for (const row of (quizRes.data ?? []) as { lesson_id: string; category: string }[]) {
+          const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
+          categories.add(row.category);
+          quizCategoriesByLesson.set(row.lesson_id, categories);
+        }
+        setModules(
+          (modulesRes.data ?? []).map((m) =>
+            transformModule(m as SupabaseModule, nguphapLessonIds, quizCategoriesByLesson),
+          ),
+        );
       }
       setLoading(false);
     });

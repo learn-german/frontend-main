@@ -8,6 +8,8 @@ import { AppState, Lesson, Module } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
 import { useLessonPositions } from "./lib/hooks/useLessonPositions";
 import { useUserStats } from "./lib/hooks/useUserStats";
+import { buildRoadmapItems } from "./lib/lessonOrder";
+import { computeLessonStatuses } from "./lib/completion";
 import { AppLoadingSkeleton } from "./components/Skeleton";
 import { Navbar, Sidebar } from "./components/Navigation";
 import { Button } from "./components/DesignSystem";
@@ -26,6 +28,7 @@ import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
 import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
+import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
 
 export default function App() {
   // Authentication states
@@ -36,11 +39,83 @@ export default function App() {
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
   const { stats, applyLessonCompleteReward, applyQuizResult } = useUserStats(user?.id ?? null, flatLessons);
 
-  // Router page state
-  const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
-  const [selectedLessonId, setSelectedLessonId] = useState<string>("a1-l1");
-  const [initialLessonTab, setInitialLessonTab] = useState<BottomTab | undefined>(undefined);
-  const [activeExerciseCategory, setActiveExerciseCategory] = useState<"nguphap" | "nghe" | "doc">("nguphap");
+  // Đúng thứ tự người học thấy trên Lộ trình: đã lọc level chưa mở khóa,
+  // sort theo orderIndex, và bỏ các bài draft.
+  const { orderedLessons } = useMemo(
+    () => buildRoadmapItems(modules, positions, stats.unlockedLevels),
+    [modules, positions, stats.unlockedLevels],
+  );
+
+  const lessonStatuses = useMemo(
+    () => computeLessonStatuses(orderedLessons, stats.completedLessons),
+    [orderedLessons, stats.completedLessons],
+  );
+
+  // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
+  // nhưng lần đầu load thì đọc ngược từ URL để refresh/deep-link giữ đúng trang.
+  const initialRoute = useMemo(() => parseRoute(window.location.pathname), []);
+  const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>(initialRoute.page);
+  const [selectedLessonId, setSelectedLessonId] = useState<string>(
+    "lessonId" in initialRoute ? initialRoute.lessonId : "a1-l1",
+  );
+  const [initialLessonTab, setInitialLessonTab] = useState<BottomTab | undefined>(
+    initialRoute.page === "lesson-detail" ? initialRoute.tab : undefined,
+  );
+  const [activeExerciseCategory, setActiveExerciseCategory] = useState<"nguphap" | "nghe" | "doc">(
+    initialRoute.page === "quiz" ? initialRoute.category : "nguphap",
+  );
+
+  // Deep-link vào bài chưa mở khóa thì đẩy về Lộ trình. Chỉ xét sau khi
+  // modules đã tải xong, nếu không sẽ chặn nhầm lúc dữ liệu chưa về.
+  //
+  // lessonStatuses chỉ được build từ orderedLessons (đã lọc level mở khóa,
+  // bỏ draft), còn activeLessonObject tra cứu trên flatLessons (mọi level).
+  // Một bài thuộc level CHƯA mở khóa (hoặc draft) sẽ không có mặt trong
+  // lessonStatuses -> id undefined, khác với "locked" -> phải tự suy ra là
+  // bị khóa nếu bài đó vẫn tồn tại trong flatLessons, nếu không thì để lọt
+  // xuống nhánh "Bài học không khả dụng" (bài đã bị xoá/chuyển về draft).
+  useEffect(() => {
+    if (!user || modulesLoading) return;
+    if (currentPage !== "lesson-detail" && currentPage !== "quiz") return;
+    const status = lessonStatuses[selectedLessonId];
+    const existsInFlatLessons = flatLessons.some((l) => l.id === selectedLessonId);
+    const isLocked = status === "locked" || (status === undefined && existsInFlatLessons);
+    if (!isLocked) return;
+    showToast("Hãy hoàn thành bài học trước để mở bài này.", "warning");
+    setCurrentPage("roadmap");
+  }, [user, modulesLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons]);
+
+  const currentRoute: AppRoute = useMemo(() => {
+    if (currentPage === "lesson-detail") {
+      return { page: "lesson-detail", lessonId: selectedLessonId, tab: initialLessonTab };
+    }
+    if (currentPage === "quiz") {
+      return { page: "quiz", lessonId: selectedLessonId, category: activeExerciseCategory };
+    }
+    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" };
+  }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory]);
+
+  // State -> URL. So sánh trước khi push để popstate không kích hoạt vòng lặp:
+  // sau khi popstate set lại state, serializeRoute đã bằng đúng pathname.
+  useEffect(() => {
+    const path = serializeRoute(currentRoute);
+    if (path !== window.location.pathname) {
+      window.history.pushState(null, "", path);
+    }
+  }, [currentRoute]);
+
+  // URL -> state, cho nút Back/Forward của trình duyệt.
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseRoute(window.location.pathname);
+      setCurrentPage(route.page);
+      if ("lessonId" in route) setSelectedLessonId(route.lessonId);
+      setInitialLessonTab(route.page === "lesson-detail" ? route.tab : undefined);
+      if (route.page === "quiz") setActiveExerciseCategory(route.category);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Custom Toast state
   const [activeToast, setActiveToast] = useState<{ message: string; type: ToastType; id: number } | null>(null);
@@ -85,7 +160,13 @@ export default function App() {
           fullName: session.user.user_metadata?.full_name ?? session.user.email ?? "",
           role: (session.user.app_metadata?.role as string) ?? "user",
         });
-        setCurrentPage("dashboard");
+        // Chỉ đưa về dashboard khi URL không trỏ tới trang cụ thể nào.
+        // replaceState (không phải push) để nút Back không kẹt vòng lặp.
+        const route = parseRoute(window.location.pathname);
+        if (route.page === "landing" || route.page === "login") {
+          setCurrentPage("dashboard");
+          window.history.replaceState(null, "", "/dashboard");
+        }
       }
       setAuthLoading(false);
     });
@@ -115,13 +196,10 @@ export default function App() {
     // onAuthStateChange sẽ set user = null và chuyển về landing
   };
 
+  // Không ép sang "login" nữa: URL đích được giữ nguyên và effectivePage lo
+  // việc render màn hình đăng nhập, nhờ đó đăng nhập xong là vào thẳng đích.
   const handleNavigate = (page: AppState["currentPage"]) => {
-    // If not logged in and try to access restrict views, lock them and put them on login
-    if (!user && (page === "dashboard" || page === "roadmap" || page === "lesson-detail" || page === "quiz" || page === "leaderboard")) {
-      setCurrentPage("login");
-    } else {
-      setCurrentPage(page);
-    }
+    setCurrentPage(page);
   };
 
   // Select particular lesson to view
@@ -170,19 +248,24 @@ export default function App() {
 
   // Logic to proceed to NEXT lesson
   const handleNextLesson = () => {
-    const activeIdx = flatLessons.findIndex(l => l.id === selectedLessonId);
-    
-    // Check if next lesson exists
-    if (activeIdx !== -1 && activeIdx + 1 < flatLessons.length) {
-      const nextLesson = flatLessons[activeIdx + 1];
+    const activeIdx = orderedLessons.findIndex(l => l.id === selectedLessonId);
+
+    if (activeIdx !== -1 && activeIdx + 1 < orderedLessons.length) {
+      const nextLesson = orderedLessons[activeIdx + 1];
       setSelectedLessonId(nextLesson.id);
+      setInitialLessonTab(undefined);
       setCurrentPage("lesson-detail");
     } else {
-      // Completed all available lessons
       showToast("Đỉnh quá! Bạn đã hoàn thành toàn bộ kho bài học của DeutschPath.", "success");
       setCurrentPage("dashboard");
     }
   };
+
+  // Trang thực sự được render. Khi chưa đăng nhập mà URL trỏ tới trang cần
+  // quyền, ta render màn hình đăng nhập nhưng KHÔNG đổi URL — URL chính là
+  // nơi ghi nhớ đích đến, sống sót qua cả lần reload của OAuth.
+  const effectivePage: AppState["currentPage"] =
+    !user && isProtectedPage(currentPage) ? "login" : currentPage;
 
   if (authLoading) {
     return <AppLoadingSkeleton />;
@@ -190,11 +273,11 @@ export default function App() {
 
   // Show loading overlay while fetching modules (only on authenticated pages)
   const showModulesLoader = user && modulesLoading && modules.length === 0 &&
-    (currentPage === "dashboard" || currentPage === "roadmap" || currentPage === "lesson-detail");
+    (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail");
 
   // Layout check selectors
-  const showNav = currentPage !== "login";
-  const showSidebar = user && (currentPage === "dashboard" || currentPage === "roadmap" || currentPage === "lesson-detail");
+  const showNav = effectivePage !== "login";
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -202,7 +285,7 @@ export default function App() {
       {/* 1. Global Navigation Navbar */}
       {showNav && (
         <Navbar
-          currentPage={currentPage}
+          currentPage={effectivePage}
           onNavigate={handleNavigate}
           user={user}
           onLogout={handleLogout}
@@ -218,7 +301,7 @@ export default function App() {
         {/* Sidebar on desktop portal pages */}
         {showSidebar && (
           <Sidebar
-            currentPage={currentPage}
+            currentPage={effectivePage}
             onNavigate={handleNavigate}
             streak={stats.streak}
           />
@@ -233,14 +316,14 @@ export default function App() {
           )}
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentPage + (currentPage === "lesson-detail" ? selectedLessonId : "")}
+              key={effectivePage + (effectivePage === "lesson-detail" ? selectedLessonId : "")}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.22, ease: "easeInOut" }}
               className=""
             >
-              {currentPage === "landing" && (
+              {effectivePage === "landing" && (
                 <LandingPage
                   onStartLearning={() => handleNavigate("login")}
                   onViewRoadmap={() => {
@@ -254,13 +337,13 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "login" && (
+              {effectivePage === "login" && (
                 <LoginPage
                   onNavigateHome={() => handleNavigate("landing")}
                 />
               )}
 
-              {currentPage === "dashboard" && user && (
+              {effectivePage === "dashboard" && user && (
                 <DashboardPage
                   user={user}
                   stats={stats}
@@ -270,7 +353,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "roadmap" && user && (
+              {effectivePage === "roadmap" && user && (
                 <RoadmapPage
                   stats={stats}
                   modules={modules}
@@ -279,12 +362,13 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "lesson-detail" && user && activeLessonObject && (
+              {effectivePage === "lesson-detail" && user && activeLessonObject && (
                 <LessonDetailPage
                   lesson={activeLessonObject}
                   stats={stats}
                   userId={user.id}
                   initialTab={initialLessonTab}
+                  onTabChange={setInitialLessonTab}
                   onBack={() => handleNavigate("roadmap")}
                   onMarkComplete={handleMarkComplete}
                   onStartQuiz={(lessonId, category = "nguphap") => {
@@ -295,7 +379,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "lesson-detail" && user && !activeLessonObject && !modulesLoading && (
+              {effectivePage === "lesson-detail" && user && !activeLessonObject && !modulesLoading && (
                 <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
                   <p className="text-sm font-display font-bold text-slate-600">
                     Bài học không khả dụng, có thể đang được chỉnh sửa.
@@ -307,7 +391,7 @@ export default function App() {
                 </div>
               )}
 
-              {currentPage === "quiz" && user && activeLessonObject && (
+              {effectivePage === "quiz" && user && activeLessonObject && (
                 activeExerciseCategory === "nguphap" ? (
                   <GrammarExercisePage
                     key={activeLessonObject.id}
@@ -328,7 +412,7 @@ export default function App() {
                   />
                 )
               )}
-              {currentPage === "leaderboard" && user && (
+              {effectivePage === "leaderboard" && user && (
                 <LeaderboardPage currentUserId={user.id} />
               )}
             </motion.div>
