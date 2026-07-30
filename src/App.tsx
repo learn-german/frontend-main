@@ -8,6 +8,7 @@ import { AppState, Lesson, Module } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
 import { useLessonPositions } from "./lib/hooks/useLessonPositions";
 import { useUserStats } from "./lib/hooks/useUserStats";
+import { buildRoadmapItems } from "./lib/lessonOrder";
 import { AppLoadingSkeleton } from "./components/Skeleton";
 import { Navbar, Sidebar } from "./components/Navigation";
 import { Button } from "./components/DesignSystem";
@@ -35,6 +36,13 @@ export default function App() {
   const { positions } = useLessonPositions(user?.id ?? null);
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
   const { stats, applyLessonCompleteReward, applyQuizResult } = useUserStats(user?.id ?? null, flatLessons);
+
+  // Đúng thứ tự người học thấy trên Lộ trình: đã lọc level chưa mở khóa,
+  // sort theo orderIndex, và bỏ các bài draft.
+  const { orderedLessons } = useMemo(
+    () => buildRoadmapItems(modules, positions, stats.unlockedLevels),
+    [modules, positions, stats.unlockedLevels],
+  );
 
   // Router page state
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
@@ -170,15 +178,14 @@ export default function App() {
 
   // Logic to proceed to NEXT lesson
   const handleNextLesson = () => {
-    const activeIdx = flatLessons.findIndex(l => l.id === selectedLessonId);
-    
-    // Check if next lesson exists
-    if (activeIdx !== -1 && activeIdx + 1 < flatLessons.length) {
-      const nextLesson = flatLessons[activeIdx + 1];
+    const activeIdx = orderedLessons.findIndex(l => l.id === selectedLessonId);
+
+    if (activeIdx !== -1 && activeIdx + 1 < orderedLessons.length) {
+      const nextLesson = orderedLessons[activeIdx + 1];
       setSelectedLessonId(nextLesson.id);
+      setInitialLessonTab(undefined);
       setCurrentPage("lesson-detail");
     } else {
-      // Completed all available lessons
       showToast("Đỉnh quá! Bạn đã hoàn thành toàn bộ kho bài học của DeutschPath.", "success");
       setCurrentPage("dashboard");
     }
