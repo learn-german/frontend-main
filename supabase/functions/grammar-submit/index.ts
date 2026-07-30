@@ -54,9 +54,9 @@ serve(async (req) => {
 
     const { data: exercises, error: exErr } = await supabase
       .from("grammar_exercises")
-      .select("id, type, correct_answer, acceptable_answers, classification_items, blanks, options")
+      .select("id, type, correct_answer, acceptable_answers, classification_items, blanks, options, exercise_sets!inner(status)")
       .eq("lesson_id", lesson_id)
-      .eq("status", "published");
+      .eq("exercise_sets.status", "published");
 
     if (exErr || !exercises) {
       return new Response(JSON.stringify({ error: "Failed to load exercises" }), {
