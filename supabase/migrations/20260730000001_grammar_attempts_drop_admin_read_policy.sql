@@ -1,0 +1,28 @@
+-- =============================================================================
+-- DeutschPath — grammar_attempts: xoá policy "admin all" gây rò rỉ dữ liệu
+-- học viên giữa các user.
+--
+-- Root cause: policy này là FOR ALL, chỉ kiểm tra app_metadata.role = 'admin',
+-- không lọc theo user_id. RLS gộp nhiều policy PERMISSIVE bằng OR, nên khi
+-- kết hợp với "own read" thì bất kỳ tài khoản admin nào cũng đọc được (và có
+-- quyền ghi/xoá) grammar_attempts của MỌI user khác.
+--
+-- Hook useGrammarAttempt.ts (chạy trên trang bài tập của học viên bình
+-- thường, không phải trang admin) cố ý không tự lọc user_id trong query —
+-- giao phó hoàn toàn việc lọc theo user cho RLS (đúng comment gốc ở migration
+-- 20260729000004_grammar_attempts.sql). Kết quả: một tài khoản admin chỉ cần
+-- mở trang bài tập ngữ pháp như học viên bình thường là thấy ngay điểm, đáp
+-- án đã nộp của bất kỳ user nào khác đã làm bài đó — không cần vào trang
+-- admin, không cần hành động đặc biệt nào.
+--
+-- Đã grep toàn bộ src/: không có bất kỳ tính năng admin nào đọc/ghi
+-- grammar_attempts. Policy này thừa hoàn toàn, đúng với ý định ban đầu của
+-- migration gốc ("Chỉ Edge Function grammar-submit (service_role) được
+-- ghi"). Edge Function dùng service_role nên không bị ảnh hưởng bởi việc xoá
+-- policy này (service_role luôn bỏ qua RLS).
+--
+-- Xác nhận đã áp dụng trực tiếp lên production ngày phát hiện (2026-07-30) do
+-- đây là rò rỉ dữ liệu đang diễn ra; migration này đồng bộ lại cho repo.
+-- =============================================================================
+
+DROP POLICY IF EXISTS "grammar_attempts: admin all" ON grammar_attempts;
