@@ -27,6 +27,7 @@ import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
 import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
+import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
 
 export default function App() {
   // Authentication states
@@ -44,11 +45,51 @@ export default function App() {
     [modules, positions, stats.unlockedLevels],
   );
 
-  // Router page state
-  const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>("landing");
-  const [selectedLessonId, setSelectedLessonId] = useState<string>("a1-l1");
-  const [initialLessonTab, setInitialLessonTab] = useState<BottomTab | undefined>(undefined);
-  const [activeExerciseCategory, setActiveExerciseCategory] = useState<"nguphap" | "nghe" | "doc">("nguphap");
+  // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
+  // nhưng lần đầu load thì đọc ngược từ URL để refresh/deep-link giữ đúng trang.
+  const initialRoute = useMemo(() => parseRoute(window.location.pathname), []);
+  const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>(initialRoute.page);
+  const [selectedLessonId, setSelectedLessonId] = useState<string>(
+    "lessonId" in initialRoute ? initialRoute.lessonId : "a1-l1",
+  );
+  const [initialLessonTab, setInitialLessonTab] = useState<BottomTab | undefined>(
+    initialRoute.page === "lesson-detail" ? initialRoute.tab : undefined,
+  );
+  const [activeExerciseCategory, setActiveExerciseCategory] = useState<"nguphap" | "nghe" | "doc">(
+    initialRoute.page === "quiz" ? initialRoute.category : "nguphap",
+  );
+
+  const currentRoute: AppRoute = useMemo(() => {
+    if (currentPage === "lesson-detail") {
+      return { page: "lesson-detail", lessonId: selectedLessonId, tab: initialLessonTab };
+    }
+    if (currentPage === "quiz") {
+      return { page: "quiz", lessonId: selectedLessonId, category: activeExerciseCategory };
+    }
+    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" };
+  }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory]);
+
+  // State -> URL. So sánh trước khi push để popstate không kích hoạt vòng lặp:
+  // sau khi popstate set lại state, serializeRoute đã bằng đúng pathname.
+  useEffect(() => {
+    const path = serializeRoute(currentRoute);
+    if (path !== window.location.pathname) {
+      window.history.pushState(null, "", path);
+    }
+  }, [currentRoute]);
+
+  // URL -> state, cho nút Back/Forward của trình duyệt.
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseRoute(window.location.pathname);
+      setCurrentPage(route.page);
+      if ("lessonId" in route) setSelectedLessonId(route.lessonId);
+      setInitialLessonTab(route.page === "lesson-detail" ? route.tab : undefined);
+      if (route.page === "quiz") setActiveExerciseCategory(route.category);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Custom Toast state
   const [activeToast, setActiveToast] = useState<{ message: string; type: ToastType; id: number } | null>(null);
