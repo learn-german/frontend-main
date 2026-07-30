@@ -46,3 +46,12 @@ test("gõ được nội dung vào ô item và đọc lại đúng giá trị", 
   await itemInput.fill("Tisch");
   assert.equal(await itemInput.inputValue(), "Tisch");
 });
+
+test("mọi nút trong khối phân loại có type=\"button\"", async () => {
+  const buttonTypes = await page.locator("button").evaluateAll((buttons) =>
+    buttons.map((button) => button.getAttribute("type")),
+  );
+  for (const type of buttonTypes) {
+    assert.equal(type, "button", "mỗi nút trong khối phân loại phải khai báo type=\"button\"");
+  }
+});

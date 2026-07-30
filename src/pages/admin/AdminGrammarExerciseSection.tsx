@@ -795,6 +795,7 @@ export const ExerciseEntryFields: React.FC<{
                   placeholder={`Nhóm ${i + 1}`}
                 />
                 <button
+                  type="button"
                   onClick={() => onChange((prev) => removeGroupFromForm(prev, i))}
                   className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
                 >
@@ -803,6 +804,7 @@ export const ExerciseEntryFields: React.FC<{
               </div>
             ))}
             <button
+              type="button"
               onClick={() => onChange(addGroupToForm)}
               className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
             >
@@ -835,6 +837,7 @@ export const ExerciseEntryFields: React.FC<{
                   ))}
                 </select>
                 <button
+                  type="button"
                   onClick={() => onChange((prev) => removeItemFromForm(prev, i))}
                   className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
                 >
@@ -843,6 +846,7 @@ export const ExerciseEntryFields: React.FC<{
               </div>
             ))}
             <button
+              type="button"
               onClick={() => onChange(addItemToForm)}
               disabled={entry.classification_groups.filter(Boolean).length === 0}
               className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
