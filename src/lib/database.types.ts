@@ -12,33 +12,117 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      exercise_sets: {
+        Row: {
+          category: string
+          id: string
+          lesson_id: string
+          order_index: number
+          status: string
+          title: string
+        }
+        Insert: {
+          category?: string
+          id?: string
+          lesson_id: string
+          order_index?: number
+          status?: string
+          title: string
+        }
+        Update: {
+          category?: string
+          id?: string
+          lesson_id?: string
+          order_index?: number
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_sets_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_sets_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grammar_attempts: {
+        Row: {
+          answers: Json
+          attempt_count: number
+          best_score: number
+          blank_results: Json
+          choice_results: Json
+          exercise_results: Json
+          id: string
+          lesson_id: string
+          score: number
+          submitted_at: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          attempt_count?: number
+          best_score: number
+          blank_results?: Json
+          choice_results?: Json
+          exercise_results?: Json
+          id?: string
+          lesson_id: string
+          score: number
+          submitted_at?: string
+          total: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          attempt_count?: number
+          best_score?: number
+          blank_results?: Json
+          choice_results?: Json
+          exercise_results?: Json
+          id?: string
+          lesson_id?: string
+          score?: number
+          submitted_at?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grammar_attempts_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_attempts_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grammar_exercises: {
         Row: {
           acceptable_answers: Json | null
@@ -54,7 +138,7 @@ export type Database = {
           options: Json | null
           order_index: number
           prompt_text: string | null
-          status: string
+          set_id: string
           tokens: Json | null
           transformation_hint: string | null
           type: string
@@ -74,7 +158,7 @@ export type Database = {
           options?: Json | null
           order_index?: number
           prompt_text?: string | null
-          status?: string
+          set_id: string
           tokens?: Json | null
           transformation_hint?: string | null
           type: string
@@ -94,7 +178,7 @@ export type Database = {
           options?: Json | null
           order_index?: number
           prompt_text?: string | null
-          status?: string
+          set_id?: string
           tokens?: Json | null
           transformation_hint?: string | null
           type?: string
@@ -113,6 +197,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_exercises_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -630,6 +721,7 @@ export type Database = {
           options: Json | null
           order_index: number | null
           prompt_text: string | null
+          set_id: string | null
           tokens: Json | null
           transformation_hint: string | null
           type: string | null
@@ -648,6 +740,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_exercises_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -862,9 +961,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

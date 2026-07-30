@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
+import { useExerciseSets, type ExerciseSet } from "../../lib/hooks/useExerciseSets";
 import {
   GRAMMAR_EXERCISE_HINT_MAX_LENGTH,
   normalizeGrammarHint,
@@ -56,7 +57,7 @@ interface GrammarExercise {
     | "fill_in_the_blank"
     | "multiple_choice";
   group_id: string | null;
-  status: "draft" | "published";
+  set_id: string;
   prompt_text: string | null;
   transformation_hint: string | null;
   correct_answer: string | null;
@@ -71,6 +72,7 @@ interface GrammarExercise {
   hint: string | null;
   order_index: number;
   groupId: string | null;
+  setId: string;
   orderIndex: number;
 }
 
@@ -105,7 +107,6 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
 
 export interface EditForm {
   type: GrammarExercise["type"];
-  status: "draft" | "published";
   prompt_text: string;
   transformation_hint: string;
   correct_answer: string;
@@ -130,7 +131,6 @@ interface AppendContext {
 
 export const EMPTY_FORM: EditForm = {
   type: "word_reorder",
-  status: "draft",
   prompt_text: "",
   transformation_hint: "",
   correct_answer: "",
@@ -218,7 +218,6 @@ const buildPayload = (form: EditForm) => {
   });
   return {
     type: form.type,
-    status: form.status,
     prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
     transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
     correct_answer:
@@ -318,11 +317,15 @@ interface ExerciseGroupRowProps {
   onDelete: (ex: GrammarExercise) => void;
   onPreview: (ex: GrammarExercise) => void;
   onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
+  findSet: (setId: string) => ExerciseSet | undefined;
+  onRenameSet: (id: string, title: string) => void;
+  onToggleSetStatus: (id: string, current: "draft" | "published") => void;
 }
 
 const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
   exerciseGroup, groupIndex, isExpanded, selectedIds, disabled, onToggleExpanded,
   onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onAddChildren,
+  findSet, onRenameSet, onToggleSetStatus,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: exerciseGroup.key,
@@ -330,6 +333,9 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
   });
   const ids = exerciseGroup.exercises.map((exercise) => exercise.id);
   const selectionState = getGroupSelectionState(ids, selectedIds);
+  const set = findSet(exerciseGroup.exercises[0]?.setId);
+  const [renaming, setRenaming] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(set?.title ?? "");
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${isDragging ? "z-10 opacity-60 shadow-lg" : ""}`}>
       <div className="flex items-center gap-3 bg-slate-50 px-3 py-2.5">
@@ -339,9 +345,35 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
         <GroupCheckbox state={selectionState} onChange={() => onToggleGroup(ids)} />
         <button type="button" onClick={() => onToggleExpanded(exerciseGroup.key)} className="flex flex-1 items-center gap-3 text-left">
           {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-          <span className="text-sm font-black text-slate-700">Bài {groupIndex + 1}</span>
+          {renaming ? (
+            <input
+              autoFocus
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={() => { if (set && titleDraft.trim()) onRenameSet(set.id, titleDraft.trim()); setRenaming(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              className={`${inputBaseCls} w-48`}
+            />
+          ) : (
+            <span
+              onClick={(e) => { e.stopPropagation(); setTitleDraft(set?.title ?? ""); setRenaming(true); }}
+              className="text-sm font-black text-slate-700 hover:underline"
+            >
+              {set?.title ?? `Bài ${groupIndex + 1}`}
+            </span>
+          )}
           <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${TYPE_COLORS[exerciseGroup.type]}`}>{TYPE_LABELS[exerciseGroup.type]}</span>
           <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu</span>
+          {set && (
+            <span
+              role="button"
+              onClick={(e) => { e.stopPropagation(); onToggleSetStatus(set.id, set.status); }}
+            >
+              <LessonStatusBadge status={set.status} />
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -362,7 +394,6 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
               <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => onToggleExercise(ex.id)} className="h-4 w-4 accent-orange-500" />
               <span className="w-10 shrink-0 text-xs font-bold text-slate-400">{groupIndex + 1}.{childIndex + 1}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{previewContent(ex)}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${ex.status === "published" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>{ex.status === "published" ? "Đã publish" : "Nháp"}</span>
               <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <button onClick={() => onPreview(ex)} className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600" title="Preview"><Eye className="w-3.5 h-3.5" /></button>
                 <button onClick={() => onEdit(ex)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600" title="Chỉnh sửa"><Pencil className="w-3.5 h-3.5" /></button>
@@ -389,7 +420,10 @@ const ExerciseGroupList: React.FC<{
   onReorder: (activeKey: string, overKey: string) => void;
   reorderSaving: boolean;
   onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
-}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving, onAddChildren }) => {
+  findSet: (setId: string) => ExerciseSet | undefined;
+  onRenameSet: (id: string, title: string) => void;
+  onToggleSetStatus: (id: string, current: "draft" | "published") => void;
+}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving, onAddChildren, findSet, onRenameSet, onToggleSetStatus }) => {
   const exerciseGroups = groupGrammarExercises(exercises);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -400,7 +434,7 @@ const ExerciseGroupList: React.FC<{
       <SortableContext items={exerciseGroups.map((group) => group.key)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {exerciseGroups.map((exerciseGroup, groupIndex) => (
-            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} onAddChildren={onAddChildren} />
+            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} onAddChildren={onAddChildren} findSet={findSet} onRenameSet={onRenameSet} onToggleSetStatus={onToggleSetStatus} />
           ))}
         </div>
       </SortableContext>
@@ -886,6 +920,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
+  const { sets: exerciseSets, createSet, renameSet, toggleSetStatus } = useExerciseSets();
+  const findSet = (setId: string) => exerciseSets.find((s) => s.id === setId);
   const [hint, setHint] = useState("");
   const [wordBankEnabled, setWordBankEnabled] = useState(false);
   const [wordBankWords, setWordBankWords] = useState<string[]>([]);
@@ -909,10 +945,11 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
     const exercisesByLesson: Record<string, GrammarExercise[]> = {};
     for (const ex of exercisesRes.data ?? []) {
-      const exercise = ex as Omit<GrammarExercise, "groupId" | "orderIndex">;
+      const exercise = ex as Omit<GrammarExercise, "groupId" | "orderIndex" | "setId">;
       (exercisesByLesson[ex.lesson_id] ??= []).push({
         ...exercise,
         groupId: exercise.group_id,
+        setId: exercise.set_id,
         orderIndex: exercise.order_index,
       });
     }
@@ -962,7 +999,6 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     setEntries([
       {
         type: ex.type,
-        status: ex.status,
         prompt_text: ex.prompt_text ?? "",
         transformation_hint: ex.transformation_hint ?? "",
         correct_answer: ex.correct_answer ?? "",
@@ -1010,7 +1046,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   };
 
   const handleTypeChange = (newType: EditForm["type"]) => {
-    setEntries((prev) => [{ ...EMPTY_FORM, order_index: prev[0]?.order_index ?? 0, status: prev[0]?.status ?? "draft", type: newType }]);
+    setEntries((prev) => [{ ...EMPTY_FORM, order_index: prev[0]?.order_index ?? 0, type: newType }]);
     if (newType !== "fill_in_the_blank") {
       setWordBankEnabled(false);
       setWordBankWords([]);
@@ -1020,7 +1056,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const addEntry = () =>
     setEntries((prev) => [
       ...prev,
-      { ...EMPTY_FORM, type: prev[0].type, status: prev[0].status, order_index: (prev[prev.length - 1]?.order_index ?? 0) + 1 },
+      { ...EMPTY_FORM, type: prev[0].type, order_index: (prev[prev.length - 1]?.order_index ?? 0) + 1 },
     ]);
 
   const removeEntry = (idx: number) => setEntries((prev) => prev.filter((_, i) => i !== idx));
@@ -1072,15 +1108,21 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       }
     } else if (modalMode === "create-group") {
       const groupId = crypto.randomUUID();
-      const payloads = entries.map((entry, index) => ({
-        ...buildPayload(entry),
-        lesson_id: editLessonId,
-        group_id: groupId,
-        hint: normalizedHint,
-        word_bank: sharedWordBank,
-        order_index: createStartOrder + index,
-      }));
-      ({ error } = await supabase.from("grammar_exercises").insert(payloads));
+      const setResult = await createSet(editLessonId, "nguphap", createStartOrder);
+      if (setResult.error || !setResult.data) {
+        error = { message: setResult.error ?? "Không tạo được bài tập mới." };
+      } else {
+        const payloads = entries.map((entry, index) => ({
+          ...buildPayload(entry),
+          lesson_id: editLessonId,
+          group_id: groupId,
+          set_id: setResult.data!.id,
+          hint: normalizedHint,
+          word_bank: sharedWordBank,
+          order_index: createStartOrder + index,
+        }));
+        ({ error } = await supabase.from("grammar_exercises").insert(payloads));
+      }
     } else if (appendContext) {
       const resolved = resolveAppendGroupId(appendContext.groupId, () => crypto.randomUUID());
       if (resolved.assignedLegacyId) {
@@ -1100,25 +1142,33 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       }
 
       if (!error) {
-        const payloads = entries.map((entry, index) => ({
-          ...buildPayload(entry),
-          lesson_id: editLessonId,
-          group_id: resolved.groupId,
-          hint: normalizedHint,
-          word_bank: sharedWordBank,
-          order_index: createStartOrder + index,
-        }));
-        const insertResult = await supabase.from("grammar_exercises").insert(payloads);
-        error = insertResult.error;
+        const existingSetId = groups
+          .find((g) => g.lesson_id === editLessonId)
+          ?.exercises.find((ex) => ex.groupId === resolved.groupId)?.setId;
+        if (!existingSetId) {
+          error = { message: "Không tìm thấy bài tập chứa nhóm câu hỏi này." };
+        } else {
+          const payloads = entries.map((entry, index) => ({
+            ...buildPayload(entry),
+            lesson_id: editLessonId,
+            group_id: resolved.groupId,
+            set_id: existingSetId,
+            hint: normalizedHint,
+            word_bank: sharedWordBank,
+            order_index: createStartOrder + index,
+          }));
+          const insertResult = await supabase.from("grammar_exercises").insert(payloads);
+          error = insertResult.error;
 
-        if (error && resolved.assignedLegacyId) {
-          const rollback = await supabase
-            .from("grammar_exercises")
-            .update({ group_id: null })
-            .in("id", appendContext.legacyExerciseIds);
-          if (rollback.error) {
-            error = { message: `${error.message}. Rollback nhóm cũ thất bại: ${rollback.error.message}` };
-            await fetchExercises();
+          if (error && resolved.assignedLegacyId) {
+            const rollback = await supabase
+              .from("grammar_exercises")
+              .update({ group_id: null })
+              .in("id", appendContext.legacyExerciseIds);
+            if (rollback.error) {
+              error = { message: `${error.message}. Rollback nhóm cũ thất bại: ${rollback.error.message}` };
+              await fetchExercises();
+            }
           }
         }
       }
@@ -1216,34 +1266,6 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     await fetchExercises();
     setReorderSavingLessonId(null);
     showToast("Đã cập nhật thứ tự câu hỏi.", "success");
-  };
-
-  const handlePublish = async () => {
-    if (!editId) return;
-    setSaving(true);
-    const { error } = await supabase.from("grammar_exercises").update({ status: "published" }).eq("id", editId);
-    setSaving(false);
-    if (error) {
-      showToast("Publish thất bại: " + error.message, "warning");
-    } else {
-      showToast("Đã publish bài tập.", "success");
-      setEntries((prev) => [{ ...prev[0], status: "published" }]);
-      fetchExercises();
-    }
-  };
-
-  const handleRevertToDraft = async () => {
-    if (!editId) return;
-    setSaving(true);
-    const { error } = await supabase.from("grammar_exercises").update({ status: "draft" }).eq("id", editId);
-    setSaving(false);
-    if (error) {
-      showToast("Chuyển về Nháp thất bại: " + error.message, "warning");
-    } else {
-      showToast("Đã chuyển về Nháp.", "success");
-      setEntries((prev) => [{ ...prev[0], status: "draft" }]);
-      fetchExercises();
-    }
   };
 
   const filteredGroups = groups.filter(
@@ -1356,6 +1378,9 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                         onReorder={(activeKey, overKey) => handleReorderGroups(group.lesson_id, activeKey, overKey)}
                         reorderSaving={reorderSavingLessonId === group.lesson_id}
                         onAddChildren={(exerciseGroup, groupIndex) => openAppendChildren(group.lesson_id, exerciseGroup, groupIndex + 1)}
+                        findSet={findSet}
+                        onRenameSet={(id, title) => renameSet(id, title)}
+                        onToggleSetStatus={(id, current) => toggleSetStatus(id, current)}
                       />
                     )}
                   </div>
@@ -1383,7 +1408,6 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                       ? `Thêm câu vào Bài ${appendContext?.groupNumber ?? ""}`
                       : "Thêm bài tập mới"}
                 </h3>
-                {modalMode === "edit" && <LessonStatusBadge status={entries[0].status} />}
               </div>
               <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
                 <X className="w-4 h-4" />
@@ -1530,16 +1554,6 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                       ? `Thêm ${entries.length} bài tập`
                       : "Thêm bài tập"}
               </Button>
-              {modalMode === "edit" && editId &&
-                (entries[0].status === "draft" ? (
-                  <Button variant="ghost" size="sm" onClick={handlePublish} className="w-full" disabled={saving}>
-                    Publish
-                  </Button>
-                ) : (
-                  <Button variant="ghost" size="sm" onClick={handleRevertToDraft} className="w-full" disabled={saving}>
-                    Chuyển về Nháp
-                  </Button>
-                ))}
             </div>
           </div>
         </div>
