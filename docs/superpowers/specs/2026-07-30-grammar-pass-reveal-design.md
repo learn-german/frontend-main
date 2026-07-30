@@ -147,6 +147,23 @@ Không tăng attempt khi: reload trang (không có request submit nào), request
 validation fail trước khi tới bước ghi, lỗi trước khi transaction commit,
 hoặc trùng `submission_id`.
 
+**XP:** giữ nguyên tổng XP như trước — **30 XP một lần cho cả lesson**, thưởng
+đúng lúc `lesson_progress.quiz_score` (nguphap) chuyển từ `<100` sang `100`
+(tức toàn bộ set vừa được pass hết, không phải mỗi lần pass 1 set). Không đổi
+sang thưởng theo từng set — lesson có nhiều set sẽ lạm phát tổng XP so với
+trước nếu làm vậy. Chống thưởng trùng khi 2 request submit các set khác nhau
+của cùng lesson chạy gần đồng thời: đọc `quiz_score` hiện tại của lesson
+**trước khi** upsert; chỉ thưởng nếu giá trị cũ `< 100` và giá trị mới `= 100`.
+
+**Bug đang có, phải sửa trong Phase 2:** `grammar-submit` hiện tại tính
+`passed = score >= PASS_THRESHOLD` trên `score` đã làm tròn
+(`computeGrammarScore` trả `Math.round((correct/total)*100)`) — đúng lỗi làm
+tròn BR-02 cảnh báo (`77.78%` có thể vô tình làm tròn thành `78%` gần `80%`,
+hoặc một tỷ lệ như `79.5%` làm tròn thành `80%` rồi bị tính Pass sai). Phase 2
+tính `isPassed` trực tiếp từ `correct * 100 >= total * 80` (đã có sẵn
+`correct`/`total` chưa làm tròn trong `ScoreResult`), không dùng `score`
+(giá trị `score` làm tròn vẫn giữ lại, chỉ dùng để hiển thị).
+
 ## Frontend
 
 **Route:** thêm cấp `setId` vào route `quiz` hiện có.
