@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from "react";
-import { Loader2, ArrowRight, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Loader2, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/DesignSystem";
 import { ExercisePageHeader } from "../components/ExercisePageHeader";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { MultipleChoiceOptions } from "../components/MultipleChoiceOptions";
-import { Lesson, GrammarExercise } from "../lib/appTypes";
+import { GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
 import {
@@ -18,26 +18,31 @@ import {
 } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
 import { emptyAnswer, parseAnswer, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
-import { useGrammarAttempt } from "../lib/hooks/useGrammarAttempt";
+import { useExerciseSetAttempt } from "../lib/hooks/useExerciseSetAttempt";
 
 interface GrammarExercisePageProps {
-  lesson: Lesson;
-  onQuizFinished: (scorePercentage: number, xpEarned: number) => void;
-  onNavigateHome: () => void;
-  onNextLesson: () => void;
+  lessonId: string;
+  set: { id: string; title: string };
+  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onBackToList: () => void;
   onBackToLesson: () => void;
 }
 
 interface GrammarResult {
   score: number;
   total: number;
-  passed: boolean;
-  xp_earned: number;
-  best_score: number;
-  attempt_count: number;
+  correct: number;
+  isPassed: boolean;
+  revealed: boolean;
+  xpEarned: number;
+  bestScore: number;
+  attemptCount: number;
+  lessonQuizScore: number;
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
+  correctAnswers?: Record<string, string>;
+  explanations?: Record<string, string>;
 }
 
 const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
@@ -298,14 +303,13 @@ const SubmittedAnswer: React.FC<{ value: string; correct: boolean | undefined }>
 );
 
 export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
-  lesson,
-  onQuizFinished,
-  onNavigateHome,
-  onNextLesson,
+  set,
+  onSetFinished,
+  onBackToList,
   onBackToLesson,
 }) => {
-  const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(lesson.id);
-  const { attempt, loading: attemptLoading } = useGrammarAttempt(lesson.id);
+  const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
+  const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
 
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
@@ -331,19 +335,32 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   // the saved attempt back into the form they just cleared.
   const [retrying, setRetrying] = useState(false);
 
+  // Sinh 1 lần khi mount hoặc khi bấm "Làm lại" — giữ nguyên cho mọi lần
+  // bấm "Nộp bài" trong cùng 1 lượt làm, để server nhận diện double-click/
+  // retry qua đúng submission_id và không tăng attempt_count sai.
+  const submissionIdRef = React.useRef(crypto.randomUUID());
+
   React.useEffect(() => {
     if (!attempt || retrying || exercises.length === 0) return;
 
     setResult({
       score: attempt.score,
       total: attempt.total,
-      passed: attempt.score >= 80,
-      xp_earned: 0,
-      best_score: attempt.bestScore,
-      attempt_count: attempt.attemptCount,
+      correct: Math.round((attempt.score / 100) * attempt.total),
+      isPassed: attempt.isPassed,
+      revealed: attempt.revealed,
+      xpEarned: 0,
+      bestScore: attempt.bestScore,
+      attemptCount: attempt.attemptCount,
+      lessonQuizScore: 0,
       blankResults: attempt.blankResults,
       choiceResults: attempt.choiceResults,
       exerciseResults: attempt.exerciseResults,
+      // correctAnswers/explanations không hydrate lại từ đây — chỉ set này
+      // nhận được lúc submit thật (revealed=true tại thời điểm đó). Nếu học
+      // viên rời trang rồi quay lại sau khi đã revealed, phần dưới ẩn card
+      // giải thích thay vì hiện field rỗng — chấp nhận được, ưu tiên không
+      // lưu correct_answer ra localStorage/state ngoài phiên submit gốc.
     });
 
     const textAnswers: Record<string, string> = {};
@@ -422,7 +439,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setSubmitError(null);
 
     const { data, error } = await supabase.functions.invoke("grammar-submit", {
-      body: { lesson_id: lesson.id, answers: finalAnswers },
+      body: { set_id: set.id, submission_id: submissionIdRef.current, answers: finalAnswers },
     });
 
     setSubmitting(false);
@@ -435,13 +452,14 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     const res = data as GrammarResult;
     setResult(res);
     setSubmittedAnswerSnapshot(finalAnswers);
-    // Report the best score, not the latest one: local progress (and the
-    // Roadmap's completedLessons derivation) must not regress when a learner
-    // who already passed retries and scores lower this time.
-    onQuizFinished(res.best_score, res.xp_earned);
+    // Report rollup theo cả lesson (không phải điểm riêng set này) — khớp
+    // đúng giá trị server vừa ghi vào lesson_progress.quiz_score, để state
+    // optimistic phía client (Roadmap/Dashboard) không lệch server.
+    onSetFinished(res.lessonQuizScore, res.xpEarned);
   };
 
   const handleRetry = () => {
+    submissionIdRef.current = crypto.randomUUID();
     setExpandedGroupKeys(new Set());
     setSelectedTokensByExercise({});
     setTextAnswerByExercise({});
@@ -484,8 +502,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   }
 
   if (result) {
-    const { score, total, passed, xp_earned } = result;
-    const correctCount = Math.round((score / 100) * total);
+    const { score, total, correct, isPassed, revealed, xpEarned } = result;
 
     return (
       <div className="max-w-5xl mx-auto space-y-8">
@@ -495,7 +512,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
           className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/60 p-6 sm:p-10 shadow-sm text-center space-y-6 animate-in zoom-in duration-300"
         >
         <div className="space-y-2">
-          {passed ? (
+          {isPassed ? (
             <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mx-auto text-4xl animate-bounce">
               🎉
             </div>
@@ -505,10 +522,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             </div>
           )}
           <h2 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight leading-normal">
-            {passed ? "Xuất sắc! Bạn đã vượt qua!" : "Cố gắng chút nữa nhé!"}
+            {isPassed ? "Xuất sắc! Bạn đã vượt qua!" : "Cố gắng chút nữa nhé!"}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto font-sans leading-normal">
-            {passed
+            {isPassed
               ? "Tuyệt vời, bạn đã tiếp thu bài học cực tốt và sẵn sàng mở khóa các lớp thử thách tiếp theo!"
               : "Để hoàn thiện bài học, bạn cần đạt tối thiểu 80% điểm số. Đừng nản lòng nhé!"}
           </p>
@@ -519,27 +536,28 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             KẾT QUẢ ĐẠT ĐƯỢC
           </span>
           <div className="flex items-baseline justify-center gap-1.5 mt-1">
-            <span className={`text-4xl md:text-5xl font-display font-black ${passed ? "text-green-600" : "text-rose-600"}`}>
+            <span className={`text-4xl md:text-5xl font-display font-black ${isPassed ? "text-green-600" : "text-rose-600"}`}>
               {score}%
             </span>
-            <span className="text-sm font-bold text-slate-500">({correctCount}/{total} câu)</span>
+            <span className="text-sm font-bold text-slate-500">({correct}/{total} câu)</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1.5">
-            Điểm cao nhất: <b className="text-slate-700">{result.best_score}%</b> · Đã làm{" "}
-            <b className="text-slate-700">{result.attempt_count}</b> lần
+            Điểm cao nhất: <b className="text-slate-700">{result.bestScore}%</b> · Đã làm{" "}
+            <b className="text-slate-700">{result.attemptCount}</b> lần
           </p>
-          {xp_earned > 0 && (
+          {xpEarned > 0 && (
             <span className="inline-block text-[10px] font-display font-bold px-2.5 py-0.5 rounded-full mt-2.5 uppercase bg-green-50 text-green-700">
-              +{xp_earned} XP Tích lũy
+              +{xpEarned} XP Tích lũy
             </span>
           )}
-          {!passed && (
+          {!isPassed && (
             <span className="inline-block text-[10px] font-display font-bold px-2.5 py-0.5 rounded-full mt-2.5 uppercase bg-rose-50 text-rose-700">
               Chưa đạt chuẩn 80%
             </span>
           )}
         </div>
 
+        {revealed && (
         <div className="text-left space-y-3 pt-4 border-t border-slate-100">
           <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
             Giải thích từng câu hỏi:
@@ -612,27 +630,26 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
                         />
                       </div>
                     )}
-                    <p className="text-slate-500 text-[11px] leading-relaxed">
-                      <b>Giải thích:</b> {ex.explanation}
-                    </p>
+                    {result.explanations?.[ex.id] && (
+                      <p className="text-slate-500 text-[11px] leading-relaxed">
+                        <b>Giải thích:</b> {result.explanations[ex.id]}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
             ))}
           </div>
         </div>
+        )}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button variant="secondary" className="flex-1" onClick={handleRetry}>
             <RotateCcw className="w-4 h-4 mr-2" /> Làm lại bài Test
           </Button>
-          {result.best_score >= 80 ? (
-            <Button variant="primary" className="flex-1" onClick={onNextLesson}>
-              Học bài tiếp theo <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          ) : (
-            <Button variant="ghost" className="flex-1 text-slate-500" onClick={onNavigateHome}>
-              Quay về Lộ trình
+          {isPassed && (
+            <Button variant="primary" className="flex-1" onClick={onBackToList}>
+              Tiếp tục
             </Button>
           )}
           </div>
