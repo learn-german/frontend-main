@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
+import { useExerciseSets, type ExerciseSet } from "../../lib/hooks/useExerciseSets";
 import {
   GRAMMAR_EXERCISE_HINT_MAX_LENGTH,
   normalizeGrammarHint,
@@ -56,7 +57,7 @@ interface GrammarExercise {
     | "fill_in_the_blank"
     | "multiple_choice";
   group_id: string | null;
-  status: "draft" | "published";
+  set_id: string;
   prompt_text: string | null;
   transformation_hint: string | null;
   correct_answer: string | null;
@@ -71,6 +72,7 @@ interface GrammarExercise {
   hint: string | null;
   order_index: number;
   groupId: string | null;
+  setId: string;
   orderIndex: number;
 }
 
@@ -886,6 +888,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
+  const { sets: exerciseSets, createSet, renameSet, toggleSetStatus } = useExerciseSets(editLessonId || null);
   const [hint, setHint] = useState("");
   const [wordBankEnabled, setWordBankEnabled] = useState(false);
   const [wordBankWords, setWordBankWords] = useState<string[]>([]);
@@ -909,10 +912,11 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
     const exercisesByLesson: Record<string, GrammarExercise[]> = {};
     for (const ex of exercisesRes.data ?? []) {
-      const exercise = ex as Omit<GrammarExercise, "groupId" | "orderIndex">;
+      const exercise = ex as Omit<GrammarExercise, "groupId" | "orderIndex" | "setId">;
       (exercisesByLesson[ex.lesson_id] ??= []).push({
         ...exercise,
         groupId: exercise.group_id,
+        setId: exercise.set_id,
         orderIndex: exercise.order_index,
       });
     }
@@ -1072,15 +1076,21 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       }
     } else if (modalMode === "create-group") {
       const groupId = crypto.randomUUID();
-      const payloads = entries.map((entry, index) => ({
-        ...buildPayload(entry),
-        lesson_id: editLessonId,
-        group_id: groupId,
-        hint: normalizedHint,
-        word_bank: sharedWordBank,
-        order_index: createStartOrder + index,
-      }));
-      ({ error } = await supabase.from("grammar_exercises").insert(payloads));
+      const setResult = await createSet(editLessonId, "nguphap", createStartOrder);
+      if (setResult.error || !setResult.data) {
+        error = { message: setResult.error ?? "Không tạo được bài tập mới." };
+      } else {
+        const payloads = entries.map((entry, index) => ({
+          ...buildPayload(entry),
+          lesson_id: editLessonId,
+          group_id: groupId,
+          set_id: setResult.data!.id,
+          hint: normalizedHint,
+          word_bank: sharedWordBank,
+          order_index: createStartOrder + index,
+        }));
+        ({ error } = await supabase.from("grammar_exercises").insert(payloads));
+      }
     } else if (appendContext) {
       const resolved = resolveAppendGroupId(appendContext.groupId, () => crypto.randomUUID());
       if (resolved.assignedLegacyId) {
@@ -1100,25 +1110,33 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       }
 
       if (!error) {
-        const payloads = entries.map((entry, index) => ({
-          ...buildPayload(entry),
-          lesson_id: editLessonId,
-          group_id: resolved.groupId,
-          hint: normalizedHint,
-          word_bank: sharedWordBank,
-          order_index: createStartOrder + index,
-        }));
-        const insertResult = await supabase.from("grammar_exercises").insert(payloads);
-        error = insertResult.error;
+        const existingSetId = groups
+          .find((g) => g.lesson_id === editLessonId)
+          ?.exercises.find((ex) => ex.groupId === resolved.groupId)?.setId;
+        if (!existingSetId) {
+          error = { message: "Không tìm thấy bài tập chứa nhóm câu hỏi này." };
+        } else {
+          const payloads = entries.map((entry, index) => ({
+            ...buildPayload(entry),
+            lesson_id: editLessonId,
+            group_id: resolved.groupId,
+            set_id: existingSetId,
+            hint: normalizedHint,
+            word_bank: sharedWordBank,
+            order_index: createStartOrder + index,
+          }));
+          const insertResult = await supabase.from("grammar_exercises").insert(payloads);
+          error = insertResult.error;
 
-        if (error && resolved.assignedLegacyId) {
-          const rollback = await supabase
-            .from("grammar_exercises")
-            .update({ group_id: null })
-            .in("id", appendContext.legacyExerciseIds);
-          if (rollback.error) {
-            error = { message: `${error.message}. Rollback nhóm cũ thất bại: ${rollback.error.message}` };
-            await fetchExercises();
+          if (error && resolved.assignedLegacyId) {
+            const rollback = await supabase
+              .from("grammar_exercises")
+              .update({ group_id: null })
+              .in("id", appendContext.legacyExerciseIds);
+            if (rollback.error) {
+              error = { message: `${error.message}. Rollback nhóm cũ thất bại: ${rollback.error.message}` };
+              await fetchExercises();
+            }
           }
         }
       }
