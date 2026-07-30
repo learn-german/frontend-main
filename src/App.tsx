@@ -134,7 +134,13 @@ export default function App() {
           fullName: session.user.user_metadata?.full_name ?? session.user.email ?? "",
           role: (session.user.app_metadata?.role as string) ?? "user",
         });
-        setCurrentPage("dashboard");
+        // Chỉ đưa về dashboard khi URL không trỏ tới trang cụ thể nào.
+        // replaceState (không phải push) để nút Back không kẹt vòng lặp.
+        const route = parseRoute(window.location.pathname);
+        if (route.page === "landing" || route.page === "login") {
+          setCurrentPage("dashboard");
+          window.history.replaceState(null, "", "/dashboard");
+        }
       }
       setAuthLoading(false);
     });
@@ -164,13 +170,10 @@ export default function App() {
     // onAuthStateChange sẽ set user = null và chuyển về landing
   };
 
+  // Không ép sang "login" nữa: URL đích được giữ nguyên và effectivePage lo
+  // việc render màn hình đăng nhập, nhờ đó đăng nhập xong là vào thẳng đích.
   const handleNavigate = (page: AppState["currentPage"]) => {
-    // If not logged in and try to access restrict views, lock them and put them on login
-    if (!user && (page === "dashboard" || page === "roadmap" || page === "lesson-detail" || page === "quiz" || page === "leaderboard")) {
-      setCurrentPage("login");
-    } else {
-      setCurrentPage(page);
-    }
+    setCurrentPage(page);
   };
 
   // Select particular lesson to view
@@ -232,17 +235,23 @@ export default function App() {
     }
   };
 
+  // Trang thực sự được render. Khi chưa đăng nhập mà URL trỏ tới trang cần
+  // quyền, ta render màn hình đăng nhập nhưng KHÔNG đổi URL — URL chính là
+  // nơi ghi nhớ đích đến, sống sót qua cả lần reload của OAuth.
+  const effectivePage: AppState["currentPage"] =
+    !user && isProtectedPage(currentPage) ? "login" : currentPage;
+
   if (authLoading) {
     return <AppLoadingSkeleton />;
   }
 
   // Show loading overlay while fetching modules (only on authenticated pages)
   const showModulesLoader = user && modulesLoading && modules.length === 0 &&
-    (currentPage === "dashboard" || currentPage === "roadmap" || currentPage === "lesson-detail");
+    (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail");
 
   // Layout check selectors
-  const showNav = currentPage !== "login";
-  const showSidebar = user && (currentPage === "dashboard" || currentPage === "roadmap" || currentPage === "lesson-detail");
+  const showNav = effectivePage !== "login";
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -250,7 +259,7 @@ export default function App() {
       {/* 1. Global Navigation Navbar */}
       {showNav && (
         <Navbar
-          currentPage={currentPage}
+          currentPage={effectivePage}
           onNavigate={handleNavigate}
           user={user}
           onLogout={handleLogout}
@@ -266,7 +275,7 @@ export default function App() {
         {/* Sidebar on desktop portal pages */}
         {showSidebar && (
           <Sidebar
-            currentPage={currentPage}
+            currentPage={effectivePage}
             onNavigate={handleNavigate}
             streak={stats.streak}
           />
@@ -281,14 +290,14 @@ export default function App() {
           )}
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentPage + (currentPage === "lesson-detail" ? selectedLessonId : "")}
+              key={effectivePage + (effectivePage === "lesson-detail" ? selectedLessonId : "")}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.22, ease: "easeInOut" }}
               className=""
             >
-              {currentPage === "landing" && (
+              {effectivePage === "landing" && (
                 <LandingPage
                   onStartLearning={() => handleNavigate("login")}
                   onViewRoadmap={() => {
@@ -302,13 +311,13 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "login" && (
+              {effectivePage === "login" && (
                 <LoginPage
                   onNavigateHome={() => handleNavigate("landing")}
                 />
               )}
 
-              {currentPage === "dashboard" && user && (
+              {effectivePage === "dashboard" && user && (
                 <DashboardPage
                   user={user}
                   stats={stats}
@@ -318,7 +327,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "roadmap" && user && (
+              {effectivePage === "roadmap" && user && (
                 <RoadmapPage
                   stats={stats}
                   modules={modules}
@@ -327,7 +336,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "lesson-detail" && user && activeLessonObject && (
+              {effectivePage === "lesson-detail" && user && activeLessonObject && (
                 <LessonDetailPage
                   lesson={activeLessonObject}
                   stats={stats}
@@ -343,7 +352,7 @@ export default function App() {
                 />
               )}
 
-              {currentPage === "lesson-detail" && user && !activeLessonObject && !modulesLoading && (
+              {effectivePage === "lesson-detail" && user && !activeLessonObject && !modulesLoading && (
                 <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
                   <p className="text-sm font-display font-bold text-slate-600">
                     Bài học không khả dụng, có thể đang được chỉnh sửa.
@@ -355,7 +364,7 @@ export default function App() {
                 </div>
               )}
 
-              {currentPage === "quiz" && user && activeLessonObject && (
+              {effectivePage === "quiz" && user && activeLessonObject && (
                 activeExerciseCategory === "nguphap" ? (
                   <GrammarExercisePage
                     key={activeLessonObject.id}
@@ -376,7 +385,7 @@ export default function App() {
                   />
                 )
               )}
-              {currentPage === "leaderboard" && user && (
+              {effectivePage === "leaderboard" && user && (
                 <LeaderboardPage currentUserId={user.id} />
               )}
             </motion.div>

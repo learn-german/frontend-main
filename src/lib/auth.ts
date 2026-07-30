@@ -15,7 +15,9 @@ export async function signIn(email: string, password: string) {
 export async function signInWithGoogle() {
   return supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin }
+    // href chứ không phải origin: OAuth reload cả trang, nên URL đích phải
+    // được giữ lại thì deep-link mới quay về đúng chỗ sau khi đăng nhập.
+    options: { redirectTo: window.location.href }
   })
 }
 
