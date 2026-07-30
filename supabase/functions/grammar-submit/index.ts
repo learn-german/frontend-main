@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeGrammarScore, projectAnswers } from "./scoring.ts";
-import { computeAttemptUpdate } from "./attemptUpdate.ts";
+import { computeSetAttemptUpdate, type ExistingSetAttempt } from "./setAttemptUpdate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +9,6 @@ const corsHeaders = {
 };
 
 const XP_REWARD = 30;
-const PASS_THRESHOLD = 80; // percent
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -26,13 +25,12 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const lesson_id: string = body.lesson_id;
-    // Not yet validated against the loaded exercises — projectAnswers() below
-    // does that once we know which exercise ids are legitimate for this lesson.
+    const set_id: string = body.set_id;
+    const submission_id: string = body.submission_id;
     const rawAnswers: Record<string, unknown> | undefined = body.answers;
 
-    if (!lesson_id || !rawAnswers) {
-      return new Response(JSON.stringify({ error: "lesson_id and answers required" }), {
+    if (!set_id || !submission_id || !rawAnswers) {
+      return new Response(JSON.stringify({ error: "set_id, submission_id and answers required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -52,96 +50,184 @@ serve(async (req) => {
       });
     }
 
+    const { data: set, error: setErr } = await supabase
+      .from("exercise_sets")
+      .select("id, lesson_id, category, status")
+      .eq("id", set_id)
+      .eq("status", "published")
+      .maybeSingle();
+
+    if (setErr || !set) {
+      return new Response(JSON.stringify({ error: "Set not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: exercises, error: exErr } = await supabase
       .from("grammar_exercises")
-      .select("id, type, correct_answer, acceptable_answers, classification_items, blanks, options, exercise_sets!inner(status)")
-      .eq("lesson_id", lesson_id)
-      .eq("exercise_sets.status", "published");
+      .select("id, type, correct_answer, acceptable_answers, classification_items, blanks, options, explanation")
+      .eq("set_id", set_id);
 
-    if (exErr || !exercises) {
+    if (exErr || !exercises || exercises.length === 0) {
       return new Response(JSON.stringify({ error: "Failed to load exercises" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Project down to exercise ids that actually exist for this lesson, coerce
-    // to strings, and cap length, BEFORE scoring or persisting. This keeps a
-    // malformed/oversized/unknown-id payload out of both the grader and the
-    // stored row, and guarantees the persisted snapshot is exactly the set the
-    // hydrate path (useGrammarAttempt) iterates.
     const answers = projectAnswers(exercises, rawAnswers);
-
-    const { total, score, blankResults, choiceResults, exerciseResults } = computeGrammarScore(
+    const { total, correct, blankResults, choiceResults, exerciseResults } = computeGrammarScore(
       exercises,
       answers,
     );
-    const passed = score >= PASS_THRESHOLD;
 
-    const { data: existingAttempt } = await supabase
-      .from("grammar_attempts")
-      .select("best_score, attempt_count")
+    const { data: existingRow } = await supabase
+      .from("exercise_set_attempts")
+      .select("best_score, attempt_count, is_passed, revealed, last_submission_id")
       .eq("user_id", user.id)
-      .eq("lesson_id", lesson_id)
+      .eq("set_id", set_id)
       .maybeSingle();
 
-    const update = computeAttemptUpdate(existingAttempt, score, XP_REWARD, PASS_THRESHOLD);
-
-    // Award XP BEFORE persisting best_score. best_score is exactly the flag
-    // that suppresses future XP awards (reachedPassNow checks previousBest
-    // against the pass threshold in computeAttemptUpdate). If the process died
-    // between these two writes with the order reversed, the learner would
-    // become permanently ineligible for XP they never actually received. A
-    // duplicate award on a retried request is a strictly better failure mode
-    // than a silent permanent forfeiture — do not "tidy" this back.
-    if (update.xp_earned > 0) {
-      await supabase.rpc("increment_xp", { p_user_id: user.id, p_amount: update.xp_earned });
+    // Idempotency: cùng submission_id với lần trước -> trả lại đúng kết quả
+    // cũ, không chấm lại, không tăng attempt_count. Bảo vệ double-click và
+    // request bị retry (mạng chập chờn gửi lại cùng request).
+    if (existingRow && existingRow.last_submission_id === submission_id) {
+      const revealedNow = existingRow.revealed;
+      return new Response(
+        JSON.stringify({
+          score: existingRow.best_score,
+          total,
+          correct,
+          isPassed: existingRow.is_passed,
+          revealed: revealedNow,
+          attemptCount: existingRow.attempt_count,
+          bestScore: existingRow.best_score,
+          xpEarned: 0,
+          lessonQuizScore: 0,
+          blankResults,
+          choiceResults,
+          exerciseResults,
+          ...(revealedNow
+            ? {
+                correctAnswers: Object.fromEntries(exercises.map((e) => [e.id, e.correct_answer ?? ""])),
+                explanations: Object.fromEntries(exercises.map((e) => [e.id, e.explanation ?? ""])),
+              }
+            : {}),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const { error: attemptError } = await supabase.from("grammar_attempts").upsert(
+    const existing: ExistingSetAttempt | null = existingRow
+      ? {
+          bestScore: existingRow.best_score,
+          attemptCount: existingRow.attempt_count,
+          isPassed: existingRow.is_passed,
+          revealed: existingRow.revealed,
+        }
+      : null;
+
+    const update = computeSetAttemptUpdate(existing, correct, total, XP_REWARD);
+
+    if (update.xpEarned > 0) {
+      await supabase.rpc("increment_xp", { p_user_id: user.id, p_amount: update.xpEarned });
+    }
+
+    const { error: attemptError } = await supabase.from("exercise_set_attempts").upsert(
       {
-        lesson_id,
         user_id: user.id,
+        set_id,
+        category: set.category,
         answers,
         blank_results: blankResults,
         choice_results: choiceResults,
         exercise_results: exerciseResults,
-        score,
+        score: update.score,
         total,
-        best_score: update.best_score,
-        attempt_count: update.attempt_count,
+        best_score: update.bestScore,
+        attempt_count: update.attemptCount,
+        is_passed: update.isPassed,
+        revealed: update.revealed,
+        last_submission_id: submission_id,
         submitted_at: new Date().toISOString(),
       },
-      { onConflict: "lesson_id,user_id" },
+      { onConflict: "user_id,set_id" },
     );
 
     if (attemptError) {
-      // The whole point of this table is to survive a refresh. If we can't
-      // persist it, we must not report success — the client would show a
-      // result card that silently disappears on the next load, exactly the
-      // bug this table exists to fix.
       return new Response(JSON.stringify({ error: "Failed to save attempt" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Rollup lesson_progress.quiz_score: 100 chỉ khi TOÀN BỘ set nguphap của
+    // lesson đã pass, ngược lại trung bình best_score các set (0 cho set
+    // chưa làm) — không dùng 0 cứng vì Dashboard hiển thị số này trực tiếp.
+    const { data: lessonSets } = await supabase
+      .from("exercise_sets")
+      .select("id")
+      .eq("lesson_id", set.lesson_id)
+      .eq("category", "nguphap")
+      .eq("status", "published");
+
+    const setIds = (lessonSets ?? []).map((s) => s.id);
+    const { data: lessonAttempts } = await supabase
+      .from("exercise_set_attempts")
+      .select("set_id, best_score, is_passed")
+      .eq("user_id", user.id)
+      .in("set_id", setIds);
+
+    const attemptsBySetId = new Map((lessonAttempts ?? []).map((a) => [a.set_id, a]));
+    const allPassed = setIds.length > 0 && setIds.every((id) => attemptsBySetId.get(id)?.is_passed === true);
+    const lessonQuizScore = allPassed
+      ? 100
+      : Math.round(
+          setIds.reduce((sum, id) => sum + (attemptsBySetId.get(id)?.best_score ?? 0), 0) / setIds.length,
+        );
+
+    const { data: previousProgress } = await supabase
+      .from("lesson_progress")
+      .select("quiz_score")
+      .eq("user_id", user.id)
+      .eq("lesson_id", set.lesson_id)
+      .eq("category", "nguphap")
+      .maybeSingle();
+
+    // XP cấp lesson: chỉ khi rollup vừa chuyển từ <100 sang 100 ở LẦN NÀY —
+    // tránh thưởng trùng nếu 2 request submit set khác nhau chạy gần đồng
+    // thời cùng đẩy lesson qua ngưỡng "toàn bộ set đã pass".
+    const lessonJustCompleted = allPassed && (previousProgress?.quiz_score ?? 0) < 100;
+    if (lessonJustCompleted) {
+      await supabase.rpc("increment_xp", { p_user_id: user.id, p_amount: XP_REWARD });
+    }
+
     await supabase.from("lesson_progress").upsert(
-      { user_id: user.id, lesson_id, category: "nguphap", quiz_score: update.best_score },
+      { user_id: user.id, lesson_id: set.lesson_id, category: "nguphap", quiz_score: lessonQuizScore },
       { onConflict: "user_id,lesson_id,category" },
     );
 
     return new Response(
       JSON.stringify({
-        score,
+        score: update.score,
         total,
-        passed,
-        xp_earned: update.xp_earned,
-        best_score: update.best_score,
-        attempt_count: update.attempt_count,
+        correct,
+        isPassed: update.isPassed,
+        revealed: update.revealed,
+        attemptCount: update.attemptCount,
+        bestScore: update.bestScore,
+        xpEarned: update.xpEarned + (lessonJustCompleted ? XP_REWARD : 0),
+        lessonQuizScore,
         blankResults,
         choiceResults,
         exerciseResults,
+        ...(update.revealed
+          ? {
+              correctAnswers: Object.fromEntries(exercises.map((e) => [e.id, e.correct_answer ?? ""])),
+              explanations: Object.fromEntries(exercises.map((e) => [e.id, e.explanation ?? ""])),
+            }
+          : {}),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
