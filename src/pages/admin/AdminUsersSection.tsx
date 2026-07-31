@@ -267,6 +267,7 @@ export const AdminUsersSection: React.FC = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
+              <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">ID</th>
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Người dùng</th>
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Email</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Role</th>
@@ -278,6 +279,7 @@ export const AdminUsersSection: React.FC = () => {
           <tbody className="divide-y divide-slate-50">
             {filtered.map((u) => (
               <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
+                <td className="px-4 py-3 font-mono text-xs text-slate-400" title={u.id}>{u.id.slice(0, 8)}</td>
                 <td className="px-4 py-3 font-medium text-slate-800">
                   <button
                     onClick={() => setProgressUser(u)}
@@ -334,7 +336,7 @@ export const AdminUsersSection: React.FC = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
               </tr>
             )}
           </tbody>
