@@ -547,7 +547,6 @@ export type Database = {
           answer_text: string | null
           audio_clip_id: string | null
           audio_text: string | null
-          category: string
           correct_answer: string
           explanation: string
           id: string
@@ -557,13 +556,13 @@ export type Database = {
           order_index: number
           question_text: string
           reading_passage_id: string | null
+          set_id: string
           type: string
         }
         Insert: {
           answer_text?: string | null
           audio_clip_id?: string | null
           audio_text?: string | null
-          category?: string
           correct_answer: string
           explanation?: string
           id?: string
@@ -573,13 +572,13 @@ export type Database = {
           order_index?: number
           question_text: string
           reading_passage_id?: string | null
+          set_id: string
           type: string
         }
         Update: {
           answer_text?: string | null
           audio_clip_id?: string | null
           audio_text?: string | null
-          category?: string
           correct_answer?: string
           explanation?: string
           id?: string
@@ -589,6 +588,7 @@ export type Database = {
           order_index?: number
           question_text?: string
           reading_passage_id?: string | null
+          set_id?: string
           type?: string
         }
         Relationships: [
@@ -618,6 +618,13 @@ export type Database = {
             columns: ["reading_passage_id"]
             isOneToOne: false
             referencedRelation: "reading_passages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -827,6 +834,7 @@ export type Database = {
           order_index: number | null
           question_text: string | null
           reading_passage_id: string | null
+          set_id: string | null
           type: string | null
         }
         Relationships: [
@@ -856,6 +864,13 @@ export type Database = {
             columns: ["reading_passage_id"]
             isOneToOne: false
             referencedRelation: "reading_passages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
             referencedColumns: ["id"]
           },
         ]
