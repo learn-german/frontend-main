@@ -44,7 +44,7 @@ interface GrammarResult {
   explanations?: Record<string, string>;
 }
 
-const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
+export const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   word_reorder: "Sắp xếp từ",
   error_correction: "Sửa câu sai",
   translation: "Dịch",
