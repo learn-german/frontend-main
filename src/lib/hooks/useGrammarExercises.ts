@@ -3,13 +3,13 @@ import { supabase } from "../supabase";
 import { GrammarExercise } from "../appTypes";
 import { normalizeOptionsFromDb } from "../grammarMultipleChoice";
 
-export function useGrammarExercises(lessonId: string) {
+export function useGrammarExercises(setId: string) {
   const [exercises, setExercises] = useState<GrammarExercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!lessonId) {
+    if (!setId) {
       setLoading(false);
       return;
     }
@@ -19,8 +19,8 @@ export function useGrammarExercises(lessonId: string) {
 
     supabase
       .from("grammar_exercises_public")
-      .select("id, lesson_id, type, group_id, hint, prompt_text, transformation_hint, tokens, classification_groups, classification_items, word_bank, options, explanation, order_index")
-      .eq("lesson_id", lessonId)
+      .select("id, lesson_id, type, group_id, hint, prompt_text, transformation_hint, tokens, classification_groups, classification_items, word_bank, options, order_index")
+      .eq("set_id", setId)
       .order("order_index")
       .then(({ data, error: fetchError }) => {
         if (fetchError) {
@@ -41,13 +41,13 @@ export function useGrammarExercises(lessonId: string) {
               classificationItems: (e.classification_items as string[] | null) ?? undefined,
               wordBank: (e.word_bank as GrammarExercise["wordBank"] | null) ?? undefined,
               options: normalizeOptionsFromDb(e.options),
-              explanation: (e.explanation as string | null) ?? "",
+              explanation: "",
             })),
           );
         }
         setLoading(false);
       });
-  }, [lessonId]);
+  }, [setId]);
 
   return { exercises, loading, error };
 }
