@@ -19,7 +19,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
 import { LessonDetailPage } from "./pages/LessonDetailPage";
 import { QuizPage } from "./pages/QuizPage";
-import { GrammarExercisePage } from "./pages/GrammarExercisePage";
+import { GrammarExerciseFlow } from "./pages/GrammarExerciseFlow";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
@@ -393,7 +393,7 @@ export default function App() {
 
               {effectivePage === "quiz" && user && activeLessonObject && (
                 activeExerciseCategory === "nguphap" ? (
-                  <GrammarExercisePage
+                  <GrammarExerciseFlow
                     key={activeLessonObject.id}
                     lesson={activeLessonObject}
                     onQuizFinished={handleQuizFinished}
