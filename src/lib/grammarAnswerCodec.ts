@@ -87,3 +87,36 @@ export function parseAnswer(exercise: GrammarExercise, raw: string): ParsedAnswe
 
   return { kind: "text", value: raw };
 }
+
+export interface ParsedFormState {
+  textAnswers: Record<string, string>;
+  blankAnswers: Record<string, string[]>;
+  itemGroups: Record<string, Record<string, string>>;
+  choices: Record<string, number>;
+}
+
+/**
+ * Phân rã 1 object answers (wire format, key theo exercise id) thành 4 state
+ * riêng theo loại câu — dùng chung cho hydrate từ attempt đã nộp lẫn hydrate
+ * từ draft chưa nộp, tránh lặp lại đúng vòng lặp này ở 2 nơi.
+ */
+export function parseAnswersIntoFormState(
+  exercises: GrammarExercise[],
+  answers: Record<string, string>,
+): ParsedFormState {
+  const textAnswers: Record<string, string> = {};
+  const blankAnswers: Record<string, string[]> = {};
+  const itemGroups: Record<string, Record<string, string>> = {};
+  const choices: Record<string, number> = {};
+
+  for (const exercise of exercises) {
+    const raw = answers[exercise.id];
+    const parsed: ParsedAnswer = raw === undefined ? emptyAnswer(exercise) : parseAnswer(exercise, raw);
+    if (parsed.kind === "text") textAnswers[exercise.id] = parsed.value;
+    else if (parsed.kind === "blanks") blankAnswers[exercise.id] = parsed.values;
+    else if (parsed.kind === "groups") itemGroups[exercise.id] = parsed.values;
+    else if (parsed.index !== undefined) choices[exercise.id] = parsed.index;
+  }
+
+  return { textAnswers, blankAnswers, itemGroups, choices };
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyAnswer, parseAnswer, serializeAnswer } from "./grammarAnswerCodec";
+import { emptyAnswer, parseAnswer, parseAnswersIntoFormState, serializeAnswer } from "./grammarAnswerCodec";
 import type { GrammarExercise } from "./appTypes";
 
 const base = (over: Partial<GrammarExercise>): GrammarExercise => ({
@@ -142,4 +142,20 @@ test("mọi loại: serialize(emptyAnswer) là chuỗi rỗng", () => {
     });
     assert.equal(serializeAnswer(ex, emptyAnswer(ex)), "", `type ${type}`);
   }
+});
+
+test("parseAnswersIntoFormState: phân đúng loại đáp án theo từng exercise", () => {
+  const exercises = [
+    base({ id: "e1", type: "translation" }),
+    base({ id: "e2", type: "multiple_choice", options: ["a", "b"] }),
+  ];
+  const result = parseAnswersIntoFormState(exercises, { e1: "Hallo", e2: "1" });
+  assert.equal(result.textAnswers.e1, "Hallo");
+  assert.equal(result.choices.e2, 1);
+});
+
+test("parseAnswersIntoFormState: exercise không có trong answers -> giá trị rỗng, không throw", () => {
+  const exercises = [base({ id: "e1", type: "translation" })];
+  const result = parseAnswersIntoFormState(exercises, {});
+  assert.equal(result.textAnswers.e1, "");
 });

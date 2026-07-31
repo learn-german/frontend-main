@@ -17,8 +17,10 @@ import {
   type BlankFocus,
 } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
-import { emptyAnswer, parseAnswer, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
+import { parseAnswer, parseAnswersIntoFormState, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
 import { useExerciseSetAttempt } from "../lib/hooks/useExerciseSetAttempt";
+import { useExerciseSetDraft } from "../lib/hooks/useExerciseSetDraft";
+import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 
 interface GrammarExercisePageProps {
   lessonId: string;
@@ -310,6 +312,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
+  const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
 
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
@@ -340,8 +343,12 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   // retry qua đúng submission_id và không tăng attempt_count sai.
   const submissionIdRef = React.useRef(crypto.randomUUID());
 
+  // Draft luôn thắng nếu tồn tại — học viên đang làm dở quan trọng hơn kết
+  // quả đã nộp trước đó (xem exerciseSetDraftLogic.ts).
+  const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
+
   React.useEffect(() => {
-    if (!attempt || retrying || exercises.length === 0) return;
+    if (retrying || exercises.length === 0 || hydrateSource !== "attempt" || !attempt) return;
 
     setResult({
       score: attempt.score,
@@ -363,27 +370,23 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
       // lưu correct_answer ra localStorage/state ngoài phiên submit gốc.
     });
 
-    const textAnswers: Record<string, string> = {};
-    const blankAnswers: Record<string, string[]> = {};
-    const itemGroups: Record<string, Record<string, string>> = {};
-    const choices: Record<string, number> = {};
-
-    for (const exercise of exercises) {
-      const raw = attempt.answers[exercise.id];
-      const parsed: ParsedAnswer =
-        raw === undefined ? emptyAnswer(exercise) : parseAnswer(exercise, raw);
-      if (parsed.kind === "text") textAnswers[exercise.id] = parsed.value;
-      else if (parsed.kind === "blanks") blankAnswers[exercise.id] = parsed.values;
-      else if (parsed.kind === "groups") itemGroups[exercise.id] = parsed.values;
-      else if (parsed.index !== undefined) choices[exercise.id] = parsed.index;
-    }
-
-    setTextAnswerByExercise(textAnswers);
-    setBlankAnswersByExercise(blankAnswers);
-    setItemGroupsByExercise(itemGroups);
-    setChoiceByExercise(choices);
+    const parsed = parseAnswersIntoFormState(exercises, attempt.answers);
+    setTextAnswerByExercise(parsed.textAnswers);
+    setBlankAnswersByExercise(parsed.blankAnswers);
+    setItemGroupsByExercise(parsed.itemGroups);
+    setChoiceByExercise(parsed.choices);
     setSubmittedAnswerSnapshot(attempt.answers ?? {});
-  }, [attempt, retrying, exercises]);
+  }, [attempt, retrying, exercises, hydrateSource]);
+
+  React.useEffect(() => {
+    if (retrying || exercises.length === 0 || hydrateSource !== "draft" || !draft) return;
+
+    const parsed = parseAnswersIntoFormState(exercises, draft.answers);
+    setTextAnswerByExercise(parsed.textAnswers);
+    setBlankAnswersByExercise(parsed.blankAnswers);
+    setItemGroupsByExercise(parsed.itemGroups);
+    setChoiceByExercise(parsed.choices);
+  }, [draft, retrying, exercises, hydrateSource]);
 
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
     const key = `${tokenIdx}:${token}`;
@@ -432,6 +435,17 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
   const collectAllAnswers = (): Record<string, string> =>
     Object.fromEntries(exercises.map((exercise) => [exercise.id, getAnswerStringFor(exercise)]));
 
+  // Autosave draft debounce — chỉ chạy khi chưa có kết quả (chưa nộp/chưa
+  // hydrate từ attempt), tránh ghi đè draft sau khi đã nộp bài xong.
+  React.useEffect(() => {
+    if (result !== null || exercises.length === 0) return;
+    const timer = setTimeout(() => {
+      saveDraft(collectAllAnswers());
+    }, 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTokensByExercise, textAnswerByExercise, itemGroupsByExercise, blankAnswersByExercise, choiceByExercise, result]);
+
   const handleSubmit = async () => {
     const finalAnswers = collectAllAnswers();
 
@@ -452,6 +466,7 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     const res = data as GrammarResult;
     setResult(res);
     setSubmittedAnswerSnapshot(finalAnswers);
+    deleteDraft();
     // Report rollup theo cả lesson (không phải điểm riêng set này) — khớp
     // đúng giá trị server vừa ghi vào lesson_progress.quiz_score, để state
     // optimistic phía client (Roadmap/Dashboard) không lệch server.
@@ -473,13 +488,13 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     setRetrying(true);
   };
 
-  // Mirrors the hydrate effect's own guard exactly: true only when that effect
-  // is guaranteed to run and set `result` next — otherwise (e.g. exercises were
-  // deleted after the attempt was saved) we must fall through to another view
-  // instead of spinning forever waiting for a `result` that will never arrive.
-  const awaitingHydration = attempt !== null && !retrying && exercises.length > 0 && result === null;
+  // Mirrors the attempt-hydrate effect's own guard exactly: true only when
+  // that effect is guaranteed to run and set `result` next. Draft hydrate
+  // never sets `result`, so it never needs this wait.
+  const awaitingHydration =
+    hydrateSource === "attempt" && !retrying && exercises.length > 0 && result === null;
 
-  if (exercisesLoading || attemptLoading || awaitingHydration) {
+  if (exercisesLoading || attemptLoading || draftLoading || awaitingHydration) {
     return (
       <div className="max-w-5xl mx-auto space-y-8">
         <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
@@ -791,7 +806,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
+        <Button variant="secondary" onClick={() => saveDraft(collectAllAnswers())}>
+          Lưu
+        </Button>
         <Button variant="primary" disabled={!allAnswered || submitting} onClick={handleSubmit}>
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Nộp bài

@@ -86,6 +86,42 @@ export type Database = {
           },
         ]
       }
+      exercise_set_drafts: {
+        Row: {
+          answers: Json
+          set_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          set_id: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          answers?: Json
+          set_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_set_drafts_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_set_drafts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_sets: {
         Row: {
           category: string
@@ -694,13 +730,6 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lesson_positions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "writing_submissions_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
           {
