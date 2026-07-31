@@ -294,6 +294,7 @@ export const AdminUsersSection: React.FC = () => {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
@@ -384,6 +385,7 @@ export const AdminUsersSection: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Create user modal */}
