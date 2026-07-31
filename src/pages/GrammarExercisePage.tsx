@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Loader2, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/DesignSystem";
-import { ExercisePageHeader } from "../components/ExercisePageHeader";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { MultipleChoiceOptions } from "../components/MultipleChoiceOptions";
 import { GrammarExercise } from "../lib/appTypes";
@@ -22,12 +21,10 @@ import { useExerciseSetAttempt } from "../lib/hooks/useExerciseSetAttempt";
 import { useExerciseSetDraft } from "../lib/hooks/useExerciseSetDraft";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 
-interface GrammarExercisePageProps {
-  lessonId: string;
+interface GrammarExerciseSetBodyProps {
   set: { id: string; title: string };
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
-  onBackToList: () => void;
-  onBackToLesson: () => void;
+  onCollapse: () => void;
 }
 
 interface GrammarResult {
@@ -304,11 +301,10 @@ const SubmittedAnswer: React.FC<{ value: string; correct: boolean | undefined }>
   </div>
 );
 
-export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
+export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   set,
   onSetFinished,
-  onBackToList,
-  onBackToLesson,
+  onCollapse,
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
@@ -496,22 +492,16 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
 
   if (exercisesLoading || attemptLoading || draftLoading || awaitingHydration) {
     return (
-      <div className="max-w-5xl mx-auto space-y-8">
-        <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
-        <div className="flex items-center justify-center min-h-64">
-          <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-32">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
       </div>
     );
   }
 
   if (exercisesError || exercises.length === 0) {
     return (
-      <div className="max-w-5xl mx-auto space-y-8">
-        <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
-        <div className="text-center py-12">
-          <p className="text-slate-500">Bài tập ngữ pháp cho bài học này chưa được soạn.</p>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-slate-500">Bài tập ngữ pháp cho bài học này chưa được soạn.</p>
       </div>
     );
   }
@@ -520,12 +510,10 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
     const { score, total, correct, isPassed, revealed, xpEarned } = result;
 
     return (
-      <div className="max-w-5xl mx-auto space-y-8">
-        <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
-        <div
-          id="grammar-result-card"
-          className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/60 p-6 sm:p-10 shadow-sm text-center space-y-6 animate-in zoom-in duration-300"
-        >
+      <div
+        id="grammar-result-card"
+        className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/60 p-6 sm:p-10 shadow-sm text-center space-y-6 animate-in zoom-in duration-300"
+      >
         <div className="space-y-2">
           {isPassed ? (
             <div className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mx-auto text-4xl animate-bounce">
@@ -663,24 +651,17 @@ export const GrammarExercisePage: React.FC<GrammarExercisePageProps> = ({
             <RotateCcw className="w-4 h-4 mr-2" /> Làm lại bài Test
           </Button>
           {isPassed && (
-            <Button variant="primary" className="flex-1" onClick={onBackToList}>
+            <Button variant="primary" className="flex-1" onClick={onCollapse}>
               Tiếp tục
             </Button>
           )}
           </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
-      <ExercisePageHeader
-        title="Bài tập ngữ pháp"
-        subtitle="Bấm vào bài để hiển thị các câu."
-        onBackToLesson={onBackToLesson}
-      />
-
+    <div className="space-y-4 animate-in fade-in duration-300">
       <div className="space-y-3">
         {groups.map((group, groupIndex) => {
           const isExpanded = expandedGroupKeys.has(group.key);
