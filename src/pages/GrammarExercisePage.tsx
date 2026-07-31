@@ -44,7 +44,7 @@ interface GrammarResult {
   explanations?: Record<string, string>;
 }
 
-const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
+export const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   word_reorder: "Sắp xếp từ",
   error_correction: "Sửa câu sai",
   translation: "Dịch",
@@ -660,129 +660,146 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     );
   }
 
+  // Nội dung 1 nhóm câu hỏi (hint, hướng dẫn, word bank, danh sách câu) —
+  // dùng chung cho cả 2 cách hiển thị bên dưới: nếu set chỉ có 1 nhóm, nội
+  // dung này hiện thẳng ra ngoài (khỏi bấm thêm 1 lần nữa); nếu set có nhiều
+  // nhóm, mỗi nhóm vẫn là 1 accordion con như cũ.
+  const renderGroupContent = (group: (typeof groups)[number], groupIndex: number) => {
+    const wordBank = group.exercises[0]?.wordBank;
+    const groupExerciseIds = new Set(group.exercises.map((exercise) => exercise.id));
+    const groupAssignments = Object.fromEntries(
+      Object.entries(blankAssignments).filter(([key]) => groupExerciseIds.has(key.slice(0, key.lastIndexOf(":")))),
+    );
+    const usedWordIndexes = getUsedWordIndexes(groupAssignments);
+
+    return (
+      <div className="space-y-3">
+        <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
+        <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+        {group.type === "fill_in_the_blank" && wordBank && (
+          <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
+            {wordBank.words.map((word, wordIndex) => {
+              const used = usedWordIndexes.has(wordIndex);
+              const disabled = wordBank.mode === "single_use" && used;
+              return (
+                <button
+                  key={`${wordIndex}:${word}`}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    const answersWithDefaults = Object.fromEntries(group.exercises.map((exercise) => [
+                      exercise.id,
+                      blankAnswersByExercise[exercise.id]
+                        ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
+                    ]));
+                    const target = findBlankTarget(
+                      group.exercises.map((exercise) => exercise.id),
+                      answersWithDefaults,
+                      focusedBlank,
+                    );
+                    if (!target) return;
+                    const next = applyChipToBlank(
+                      { ...blankAnswersByExercise, ...answersWithDefaults },
+                      blankAssignments,
+                      target,
+                      wordIndex,
+                      word,
+                      wordBank.mode,
+                    );
+                    setBlankAnswersByExercise(next.answers);
+                    setBlankAssignments(next.assignments);
+                    setFocusedBlank(target);
+                  }}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                    used
+                      ? "border-orange-200 bg-orange-100 text-orange-500 opacity-60"
+                      : "border-orange-300 bg-white text-orange-700 hover:bg-orange-100"
+                  } disabled:cursor-not-allowed`}
+                >
+                  {word}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {group.exercises.map((exercise, childIndex) => (
+            <ExerciseCard
+              key={exercise.id}
+              exercise={exercise}
+              numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
+              selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
+              onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
+              onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
+              textAnswer={textAnswerByExercise[exercise.id] ?? ""}
+              onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
+              itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
+              onItemGroupChange={(item, itemGroup) => setItemGroupsByExercise((prev) => ({
+                ...prev,
+                [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: itemGroup },
+              }))}
+              blankAnswers={blankAnswersByExercise[exercise.id]
+                ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill("")}
+              onBlankFocus={(blankIndex) => setFocusedBlank({ exerciseId: exercise.id, blankIndex })}
+              onBlankAnswerChange={(blankIndex, value) => {
+                const target = { exerciseId: exercise.id, blankIndex };
+                const answersWithDefaults = {
+                  ...blankAnswersByExercise,
+                  [exercise.id]: blankAnswersByExercise[exercise.id]
+                    ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
+                };
+                const next = applyTypedBlankAnswer(answersWithDefaults, blankAssignments, target, value);
+                setBlankAnswersByExercise(next.answers);
+                setBlankAssignments(next.assignments);
+              }}
+              selectedChoice={choiceByExercise[exercise.id]}
+              onSelectChoice={(index) =>
+                setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: index }))
+              }
+              choiceResult={result?.choiceResults?.[exercise.id]}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
       <div className="space-y-3">
-        {groups.map((group, groupIndex) => {
-          const isExpanded = expandedGroupKeys.has(group.key);
-          const isComplete = group.exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
-          const wordBank = group.exercises[0]?.wordBank;
-          const groupExerciseIds = new Set(group.exercises.map((exercise) => exercise.id));
-          const groupAssignments = Object.fromEntries(
-            Object.entries(blankAssignments).filter(([key]) => groupExerciseIds.has(key.slice(0, key.lastIndexOf(":")))),
-          );
-          const usedWordIndexes = getUsedWordIndexes(groupAssignments);
-          return (
-            <section key={group.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <button
-                type="button"
-                onClick={() => setExpandedGroupKeys((previous) => {
-                  const next = new Set(previous);
-                  if (next.has(group.key)) next.delete(group.key);
-                  else next.add(group.key);
-                  return next;
-                })}
-                className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-slate-50"
-              >
-                {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronRight className="h-5 w-5 text-slate-400" />}
-                <span className="text-base font-display font-black text-slate-900">Bài {groupIndex + 1}</span>
-                <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{GRAMMAR_TYPE_LABELS[group.type]}</span>
-                <span className="text-xs text-slate-400">{group.exercises.length} câu</span>
-                {isComplete && <CheckCircle2 className="ml-auto h-5 w-5 text-green-500" />}
-              </button>
-              {isExpanded && (
-                <div className="space-y-3 border-t border-slate-100 p-4">
-                  <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
-                  <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
-                  {group.type === "fill_in_the_blank" && wordBank && (
-                    <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
-                      {wordBank.words.map((word, wordIndex) => {
-                        const used = usedWordIndexes.has(wordIndex);
-                        const disabled = wordBank.mode === "single_use" && used;
-                        return (
-                          <button
-                            key={`${wordIndex}:${word}`}
-                            type="button"
-                            disabled={disabled}
-                            onClick={() => {
-                              const answersWithDefaults = Object.fromEntries(group.exercises.map((exercise) => [
-                                exercise.id,
-                                blankAnswersByExercise[exercise.id]
-                                  ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
-                              ]));
-                              const target = findBlankTarget(
-                                group.exercises.map((exercise) => exercise.id),
-                                answersWithDefaults,
-                                focusedBlank,
-                              );
-                              if (!target) return;
-                              const next = applyChipToBlank(
-                                { ...blankAnswersByExercise, ...answersWithDefaults },
-                                blankAssignments,
-                                target,
-                                wordIndex,
-                                word,
-                                wordBank.mode,
-                              );
-                              setBlankAnswersByExercise(next.answers);
-                              setBlankAssignments(next.assignments);
-                              setFocusedBlank(target);
-                            }}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              used
-                                ? "border-orange-200 bg-orange-100 text-orange-500 opacity-60"
-                                : "border-orange-300 bg-white text-orange-700 hover:bg-orange-100"
-                            } disabled:cursor-not-allowed`}
-                          >
-                            {word}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {group.exercises.map((exercise, childIndex) => (
-                      <ExerciseCard
-                        key={exercise.id}
-                        exercise={exercise}
-                        numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
-                        selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
-                        onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
-                        onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
-                        textAnswer={textAnswerByExercise[exercise.id] ?? ""}
-                        onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
-                        itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
-                        onItemGroupChange={(item, itemGroup) => setItemGroupsByExercise((prev) => ({
-                          ...prev,
-                          [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: itemGroup },
-                        }))}
-                        blankAnswers={blankAnswersByExercise[exercise.id]
-                          ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill("")}
-                        onBlankFocus={(blankIndex) => setFocusedBlank({ exerciseId: exercise.id, blankIndex })}
-                        onBlankAnswerChange={(blankIndex, value) => {
-                          const target = { exerciseId: exercise.id, blankIndex };
-                          const answersWithDefaults = {
-                            ...blankAnswersByExercise,
-                            [exercise.id]: blankAnswersByExercise[exercise.id]
-                              ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
-                          };
-                          const next = applyTypedBlankAnswer(answersWithDefaults, blankAssignments, target, value);
-                          setBlankAnswersByExercise(next.answers);
-                          setBlankAssignments(next.assignments);
-                        }}
-                        selectedChoice={choiceByExercise[exercise.id]}
-                        onSelectChoice={(index) =>
-                          setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: index }))
-                        }
-                        choiceResult={result?.choiceResults?.[exercise.id]}
-                      />
-                    ))}
+        {groups.length === 1 ? (
+          renderGroupContent(groups[0], 0)
+        ) : (
+          groups.map((group, groupIndex) => {
+            const isExpanded = expandedGroupKeys.has(group.key);
+            const isComplete = group.exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
+            return (
+              <section key={group.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setExpandedGroupKeys((previous) => {
+                    const next = new Set(previous);
+                    if (next.has(group.key)) next.delete(group.key);
+                    else next.add(group.key);
+                    return next;
+                  })}
+                  className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-slate-50"
+                >
+                  {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronRight className="h-5 w-5 text-slate-400" />}
+                  <span className="text-base font-display font-black text-slate-900">Bài {groupIndex + 1}</span>
+                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{GRAMMAR_TYPE_LABELS[group.type]}</span>
+                  <span className="text-xs text-slate-400">{group.exercises.length} câu</span>
+                  {isComplete && <CheckCircle2 className="ml-auto h-5 w-5 text-green-500" />}
+                </button>
+                {isExpanded && (
+                  <div className="border-t border-slate-100 p-4">
+                    {renderGroupContent(group, groupIndex)}
                   </div>
-                </div>
-              )}
-            </section>
-          );
-        })}
+                )}
+              </section>
+            );
+          })
+        )}
       </div>
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
