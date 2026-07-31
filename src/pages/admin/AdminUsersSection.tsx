@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck, ArrowUpDown } from "lucide-react";
+import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import {
   computeCompletedLessons,
-  furthestCompletedLesson,
   computeLessonStatuses,
   buildScoresByLesson,
   applicableCategories,
@@ -45,7 +44,6 @@ export const AdminUsersSection: React.FC = () => {
   const [search, setSearch] = useState("");
   const [orderedLessons, setOrderedLessons] = useState<ProgressLesson[]>([]);
   const [allProgress, setAllProgress] = useState<(LessonProgressRow & { user_id: string })[]>([]);
-  const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE);
   const [creating, setCreating] = useState(false);
@@ -228,39 +226,11 @@ export const AdminUsersSection: React.FC = () => {
     return map;
   }, [allProgress]);
 
-  const furthestLabelByUser = useMemo(() => {
-    const labels: Record<string, string> = {};
-    const orderIndexOf: Record<string, number> = {};
-    orderedLessons.forEach((l, idx) => { orderIndexOf[l.id] = idx; });
-
-    for (const u of users) {
-      const unlockedLessons = orderedLessons.filter((l) => u.unlockedLevels.includes(l.level));
-      const completed = computeCompletedLessons(unlockedLessons, progressByUser[u.id] ?? []);
-      const furthest = furthestCompletedLesson(unlockedLessons, completed);
-      labels[u.id] = furthest ? `${furthest.level} · Bài ${orderIndexOf[furthest.id] + 1}: ${furthest.titleVi}` : "Chưa học bài nào";
-    }
-    return labels;
-  }, [users, orderedLessons, progressByUser]);
-
-  const filtered = users
-    .filter(
-      (u) =>
-        u.email.toLowerCase().includes(search.toLowerCase()) ||
-        (u.full_name ?? "").toLowerCase().includes(search.toLowerCase()),
-    )
-    .sort((a, b) => {
-      if (!sortByProgress) return 0;
-      const orderIndexOf: Record<string, number> = {};
-      orderedLessons.forEach((l, idx) => { orderIndexOf[l.id] = idx; });
-      const rank = (u: AdminUser) => {
-        const unlockedLessons = orderedLessons.filter((l) => u.unlockedLevels.includes(l.level));
-        const completed = computeCompletedLessons(unlockedLessons, progressByUser[u.id] ?? []);
-        const furthest = furthestCompletedLesson(unlockedLessons, completed);
-        return furthest ? orderIndexOf[furthest.id] : -1;
-      };
-      const diff = rank(a) - rank(b);
-      return sortByProgress === "asc" ? diff : -diff;
-    });
+  const filtered = users.filter(
+    (u) =>
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.full_name ?? "").toLowerCase().includes(search.toLowerCase()),
+  );
 
   if (loading) {
     return (
@@ -294,7 +264,6 @@ export const AdminUsersSection: React.FC = () => {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
@@ -302,16 +271,6 @@ export const AdminUsersSection: React.FC = () => {
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Email</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Role</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Cấp độ mở</th>
-              <th
-                className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase cursor-pointer select-none hover:text-slate-700"
-                onClick={() => setSortByProgress((prev) => (prev === "asc" ? "desc" : "asc"))}
-              >
-                <span className="inline-flex items-center gap-1">
-                  Đã học đến bài <ArrowUpDown className="w-3 h-3" />
-                </span>
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">XP</th>
-              <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Streak</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ngày tạo</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -352,11 +311,6 @@ export const AdminUsersSection: React.FC = () => {
                     ))}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-slate-600 text-xs max-w-[220px] truncate" title={furthestLabelByUser[u.id]}>
-                  {furthestLabelByUser[u.id]}
-                </td>
-                <td className="px-4 py-3 text-right font-bold text-blue-600">{u.xp}</td>
-                <td className="px-4 py-3 text-right font-bold text-orange-600">{u.streak} 🔥</td>
                 <td className="px-4 py-3 text-right text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString("vi-VN")}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -380,12 +334,11 @@ export const AdminUsersSection: React.FC = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
               </tr>
             )}
           </tbody>
         </table>
-        </div>
       </div>
 
       {/* Create user modal */}
