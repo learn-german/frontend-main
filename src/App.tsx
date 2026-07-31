@@ -19,7 +19,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
 import { LessonDetailPage } from "./pages/LessonDetailPage";
 import { QuizPage } from "./pages/QuizPage";
-import { GrammarExerciseFlow } from "./pages/GrammarExerciseFlow";
+import { GrammarSetListPage } from "./pages/GrammarSetListPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
@@ -393,13 +393,11 @@ export default function App() {
 
               {effectivePage === "quiz" && user && activeLessonObject && (
                 activeExerciseCategory === "nguphap" ? (
-                  <GrammarExerciseFlow
+                  <GrammarSetListPage
                     key={activeLessonObject.id}
-                    lesson={activeLessonObject}
-                    onQuizFinished={handleQuizFinished}
-                    onNavigateHome={() => handleNavigate("roadmap")}
-                    onNextLesson={handleNextLesson}
+                    lessonId={activeLessonObject.id}
                     onBackToLesson={() => setCurrentPage("lesson-detail")}
+                    onSetFinished={handleQuizFinished}
                   />
                 ) : (
                   <QuizPage
