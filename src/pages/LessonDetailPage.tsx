@@ -258,8 +258,8 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 
           {/* Nghe (Hören) tab — hidden entirely via visibleTabs when
               listeningClips is empty, so no "Sắp có" fallback needed. File
-              mp3 không phát trực tiếp ở đây — chỉ phát trong QuizPage lúc
-              làm bài tập nghe. */}
+              mp3 không phát trực tiếp ở đây — chỉ phát trong QuizSetListPage
+              lúc làm bài tập nghe. */}
           {bottomTab === "nghe" && lesson.listeningClips.length > 0 && (
             <div className="space-y-4 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">

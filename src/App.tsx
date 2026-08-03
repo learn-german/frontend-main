@@ -18,7 +18,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
 import { LessonDetailPage } from "./pages/LessonDetailPage";
-import { QuizPage } from "./pages/QuizPage";
+import { QuizSetListPage } from "./pages/QuizSetListPage";
 import { GrammarSetListPage } from "./pages/GrammarSetListPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { AnimatePresence, motion } from "motion/react";
@@ -400,13 +400,11 @@ export default function App() {
                     onSetFinished={handleQuizFinished}
                   />
                 ) : (
-                  <QuizPage
+                  <QuizSetListPage
                     lesson={activeLessonObject}
-                    category={activeExerciseCategory}
-                    onQuizFinished={handleQuizFinished}
-                    onNavigateHome={() => handleNavigate("roadmap")}
-                    onNextLesson={handleNextLesson}
+                    category={activeExerciseCategory as "nghe" | "doc"}
                     onBackToLesson={() => setCurrentPage("lesson-detail")}
+                    onSetFinished={handleQuizFinished}
                   />
                 )
               )}

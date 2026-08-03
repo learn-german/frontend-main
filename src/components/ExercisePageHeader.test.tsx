@@ -22,9 +22,9 @@ test("passes the return callback to the button", () => {
   assert.equal(buttonElement.props.onClick, onBackToLesson);
 });
 
-test("both exercise pages use the shared top header", () => {
-  const grammarSource = readFileSync(new URL("../pages/GrammarExercisePage.tsx", import.meta.url), "utf8");
-  const quizSource = readFileSync(new URL("../pages/QuizPage.tsx", import.meta.url), "utf8");
+test("both exercise set-list pages use the shared top header", () => {
+  const grammarSource = readFileSync(new URL("../pages/GrammarSetListPage.tsx", import.meta.url), "utf8");
+  const quizSource = readFileSync(new URL("../pages/QuizSetListPage.tsx", import.meta.url), "utf8");
 
   assert.match(grammarSource, /<ExercisePageHeader[\s\S]*onBackToLesson=\{onBackToLesson\}/);
   assert.match(quizSource, /<ExercisePageHeader[\s\S]*onBackToLesson=\{onBackToLesson\}/);
