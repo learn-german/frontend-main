@@ -167,6 +167,7 @@ export type Database = {
       grammar_exercises: {
         Row: {
           acceptable_answers: Json | null
+          audio_clip_id: string | null
           blanks: Json | null
           classification_groups: Json | null
           classification_items: Json | null
@@ -176,9 +177,11 @@ export type Database = {
           hint: string | null
           id: string
           lesson_id: string
+          matching_pairs: Json | null
           options: Json | null
           order_index: number
           prompt_text: string | null
+          reading_passage_id: string | null
           set_id: string
           tokens: Json | null
           transformation_hint: string | null
@@ -187,6 +190,7 @@ export type Database = {
         }
         Insert: {
           acceptable_answers?: Json | null
+          audio_clip_id?: string | null
           blanks?: Json | null
           classification_groups?: Json | null
           classification_items?: Json | null
@@ -196,9 +200,11 @@ export type Database = {
           hint?: string | null
           id?: string
           lesson_id: string
+          matching_pairs?: Json | null
           options?: Json | null
           order_index?: number
           prompt_text?: string | null
+          reading_passage_id?: string | null
           set_id: string
           tokens?: Json | null
           transformation_hint?: string | null
@@ -207,6 +213,7 @@ export type Database = {
         }
         Update: {
           acceptable_answers?: Json | null
+          audio_clip_id?: string | null
           blanks?: Json | null
           classification_groups?: Json | null
           classification_items?: Json | null
@@ -216,9 +223,11 @@ export type Database = {
           hint?: string | null
           id?: string
           lesson_id?: string
+          matching_pairs?: Json | null
           options?: Json | null
           order_index?: number
           prompt_text?: string | null
+          reading_passage_id?: string | null
           set_id?: string
           tokens?: Json | null
           transformation_hint?: string | null
@@ -226,6 +235,13 @@ export type Database = {
           word_bank?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "grammar_exercises_audio_clip_id_fkey"
+            columns: ["audio_clip_id"]
+            isOneToOne: false
+            referencedRelation: "listening_clips"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "grammar_exercises_lesson_id_fkey"
             columns: ["lesson_id"]
@@ -238,6 +254,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_exercises_reading_passage_id_fkey"
+            columns: ["reading_passage_id"]
+            isOneToOne: false
+            referencedRelation: "reading_passages"
             referencedColumns: ["id"]
           },
           {
@@ -542,93 +565,6 @@ export type Database = {
         }
         Relationships: []
       }
-      quiz_questions: {
-        Row: {
-          answer_text: string | null
-          audio_clip_id: string | null
-          audio_text: string | null
-          correct_answer: string
-          explanation: string
-          id: string
-          lesson_id: string | null
-          matching_pairs: Json | null
-          options: Json | null
-          order_index: number
-          question_text: string
-          reading_passage_id: string | null
-          set_id: string
-          type: string
-        }
-        Insert: {
-          answer_text?: string | null
-          audio_clip_id?: string | null
-          audio_text?: string | null
-          correct_answer: string
-          explanation?: string
-          id?: string
-          lesson_id?: string | null
-          matching_pairs?: Json | null
-          options?: Json | null
-          order_index?: number
-          question_text: string
-          reading_passage_id?: string | null
-          set_id: string
-          type: string
-        }
-        Update: {
-          answer_text?: string | null
-          audio_clip_id?: string | null
-          audio_text?: string | null
-          correct_answer?: string
-          explanation?: string
-          id?: string
-          lesson_id?: string | null
-          matching_pairs?: Json | null
-          options?: Json | null
-          order_index?: number
-          question_text?: string
-          reading_passage_id?: string | null
-          set_id?: string
-          type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quiz_questions_audio_clip_id_fkey"
-            columns: ["audio_clip_id"]
-            isOneToOne: false
-            referencedRelation: "listening_clips"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lesson_positions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_reading_passage_id_fkey"
-            columns: ["reading_passage_id"]
-            isOneToOne: false
-            referencedRelation: "reading_passages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_set_id_fkey"
-            columns: ["set_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_sets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reading_passages: {
         Row: {
           id: string
@@ -740,6 +676,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "writing_submissions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "writing_submissions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -752,15 +695,19 @@ export type Database = {
     Views: {
       grammar_exercises_public: {
         Row: {
+          audio_clip_id: string | null
+          category: string | null
           classification_groups: Json | null
           classification_items: Json | null
           group_id: string | null
           hint: string | null
           id: string | null
           lesson_id: string | null
+          matching_pairs: Json | null
           options: Json | null
           order_index: number | null
           prompt_text: string | null
+          reading_passage_id: string | null
           set_id: string | null
           tokens: Json | null
           transformation_hint: string | null
@@ -768,6 +715,13 @@ export type Database = {
           word_bank: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "grammar_exercises_audio_clip_id_fkey"
+            columns: ["audio_clip_id"]
+            isOneToOne: false
+            referencedRelation: "listening_clips"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "grammar_exercises_lesson_id_fkey"
             columns: ["lesson_id"]
@@ -780,6 +734,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grammar_exercises_reading_passage_id_fkey"
+            columns: ["reading_passage_id"]
+            isOneToOne: false
+            referencedRelation: "reading_passages"
             referencedColumns: ["id"]
           },
           {
@@ -816,61 +777,6 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quiz_questions_public: {
-        Row: {
-          answer_text: string | null
-          audio_clip_id: string | null
-          audio_text: string | null
-          category: string | null
-          explanation: string | null
-          id: string | null
-          lesson_id: string | null
-          matching_pairs: Json | null
-          options: Json | null
-          order_index: number | null
-          question_text: string | null
-          reading_passage_id: string | null
-          set_id: string | null
-          type: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quiz_questions_audio_clip_id_fkey"
-            columns: ["audio_clip_id"]
-            isOneToOne: false
-            referencedRelation: "listening_clips"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lesson_positions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_reading_passage_id_fkey"
-            columns: ["reading_passage_id"]
-            isOneToOne: false
-            referencedRelation: "reading_passages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_questions_set_id_fkey"
-            columns: ["set_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_sets"
             referencedColumns: ["id"]
           },
         ]
