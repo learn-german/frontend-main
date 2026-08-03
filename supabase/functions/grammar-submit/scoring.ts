@@ -6,6 +6,7 @@ export interface ScorableGrammarExercise {
   classification_items: { item: string; group: string }[] | null;
   blanks: { acceptedAnswers: string[] }[] | null;
   options: string[] | null;
+  prompt_text: string | null;
 }
 
 export interface ScoreResult {
@@ -53,6 +54,23 @@ function normalizeWord(s: string): string {
 
 function normalizeBlank(s: string): string {
   return s.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+const BLANK_PATTERN = /\{\{([^}]*)\}\}/g;
+
+/** Trích danh sách biến thể đáp án theo thứ tự từ prompt_text, ví dụ
+ * "Ich {{bin|Bin}} Student." -> [["bin", "Bin"]]. */
+function extractBlanks(promptText: string): string[][] {
+  const matches = [...promptText.matchAll(BLANK_PATTERN)];
+  return matches.map((m) => m[1].split("|").map((v) => v.trim()));
+}
+
+function normalizeMatching(s: string): string {
+  return s
+    .split("|")
+    .map((p) => p.trim())
+    .sort((a, b) => a.localeCompare(b))
+    .join("|");
 }
 
 function isChoiceCorrect(ex: ScorableGrammarExercise, rawAnswer: string): boolean {
@@ -115,6 +133,28 @@ export function computeGrammarScore(
       total += results.length;
       correct += results.filter(Boolean).length;
       exerciseResults[ex.id] = results.length > 0 && results.every(Boolean);
+      continue;
+    }
+
+    if (ex.type === "text_fill_blank") {
+      const blanks = extractBlanks(ex.prompt_text ?? "");
+      const userParts = (answers[ex.id] ?? "").split("|").map((s) => s.trim().toLowerCase());
+      const results = blanks.map((variants, index) => {
+        const userPart = userParts[index] ?? "";
+        return variants.some((v) => v.toLowerCase() === userPart);
+      });
+      blankResults[ex.id] = results;
+      total += results.length;
+      correct += results.filter(Boolean).length;
+      exerciseResults[ex.id] = results.length > 0 && results.every(Boolean);
+      continue;
+    }
+
+    if (ex.type === "matching") {
+      total += 1;
+      const isCorrect = normalizeMatching(answers[ex.id] ?? "") === normalizeMatching(ex.correct_answer ?? "");
+      exerciseResults[ex.id] = isCorrect;
+      if (isCorrect) correct++;
       continue;
     }
 

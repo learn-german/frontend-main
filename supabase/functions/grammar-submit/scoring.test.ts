@@ -10,6 +10,7 @@ const translation = (over: Partial<ScorableGrammarExercise> = {}): ScorableGramm
   classification_items: null,
   blanks: null,
   options: null,
+  prompt_text: null,
   ...over,
 });
 
@@ -44,6 +45,7 @@ const fill = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExerc
   classification_items: null,
   blanks: [{ acceptedAnswers: ["lerne"] }],
   options: null,
+  prompt_text: null,
   ...over,
 });
 
@@ -120,6 +122,7 @@ const choice = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExe
   classification_items: null,
   blanks: null,
   options: ["der", "die", "das"],
+  prompt_text: null,
   ...over,
 });
 
@@ -187,6 +190,7 @@ const reorder = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarEx
   classification_items: null,
   blanks: null,
   options: null,
+  prompt_text: null,
   ...over,
 });
 
@@ -201,6 +205,7 @@ const classify = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarE
   ],
   blanks: null,
   options: null,
+  prompt_text: null,
   ...over,
 });
 
@@ -247,6 +252,7 @@ test("exerciseResults: multiple_choice khớp choiceResults", () => {
     classification_items: null,
     blanks: null,
     options: ["a", "b", "c"],
+    prompt_text: null,
   };
   const r = computeGrammarScore([ex], { m1: "1" });
   assert.equal(r.exerciseResults.m1, true);
@@ -282,4 +288,66 @@ test("projectAnswers: answers null/undefined không throw, trả về rỗng cho
   const exercises = [{ id: "t1" }, { id: "c1" }];
   assert.deepEqual(projectAnswers(exercises, null), { t1: "", c1: "" });
   assert.deepEqual(projectAnswers(exercises, undefined), { t1: "", c1: "" });
+});
+
+const textFillBlank = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
+  id: "tfb1",
+  type: "text_fill_blank",
+  correct_answer: null,
+  acceptable_answers: null,
+  classification_items: null,
+  blanks: null,
+  options: null,
+  prompt_text: "Ich {{bin|Bin}} Student.",
+  ...over,
+});
+
+test("text_fill_blank: chấp nhận đáp án đúng theo từng ô trống", () => {
+  const r = computeGrammarScore([textFillBlank()], { tfb1: "bin" });
+  assert.equal(r.correct, 1);
+  assert.equal(r.total, 1);
+  assert.deepEqual(r.blankResults.tfb1, [true]);
+});
+
+test("text_fill_blank: chấp nhận biến thể viết hoa", () => {
+  const r = computeGrammarScore([textFillBlank()], { tfb1: "Bin" });
+  assert.equal(r.correct, 1);
+});
+
+test("text_fill_blank: nhiều ô trống, chấm từng ô độc lập", () => {
+  const ex = textFillBlank({ id: "tfb2", prompt_text: "Ich {{bin}} und du {{bist}}." });
+  const r = computeGrammarScore([ex], { tfb2: "bin|falsch" });
+  assert.equal(r.correct, 1);
+  assert.equal(r.total, 2);
+  assert.deepEqual(r.blankResults.tfb2, [true, false]);
+});
+
+test("text_fill_blank: prompt_text không có {{...}} thì total = 0, không throw", () => {
+  const ex = textFillBlank({ id: "tfb3", prompt_text: "Không có blank." });
+  const r = computeGrammarScore([ex], { tfb3: "bất kỳ" });
+  assert.equal(r.total, 0);
+});
+
+const matching = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
+  id: "m1",
+  type: "matching",
+  correct_answer: "der Tisch:cái bàn|die Lampe:cái đèn",
+  acceptable_answers: null,
+  classification_items: null,
+  blanks: null,
+  options: null,
+  prompt_text: null,
+  ...over,
+});
+
+test("matching: đúng toàn bộ cặp, không phân biệt thứ tự", () => {
+  const r = computeGrammarScore([matching()], { m1: "die Lampe:cái đèn|der Tisch:cái bàn" });
+  assert.equal(r.correct, 1);
+  assert.equal(r.total, 1);
+  assert.equal(r.exerciseResults.m1, true);
+});
+
+test("matching: sai 1 cặp thì cả câu sai", () => {
+  const r = computeGrammarScore([matching()], { m1: "der Tisch:cái ghế|die Lampe:cái đèn" });
+  assert.equal(r.exerciseResults.m1, false);
 });
