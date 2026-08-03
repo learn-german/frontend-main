@@ -169,7 +169,7 @@ serve(async (req) => {
       .from("exercise_sets")
       .select("id")
       .eq("lesson_id", set.lesson_id)
-      .eq("category", "nguphap")
+      .eq("category", set.category)
       .eq("status", "published");
 
     const setIds = (lessonSets ?? []).map((s) => s.id);
@@ -192,7 +192,7 @@ serve(async (req) => {
       .select("quiz_score")
       .eq("user_id", user.id)
       .eq("lesson_id", set.lesson_id)
-      .eq("category", "nguphap")
+      .eq("category", set.category)
       .maybeSingle();
 
     // XP cấp lesson: chỉ khi rollup vừa chuyển từ <100 sang 100 ở LẦN NÀY —
@@ -204,7 +204,7 @@ serve(async (req) => {
     }
 
     await supabase.from("lesson_progress").upsert(
-      { user_id: user.id, lesson_id: set.lesson_id, category: "nguphap", quiz_score: lessonQuizScore },
+      { user_id: user.id, lesson_id: set.lesson_id, category: set.category, quiz_score: lessonQuizScore },
       { onConflict: "user_id,lesson_id,category" },
     );
 
