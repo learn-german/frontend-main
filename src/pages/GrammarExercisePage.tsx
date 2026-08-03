@@ -53,6 +53,8 @@ export const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   classification: "Phân loại",
   fill_in_the_blank: "Điền vào ô trống",
   multiple_choice: "Trắc nghiệm",
+  text_fill_blank: "Điền vào chỗ trống",
+  matching: "Ghép cặp",
 };
 
 const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
@@ -64,6 +66,8 @@ const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
   classification: "Phân loại các item sau vào đúng nhóm:",
   fill_in_the_blank: "Điền từ thích hợp vào từng ô trống:",
   multiple_choice: "Chọn một đáp án đúng cho mỗi câu:",
+  text_fill_blank: "Điền vào chỗ trống:",
+  matching: "Ghép cặp từ tương ứng:",
 };
 
 /** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */

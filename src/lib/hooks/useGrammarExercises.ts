@@ -19,7 +19,7 @@ export function useGrammarExercises(setId: string) {
 
     supabase
       .from("grammar_exercises_public")
-      .select("id, lesson_id, type, group_id, hint, prompt_text, transformation_hint, tokens, classification_groups, classification_items, word_bank, options, order_index")
+      .select("id, lesson_id, type, group_id, hint, prompt_text, transformation_hint, tokens, classification_groups, classification_items, word_bank, options, matching_pairs, audio_clip_id, reading_passage_id, order_index")
       .eq("set_id", setId)
       .order("order_index")
       .then(({ data, error: fetchError }) => {
@@ -41,6 +41,9 @@ export function useGrammarExercises(setId: string) {
               classificationItems: (e.classification_items as string[] | null) ?? undefined,
               wordBank: (e.word_bank as GrammarExercise["wordBank"] | null) ?? undefined,
               options: normalizeOptionsFromDb(e.options),
+              matchingPairs: (e.matching_pairs as { de: string; vi: string }[] | null) ?? undefined,
+              audioClipId: (e.audio_clip_id as string | null) ?? undefined,
+              readingPassageId: (e.reading_passage_id as string | null) ?? undefined,
               explanation: "",
             })),
           );
