@@ -114,29 +114,32 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
         `)
         .order("order_index")
         .order("order_index", { referencedTable: "lessons" }),
+      // grammar_exercises_public giờ phủ cả 3 category (nguphap/nghe/doc —
+      // Nghe/Đọc đã gộp vào grammar_exercises từ Phase 4), 1 query duy nhất
+      // đủ cho cả 3 cờ has*Questions, không cần quiz_questions_public nữa
+      // (bảng đó đã xoá).
       supabase
         .from("grammar_exercises_public")
-        .select("lesson_id"),
-      supabase
-        .from("quiz_questions_public")
         .select("lesson_id, category"),
-    ]).then(([modulesRes, nguphapRes, quizRes]) => {
+    ]).then(([modulesRes, exercisesRes]) => {
       if (cancelled) return;
       if (modulesRes.error) {
         setError(modulesRes.error.message);
-      } else if (nguphapRes.error || quizRes.error) {
-        // Nếu 2 query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
+      } else if (exercisesRes.error) {
+        // Nếu query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
         // không có câu hỏi" -> tự động hoàn thành sai. Coi lỗi này nghiêm
         // trọng như lỗi modulesRes, không build flags từ tập rỗng.
-        setError((nguphapRes.error ?? quizRes.error)?.message ?? "Không thể tải dữ liệu câu hỏi.");
+        setError(exercisesRes.error.message);
       } else {
-        const nguphapLessonIds = new Set((nguphapRes.data ?? []).map((r) => r.lesson_id as string));
         const quizCategoriesByLesson = new Map<string, Set<string>>();
-        for (const row of (quizRes.data ?? []) as { lesson_id: string; category: string }[]) {
+        for (const row of (exercisesRes.data ?? []) as { lesson_id: string; category: string }[]) {
           const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
           categories.add(row.category);
           quizCategoriesByLesson.set(row.lesson_id, categories);
         }
+        const nguphapLessonIds = new Set(
+          [...quizCategoriesByLesson.entries()].filter(([, cats]) => cats.has("nguphap")).map(([id]) => id),
+        );
         setModules(
           (modulesRes.data ?? []).map((m) =>
             transformModule(m as SupabaseModule, nguphapLessonIds, quizCategoriesByLesson),
