@@ -36,15 +36,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigateLesson,
   onNavigateRoadmap
 }) => {
-  const a1Module = modules.find(m => m.level === "A1");
   const allLessons = modules.flatMap(m => m.lessons);
-
-  const totalLessonsInA1 = a1Module?.lessons.length ?? 0;
-  const completedA1Lessons = a1Module?.lessons.filter(l => stats.completedLessons.includes(l.id)).length ?? 0;
-  const progressA1Percentage = totalLessonsInA1 > 0 ? Math.round((completedA1Lessons / totalLessonsInA1) * 100) : 0;
 
   // Find current next lesson to suggest
   const nextSuggestedLesson: Lesson | undefined = allLessons.find(l => !stats.completedLessons.includes(l.id)) ?? allLessons[0];
+
+  // Tiến độ tính theo level của nextSuggestedLesson (level học viên đang
+  // học dở) — gộp mọi module cùng level (hiện mỗi level chỉ có 1 module,
+  // nhưng .filter() đúng hơn .find() nếu sau này có nhiều module/level).
+  const currentLevel = nextSuggestedLesson?.level;
+  const currentLevelLessons = currentLevel
+    ? modules.filter(m => m.level === currentLevel).flatMap(m => m.lessons)
+    : [];
+  const totalLessonsInLevel = currentLevelLessons.length;
+  const completedLessonsInLevel = currentLevelLessons.filter(l => stats.completedLessons.includes(l.id)).length;
+  const progressLevelPercentage = totalLessonsInLevel > 0
+    ? Math.round((completedLessonsInLevel / totalLessonsInLevel) * 100)
+    : 0;
+
+  const LEVEL_ORDER: readonly string[] = ["A1", "A2", "B1", "B2"];
+  const nextLevel = currentLevel
+    ? LEVEL_ORDER[LEVEL_ORDER.indexOf(currentLevel) + 1]
+    : undefined;
 
   // Check recent scores list
   const recentScores = Object.entries(stats.quizScores).map(([lessonId, score]) => {
@@ -127,16 +140,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* Level progress */}
             <div className="bg-white border border-slate-200/60 p-6 rounded-3xl shadow-sm flex flex-col justify-between">
               <div className="space-y-2">
-                <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Tiến độ cấp độ A1</span>
+                <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Tiến độ cấp độ {currentLevel}</span>
                 <div className="flex justify-between items-baseline pt-1">
-                  <h4 className="text-2xl font-display font-black text-green-600">{progressA1Percentage}%</h4>
-                  <span className="text-xs text-slate-500">{completedA1Lessons}/{totalLessonsInA1} bài hoàn tất</span>
+                  <h4 className="text-2xl font-display font-black text-green-600">{progressLevelPercentage}%</h4>
+                  <span className="text-xs text-slate-500">{completedLessonsInLevel}/{totalLessonsInLevel} bài hoàn tất</span>
                 </div>
-                <ProgressBar value={progressA1Percentage} className="pt-2 text-xs" />
+                <ProgressBar value={progressLevelPercentage} className="pt-2 text-xs" />
+                <p className="text-[11px] text-slate-400 truncate">Đang học: <b className="text-slate-600">{nextSuggestedLesson.titleVi}</b></p>
               </div>
               <div className="pt-4 border-t border-slate-100/80 mt-4 flex justify-between items-center text-xs">
-                <span className="text-slate-500">Mục tiêu tiếp theo là khóa <b>A2</b></span>
-                <button 
+                {nextLevel ? (
+                  <span className="text-slate-500">Mục tiêu tiếp theo là khóa <b>{nextLevel}</b></span>
+                ) : (
+                  <span className="text-slate-500">Bạn đang ở cấp độ cao nhất 🎉</span>
+                )}
+                <button
                   id="btn-dash-view-road"
                   onClick={onNavigateRoadmap} 
                   className="text-orange-600 font-display font-bold hover:underline cursor-pointer flex items-center gap-0.5"
