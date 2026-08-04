@@ -192,3 +192,35 @@ export function computeGrammarScore(
   const score = total > 0 ? Math.round((correct / total) * 100) : 0;
   return { correct, total, score, blankResults, choiceResults, exerciseResults };
 }
+
+/**
+ * Đáp án đúng để hiển thị khi revealed=true, theo format mà client đã biết
+ * decode (cùng wire format với answers khi nộp bài):
+ * - classification: "item:group|..." — parse như classification_items ẩn group.
+ * - fill_in_the_blank: JSON array 1 đáp án chấp nhận/blank.
+ * - còn lại (word_reorder, error_correction, translation, sentence_transformation,
+ *   guided_sentence_writing, multiple_choice lưu index, matching lưu cặp
+ *   serialize): dùng thẳng correct_answer.
+ *
+ * ponytail: text_fill_blank không có nguồn ở đây — scoring của type này đọc
+ * prompt_text (xem extractBlanks ở trên) nhưng index.ts chưa select cột đó,
+ * nên trả "". Cần thêm prompt_text vào select + extractBlanks nếu muốn reveal
+ * type này.
+ */
+export function deriveCorrectAnswers(exercises: ScorableGrammarExercise[]): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const ex of exercises) {
+    if (ex.type === "classification") {
+      const items = ex.classification_items ?? [];
+      result[ex.id] = items.map((it) => `${it.item}:${it.group}`).join("|");
+      continue;
+    }
+    if (ex.type === "fill_in_the_blank") {
+      const blanks = Array.isArray(ex.blanks) ? ex.blanks : [];
+      result[ex.id] = JSON.stringify(blanks.map((b) => b?.acceptedAnswers?.[0] ?? ""));
+      continue;
+    }
+    result[ex.id] = ex.type === "text_fill_blank" ? "" : (ex.correct_answer ?? "");
+  }
+  return result;
+}

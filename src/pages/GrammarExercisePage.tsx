@@ -25,6 +25,8 @@ interface GrammarExerciseSetBodyProps {
   set: { id: string; title: string };
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onCollapse: () => void;
+  /** Cập nhật badge "Đã đạt"/"Chưa làm" ở danh sách set ngay sau khi nộp bài. */
+  onAttemptUpdate?: (status: { isPassed: boolean; attemptCount: number }) => void;
 }
 
 interface GrammarResult {
@@ -309,6 +311,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   set,
   onSetFinished,
   onCollapse,
+  onAttemptUpdate,
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
@@ -430,6 +433,24 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     return parsed.kind === "text" ? parsed.value : "";
   };
 
+  /** Nhóm đúng theo item, chỉ có dữ liệu khi revealed=true (server chỉ gửi
+   * correctAnswers lúc đó — xem deriveCorrectAnswers trong scoring.ts). */
+  const getCorrectGroupsFor = (exerciseId: string): Record<string, string> =>
+    Object.fromEntries(
+      (result?.correctAnswers?.[exerciseId] ?? "")
+        .split("|")
+        .filter(Boolean)
+        .map((pair) => pair.split(":") as [string, string]),
+    );
+
+  const getCorrectBlanksFor = (exerciseId: string): string[] => {
+    try {
+      return JSON.parse(result?.correctAnswers?.[exerciseId] ?? "[]");
+    } catch {
+      return [];
+    }
+  };
+
   const allAnswered = exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
 
   const collectAllAnswers = (): Record<string, string> =>
@@ -466,6 +487,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     const res = data as GrammarResult;
     setResult(res);
     setSubmittedAnswerSnapshot(finalAnswers);
+    onAttemptUpdate?.({ isPassed: res.isPassed, attemptCount: res.attemptCount });
     deleteDraft();
     // Report rollup theo cả lesson (không phải điểm riêng set này) — khớp
     // đúng giá trị server vừa ghi vào lesson_progress.quiz_score, để state
@@ -564,10 +586,9 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
           )}
         </div>
 
-        {revealed && (
         <div className="text-left space-y-3 pt-4 border-t border-slate-100">
           <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
-            Giải thích từng câu hỏi:
+            {revealed ? "Giải thích từng câu hỏi:" : "Câu đúng / câu sai:"}
           </h4>
           <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
             {groups.map((group, groupIndex) => (
@@ -585,45 +606,73 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
                       || ex.type === "translation"
                       || ex.type === "sentence_transformation"
                       || ex.type === "guided_sentence_writing") && (
-                      <SubmittedAnswer
-                        value={getSubmittedTextFor(ex)}
-                        correct={result.exerciseResults?.[ex.id]}
-                      />
+                      <>
+                        <SubmittedAnswer
+                          value={getSubmittedTextFor(ex)}
+                          correct={result.exerciseResults?.[ex.id]}
+                        />
+                        {revealed && result.exerciseResults?.[ex.id] === false && (
+                          <p className="mb-2 text-[11px] text-green-700">
+                            <b>Đáp án đúng:</b> {result.correctAnswers?.[ex.id] || "—"}
+                          </p>
+                        )}
+                      </>
                     )}
                     {ex.type === "classification" && (
                       <div className="mb-2 space-y-1">
-                        {(ex.classificationItems ?? []).map((item) => (
-                          <div key={item} className="flex items-center gap-2 text-xs">
-                            <span className="flex-1 text-slate-700">{item}</span>
-                            <span
-                              className={`rounded-md border px-2 py-1 font-bold ${
-                                result.exerciseResults?.[ex.id]
-                                  ? "border-green-300 bg-green-50 text-green-700"
-                                  : "border-slate-200 bg-slate-50 text-slate-600"
-                              }`}
-                            >
-                              {itemGroupsByExercise[ex.id]?.[item] ?? "—"}
-                            </span>
-                          </div>
-                        ))}
+                        {(ex.classificationItems ?? []).map((item) => {
+                          const userGroup = itemGroupsByExercise[ex.id]?.[item] ?? "—";
+                          const correctGroup = revealed ? getCorrectGroupsFor(ex.id)[item] : undefined;
+                          const isCorrect = correctGroup === userGroup;
+                          return (
+                            <div key={item} className="flex items-center gap-2 text-xs">
+                              <span className="flex-1 text-slate-700">{item}</span>
+                              <span
+                                className={`rounded-md border px-2 py-1 font-bold ${
+                                  isCorrect
+                                    ? "border-green-300 bg-green-50 text-green-700"
+                                    : "border-slate-200 bg-slate-50 text-slate-600"
+                                }`}
+                              >
+                                {userGroup}
+                              </span>
+                              {revealed && !isCorrect && correctGroup && (
+                                <span className="rounded-md border border-green-300 bg-green-50 px-2 py-1 font-bold text-green-700">
+                                  {correctGroup}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     {ex.type === "fill_in_the_blank" && (
                       <div className="mb-2 text-xs leading-9 text-slate-700">
-                        {(ex.promptText ?? "").split("___").map((segment, index, segments) => (
-                          <React.Fragment key={`${index}:${segment}`}>
-                            <span className="whitespace-pre-wrap">{segment}</span>
-                            {index < segments.length - 1 && (
-                              <span className={`mx-1 inline-block min-w-20 rounded-md border px-2 py-1 text-center font-bold ${
-                                result.blankResults?.[ex.id]?.[index]
-                                  ? "border-green-300 bg-green-50 text-green-700"
-                                  : "border-red-300 bg-red-50 text-red-700"
-                              }`}>
-                                {blankAnswersByExercise[ex.id]?.[index] ?? "—"}
-                              </span>
-                            )}
-                          </React.Fragment>
-                        ))}
+                        {(ex.promptText ?? "").split("___").map((segment, index, segments) => {
+                          const isCorrect = result.blankResults?.[ex.id]?.[index];
+                          const correctBlank = revealed ? getCorrectBlanksFor(ex.id)[index] : undefined;
+                          return (
+                            <React.Fragment key={`${index}:${segment}`}>
+                              <span className="whitespace-pre-wrap">{segment}</span>
+                              {index < segments.length - 1 && (
+                                <>
+                                  <span className={`mx-1 inline-block min-w-20 rounded-md border px-2 py-1 text-center font-bold ${
+                                    isCorrect
+                                      ? "border-green-300 bg-green-50 text-green-700"
+                                      : "border-red-300 bg-red-50 text-red-700"
+                                  }`}>
+                                    {blankAnswersByExercise[ex.id]?.[index] ?? "—"}
+                                  </span>
+                                  {revealed && !isCorrect && correctBlank && (
+                                    <span className="mx-1 inline-block min-w-20 rounded-md border border-green-300 bg-green-50 px-2 py-1 text-center font-bold text-green-700">
+                                      {correctBlank}
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                       </div>
                     )}
                     {ex.type === "multiple_choice" && (
@@ -634,6 +683,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
                           onSelect={() => {}}
                           exerciseId={ex.id}
                           result={result.choiceResults?.[ex.id]}
+                          correctIndex={revealed ? Number(result.correctAnswers?.[ex.id]) : undefined}
                         />
                       </div>
                     )}
@@ -648,7 +698,6 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
             ))}
           </div>
         </div>
-        )}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button variant="secondary" className="flex-1" onClick={handleRetry}>

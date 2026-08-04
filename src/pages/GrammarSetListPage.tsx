@@ -26,7 +26,8 @@ const SetRow: React.FC<{
   isExpanded: boolean;
   onToggle: () => void;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
-}> = ({ set, orderNumber, isPassed, isExpanded, onToggle, onSetFinished }) => {
+  onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
+}> = ({ set, orderNumber, isPassed, isExpanded, onToggle, onSetFinished, onAttemptUpdate }) => {
   const { exercises, loading } = useGrammarExercises(set.id);
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
   const singleGroup = groups.length === 1 ? groups[0] : null;
@@ -73,6 +74,7 @@ const SetRow: React.FC<{
             set={{ id: set.id, title: set.title }}
             onSetFinished={onSetFinished}
             onCollapse={onToggle}
+            onAttemptUpdate={onAttemptUpdate}
           />
         </div>
       )}
@@ -94,7 +96,7 @@ export const GrammarSetListPage: React.FC<GrammarSetListPageProps> = ({
     [allSets, lessonId],
   );
   const setIds = useMemo(() => lessonSets.map((s) => s.id), [lessonSets]);
-  const { attemptsBySetId, loading: attemptsLoading } = useExerciseSetAttempts(setIds);
+  const { attemptsBySetId, loading: attemptsLoading, updateAttempt } = useExerciseSetAttempts(setIds);
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
 
   if (setsLoading || attemptsLoading) {
@@ -132,6 +134,7 @@ export const GrammarSetListPage: React.FC<GrammarSetListPageProps> = ({
             isExpanded={expandedSetId === set.id}
             onToggle={() => setExpandedSetId((prev) => (prev === set.id ? null : set.id))}
             onSetFinished={onSetFinished}
+            onAttemptUpdate={(status) => updateAttempt(set.id, status)}
           />
         ))}
       </div>

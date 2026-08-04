@@ -79,6 +79,7 @@ export interface SetAttemptStatus {
 export function useExerciseSetAttempts(setIds: string[]): {
   attemptsBySetId: Record<string, SetAttemptStatus>;
   loading: boolean;
+  updateAttempt: (setId: string, status: SetAttemptStatus) => void;
 } {
   const [attemptsBySetId, setAttemptsBySetId] = useState<Record<string, SetAttemptStatus>>({});
   const [loading, setLoading] = useState(true);
@@ -111,5 +112,11 @@ export function useExerciseSetAttempts(setIds: string[]): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  return { attemptsBySetId, loading };
+  // Cho phép cập nhật lạc quan ngay sau khi nộp bài — fetch ở trên chỉ chạy
+  // 1 lần theo setIds nên không tự phản ánh kết quả vừa nộp trong cùng phiên.
+  const updateAttempt = (setId: string, status: SetAttemptStatus) => {
+    setAttemptsBySetId((prev) => ({ ...prev, [setId]: status }));
+  };
+
+  return { attemptsBySetId, loading, updateAttempt };
 }

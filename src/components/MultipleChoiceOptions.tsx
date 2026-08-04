@@ -7,7 +7,9 @@ export const MultipleChoiceOptions: React.FC<{
   onSelect: (index: number) => void;
   exerciseId: string;
   result?: boolean;
-}> = ({ options, selectedIndex, onSelect, exerciseId, result }) => (
+  /** Chỉ truyền khi đã revealed — tô xanh phương án đúng dù học viên không chọn nó. */
+  correctIndex?: number;
+}> = ({ options, selectedIndex, onSelect, exerciseId, result, correctIndex }) => (
   <div role="radiogroup" className="space-y-1.5">
     {options.map((option, index) => {
       const selected = selectedIndex === index;
@@ -17,7 +19,9 @@ export const MultipleChoiceOptions: React.FC<{
           : result === false
             ? "border-red-400 bg-red-50 text-red-800"
             : "border-orange-300 bg-orange-50 text-orange-700"
-        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
+        : correctIndex === index
+          ? "border-green-400 bg-green-50 text-green-800"
+          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
       return (
         <button
           key={`${exerciseId}:${index}`}

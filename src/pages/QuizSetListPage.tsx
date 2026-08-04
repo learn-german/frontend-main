@@ -33,6 +33,7 @@ interface QuizResult {
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
+  correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
 }
 
@@ -120,7 +121,8 @@ const QuizExerciseSetBody: React.FC<{
   set: { id: string; title: string };
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onCollapse: () => void;
-}> = ({ lesson, set, onSetFinished, onCollapse }) => {
+  onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
+}> = ({ lesson, set, onSetFinished, onCollapse, onAttemptUpdate }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
@@ -227,6 +229,7 @@ const QuizExerciseSetBody: React.FC<{
     }
     const res = data as QuizResult;
     setResult(res);
+    onAttemptUpdate({ isPassed: res.isPassed, attemptCount: res.attemptCount });
     deleteDraft();
     onSetFinished(res.lessonQuizScore, res.xpEarned);
   };
@@ -321,80 +324,89 @@ const QuizExerciseSetBody: React.FC<{
           )}
         </div>
 
-        {revealed && (
-          <div className="text-left space-y-3 pt-4 border-t border-slate-100">
-            <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
-              Giải thích từng câu hỏi:
-            </h4>
-            <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
-              {exercises.map((ex, index) => (
-                <div key={ex.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
-                  <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
-                    Câu {index + 1} · {QUIZ_TYPE_LABELS[ex.type] ?? ex.type}
-                  </p>
-                  {ex.type === "multiple_choice" && (
-                    <div className="mb-2">
-                      <MultipleChoiceOptions
-                        options={ex.options ?? []}
-                        selectedIndex={choiceByExercise[ex.id]}
-                        onSelect={() => {}}
-                        exerciseId={ex.id}
-                        result={result.choiceResults?.[ex.id]}
-                      />
-                    </div>
-                  )}
-                  {ex.type === "text_fill_blank" && (
-                    <div className="mb-2 text-xs leading-9 text-slate-700">
-                      {(ex.promptText ?? "").split("{{blank}}").map((segment, i, segments) => (
-                        <React.Fragment key={`${i}:${segment}`}>
-                          <span className="whitespace-pre-wrap">{segment}</span>
-                          {i < segments.length - 1 && (
-                            <span
-                              className={`mx-1 inline-block min-w-20 rounded-md border px-2 py-1 text-center font-bold ${
-                                result.blankResults?.[ex.id]?.[i]
-                                  ? "border-green-300 bg-green-50 text-green-700"
-                                  : "border-red-300 bg-red-50 text-red-700"
-                              }`}
-                            >
-                              {(blankValuesByExercise[ex.id] ?? [])[i] || "—"}
+        <div className="text-left space-y-3 pt-4 border-t border-slate-100">
+          <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
+            {revealed ? "Giải thích từng câu hỏi:" : "Câu đúng / câu sai:"}
+          </h4>
+          <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
+            {exercises.map((ex, index) => (
+              <div key={ex.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
+                <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
+                  Câu {index + 1} · {QUIZ_TYPE_LABELS[ex.type] ?? ex.type}
+                </p>
+                {ex.type === "multiple_choice" && (
+                  <div className="mb-2">
+                    <MultipleChoiceOptions
+                      options={ex.options ?? []}
+                      selectedIndex={choiceByExercise[ex.id]}
+                      onSelect={() => {}}
+                      exerciseId={ex.id}
+                      result={result.choiceResults?.[ex.id]}
+                      correctIndex={revealed ? Number(result.correctAnswers?.[ex.id]) : undefined}
+                    />
+                  </div>
+                )}
+                {ex.type === "text_fill_blank" && (
+                  // ponytail: server chưa trả correctAnswers cho type này (thiếu
+                  // prompt_text trong select của grammar-submit) — chỉ tô đúng/sai,
+                  // chưa hiện được đáp án đúng cụ thể. Thêm prompt_text + extractBlanks
+                  // vào deriveCorrectAnswers nếu cần đủ.
+                  <div className="mb-2 text-xs leading-9 text-slate-700">
+                    {(ex.promptText ?? "").split("{{blank}}").map((segment, i, segments) => (
+                      <React.Fragment key={`${i}:${segment}`}>
+                        <span className="whitespace-pre-wrap">{segment}</span>
+                        {i < segments.length - 1 && (
+                          <span
+                            className={`mx-1 inline-block min-w-20 rounded-md border px-2 py-1 text-center font-bold ${
+                              result.blankResults?.[ex.id]?.[i]
+                                ? "border-green-300 bg-green-50 text-green-700"
+                                : "border-red-300 bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {(blankValuesByExercise[ex.id] ?? [])[i] || "—"}
+                          </span>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
+                {ex.type === "matching" && (
+                  <div className="mb-2 space-y-1">
+                    {(ex.matchingPairs ?? []).map((pair) => {
+                      const userVi = matchedPairsByExercise[ex.id]?.[pair.de];
+                      const isRight = userVi === pair.vi;
+                      const correctPairs = revealed ? parseMatching(result.correctAnswers?.[ex.id] ?? "") : {};
+                      return (
+                        <div key={pair.de} className="flex items-center gap-2 text-xs">
+                          <span className="flex-1 text-slate-700">{pair.de}</span>
+                          <span
+                            className={`rounded-md border px-2 py-1 font-bold ${
+                              isRight
+                                ? "border-green-300 bg-green-50 text-green-700"
+                                : "border-red-300 bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {userVi ?? "—"}
+                          </span>
+                          {revealed && !isRight && correctPairs[pair.de] && (
+                            <span className="rounded-md border border-green-300 bg-green-50 px-2 py-1 font-bold text-green-700">
+                              {correctPairs[pair.de]}
                             </span>
                           )}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )}
-                  {ex.type === "matching" && (
-                    <div className="mb-2 space-y-1">
-                      {(ex.matchingPairs ?? []).map((pair) => {
-                        const userVi = matchedPairsByExercise[ex.id]?.[pair.de];
-                        const isRight = userVi === pair.vi;
-                        return (
-                          <div key={pair.de} className="flex items-center gap-2 text-xs">
-                            <span className="flex-1 text-slate-700">{pair.de}</span>
-                            <span
-                              className={`rounded-md border px-2 py-1 font-bold ${
-                                isRight
-                                  ? "border-green-300 bg-green-50 text-green-700"
-                                  : "border-red-300 bg-red-50 text-red-700"
-                              }`}
-                            >
-                              {userVi ?? "—"}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {result.explanations?.[ex.id] && (
-                    <p className="text-slate-500 text-[11px] leading-relaxed">
-                      <b>Giải thích:</b> {result.explanations[ex.id]}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {result.explanations?.[ex.id] && (
+                  <p className="text-slate-500 text-[11px] leading-relaxed">
+                    <b>Giải thích:</b> {result.explanations[ex.id]}
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button variant="secondary" className="flex-1" onClick={handleRetry}>
@@ -515,7 +527,8 @@ const SetRow: React.FC<{
   isExpanded: boolean;
   onToggle: () => void;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
-}> = ({ lesson, set, orderNumber, isPassed, isExpanded, onToggle, onSetFinished }) => (
+  onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
+}> = ({ lesson, set, orderNumber, isPassed, isExpanded, onToggle, onSetFinished, onAttemptUpdate }) => (
   <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <button
       type="button"
@@ -546,6 +559,7 @@ const SetRow: React.FC<{
           set={{ id: set.id, title: set.title }}
           onSetFinished={onSetFinished}
           onCollapse={onToggle}
+          onAttemptUpdate={onAttemptUpdate}
         />
       </div>
     )}
@@ -567,7 +581,7 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
     [allSets, lesson.id, category],
   );
   const setIds = useMemo(() => lessonSets.map((s) => s.id), [lessonSets]);
-  const { attemptsBySetId, loading: attemptsLoading } = useExerciseSetAttempts(setIds);
+  const { attemptsBySetId, loading: attemptsLoading, updateAttempt } = useExerciseSetAttempts(setIds);
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
   const title = category === "nghe" ? "Bài tập nghe" : "Bài tập đọc";
 
@@ -607,6 +621,7 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
             isExpanded={expandedSetId === set.id}
             onToggle={() => setExpandedSetId((prev) => (prev === set.id ? null : set.id))}
             onSetFinished={onSetFinished}
+            onAttemptUpdate={(status) => updateAttempt(set.id, status)}
           />
         ))}
       </div>

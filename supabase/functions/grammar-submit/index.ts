@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { computeGrammarScore, projectAnswers } from "./scoring.ts";
+import { computeGrammarScore, deriveCorrectAnswers, projectAnswers } from "./scoring.ts";
 import { computeSetAttemptUpdate, type ExistingSetAttempt } from "./setAttemptUpdate.ts";
 
 const corsHeaders = {
@@ -110,7 +110,7 @@ serve(async (req) => {
           exerciseResults,
           ...(revealedNow
             ? {
-                correctAnswers: Object.fromEntries(exercises.map((e) => [e.id, e.correct_answer ?? ""])),
+                correctAnswers: deriveCorrectAnswers(exercises),
                 explanations: Object.fromEntries(exercises.map((e) => [e.id, e.explanation ?? ""])),
               }
             : {}),
@@ -224,7 +224,7 @@ serve(async (req) => {
         exerciseResults,
         ...(update.revealed
           ? {
-              correctAnswers: Object.fromEntries(exercises.map((e) => [e.id, e.correct_answer ?? ""])),
+              correctAnswers: deriveCorrectAnswers(exercises),
               explanations: Object.fromEntries(exercises.map((e) => [e.id, e.explanation ?? ""])),
             }
           : {}),
