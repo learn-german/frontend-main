@@ -332,9 +332,6 @@ Response thành công:
 - [ ]  Deploy lên môi trường test.
 - [ ]  QA test pass và không còn bug Critical/High liên quan.
 ---
-[issue][admin][bài tập phân loại] không working
-Phần admin đang không thêm từ được 
----
 Áp dụng toàn bộ kiểu câu hỏi từ phần ngữ pháp sang cho nghe và đọc 
 giữ nguyên logic như phần ngữ pháp
 ---
