@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Loader2, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/DesignSystem";
+import { showToast } from "../lib/toast";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { MultipleChoiceOptions } from "../components/MultipleChoiceOptions";
 import { GrammarExercise } from "../lib/appTypes";
@@ -27,6 +28,8 @@ interface GrammarExerciseSetBodyProps {
   onCollapse: () => void;
   /** Cập nhật badge "Đã đạt"/"Chưa làm" ở danh sách set ngay sau khi nộp bài. */
   onAttemptUpdate?: (status: { isPassed: boolean; attemptCount: number }) => void;
+  /** Cập nhật badge "Đang làm" ở danh sách set ngay sau khi Lưu/Nộp bài. */
+  onDraftSaved?: (hasDraft: boolean) => void;
 }
 
 interface GrammarResult {
@@ -312,6 +315,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   onSetFinished,
   onCollapse,
   onAttemptUpdate,
+  onDraftSaved,
 }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
@@ -489,6 +493,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     setSubmittedAnswerSnapshot(finalAnswers);
     onAttemptUpdate?.({ isPassed: res.isPassed, attemptCount: res.attemptCount });
     deleteDraft();
+    onDraftSaved?.(false);
     // Report rollup theo cả lesson (không phải điểm riêng set này) — khớp
     // đúng giá trị server vừa ghi vào lesson_progress.quiz_score, để state
     // optimistic phía client (Roadmap/Dashboard) không lệch server.
@@ -858,7 +863,18 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
       <div className="flex justify-end gap-3">
-        <Button variant="secondary" onClick={() => saveDraft(collectAllAnswers())}>
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            const { error } = await saveDraft(collectAllAnswers());
+            if (error) {
+              showToast("Không thể lưu, vui lòng thử lại.", "warning");
+              return;
+            }
+            showToast("Đã lưu bài làm dở.", "success");
+            onDraftSaved?.(true);
+          }}
+        >
           Lưu
         </Button>
         <Button variant="primary" disabled={!allAnswered || submitting} onClick={handleSubmit}>
