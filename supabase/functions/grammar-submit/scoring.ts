@@ -32,7 +32,7 @@ const MAX_ANSWER_LENGTH = 2000;
  * are used for scoring AND before they are persisted, so the stored snapshot
  * is exactly the set the hydrate path iterates — no unknown exercise ids, no
  * non-string values reaching normalizeWord/JSON.parse, no unbounded payloads
- * landing in the grammar_attempts row.
+ * landing in the exercise_set_attempts row.
  */
 export function projectAnswers(
   exercises: { id: string }[],
