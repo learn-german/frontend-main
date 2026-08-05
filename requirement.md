@@ -347,16 +347,4 @@ giữ nguyên logic như phần ngữ pháp
     - Thời gian nộp bài gần nhất.
 - Sau khi user nộp bài ở bất kỳ set nào, kết quả vừa nộp phải được cập nhật ngay vào khu vực tổng hợp này, không cần reload trang.
 ---
-[Feature][Admin][Bài tập] Tên bài tập ("Bài tập N") nên tự động, không cho nhập tay
-
-[Situation]
-
-- Trong Admin, mỗi exercise set có ô "tên bài" (`title`) cho phép admin gõ tay tuỳ ý (`onRenameSet`, `AdminGrammarExerciseSection.tsx:1382`), mặc định theo `nextDefaultSetTitle` ("Bài tập N").
-- Vì số hiển thị cho học viên (`Bài N` ở `GrammarSetListPage.tsx`/`QuizSetListPage.tsx`) đã tính tự động theo vị trí trong danh sách (không dùng field `title` này cho set có 1 nhóm câu hỏi), việc admin gõ tay tên "Bài tập N" dễ lệch số thật khi set được thêm/xoá/sắp xếp lại — tên hiển thị trong Admin không còn khớp với "Bài N" học viên thấy.
-
-[Việc cần làm]
-
-- Không cho nhập tay tên set dạng "Bài tập N" — tự sinh theo vị trí, tương tự cách "Bài N" đã tính ở phía học viên.
-- Xem xét còn cần ô "tên bài" tự do (title) cho set nhiều nhóm câu hỏi hay không, hay thay hẳn bằng số tự động.
----
 [issue][user] Chưa mở được bài học tiếp theo sau khi đã hoàn thành xong bài tập
