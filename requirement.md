@@ -36,7 +36,10 @@ Mỗi video có nhiều bài tập; mỗi bài tập có nhiều câu hỏi. H�
 
 - Một video có thể có nhiều bài tập Ngữ pháp.
 - Một bài tập có thể có nhiều câu hỏi.
-- Thứ tự chuyển bài tập phải theo thứ tự đã cấu hình trong video.
+- Bài tập hiển thị theo thứ tự đã cấu hình trong video (`order_index`), nhưng
+  **không khoá tuần tự** — học viên có thể mở và làm bất kỳ bài tập nào
+  trong video, không bắt buộc Pass bài trước mới mở được bài sau. Quyết định
+  sản phẩm (2026-08-05), khác với bản nháp ban đầu của mục này.
 
 ### BR-02 — Cách tính điểm và Pass
 
@@ -76,8 +79,8 @@ Ví dụ:
 - [ ]  Đúng toàn bộ ở bất kỳ lần nào sẽ mở ngay toàn bộ đáp án đúng và giải thích.
 - [ ]  Từ lần thứ 5, hệ thống mở đáp án đúng và giải thích dù vẫn còn câu sai.
 - [ ]  Bài tập được Pass khi số câu đúng đạt từ 80% tổng số câu trở lên.
-- [ ]  Bài tập dưới 80% không được mở bài tập tiếp theo.
-- [ ]  Bài tập từ 80% trở lên hiển thị nút **Tiếp tục** và mở bài tập tiếp theo.
+- [ ]  Bài tập từ 80% trở lên hiển thị nút **Tiếp tục**. (Không khoá bài tập
+      tiếp theo khi chưa Pass — xem BR-01, quyết định sản phẩm 2026-08-05.)
 - [ ]  Lần thứ 5 không tự động Pass nếu tỷ lệ đúng vẫn dưới 80%.
 - [ ]  Sau lần thứ 5, học viên vẫn có thể làm lại cho đến khi Pass.
 - [ ]  Attempt được tính riêng theo từng user và từng bài tập.

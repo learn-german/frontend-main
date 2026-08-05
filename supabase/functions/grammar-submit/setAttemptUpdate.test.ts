@@ -4,11 +4,11 @@ import { computeSetAttemptUpdate, type ExistingSetAttempt } from "./setAttemptUp
 
 const XP = 30;
 
-test("lần đầu đúng 4/5 (80%) thì pass, reveal ngay (đã pass), được XP", () => {
+test("lần đầu đúng 4/5 (80%) thì pass, không reveal, được XP", () => {
   const r = computeSetAttemptUpdate(null, 4, 5, XP);
   assert.deepEqual(r, {
     score: 80, bestScore: 80, attemptCount: 1,
-    isPassed: true, revealed: true, xpEarned: XP,
+    isPassed: true, revealed: false, xpEarned: XP,
   });
 });
 
@@ -28,14 +28,14 @@ test("lần đầu đúng 3/5 (60%) thì chưa đạt, không reveal, không XP"
   });
 });
 
-test("lần 4 đúng 4/5 (80%) thì pass, reveal ngay (đã pass), cho tiếp tục", () => {
+test("lần 4 đúng 4/5 (80%) thì pass, không reveal, cho tiếp tục", () => {
   const existing: ExistingSetAttempt = {
     bestScore: 60, attemptCount: 3, isPassed: false, revealed: false,
   };
   const r = computeSetAttemptUpdate(existing, 4, 5, XP);
   assert.equal(r.attemptCount, 4);
   assert.equal(r.isPassed, true);
-  assert.equal(r.revealed, true);
+  assert.equal(r.revealed, false);
   assert.equal(r.xpEarned, XP);
 });
 
