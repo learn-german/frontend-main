@@ -7,11 +7,15 @@ import { GrammarExercise, Lesson } from "../lib/appTypes";
 import { useExerciseSets, type ExerciseSet } from "../lib/hooks/useExerciseSets";
 import { useExerciseSetAttempt, useExerciseSetAttempts } from "../lib/hooks/useExerciseSetAttempt";
 import { useExerciseSetDraft } from "../lib/hooks/useExerciseSetDraft";
+import { useExerciseSetDrafts } from "../lib/hooks/useExerciseSetDrafts";
+import { useNonEmptySetIds } from "../lib/hooks/useNonEmptySetIds";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
+import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
 import { joinBlankAnswers, splitBlankAnswers, serializeMatching, parseMatching } from "../lib/quizAnswerCodec";
 import { supabase } from "../lib/supabase";
+import { showToast } from "../lib/toast";
 
 interface QuizSetListPageProps {
   lesson: Lesson;
@@ -122,7 +126,8 @@ const QuizExerciseSetBody: React.FC<{
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onCollapse: () => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
-}> = ({ lesson, set, onSetFinished, onCollapse, onAttemptUpdate }) => {
+  onDraftSaved: (hasDraft: boolean) => void;
+}> = ({ lesson, set, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
   const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
@@ -231,6 +236,7 @@ const QuizExerciseSetBody: React.FC<{
     setResult(res);
     onAttemptUpdate({ isPassed: res.isPassed, attemptCount: res.attemptCount });
     deleteDraft();
+    onDraftSaved(false);
     onSetFinished(res.lessonQuizScore, res.xpEarned);
   };
 
@@ -507,7 +513,18 @@ const QuizExerciseSetBody: React.FC<{
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
       <div className="flex justify-end gap-3">
-        <Button variant="secondary" onClick={() => saveDraft(collectAllAnswers())}>
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            const { error } = await saveDraft(collectAllAnswers());
+            if (error) {
+              showToast("Không thể lưu, vui lòng thử lại.", "warning");
+              return;
+            }
+            showToast("Đã lưu bài làm dở.", "success");
+            onDraftSaved(true);
+          }}
+        >
           Lưu
         </Button>
         <Button variant="primary" disabled={!allAnswered || submitting} onClick={handleSubmit}>
@@ -523,12 +540,13 @@ const SetRow: React.FC<{
   lesson: Lesson;
   set: ExerciseSet;
   orderNumber: number;
-  isPassed: boolean;
+  status: SetStatus;
   isExpanded: boolean;
   onToggle: () => void;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
-}> = ({ lesson, set, orderNumber, isPassed, isExpanded, onToggle, onSetFinished, onAttemptUpdate }) => (
+  onDraftSaved: (hasDraft: boolean) => void;
+}> = ({ lesson, set, orderNumber, status, isExpanded, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => (
   <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <button
       type="button"
@@ -542,13 +560,11 @@ const SetRow: React.FC<{
       )}
       <span className="flex-1 text-base font-display font-black text-slate-900">Bài {orderNumber}</span>
       <span className="ml-auto flex items-center gap-2 shrink-0">
-        {isPassed && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+        {status === "passed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
         <span
-          className={`text-[10px] font-display font-bold uppercase px-2 py-0.5 rounded-full ${
-            isPassed ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-700"
-          }`}
+          className={`text-[10px] font-display font-bold uppercase px-2 py-0.5 rounded-full ${SET_STATUS_BADGE_CLASS[status]}`}
         >
-          {isPassed ? "Đã đạt" : "Chưa làm"}
+          {SET_STATUS_LABEL[status]}
         </span>
       </span>
     </button>
@@ -560,6 +576,7 @@ const SetRow: React.FC<{
           onSetFinished={onSetFinished}
           onCollapse={onToggle}
           onAttemptUpdate={onAttemptUpdate}
+          onDraftSaved={onDraftSaved}
         />
       </div>
     )}
@@ -573,19 +590,25 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
   onSetFinished,
 }) => {
   const { sets: allSets, loading: setsLoading } = useExerciseSets();
-  const lessonSets = useMemo(
+  const candidateSets = useMemo(
     () =>
       allSets
         .filter((s) => s.lessonId === lesson.id && s.category === category && s.status === "published")
         .sort((a, b) => a.orderIndex - b.orderIndex),
     [allSets, lesson.id, category],
   );
-  const setIds = useMemo(() => lessonSets.map((s) => s.id), [lessonSets]);
-  const { attemptsBySetId, loading: attemptsLoading, updateAttempt } = useExerciseSetAttempts(setIds);
+  const candidateSetIds = useMemo(() => candidateSets.map((s) => s.id), [candidateSets]);
+  const { attemptsBySetId, loading: attemptsLoading, updateAttempt } = useExerciseSetAttempts(candidateSetIds);
+  const { draftSetIds, loading: draftsLoading, markDraftSaved } = useExerciseSetDrafts(candidateSetIds);
+  const { nonEmptySetIds, loading: nonEmptyLoading } = useNonEmptySetIds(candidateSetIds);
+  const lessonSets = useMemo(
+    () => candidateSets.filter((s) => nonEmptySetIds.has(s.id)),
+    [candidateSets, nonEmptySetIds],
+  );
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
   const title = category === "nghe" ? "Bài tập nghe" : "Bài tập đọc";
 
-  if (setsLoading || attemptsLoading) {
+  if (setsLoading || attemptsLoading || draftsLoading || nonEmptyLoading) {
     return (
       <div className="max-w-3xl mx-auto space-y-8">
         <ExercisePageHeader title={title} onBackToLesson={onBackToLesson} />
@@ -617,11 +640,12 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
             lesson={lesson}
             set={set}
             orderNumber={index + 1}
-            isPassed={attemptsBySetId[set.id]?.isPassed ?? false}
+            status={computeSetStatus(attemptsBySetId[set.id], draftSetIds.has(set.id))}
             isExpanded={expandedSetId === set.id}
             onToggle={() => setExpandedSetId((prev) => (prev === set.id ? null : set.id))}
             onSetFinished={onSetFinished}
             onAttemptUpdate={(status) => updateAttempt(set.id, status)}
+            onDraftSaved={(hasDraft) => markDraftSaved(set.id, hasDraft)}
           />
         ))}
       </div>
