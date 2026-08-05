@@ -58,9 +58,7 @@ const SetRow: React.FC<{
             </span>
             <span className="text-xs text-slate-400">{singleGroup.exercises.length} câu</span>
           </>
-        ) : (
-          <span className="flex-1 text-sm text-slate-500">{set.title}</span>
-        )}
+        ) : null}
         <span className="ml-auto flex items-center gap-2 shrink-0">
           {status === "passed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
           <span

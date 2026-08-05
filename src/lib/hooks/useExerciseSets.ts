@@ -55,12 +55,6 @@ export function useExerciseSets() {
 
   useEffect(() => { refetch(); }, [refetch]);
 
-  const renameSet = async (id: string, title: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.from("exercise_sets").update({ title }).eq("id", id);
-    if (!error) refetch();
-    return { error: error?.message ?? null };
-  };
-
   const toggleSetStatus = async (
     id: string,
     current: "draft" | "published",
@@ -94,5 +88,5 @@ export function useExerciseSets() {
     return { data: created, error: null };
   };
 
-  return { sets, loading, refetch, renameSet, toggleSetStatus, createSet };
+  return { sets, loading, refetch, toggleSetStatus, createSet };
 }

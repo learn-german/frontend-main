@@ -191,7 +191,7 @@ export const AdminQuizSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"nguphap" | "nghe" | "doc">("nguphap");
   const [search, setSearch] = useState("");
   const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
-  const { sets: allSets, loading: setsLoading, createSet, renameSet, toggleSetStatus } = useExerciseSets();
+  const { sets: allSets, loading: setsLoading, createSet, toggleSetStatus } = useExerciseSets();
 
   const [lessons, setLessons] = useState<LessonInfo[]>([]);
   const [exercises, setExercises] = useState<QuizExercise[]>([]);
@@ -219,8 +219,6 @@ export const AdminQuizSection: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<QuizExercise | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [renamingSetId, setRenamingSetId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
 
   const quizSetIds = useMemo(
     () => allSets.filter((s) => s.category === "nghe" || s.category === "doc").map((s) => s.id),
@@ -638,7 +636,7 @@ export const AdminQuizSection: React.FC = () => {
                           group.sets
                             .slice()
                             .sort((a, b) => a.orderIndex - b.orderIndex)
-                            .map((set) => {
+                            .map((set, setIndex) => {
                               const setExercises = exercises.filter((e) => e.set_id === set.id);
                               const mediaId = getSetMediaId(set.id, set.category as "nghe" | "doc");
                               const clip = activeTab === "nghe" ? clips.find((c) => c.id === mediaId) : undefined;
@@ -650,24 +648,9 @@ export const AdminQuizSection: React.FC = () => {
                                     className="w-full flex items-center gap-3 p-3 bg-slate-50/60 text-left"
                                   >
                                     {expandedSet[set.id] ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                                    {renamingSetId === set.id ? (
-                                      <input
-                                        autoFocus
-                                        value={renameValue}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) => setRenameValue(e.target.value)}
-                                        onBlur={() => { renameSet(set.id, renameValue); setRenamingSetId(null); }}
-                                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                                        className="flex-1 px-2 py-1 text-sm border border-orange-300 rounded-lg focus:outline-none"
-                                      />
-                                    ) : (
-                                      <span
-                                        onClick={(e) => { e.stopPropagation(); setRenamingSetId(set.id); setRenameValue(set.title); }}
-                                        className="flex-1 text-sm font-display font-bold text-slate-800 hover:text-orange-600"
-                                      >
-                                        {set.title}
-                                      </span>
-                                    )}
+                                    <span className="flex-1 text-sm font-display font-bold text-slate-800">
+                                      {`Bài ${setIndex + 1}`}
+                                    </span>
                                     <span
                                       onClick={(e) => { e.stopPropagation(); toggleSetStatus(set.id, set.status); }}
                                       className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0 ${

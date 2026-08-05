@@ -318,14 +318,13 @@ interface ExerciseGroupRowProps {
   onPreview: (ex: GrammarExercise) => void;
   onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
   findSet: (setId: string) => ExerciseSet | undefined;
-  onRenameSet: (id: string, title: string) => void;
   onToggleSetStatus: (id: string, current: "draft" | "published") => void;
 }
 
 const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
   exerciseGroup, groupIndex, isExpanded, selectedIds, disabled, onToggleExpanded,
   onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onAddChildren,
-  findSet, onRenameSet, onToggleSetStatus,
+  findSet, onToggleSetStatus,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: exerciseGroup.key,
@@ -334,8 +333,6 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
   const ids = exerciseGroup.exercises.map((exercise) => exercise.id);
   const selectionState = getGroupSelectionState(ids, selectedIds);
   const set = findSet(exerciseGroup.exercises[0]?.setId);
-  const [renaming, setRenaming] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(set?.title ?? "");
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${isDragging ? "z-10 opacity-60 shadow-lg" : ""}`}>
       <div className="flex items-center gap-3 bg-slate-50 px-3 py-2.5">
@@ -345,25 +342,9 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
         <GroupCheckbox state={selectionState} onChange={() => onToggleGroup(ids)} />
         <button type="button" onClick={() => onToggleExpanded(exerciseGroup.key)} className="flex flex-1 items-center gap-3 text-left">
           {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-          {renaming ? (
-            <input
-              autoFocus
-              type="text"
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={() => { if (set && titleDraft.trim()) onRenameSet(set.id, titleDraft.trim()); setRenaming(false); }}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-              className={`${inputBaseCls} w-48`}
-            />
-          ) : (
-            <span
-              onClick={(e) => { e.stopPropagation(); setTitleDraft(set?.title ?? ""); setRenaming(true); }}
-              className="text-sm font-black text-slate-700 hover:underline"
-            >
-              {set?.title ?? `Bài ${groupIndex + 1}`}
-            </span>
-          )}
+          <span className="text-sm font-black text-slate-700">
+            {`Bài ${groupIndex + 1}`}
+          </span>
           <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${TYPE_COLORS[exerciseGroup.type]}`}>{TYPE_LABELS[exerciseGroup.type]}</span>
           <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu</span>
           {set && (
@@ -421,9 +402,8 @@ const ExerciseGroupList: React.FC<{
   reorderSaving: boolean;
   onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
   findSet: (setId: string) => ExerciseSet | undefined;
-  onRenameSet: (id: string, title: string) => void;
   onToggleSetStatus: (id: string, current: "draft" | "published") => void;
-}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving, onAddChildren, findSet, onRenameSet, onToggleSetStatus }) => {
+}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving, onAddChildren, findSet, onToggleSetStatus }) => {
   const exerciseGroups = groupGrammarExercises(exercises);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -434,7 +414,7 @@ const ExerciseGroupList: React.FC<{
       <SortableContext items={exerciseGroups.map((group) => group.key)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {exerciseGroups.map((exerciseGroup, groupIndex) => (
-            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} onAddChildren={onAddChildren} findSet={findSet} onRenameSet={onRenameSet} onToggleSetStatus={onToggleSetStatus} />
+            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} onAddChildren={onAddChildren} findSet={findSet} onToggleSetStatus={onToggleSetStatus} />
           ))}
         </div>
       </SortableContext>
@@ -920,7 +900,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
-  const { sets: exerciseSets, createSet, renameSet, toggleSetStatus } = useExerciseSets();
+  const { sets: exerciseSets, createSet, toggleSetStatus } = useExerciseSets();
   const findSet = (setId: string) => exerciseSets.find((s) => s.id === setId);
   const [hint, setHint] = useState("");
   const [wordBankEnabled, setWordBankEnabled] = useState(false);
@@ -1379,7 +1359,6 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                         reorderSaving={reorderSavingLessonId === group.lesson_id}
                         onAddChildren={(exerciseGroup, groupIndex) => openAppendChildren(group.lesson_id, exerciseGroup, groupIndex + 1)}
                         findSet={findSet}
-                        onRenameSet={(id, title) => renameSet(id, title)}
                         onToggleSetStatus={(id, current) => toggleSetStatus(id, current)}
                       />
                     )}
