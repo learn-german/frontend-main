@@ -61,13 +61,25 @@ test("lần 6 đúng 4/5 (80%) thì pass, lời giải vẫn mở (đã reveal t
   assert.equal(r.xpEarned, XP);
 });
 
-test("đã pass rồi, làm lại điểm thấp hơn: best_score không hạ, không mất XP thêm", () => {
+test("đã pass rồi, làm lại điểm thấp hơn: best_score không hạ, isPassed vẫn giữ true (sticky), không mất XP thêm", () => {
   const existing: ExistingSetAttempt = {
     bestScore: 90, attemptCount: 1, isPassed: true, revealed: false,
   };
   const r = computeSetAttemptUpdate(existing, 2, 5, XP);
   assert.equal(r.bestScore, 90);
+  assert.equal(r.isPassed, true);
   assert.equal(r.xpEarned, 0);
+});
+
+test("isPassed sticky: từng đạt 80% ở lần 1, lần 2 rớt xuống 40% thì vẫn tính là đã Pass", () => {
+  const existing: ExistingSetAttempt = {
+    bestScore: 80, attemptCount: 1, isPassed: true, revealed: false,
+  };
+  const r = computeSetAttemptUpdate(existing, 2, 5, XP);
+  assert.equal(r.score, 40);
+  assert.equal(r.bestScore, 80);
+  assert.equal(r.isPassed, true);
+  assert.equal(r.xpEarned, 0, "không thưởng XP lại vì đã Pass từ trước");
 });
 
 test("77.78% (7/9) không được làm tròn thành pass — BR-02", () => {

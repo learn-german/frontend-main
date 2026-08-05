@@ -19,6 +19,15 @@ export interface SetAttemptUpdate {
  * total*80 (chưa làm tròn) — không dùng score đã làm tròn, tránh sai số
  * BR-02 cảnh báo (77.78% có thể vô tình làm tròn qua ngưỡng 80%).
  *
+ * isPassed mở vĩnh viễn, cùng kiểu "chỉ tăng không giảm" như bestScore và
+ * revealed: một khi đã đạt ≥80% ở bất kỳ lần nào, giữ true dù lần nộp sau
+ * điểm thấp hơn (bấm nhầm khi "Làm lại" không được phép làm mất trạng thái
+ * đã Pass, khớp tinh thần "điểm cao nhất" mà bestScore đã thể hiện). Trước
+ * đây tính lại thuần theo lần nộp gần nhất, khiến rollup lesson
+ * (grammar-submit/index.ts) không bao giờ coi allPassed=true nếu học viên
+ * lỡ nộp lại điểm thấp sau khi đã Pass, và badge "Đã đạt" lật lại "Chưa đạt"
+ * sai.
+ *
  * revealed mở vĩnh viễn: một khi true (đúng hết hoặc đủ 5 lần), giữ true dù
  * các lần nộp sau điểm thấp hơn. isPassed và revealed độc lập nhau — Pass ở
  * 80-99% không tự mở lời giải, đúng theo spec gốc (requirement.md, bước 9-10
@@ -33,7 +42,8 @@ export function computeSetAttemptUpdate(
   xpReward: number,
 ): SetAttemptUpdate {
   const score = total > 0 ? Math.round((correct / total) * 100) : 0;
-  const isPassed = total > 0 && correct * 100 >= total * 80;
+  const passedNow = total > 0 && correct * 100 >= total * 80;
+  const isPassed = (existing?.isPassed ?? false) || passedNow;
   const previousBest = existing?.bestScore ?? 0;
   const attemptCount = (existing?.attemptCount ?? 0) + 1;
   const revealed = (existing?.revealed ?? false) || correct === total || attemptCount >= 5;
