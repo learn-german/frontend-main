@@ -346,5 +346,3 @@ giữ nguyên logic như phần ngữ pháp
     - Điểm % của lần nộp bài gần nhất.
     - Thời gian nộp bài gần nhất.
 - Sau khi user nộp bài ở bất kỳ set nào, kết quả vừa nộp phải được cập nhật ngay vào khu vực tổng hợp này, không cần reload trang.
----
-[issue][user] Chưa mở được bài học tiếp theo sau khi đã hoàn thành xong bài tập
