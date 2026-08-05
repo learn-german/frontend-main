@@ -16,6 +16,7 @@ export interface ScoreResult {
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
+  classificationResults: Record<string, boolean[]>;
 }
 
 // Generous cap: the longest realistic answer is a fill_in_the_blank JSON array
@@ -94,6 +95,7 @@ export function computeGrammarScore(
   const blankResults: Record<string, boolean[]> = {};
   const choiceResults: Record<string, boolean> = {};
   const exerciseResults: Record<string, boolean> = {};
+  const classificationResults: Record<string, boolean[]> = {};
 
   for (const ex of exercises) {
     if (ex.type === "multiple_choice") {
@@ -165,12 +167,10 @@ export function computeGrammarScore(
         .split("|")
         .map((pair) => pair.split(":").map((s) => s.trim()));
       const userMap = new Map(userPairs.map(([item, group]) => [item, group ?? ""]));
-      let itemsCorrect = 0;
-      for (const it of items) {
-        if (normalizeWord(userMap.get(it.item) ?? "") === normalizeWord(it.group)) itemsCorrect++;
-      }
-      correct += itemsCorrect;
-      exerciseResults[ex.id] = items.length > 0 && itemsCorrect === items.length;
+      const results = items.map((it) => normalizeWord(userMap.get(it.item) ?? "") === normalizeWord(it.group));
+      classificationResults[ex.id] = results;
+      correct += results.filter(Boolean).length;
+      exerciseResults[ex.id] = items.length > 0 && results.every(Boolean);
       continue;
     }
 
@@ -190,7 +190,7 @@ export function computeGrammarScore(
   }
 
   const score = total > 0 ? Math.round((correct / total) * 100) : 0;
-  return { correct, total, score, blankResults, choiceResults, exerciseResults };
+  return { correct, total, score, blankResults, choiceResults, exerciseResults, classificationResults };
 }
 
 /**

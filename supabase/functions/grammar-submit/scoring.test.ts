@@ -58,6 +58,7 @@ test("fill: accepts a configured answer independent of a word bank", () => {
     blankResults: { f1: [true] },
     choiceResults: {},
     exerciseResults: { f1: true },
+    classificationResults: {},
   });
 });
 
@@ -89,6 +90,7 @@ test("fill: grades every blank independently", () => {
     blankResults: { f1: [true, false, true] },
     choiceResults: {},
     exerciseResults: { f1: false },
+    classificationResults: {},
   });
 });
 
@@ -235,6 +237,19 @@ test("exerciseResults: classification chỉ true khi mọi item đúng", () => {
   });
   assert.equal(partial.exerciseResults.c1, false);
   assert.equal(partial.correct, 1);
+});
+
+test("classificationResults: đúng/sai từng câu con theo đúng thứ tự classification_items, không phụ thuộc revealed", () => {
+  const r = computeGrammarScore([classify()], {
+    c1: "der Tisch:maskulin|die Lampe:maskulin",
+  });
+  // classify(): items = [{der Tisch, maskulin}, {die Lampe, feminin}]
+  assert.deepEqual(r.classificationResults.c1, [true, false]);
+});
+
+test("classificationResults: item thiếu trong đáp án học viên tính là sai, không throw", () => {
+  const r = computeGrammarScore([classify()], { c1: "der Tisch:maskulin" });
+  assert.deepEqual(r.classificationResults.c1, [true, false]);
 });
 
 test("exerciseResults: fill_in_the_blank chỉ true khi mọi blank đúng", () => {

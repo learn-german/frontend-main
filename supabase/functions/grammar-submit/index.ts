@@ -77,10 +77,8 @@ serve(async (req) => {
     }
 
     const answers = projectAnswers(exercises, rawAnswers);
-    const { total, correct, blankResults, choiceResults, exerciseResults } = computeGrammarScore(
-      exercises,
-      answers,
-    );
+    const { total, correct, blankResults, choiceResults, exerciseResults, classificationResults } =
+      computeGrammarScore(exercises, answers);
 
     const { data: existingRow } = await supabase
       .from("exercise_set_attempts")
@@ -108,6 +106,7 @@ serve(async (req) => {
           blankResults,
           choiceResults,
           exerciseResults,
+          classificationResults,
           ...(revealedNow
             ? {
                 correctAnswers: deriveCorrectAnswers(exercises),
@@ -143,6 +142,7 @@ serve(async (req) => {
         blank_results: blankResults,
         choice_results: choiceResults,
         exercise_results: exerciseResults,
+        classification_results: classificationResults,
         score: update.score,
         total,
         best_score: update.bestScore,
@@ -222,6 +222,7 @@ serve(async (req) => {
         blankResults,
         choiceResults,
         exerciseResults,
+        classificationResults,
         ...(update.revealed
           ? {
               correctAnswers: deriveCorrectAnswers(exercises),

@@ -6,6 +6,7 @@ export interface SetAttempt {
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
+  classificationResults: Record<string, boolean[]>;
   score: number;
   total: number;
   bestScore: number;
@@ -15,7 +16,7 @@ export interface SetAttempt {
 }
 
 const SET_ATTEMPT_COLUMNS =
-  "answers, blank_results, choice_results, exercise_results, score, total, best_score, attempt_count, is_passed, revealed";
+  "answers, blank_results, choice_results, exercise_results, classification_results, score, total, best_score, attempt_count, is_passed, revealed";
 
 /**
  * Trạng thái attempt của 1 set cho học viên hiện tại. RLS restricts the
@@ -51,6 +52,7 @@ export function useExerciseSetAttempt(setId: string): {
                 blankResults: (data.blank_results as Record<string, boolean[]> | null) ?? {},
                 choiceResults: (data.choice_results as Record<string, boolean> | null) ?? {},
                 exerciseResults: (data.exercise_results as Record<string, boolean> | null) ?? {},
+                classificationResults: (data.classification_results as Record<string, boolean[]> | null) ?? {},
                 score: data.score as number,
                 total: data.total as number,
                 bestScore: data.best_score as number,

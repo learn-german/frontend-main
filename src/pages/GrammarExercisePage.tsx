@@ -45,6 +45,7 @@ interface GrammarResult {
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
+  classificationResults: Record<string, boolean[]>;
   correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
 }
@@ -376,6 +377,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
       blankResults: attempt.blankResults,
       choiceResults: attempt.choiceResults,
       exerciseResults: attempt.exerciseResults,
+      classificationResults: attempt.classificationResults,
       // correctAnswers/explanations không hydrate lại từ đây — chỉ set này
       // nhận được lúc submit thật (revealed=true tại thời điểm đó). Nếu học
       // viên rời trang rồi quay lại sau khi đã revealed, phần dưới ẩn card
@@ -635,10 +637,10 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
                     )}
                     {ex.type === "classification" && (
                       <div className="mb-2 space-y-1">
-                        {(ex.classificationItems ?? []).map((item) => {
+                        {(ex.classificationItems ?? []).map((item, itemIndex) => {
                           const userGroup = itemGroupsByExercise[ex.id]?.[item] ?? "—";
                           const correctGroup = revealed ? getCorrectGroupsFor(ex.id)[item] : undefined;
-                          const isCorrect = correctGroup === userGroup;
+                          const isCorrect = result.classificationResults?.[ex.id]?.[itemIndex] ?? false;
                           return (
                             <div key={item} className="flex items-center gap-2 text-xs">
                               <span className="flex-1 text-slate-700">{item}</span>
