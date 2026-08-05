@@ -3,8 +3,11 @@ import { ChevronDown, ChevronRight, CheckCircle2, Loader2 } from "lucide-react";
 import { ExercisePageHeader } from "../components/ExercisePageHeader";
 import { useExerciseSets, type ExerciseSet } from "../lib/hooks/useExerciseSets";
 import { useExerciseSetAttempts } from "../lib/hooks/useExerciseSetAttempt";
+import { useExerciseSetDrafts } from "../lib/hooks/useExerciseSetDrafts";
+import { useNonEmptySetIds } from "../lib/hooks/useNonEmptySetIds";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
+import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
 import { GrammarExerciseSetBody, GRAMMAR_TYPE_LABELS } from "./GrammarExercisePage";
 
 interface GrammarSetListPageProps {
@@ -22,12 +25,13 @@ interface GrammarSetListPageProps {
 const SetRow: React.FC<{
   set: ExerciseSet;
   orderNumber: number;
-  isPassed: boolean;
+  status: SetStatus;
   isExpanded: boolean;
   onToggle: () => void;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
-}> = ({ set, orderNumber, isPassed, isExpanded, onToggle, onSetFinished, onAttemptUpdate }) => {
+  onDraftSaved: (hasDraft: boolean) => void;
+}> = ({ set, orderNumber, status, isExpanded, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => {
   const { exercises, loading } = useGrammarExercises(set.id);
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
   const singleGroup = groups.length === 1 ? groups[0] : null;
@@ -58,13 +62,11 @@ const SetRow: React.FC<{
           <span className="flex-1 text-sm text-slate-500">{set.title}</span>
         )}
         <span className="ml-auto flex items-center gap-2 shrink-0">
-          {isPassed && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+          {status === "passed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
           <span
-            className={`text-[10px] font-display font-bold uppercase px-2 py-0.5 rounded-full ${
-              isPassed ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-700"
-            }`}
+            className={`text-[10px] font-display font-bold uppercase px-2 py-0.5 rounded-full ${SET_STATUS_BADGE_CLASS[status]}`}
           >
-            {isPassed ? "Đã đạt" : "Chưa làm"}
+            {SET_STATUS_LABEL[status]}
           </span>
         </span>
       </button>
@@ -75,6 +77,7 @@ const SetRow: React.FC<{
             onSetFinished={onSetFinished}
             onCollapse={onToggle}
             onAttemptUpdate={onAttemptUpdate}
+            onDraftSaved={onDraftSaved}
           />
         </div>
       )}
@@ -88,18 +91,24 @@ export const GrammarSetListPage: React.FC<GrammarSetListPageProps> = ({
   onSetFinished,
 }) => {
   const { sets: allSets, loading: setsLoading } = useExerciseSets();
-  const lessonSets = useMemo(
+  const candidateSets = useMemo(
     () =>
       allSets
         .filter((s) => s.lessonId === lessonId && s.category === "nguphap" && s.status === "published")
         .sort((a, b) => a.orderIndex - b.orderIndex),
     [allSets, lessonId],
   );
-  const setIds = useMemo(() => lessonSets.map((s) => s.id), [lessonSets]);
-  const { attemptsBySetId, loading: attemptsLoading, updateAttempt } = useExerciseSetAttempts(setIds);
+  const candidateSetIds = useMemo(() => candidateSets.map((s) => s.id), [candidateSets]);
+  const { attemptsBySetId, loading: attemptsLoading, updateAttempt } = useExerciseSetAttempts(candidateSetIds);
+  const { draftSetIds, loading: draftsLoading, markDraftSaved } = useExerciseSetDrafts(candidateSetIds);
+  const { nonEmptySetIds, loading: nonEmptyLoading } = useNonEmptySetIds(candidateSetIds);
+  const lessonSets = useMemo(
+    () => candidateSets.filter((s) => nonEmptySetIds.has(s.id)),
+    [candidateSets, nonEmptySetIds],
+  );
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
 
-  if (setsLoading || attemptsLoading) {
+  if (setsLoading || attemptsLoading || draftsLoading || nonEmptyLoading) {
     return (
       <div className="max-w-3xl mx-auto space-y-8">
         <ExercisePageHeader title="Bài tập ngữ pháp" onBackToLesson={onBackToLesson} />
@@ -130,11 +139,12 @@ export const GrammarSetListPage: React.FC<GrammarSetListPageProps> = ({
             key={set.id}
             set={set}
             orderNumber={index + 1}
-            isPassed={attemptsBySetId[set.id]?.isPassed ?? false}
+            status={computeSetStatus(attemptsBySetId[set.id], draftSetIds.has(set.id))}
             isExpanded={expandedSetId === set.id}
             onToggle={() => setExpandedSetId((prev) => (prev === set.id ? null : set.id))}
             onSetFinished={onSetFinished}
             onAttemptUpdate={(status) => updateAttempt(set.id, status)}
+            onDraftSaved={(hasDraft) => markDraftSaved(set.id, hasDraft)}
           />
         ))}
       </div>
