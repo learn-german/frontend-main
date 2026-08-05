@@ -37,7 +37,7 @@ export default function App() {
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
   const { positions } = useLessonPositions(user?.id ?? null);
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
-  const { stats, applyLessonCompleteReward, applyQuizResult } = useUserStats(user?.id ?? null, flatLessons);
+  const { stats, statsLoading, applyLessonCompleteReward, applyQuizResult } = useUserStats(user?.id ?? null, flatLessons);
 
   // Đúng thứ tự người học thấy trên Lộ trình: đã lọc level chưa mở khóa,
   // sort theo orderIndex, và bỏ các bài draft.
@@ -75,7 +75,12 @@ export default function App() {
   // bị khóa nếu bài đó vẫn tồn tại trong flatLessons, nếu không thì để lọt
   // xuống nhánh "Bài học không khả dụng" (bài đã bị xoá/chuyển về draft).
   useEffect(() => {
-    if (!user || modulesLoading) return;
+    // statsLoading: lessonStatuses phụ thuộc stats.completedLessons (qua
+    // computeLessonStatuses). Reload thẳng vào /quiz hay /lesson: modules
+    // fetch xong trước (modulesLoading=false) trong khi stats vẫn đang tải,
+    // completedLessons tạm thời rỗng → bài đã mở khoá bị tính nhầm thành
+    // "locked" và đẩy về /roadmap. Phải chờ cả 2 nguồn dữ liệu tải xong.
+    if (!user || modulesLoading || statsLoading) return;
     if (currentPage !== "lesson-detail" && currentPage !== "quiz") return;
     const status = lessonStatuses[selectedLessonId];
     const existsInFlatLessons = flatLessons.some((l) => l.id === selectedLessonId);
@@ -83,7 +88,7 @@ export default function App() {
     if (!isLocked) return;
     showToast("Hãy hoàn thành bài học trước để mở bài này.", "warning");
     setCurrentPage("roadmap");
-  }, [user, modulesLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons]);
+  }, [user, modulesLoading, statsLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons]);
 
   const currentRoute: AppRoute = useMemo(() => {
     if (currentPage === "lesson-detail") {
