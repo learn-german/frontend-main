@@ -164,7 +164,13 @@ const QuizExerciseSetBody: React.FC<{
   };
 
   React.useEffect(() => {
-    if (retrying || exercises.length === 0 || hydrateSource !== "attempt" || !attempt) return;
+    // draftLoading: chờ draft load xong trước khi tin hydrateSource === "attempt"
+    // — draft và attempt fetch độc lập, không có gì đảm bảo thứ tự resolve. Nếu
+    // attempt resolve trước, hydrateSource tạm thời báo "attempt" (draft vẫn null
+    // vì chưa load xong) và effect này set result — nhưng khi draft load xong
+    // ngay sau đó và hoá ra tồn tại, hydrateSource đổi thành "draft" mà không có
+    // gì tự xoá result đã set, kẹt ở card kết quả cũ thay vì form đang làm dở.
+    if (retrying || exercises.length === 0 || draftLoading || hydrateSource !== "attempt" || !attempt) return;
     setResult({
       score: attempt.score,
       total: attempt.total,
@@ -181,7 +187,7 @@ const QuizExerciseSetBody: React.FC<{
     });
     applyAnswers(attempt.answers);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt, retrying, exercises, hydrateSource]);
+  }, [attempt, retrying, exercises, hydrateSource, draftLoading]);
 
   React.useEffect(() => {
     if (retrying || exercises.length === 0 || hydrateSource !== "draft" || !draft) return;
@@ -215,7 +221,11 @@ const QuizExerciseSetBody: React.FC<{
 
   React.useEffect(() => {
     if (result !== null || exercises.length === 0) return;
-    const timer = setTimeout(() => { saveDraft(collectAllAnswers()); }, 1000);
+    const timer = setTimeout(() => {
+      saveDraft(collectAllAnswers()).then(({ error }) => {
+        if (!error) onDraftSaved(true);
+      });
+    }, 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [choiceByExercise, blankValuesByExercise, matchedPairsByExercise, result]);
