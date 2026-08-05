@@ -47,7 +47,14 @@ export function useExerciseSetDraft(setId: string): {
         { set_id: setId, answers, updated_at: new Date().toISOString() },
         { onConflict: "user_id,set_id" },
       );
-      if (!error) setDraft({ answers });
+      // Chỉ set khi đang null -> có draft lần đầu (functional update). KHÔNG
+      // set lại mỗi lần autosave thành công: draft chỉ được đọc để biết
+      // null/non-null (hydrateSource) và để hydrate form 1 lần lúc mount —
+      // set lại tạo object reference mới mỗi ~1s, làm effect hydrate-từ-draft
+      // (phụ thuộc draft) chạy lại, effect đó set lại các state answer bằng
+      // object mới, kéo effect autosave (phụ thuộc chính các state đó) chạy
+      // lại theo — vòng lặp lưu vô hạn, POST liên tục lên exercise_set_drafts.
+      if (!error) setDraft((prev) => prev ?? { answers });
       return { error: error ? error.message : null };
     },
     [setId],
