@@ -88,15 +88,49 @@ export function parseAnswer(exercise: GrammarExercise, raw: string): ParsedAnswe
   return { kind: "text", value: raw };
 }
 
+/**
+ * Ngược lại phần word_reorder của serializeAnswer: từ câu đã lưu (token text
+ * nối bằng dấu cách, đúng thứ tự học viên đã chọn) và token pool gốc của câu
+ * hỏi, tìm lại token nào ứng với đoạn nào để phục hồi selectedTokensByExercise
+ * (khoá "${tokenIdx}:${token}") — cần để hydrate draft vào lại UI chọn từ,
+ * nếu không học viên mở lại bài đang làm dở sẽ thấy mọi ô chọn đều trống dù
+ * đã lưu. Khớp dài nhất trước để token chứa khoảng trắng nội bộ (vd "Mein
+ * Name") không bị token ngắn hơn ("Mein") nuốt nhầm. Không đoán bừa khi
+ * không khớp được (token pool đã đổi từ lúc lưu draft) — trả mảng rỗng.
+ */
+export function reconstructWordReorderTokens(tokens: string[], answer: string): string[] {
+  const used = new Set<number>();
+  const result: string[] = [];
+  let remaining = answer;
+
+  while (remaining.length > 0) {
+    const candidates = tokens
+      .map((token, idx) => ({ token, idx }))
+      .filter(({ idx }) => !used.has(idx))
+      .filter(({ token }) => remaining === token || remaining.startsWith(`${token} `))
+      .sort((a, b) => b.token.length - a.token.length);
+
+    const match = candidates[0];
+    if (!match) return [];
+
+    used.add(match.idx);
+    result.push(`${match.idx}:${match.token}`);
+    remaining = remaining === match.token ? "" : remaining.slice(match.token.length + 1);
+  }
+
+  return result;
+}
+
 export interface ParsedFormState {
   textAnswers: Record<string, string>;
   blankAnswers: Record<string, string[]>;
   itemGroups: Record<string, Record<string, string>>;
   choices: Record<string, number>;
+  selectedTokens: Record<string, string[]>;
 }
 
 /**
- * Phân rã 1 object answers (wire format, key theo exercise id) thành 4 state
+ * Phân rã 1 object answers (wire format, key theo exercise id) thành 5 state
  * riêng theo loại câu — dùng chung cho hydrate từ attempt đã nộp lẫn hydrate
  * từ draft chưa nộp, tránh lặp lại đúng vòng lặp này ở 2 nơi.
  */
@@ -108,15 +142,20 @@ export function parseAnswersIntoFormState(
   const blankAnswers: Record<string, string[]> = {};
   const itemGroups: Record<string, Record<string, string>> = {};
   const choices: Record<string, number> = {};
+  const selectedTokens: Record<string, string[]> = {};
 
   for (const exercise of exercises) {
     const raw = answers[exercise.id];
     const parsed: ParsedAnswer = raw === undefined ? emptyAnswer(exercise) : parseAnswer(exercise, raw);
-    if (parsed.kind === "text") textAnswers[exercise.id] = parsed.value;
-    else if (parsed.kind === "blanks") blankAnswers[exercise.id] = parsed.values;
+    if (parsed.kind === "text") {
+      textAnswers[exercise.id] = parsed.value;
+      if (exercise.type === "word_reorder") {
+        selectedTokens[exercise.id] = reconstructWordReorderTokens(exercise.tokens ?? [], parsed.value);
+      }
+    } else if (parsed.kind === "blanks") blankAnswers[exercise.id] = parsed.values;
     else if (parsed.kind === "groups") itemGroups[exercise.id] = parsed.values;
     else if (parsed.index !== undefined) choices[exercise.id] = parsed.index;
   }
 
-  return { textAnswers, blankAnswers, itemGroups, choices };
+  return { textAnswers, blankAnswers, itemGroups, choices, selectedTokens };
 }

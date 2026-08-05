@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyAnswer, parseAnswer, parseAnswersIntoFormState, serializeAnswer } from "./grammarAnswerCodec";
+import {
+  emptyAnswer,
+  parseAnswer,
+  parseAnswersIntoFormState,
+  reconstructWordReorderTokens,
+  serializeAnswer,
+} from "./grammarAnswerCodec";
 import type { GrammarExercise } from "./appTypes";
 
 const base = (over: Partial<GrammarExercise>): GrammarExercise => ({
@@ -158,4 +164,45 @@ test("parseAnswersIntoFormState: exercise không có trong answers -> giá trị
   const exercises = [base({ id: "e1", type: "translation" })];
   const result = parseAnswersIntoFormState(exercises, {});
   assert.equal(result.textAnswers.e1, "");
+});
+
+test("reconstructWordReorderTokens: khớp đúng thứ tự học viên đã chọn, không phải thứ tự trong pool", () => {
+  const tokens = ["heiße", "Ich", "Anna"];
+  assert.deepEqual(reconstructWordReorderTokens(tokens, "Ich heiße Anna"), [
+    "1:Ich",
+    "0:heiße",
+    "2:Anna",
+  ]);
+});
+
+test("reconstructWordReorderTokens: token chứa khoảng trắng nội bộ không bị token ngắn hơn nuốt nhầm", () => {
+  const tokens = ["Mein Name", "ist", "Tom"];
+  assert.deepEqual(reconstructWordReorderTokens(tokens, "Mein Name ist Tom"), [
+    "0:Mein Name",
+    "1:ist",
+    "2:Tom",
+  ]);
+});
+
+test("reconstructWordReorderTokens: từ trùng nhau trong pool dùng đúng số lần xuất hiện", () => {
+  const tokens = ["Ich", "Ich", "bin"];
+  assert.deepEqual(reconstructWordReorderTokens(tokens, "Ich Ich bin"), [
+    "0:Ich",
+    "1:Ich",
+    "2:bin",
+  ]);
+});
+
+test("reconstructWordReorderTokens: đáp án rỗng trả mảng rỗng", () => {
+  assert.deepEqual(reconstructWordReorderTokens(["Ich", "bin"], ""), []);
+});
+
+test("reconstructWordReorderTokens: đáp án không khớp token pool trả mảng rỗng thay vì đoán bừa", () => {
+  assert.deepEqual(reconstructWordReorderTokens(["Ich", "bin"], "Ich war"), []);
+});
+
+test("parseAnswersIntoFormState: word_reorder phục hồi selectedTokens để hydrate lại UI chọn từ", () => {
+  const exercises = [base({ id: "e1", type: "word_reorder", tokens: ["heiße", "Ich", "Anna"] })];
+  const result = parseAnswersIntoFormState(exercises, { e1: "Ich heiße Anna" });
+  assert.deepEqual(result.selectedTokens.e1, ["1:Ich", "0:heiße", "2:Anna"]);
 });

@@ -388,6 +388,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     setBlankAnswersByExercise(parsed.blankAnswers);
     setItemGroupsByExercise(parsed.itemGroups);
     setChoiceByExercise(parsed.choices);
+    setSelectedTokensByExercise(parsed.selectedTokens);
     setSubmittedAnswerSnapshot(attempt.answers ?? {});
   }, [attempt, retrying, exercises, hydrateSource, draftLoading]);
 
@@ -399,6 +400,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     setBlankAnswersByExercise(parsed.blankAnswers);
     setItemGroupsByExercise(parsed.itemGroups);
     setChoiceByExercise(parsed.choices);
+    setSelectedTokensByExercise(parsed.selectedTokens);
   }, [draft, retrying, exercises, hydrateSource]);
 
   const toggleToken = (exerciseId: string, token: string, tokenIdx: number) => {
