@@ -14,7 +14,7 @@ export interface SetDraft {
 export function useExerciseSetDraft(setId: string): {
   draft: SetDraft | null;
   loading: boolean;
-  saveDraft: (answers: Record<string, string>) => Promise<void>;
+  saveDraft: (answers: Record<string, string>) => Promise<{ error: string | null }>;
   deleteDraft: () => Promise<void>;
 } {
   const [draft, setDraft] = useState<SetDraft | null>(null);
@@ -41,13 +41,14 @@ export function useExerciseSetDraft(setId: string): {
   useEffect(() => { refetch(); }, [refetch]);
 
   const saveDraft = useCallback(
-    async (answers: Record<string, string>) => {
-      if (!setId || !hasAnyAnswer(answers)) return;
+    async (answers: Record<string, string>): Promise<{ error: string | null }> => {
+      if (!setId || !hasAnyAnswer(answers)) return { error: null };
       const { error } = await supabase.from("exercise_set_drafts").upsert(
         { set_id: setId, answers, updated_at: new Date().toISOString() },
         { onConflict: "user_id,set_id" },
       );
       if (!error) setDraft({ answers });
+      return { error: error ? error.message : null };
     },
     [setId],
   );
