@@ -172,7 +172,20 @@ serve(async (req) => {
       .eq("category", set.category)
       .eq("status", "published");
 
-    const setIds = (lessonSets ?? []).map((s) => s.id);
+    // Set published nhưng chưa có câu hỏi nào (đã bị ẩn khỏi danh sách học
+    // viên — xem GrammarSetListPage.tsx/QuizSetListPage.tsx) không được tính
+    // vào rollup: học viên không còn cách nào mở/nộp bài set đó nữa, nên nếu
+    // vẫn nằm trong setIds thì allPassed vĩnh viễn false và best_score luôn
+    // cộng thêm 0 vào mẫu số — khoá lesson mãi mãi dù học viên đã làm hết
+    // mọi bài thực sự nhìn thấy được.
+    const candidateSetIds = (lessonSets ?? []).map((s) => s.id);
+    const { data: nonEmptySetRows } = await supabase
+      .from("grammar_exercises")
+      .select("set_id")
+      .in("set_id", candidateSetIds);
+    const nonEmptySetIds = new Set((nonEmptySetRows ?? []).map((r) => r.set_id as string));
+    const setIds = candidateSetIds.filter((id) => nonEmptySetIds.has(id));
+
     const { data: lessonAttempts } = await supabase
       .from("exercise_set_attempts")
       .select("set_id, best_score, is_passed")
