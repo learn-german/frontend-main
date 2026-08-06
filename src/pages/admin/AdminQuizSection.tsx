@@ -533,7 +533,7 @@ export const AdminQuizSection: React.FC = () => {
       </div>
 
       {activeTab === "nguphap" ? (
-        <AdminGrammarExerciseSection />
+        <AdminGrammarExerciseSection category="nguphap" />
       ) : (
         <>
           <div className="flex items-center justify-between gap-3 flex-wrap">

@@ -809,7 +809,9 @@ export const ExerciseEntryFields: React.FC<{
   );
 };
 
-export const AdminGrammarExerciseSection: React.FC = () => {
+export const AdminGrammarExerciseSection: React.FC<{
+  category: "nguphap" | "nghe" | "doc";
+}> = ({ category }) => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -841,10 +843,19 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [previewTarget, setPreviewTarget] = useState<GrammarExercise | null>(null);
 
   const fetchExercises = async () => {
-    const [exercisesRes, lessonsRes] = await Promise.all([
-      supabase.from("grammar_exercises").select("*").order("lesson_id").order("order_index"),
+    const [setsRes, lessonsRes] = await Promise.all([
+      supabase.from("exercise_sets").select("id").eq("category", category),
       supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").order("order_index"),
     ]);
+    const setIds = (setsRes.data ?? []).map((s) => s.id as string);
+    const exercisesRes = setIds.length > 0
+      ? await supabase
+          .from("grammar_exercises")
+          .select("*")
+          .in("set_id", setIds)
+          .order("lesson_id")
+          .order("order_index")
+      : { data: [] as unknown[] };
 
     const exercisesByLesson: Record<string, GrammarExercise[]> = {};
     for (const ex of exercisesRes.data ?? []) {
@@ -872,7 +883,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
   useEffect(() => {
     fetchExercises();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
 
   const openCreate = (lessonId: string, nextOrder: number) => {
     setModalMode("create-group");
@@ -1012,7 +1024,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       }
     } else if (modalMode === "create-group") {
       const groupId = crypto.randomUUID();
-      const setResult = await createSet(editLessonId, "nguphap", createStartOrder);
+      const setResult = await createSet(editLessonId, category, createStartOrder);
       if (setResult.error || !setResult.data) {
         error = { message: setResult.error ?? "Không tạo được bài tập mới." };
       } else {
