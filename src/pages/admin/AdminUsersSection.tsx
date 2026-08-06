@@ -10,6 +10,7 @@ import {
   applicableCategories,
   LessonProgressRow,
 } from "../../lib/completion";
+import { filterUsers, type UserFilterCriteria } from "../../lib/adminUserFilter";
 
 interface ProgressLesson {
   id: string;
@@ -42,6 +43,10 @@ export const AdminUsersSection: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<UserFilterCriteria["role"]>("all");
+  const [levelFilter, setLevelFilter] = useState<Set<string>>(new Set());
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [orderedLessons, setOrderedLessons] = useState<ProgressLesson[]>([]);
   const [allProgress, setAllProgress] = useState<(LessonProgressRow & { user_id: string })[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -230,11 +235,13 @@ export const AdminUsersSection: React.FC = () => {
     return map;
   }, [allProgress]);
 
-  const filtered = users.filter(
-    (u) =>
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      (u.full_name ?? "").toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = filterUsers(users, {
+    search,
+    role: roleFilter,
+    levels: levelFilter,
+    dateFrom,
+    dateTo,
+  });
 
   if (loading) {
     return (
@@ -264,6 +271,73 @@ export const AdminUsersSection: React.FC = () => {
             <Plus className="w-4 h-4 mr-1" /> Thêm user
           </Button>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap bg-white rounded-2xl border border-slate-200/60 shadow-sm p-3">
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as UserFilterCriteria["role"])}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+        >
+          <option value="all">Tất cả role</option>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+
+        <div className="flex items-center gap-1.5">
+          {(["A1", "A2", "B1", "B2"] as const).map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => setLevelFilter((prev) => {
+                const next = new Set(prev);
+                if (next.has(level)) next.delete(level);
+                else next.add(level);
+                return next;
+              })}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                levelFilter.has(level)
+                  ? "bg-orange-50 border-orange-300 text-orange-700"
+                  : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span>Từ</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          />
+          <span>đến</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          />
+        </div>
+
+        {(roleFilter !== "all" || levelFilter.size > 0 || dateFrom || dateTo) && (
+          <button
+            type="button"
+            onClick={() => {
+              setRoleFilter("all");
+              setLevelFilter(new Set());
+              setDateFrom("");
+              setDateTo("");
+            }}
+            className="text-xs font-bold text-slate-400 hover:text-slate-600 underline"
+          >
+            Xoá bộ lọc
+          </button>
+        )}
       </div>
 
       {/* Table */}
