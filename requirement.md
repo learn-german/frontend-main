@@ -339,3 +339,14 @@ Chia 3 phase độc lập, xem spec:
 - [x] Phase 1 — nhập bài làm: [2026-08-05-shared-exercise-answer-input-design.md](docs/superpowers/specs/2026-08-05-shared-exercise-answer-input-design.md). Đã xong: `ExerciseAnswerInput` dùng chung, `grammarAnswerCodec` phủ đủ 10 loại, nghe/đọc nhập được đủ 10 loại (miễn Admin tạo được dữ liệu — chưa có UI, xem Phase 3). Ngữ pháp không đổi hành vi (122/122 test pass, lint sạch) — **chưa verify được trên trình duyệt thật** (sandbox không có `.env.local`), cần tự test theo Task 6 trong [plan](docs/superpowers/plans/2026-08-05-shared-exercise-answer-input.md).
 - [ ] Phase 2 — hiển thị đúng/sai sau khi nộp bài cho 7 loại mới ở nghe/đọc. Chưa làm.
 - [ ] Phase 3 — form Admin tạo/sửa 7 loại câu hỏi mới cho nghe/đọc, dùng chung field-rendering với `AdminGrammarExerciseSection.tsx`. Chưa làm.
+---
+[Feature][Admin][Người dùng] Thêm filter cho từng cột trong bảng danh sách user
+
+[Situation]
+
+- Trang Admin > Người dùng (`AdminUsersSection.tsx`) hiện chỉ có 1 ô tìm kiếm chung, không lọc được riêng theo từng cột: Role (User/Admin), Cấp độ mở (A1/A2/B1/B2), Ngày tạo.
+- Danh sách càng nhiều user càng khó tìm theo tiêu chí cụ thể (vd chỉ xem Admin, hoặc chỉ xem user đã mở A2 trở lên).
+
+[Việc cần làm]
+
+- Thêm filter riêng cho cột Role, Cấp độ mở, Ngày tạo (khoảng ngày) — kết hợp được với ô tìm kiếm hiện có.
