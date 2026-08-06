@@ -72,20 +72,22 @@ Ví dụ:
 
 ## Acceptance Criteria
 
-- [ ]  Tính năng áp dụng thống nhất cho bài tập Ngữ pháp
-- [ ]  Mỗi video có thể chứa nhiều bài tập và mỗi bài tập có thể chứa nhiều câu hỏi.
-- [ ]  Sau mỗi lần submit, hệ thống hiển thị đúng/sai của từng câu.
-- [ ]  Trước khi đúng toàn bộ hoặc đến lần thứ 5, API không trả đáp án đúng hoặc phần giải thích.
-- [ ]  Đúng toàn bộ ở bất kỳ lần nào sẽ mở ngay toàn bộ đáp án đúng và giải thích.
-- [ ]  Từ lần thứ 5, hệ thống mở đáp án đúng và giải thích dù vẫn còn câu sai.
-- [ ]  Bài tập được Pass khi số câu đúng đạt từ 80% tổng số câu trở lên.
-- [ ]  Bài tập từ 80% trở lên hiển thị nút **Tiếp tục**. (Không khoá bài tập
+> Rà lại 2026-08-06: toàn bộ đã xong, checklist trước đó bị bỏ quên chưa tick. Bằng chứng: `supabase/functions/grammar-submit/setAttemptUpdate.ts` (`computeSetAttemptUpdate` — isPassed/revealed sticky, BR-02 không làm tròn), `setAttemptUpdate.test.ts`/`scoring.test.ts` (131 test hiện có, gồm đủ 6 case trong bảng Test cases chính), `grammar-submit/index.ts` (idempotency theo `last_submission_id`, upsert `onConflict: user_id,set_id`), `GrammarExercisePage.tsx` (nút Tiếp tục chỉ hiện khi `isPassed`, Làm lại luôn hiện). Đã mở rộng phạm vi sang cả Nghe/Đọc (không chỉ Ngữ pháp như tiêu đề mục gốc) qua Phase 1-3b ở mục dưới.
+
+- [x]  Tính năng áp dụng thống nhất cho bài tập Ngữ pháp
+- [x]  Mỗi video có thể chứa nhiều bài tập và mỗi bài tập có thể chứa nhiều câu hỏi.
+- [x]  Sau mỗi lần submit, hệ thống hiển thị đúng/sai của từng câu.
+- [x]  Trước khi đúng toàn bộ hoặc đến lần thứ 5, API không trả đáp án đúng hoặc phần giải thích.
+- [x]  Đúng toàn bộ ở bất kỳ lần nào sẽ mở ngay toàn bộ đáp án đúng và giải thích.
+- [x]  Từ lần thứ 5, hệ thống mở đáp án đúng và giải thích dù vẫn còn câu sai.
+- [x]  Bài tập được Pass khi số câu đúng đạt từ 80% tổng số câu trở lên.
+- [x]  Bài tập từ 80% trở lên hiển thị nút **Tiếp tục**. (Không khoá bài tập
       tiếp theo khi chưa Pass — xem BR-01, quyết định sản phẩm 2026-08-05.)
-- [ ]  Lần thứ 5 không tự động Pass nếu tỷ lệ đúng vẫn dưới 80%.
-- [ ]  Sau lần thứ 5, học viên vẫn có thể làm lại cho đến khi Pass.
-- [ ]  Attempt được tính riêng theo từng user và từng bài tập.
-- [ ]  Reload, submit lỗi hoặc gửi trùng `submissionId` không làm tăng attempt.
-- [ ]  Trạng thái đã mở lời giải được giữ khi reload hoặc làm lại.
+- [x]  Lần thứ 5 không tự động Pass nếu tỷ lệ đúng vẫn dưới 80%.
+- [x]  Sau lần thứ 5, học viên vẫn có thể làm lại cho đến khi Pass.
+- [x]  Attempt được tính riêng theo từng user và từng bài tập.
+- [x]  Reload, submit lỗi hoặc gửi trùng `submissionId` không làm tăng attempt.
+- [x]  Trạng thái đã mở lời giải được giữ khi reload hoặc làm lại.
 
 ## Test cases chính
 
