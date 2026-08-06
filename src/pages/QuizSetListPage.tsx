@@ -13,7 +13,7 @@ import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
-import { joinBlankAnswers, splitBlankAnswers, serializeMatching, parseMatching } from "../lib/quizAnswerCodec";
+import { joinBlankAnswers, splitBlankAnswers, serializeMatching, parseMatching, countBlankTokens } from "../lib/quizAnswerCodec";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
 
@@ -46,10 +46,6 @@ const QUIZ_TYPE_LABELS: Record<string, string> = {
   text_fill_blank: "Điền vào chỗ trống",
   matching: "Ghép cặp",
 };
-
-function countBlankTokens(promptText: string): number {
-  return (promptText.match(/\{\{blank\}\}/g) ?? []).length;
-}
 
 /** Click-để-ghép: chọn 1 từ Đức + 1 nghĩa Việt, khớp đúng thì khoá lại. Xáo trộn 1 lần khi mount (useMemo theo `pairs`, không đổi lại giữa các lần render). */
 const MatchingExercise: React.FC<{

@@ -28,3 +28,8 @@ export function parseMatching(raw: string): Record<string, string> {
   }
   return result;
 }
+
+/** Đếm số ô {{blank}} trong prompt_text của text_fill_blank. */
+export function countBlankTokens(promptText: string): number {
+  return (promptText.match(/\{\{blank\}\}/g) ?? []).length;
+}
