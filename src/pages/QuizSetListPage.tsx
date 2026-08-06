@@ -13,7 +13,10 @@ import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
-import { joinBlankAnswers, splitBlankAnswers, serializeMatching, parseMatching, countBlankTokens } from "../lib/quizAnswerCodec";
+import { parseMatching, countBlankTokens } from "../lib/quizAnswerCodec";
+import { parseAnswer, parseAnswersIntoFormState, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
+import { countBlankMarkers } from "../lib/grammarFillInBlank";
+import { ExerciseAnswerInput } from "../components/ExerciseAnswerInput";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
 
@@ -47,75 +50,6 @@ const QUIZ_TYPE_LABELS: Record<string, string> = {
   matching: "Ghép cặp",
 };
 
-/** Click-để-ghép: chọn 1 từ Đức + 1 nghĩa Việt, khớp đúng thì khoá lại. Xáo trộn 1 lần khi mount (useMemo theo `pairs`, không đổi lại giữa các lần render). */
-const MatchingExercise: React.FC<{
-  pairs: { de: string; vi: string }[];
-  matched: Record<string, string>;
-  onMatch: (de: string, vi: string) => void;
-}> = ({ pairs, matched, onMatch }) => {
-  const [selectedDe, setSelectedDe] = useState("");
-  const [selectedVi, setSelectedVi] = useState("");
-  const shuffledDe = useMemo(() => [...pairs.map((p) => p.de)].sort(() => Math.random() - 0.5), [pairs]);
-  const shuffledVi = useMemo(() => [...pairs.map((p) => p.vi)].sort(() => Math.random() - 0.5), [pairs]);
-
-  React.useEffect(() => {
-    if (!selectedDe || !selectedVi) return;
-    onMatch(selectedDe, selectedVi);
-    setSelectedDe("");
-    setSelectedVi("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDe, selectedVi]);
-
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="space-y-1.5">
-        {shuffledDe.map((de) => {
-          const isMatched = !!matched[de];
-          return (
-            <button
-              key={de}
-              type="button"
-              disabled={isMatched}
-              onClick={() => setSelectedDe(de)}
-              className={`w-full rounded-lg border px-2 py-1.5 text-xs font-bold text-center transition-colors ${
-                isMatched
-                  ? "bg-green-50 border-green-200 text-green-700 opacity-60 cursor-not-allowed"
-                  : selectedDe === de
-                    ? "border-orange-500 bg-orange-50 text-orange-700"
-                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {de}
-            </button>
-          );
-        })}
-      </div>
-      <div className="space-y-1.5">
-        {shuffledVi.map((vi) => {
-          const isMatched = Object.values(matched).includes(vi);
-          return (
-            <button
-              key={vi}
-              type="button"
-              disabled={isMatched}
-              onClick={() => setSelectedVi(vi)}
-              className={`w-full rounded-lg border px-2 py-1.5 text-xs font-semibold text-center transition-colors ${
-                isMatched
-                  ? "bg-green-50 border-green-200 text-green-700 opacity-60 cursor-not-allowed"
-                  : selectedVi === vi
-                    ? "border-orange-500 bg-orange-50 text-orange-700"
-                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {vi}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 const QuizExerciseSetBody: React.FC<{
   lesson: Lesson;
   set: { id: string; title: string };
@@ -129,8 +63,12 @@ const QuizExerciseSetBody: React.FC<{
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
 
   const [choiceByExercise, setChoiceByExercise] = useState<Record<string, number>>({});
-  const [blankValuesByExercise, setBlankValuesByExercise] = useState<Record<string, string[]>>({});
+  const [textFillBlankByExercise, setTextFillBlankByExercise] = useState<Record<string, string[]>>({});
   const [matchedPairsByExercise, setMatchedPairsByExercise] = useState<Record<string, Record<string, string>>>({});
+  const [selectedTokensByExercise, setSelectedTokensByExercise] = useState<Record<string, string[]>>({});
+  const [textAnswerByExercise, setTextAnswerByExercise] = useState<Record<string, string>>({});
+  const [itemGroupsByExercise, setItemGroupsByExercise] = useState<Record<string, Record<string, string>>>({});
+  const [blankAnswersByExercise, setBlankAnswersByExercise] = useState<Record<string, string[]>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -141,22 +79,26 @@ const QuizExerciseSetBody: React.FC<{
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
 
   const applyAnswers = (answers: Record<string, string>) => {
-    const choices: Record<string, number> = {};
-    const blanks: Record<string, string[]> = {};
-    const matches: Record<string, Record<string, string>> = {};
+    const parsed = parseAnswersIntoFormState(exercises, answers);
+    setTextAnswerByExercise(parsed.textAnswers);
+    setSelectedTokensByExercise(parsed.selectedTokens);
+    setItemGroupsByExercise(parsed.itemGroups);
+    setChoiceByExercise(parsed.choices);
+    setMatchedPairsByExercise(parsed.matchedPairs);
+    // blankAnswers dùng chung cho cả fill_in_the_blank (ngữ pháp) lẫn
+    // text_fill_blank — tách theo type vì 2 loại serialize khác nhau
+    // (JSON.stringify vs joinBlankAnswers), gộp chung vào field
+    // ParsedFormState.blankAnswers vì mỗi exercise chỉ thuộc đúng 1 type.
+    const grammarBlanks: Record<string, string[]> = {};
+    const quizBlanks: Record<string, string[]> = {};
     for (const exercise of exercises) {
-      const raw = answers[exercise.id] ?? "";
-      if (exercise.type === "multiple_choice") {
-        if (/^\d+$/.test(raw)) choices[exercise.id] = Number(raw);
-      } else if (exercise.type === "text_fill_blank") {
-        blanks[exercise.id] = splitBlankAnswers(raw, countBlankTokens(exercise.promptText ?? ""));
-      } else if (exercise.type === "matching") {
-        matches[exercise.id] = parseMatching(raw);
-      }
+      const values = parsed.blankAnswers[exercise.id];
+      if (!values) continue;
+      if (exercise.type === "fill_in_the_blank") grammarBlanks[exercise.id] = values;
+      else if (exercise.type === "text_fill_blank") quizBlanks[exercise.id] = values;
     }
-    setChoiceByExercise(choices);
-    setBlankValuesByExercise(blanks);
-    setMatchedPairsByExercise(matches);
+    setBlankAnswersByExercise(grammarBlanks);
+    setTextFillBlankByExercise(quizBlanks);
   };
 
   React.useEffect(() => {
@@ -191,25 +133,33 @@ const QuizExerciseSetBody: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, retrying, exercises, hydrateSource]);
 
-  const getAnswerStringFor = (exercise: GrammarExercise): string => {
-    if (exercise.type === "multiple_choice") {
-      const index = choiceByExercise[exercise.id];
-      return index === undefined ? "" : String(index);
+  const getParsedAnswerFor = (exercise: GrammarExercise): ParsedAnswer => {
+    if (exercise.type === "word_reorder") {
+      const tokens = selectedTokensByExercise[exercise.id] ?? [];
+      return { kind: "text", value: tokens.map((t) => t.split(":").slice(1).join(":")).join(" ") };
+    }
+    if (exercise.type === "classification") {
+      return { kind: "groups", values: itemGroupsByExercise[exercise.id] ?? {} };
+    }
+    if (exercise.type === "fill_in_the_blank") {
+      const blankCount = countBlankMarkers(exercise.promptText ?? "");
+      return { kind: "blanks", values: blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill("") };
     }
     if (exercise.type === "text_fill_blank") {
       const count = countBlankTokens(exercise.promptText ?? "");
-      const values = blankValuesByExercise[exercise.id] ?? Array(count).fill("");
-      if (values.length === 0 || values.some((v) => !v.trim())) return "";
-      return joinBlankAnswers(values);
+      return { kind: "blanks", values: textFillBlankByExercise[exercise.id] ?? Array(count).fill("") };
+    }
+    if (exercise.type === "multiple_choice") {
+      return { kind: "choice", index: choiceByExercise[exercise.id] };
     }
     if (exercise.type === "matching") {
-      const pairs = matchedPairsByExercise[exercise.id] ?? {};
-      const total = exercise.matchingPairs?.length ?? 0;
-      if (total === 0 || Object.keys(pairs).length < total) return "";
-      return serializeMatching(pairs);
+      return { kind: "matching", values: matchedPairsByExercise[exercise.id] ?? {} };
     }
-    return "";
+    return { kind: "text", value: textAnswerByExercise[exercise.id] ?? "" };
   };
+
+  const getAnswerStringFor = (exercise: GrammarExercise): string =>
+    serializeAnswer(exercise, getParsedAnswerFor(exercise));
 
   const allAnswered = exercises.every((exercise) => getAnswerStringFor(exercise) !== "");
   const collectAllAnswers = (): Record<string, string> =>
@@ -224,7 +174,7 @@ const QuizExerciseSetBody: React.FC<{
     }, 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choiceByExercise, blankValuesByExercise, matchedPairsByExercise, result]);
+  }, [choiceByExercise, textFillBlankByExercise, matchedPairsByExercise, selectedTokensByExercise, textAnswerByExercise, itemGroupsByExercise, blankAnswersByExercise, result]);
 
   const handleSubmit = async () => {
     const finalAnswers = collectAllAnswers();
@@ -249,8 +199,12 @@ const QuizExerciseSetBody: React.FC<{
   const handleRetry = () => {
     submissionIdRef.current = crypto.randomUUID();
     setChoiceByExercise({});
-    setBlankValuesByExercise({});
+    setTextFillBlankByExercise({});
     setMatchedPairsByExercise({});
+    setSelectedTokensByExercise({});
+    setTextAnswerByExercise({});
+    setItemGroupsByExercise({});
+    setBlankAnswersByExercise({});
     setResult(null);
     setSubmitError(null);
     setRetrying(true);
@@ -375,7 +329,7 @@ const QuizExerciseSetBody: React.FC<{
                                 : "border-red-300 bg-red-50 text-red-700"
                             }`}
                           >
-                            {(blankValuesByExercise[ex.id] ?? [])[i] || "—"}
+                            {(textFillBlankByExercise[ex.id] ?? [])[i] || "—"}
                           </span>
                         )}
                       </React.Fragment>
@@ -463,56 +417,57 @@ const QuizExerciseSetBody: React.FC<{
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {exercises.map((exercise, index) => (
-          <div key={exercise.id} className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
-            <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">
-              Câu {index + 1} · {QUIZ_TYPE_LABELS[exercise.type] ?? exercise.type}
-            </span>
-            {exercise.type === "multiple_choice" && (
-              <MultipleChoiceOptions
-                options={exercise.options ?? []}
-                selectedIndex={choiceByExercise[exercise.id]}
-                onSelect={(idx) => setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: idx }))}
-                exerciseId={exercise.id}
-              />
-            )}
-            {exercise.type === "text_fill_blank" && (
-              <p className="text-xs leading-9 text-slate-700">
-                {(exercise.promptText ?? "").split("{{blank}}").map((segment, i, segments) => (
-                  <React.Fragment key={`${i}:${segment}`}>
-                    <span className="whitespace-pre-wrap">{segment}</span>
-                    {i < segments.length - 1 && (
-                      <input
-                        type="text"
-                        value={(blankValuesByExercise[exercise.id] ?? [])[i] ?? ""}
-                        onChange={(e) => {
-                          const count = countBlankTokens(exercise.promptText ?? "");
-                          const current = blankValuesByExercise[exercise.id] ?? Array(count).fill("");
-                          const next = [...current];
-                          next[i] = e.target.value;
-                          setBlankValuesByExercise((prev) => ({ ...prev, [exercise.id]: next }));
-                        }}
-                        className="mx-1 inline-block w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </p>
-            )}
-            {exercise.type === "matching" && (
-              <MatchingExercise
-                pairs={exercise.matchingPairs ?? []}
-                matched={matchedPairsByExercise[exercise.id] ?? {}}
-                onMatch={(de, vi) => {
-                  const correct = (exercise.matchingPairs ?? []).find((p) => p.de === de && p.vi === vi);
-                  if (!correct) return;
-                  setMatchedPairsByExercise((prev) => ({
-                    ...prev,
-                    [exercise.id]: { ...(prev[exercise.id] ?? {}), [de]: vi },
-                  }));
-                }}
-              />
-            )}
-          </div>
+          <ExerciseAnswerInput
+            key={exercise.id}
+            exercise={exercise}
+            numberLabel={`Câu ${index + 1} · ${QUIZ_TYPE_LABELS[exercise.type] ?? exercise.type}`}
+            selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
+            onToggleToken={(token, tokenIdx) => {
+              const key = `${tokenIdx}:${token}`;
+              setSelectedTokensByExercise((prev) => {
+                const current = prev[exercise.id] ?? [];
+                const next = current.includes(key) ? current.filter((t) => t !== key) : [...current, key];
+                return { ...prev, [exercise.id]: next };
+              });
+            }}
+            onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
+            textAnswer={textAnswerByExercise[exercise.id] ?? ""}
+            onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
+            itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
+            onItemGroupChange={(item, group) => setItemGroupsByExercise((prev) => ({
+              ...prev,
+              [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: group },
+            }))}
+            blankAnswers={blankAnswersByExercise[exercise.id]
+              ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill("")}
+            onBlankFocus={() => {}}
+            onBlankAnswerChange={(blankIndex, value) => {
+              const count = countBlankMarkers(exercise.promptText ?? "");
+              const current = blankAnswersByExercise[exercise.id] ?? Array(count).fill("");
+              const next = [...current];
+              next[blankIndex] = value;
+              setBlankAnswersByExercise((prev) => ({ ...prev, [exercise.id]: next }));
+            }}
+            selectedChoice={choiceByExercise[exercise.id]}
+            onSelectChoice={(idx) => setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: idx }))}
+            textFillBlankValues={textFillBlankByExercise[exercise.id] ?? []}
+            onTextFillBlankChange={(blankIndex, value) => {
+              const count = countBlankTokens(exercise.promptText ?? "");
+              const current = textFillBlankByExercise[exercise.id] ?? Array(count).fill("");
+              const next = [...current];
+              next[blankIndex] = value;
+              setTextFillBlankByExercise((prev) => ({ ...prev, [exercise.id]: next }));
+            }}
+            matchedPairs={matchedPairsByExercise[exercise.id] ?? {}}
+            onMatch={(de, vi) => {
+              const correct = (exercise.matchingPairs ?? []).find((p) => p.de === de && p.vi === vi);
+              if (!correct) return;
+              setMatchedPairsByExercise((prev) => ({
+                ...prev,
+                [exercise.id]: { ...(prev[exercise.id] ?? {}), [de]: vi },
+              }));
+            }}
+          />
         ))}
       </div>
 
