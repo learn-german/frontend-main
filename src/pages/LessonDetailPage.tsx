@@ -240,7 +240,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
               <h3 className="text-sm font-display font-extrabold text-slate-800">Bạn đã hoàn tất bài giảng lý thuyết chứ?</h3>
               {nguphapSummary && <SetSummaryLine summary={nguphapSummary} />}
               <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
-                Tham gia trả lời <b>4 câu hỏi kiểm tra ngẫu nhiên</b> bám sát từ vựng và ngữ pháp vừa học. Cần vượt qua <b>80%</b> để hoàn tất!
+                Cần vượt qua <b>80%</b> để hoàn tất!
               </p>
               <div className="flex justify-center gap-3 pt-1">
                 {!marked && isCompleted && (
