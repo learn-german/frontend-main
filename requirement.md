@@ -334,3 +334,8 @@ Response thành công:
 ---
 Áp dụng toàn bộ kiểu câu hỏi từ phần ngữ pháp sang cho nghe và đọc 
 giữ nguyên logic như phần ngữ pháp
+
+Chia 3 phase độc lập, xem spec:
+- [x] Phase 1 — nhập bài làm: [2026-08-05-shared-exercise-answer-input-design.md](docs/superpowers/specs/2026-08-05-shared-exercise-answer-input-design.md). Đã xong: `ExerciseAnswerInput` dùng chung, `grammarAnswerCodec` phủ đủ 10 loại, nghe/đọc nhập được đủ 10 loại (miễn Admin tạo được dữ liệu — chưa có UI, xem Phase 3). Ngữ pháp không đổi hành vi (122/122 test pass, lint sạch) — **chưa verify được trên trình duyệt thật** (sandbox không có `.env.local`), cần tự test theo Task 6 trong [plan](docs/superpowers/plans/2026-08-05-shared-exercise-answer-input.md).
+- [ ] Phase 2 — hiển thị đúng/sai sau khi nộp bài cho 7 loại mới ở nghe/đọc. Chưa làm.
+- [ ] Phase 3 — form Admin tạo/sửa 7 loại câu hỏi mới cho nghe/đọc, dùng chung field-rendering với `AdminGrammarExerciseSection.tsx`. Chưa làm.
