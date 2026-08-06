@@ -337,7 +337,7 @@ giữ nguyên logic như phần ngữ pháp
 
 Chia 3 phase độc lập, xem spec:
 - [x] Phase 1 — nhập bài làm: [2026-08-05-shared-exercise-answer-input-design.md](docs/superpowers/specs/2026-08-05-shared-exercise-answer-input-design.md). Đã xong: `ExerciseAnswerInput` dùng chung, `grammarAnswerCodec` phủ đủ 10 loại, nghe/đọc nhập được đủ 10 loại (miễn Admin tạo được dữ liệu — chưa có UI, xem Phase 3). Ngữ pháp không đổi hành vi (122/122 test pass, lint sạch) — **chưa verify được trên trình duyệt thật** (sandbox không có `.env.local`), cần tự test theo Task 6 trong [plan](docs/superpowers/plans/2026-08-05-shared-exercise-answer-input.md).
-- [ ] Phase 2 — hiển thị đúng/sai sau khi nộp bài cho 7 loại mới ở nghe/đọc. Chưa làm.
+- [x] Phase 2 — hiển thị đúng/sai sau khi nộp bài: [2026-08-05-shared-exercise-result-review-design.md](docs/superpowers/specs/2026-08-05-shared-exercise-result-review-design.md). Đã xong: fix 2 bug thật phát hiện trong lúc làm (thiếu `prompt_text` trong select khiến `text_fill_blank` không chấm điểm được; quy ước đánh dấu chỗ trống `{{blank}}` lệch giữa frontend/backend khiến `text_fill_blank` render 0 ô nhập), `ExerciseResultReview` dùng chung (dùng `parseAnswer` có sẵn thay vì viết lại logic) hiển thị đúng/sai + đáp án đúng cho đủ 10 loại, nối vào cả ngữ pháp và nghe/đọc. 124/124 test pass, lint sạch — **chưa verify được trên trình duyệt thật** (sandbox không có `.env.local`), cần tự test theo Task 6 trong [plan](docs/superpowers/plans/2026-08-05-shared-exercise-result-review.md).
 - [ ] Phase 3 — form Admin tạo/sửa 7 loại câu hỏi mới cho nghe/đọc, dùng chung field-rendering với `AdminGrammarExerciseSection.tsx`. Chưa làm.
 ---
 [Feature][Admin][Người dùng] Thêm filter cho từng cột trong bảng danh sách user
