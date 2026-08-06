@@ -29,7 +29,9 @@ export function parseMatching(raw: string): Record<string, string> {
   return result;
 }
 
-/** Đếm số ô {{blank}} trong prompt_text của text_fill_blank. */
+/** Đếm số ô {{...}} trong prompt_text của text_fill_blank — khớp đúng nhóm
+ * bất kỳ nội dung (đáp án nằm trong ngoặc, vd "{{bin|Bin}}"), cùng quy ước
+ * BLANK_PATTERN đang dùng để chấm điểm ở grammar-submit/scoring.ts. */
 export function countBlankTokens(promptText: string): number {
-  return (promptText.match(/\{\{blank\}\}/g) ?? []).length;
+  return (promptText.match(/\{\{[^}]*\}\}/g) ?? []).length;
 }

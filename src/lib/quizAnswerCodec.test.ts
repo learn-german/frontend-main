@@ -28,7 +28,7 @@ test("parseMatching: tách map de->vi, bỏ qua cặp hỏng", () => {
   assert.deepEqual(parseMatching("hỏng"), {});
 });
 
-test("countBlankTokens: đếm đúng số {{blank}} trong prompt", () => {
-  assert.equal(countBlankTokens("Ich {{blank}} und du {{blank}}."), 2);
+test("countBlankTokens: đếm đúng số nhóm {{...}} trong prompt, không phân biệt nội dung bên trong", () => {
+  assert.equal(countBlankTokens("Ich {{bin|Bin}} und du {{bist}}."), 2);
   assert.equal(countBlankTokens("Không có ô trống."), 0);
 });

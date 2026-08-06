@@ -293,7 +293,7 @@ export const ExerciseAnswerInput: React.FC<{
       {exercise.type === "text_fill_blank" && (
         <div className="text-xs leading-9 text-slate-700">
           <span className="mr-1 font-bold text-slate-400">{letter}</span>
-          {(exercise.promptText ?? "").split("{{blank}}").map((segment, index, segments) => (
+          {(exercise.promptText ?? "").split(/\{\{[^}]*\}\}/).map((segment, index, segments) => (
             <React.Fragment key={`${index}:${segment}`}>
               <span className="whitespace-pre-wrap">{segment}</span>
               {index < segments.length - 1 && (
