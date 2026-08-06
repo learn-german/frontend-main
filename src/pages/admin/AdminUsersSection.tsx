@@ -38,6 +38,7 @@ interface CreateForm { email: string; password: string; full_name: string; role:
 interface EditForm { full_name: string; role: string; }
 
 const EMPTY_CREATE: CreateForm = { email: "", password: "", full_name: "", role: "user" };
+const PAGE_SIZE = 15;
 
 export const AdminUsersSection: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -47,6 +48,7 @@ export const AdminUsersSection: React.FC = () => {
   const [levelFilter, setLevelFilter] = useState<Set<string>>(new Set());
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [orderedLessons, setOrderedLessons] = useState<ProgressLesson[]>([]);
   const [allProgress, setAllProgress] = useState<(LessonProgressRow & { user_id: string })[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -85,6 +87,10 @@ export const AdminUsersSection: React.FC = () => {
   };
 
   useEffect(() => { fetchUsers(); }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, levelFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     Promise.all([
@@ -242,6 +248,9 @@ export const AdminUsersSection: React.FC = () => {
     dateFrom,
     dateTo,
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   if (loading) {
     return (
@@ -355,7 +364,7 @@ export const AdminUsersSection: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.map((u) => (
+            {paginated.map((u) => (
               <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
                 <td className="px-4 py-3 font-mono text-xs text-slate-400" title={u.id}>{u.id.slice(0, 8)}</td>
                 <td className="px-4 py-3 font-medium text-slate-800">
@@ -420,6 +429,28 @@ export const AdminUsersSection: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={safePage <= 1}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Trước
+          </button>
+          <span className="text-xs text-slate-500">Trang {safePage}/{totalPages}</span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage >= totalPages}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Sau
+          </button>
+        </div>
+      )}
 
       {/* Create user modal */}
       {showCreate && (
