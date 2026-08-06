@@ -206,3 +206,52 @@ test("parseAnswersIntoFormState: word_reorder phục hồi selectedTokens để 
   const result = parseAnswersIntoFormState(exercises, { e1: "Ich heiße Anna" });
   assert.deepEqual(result.selectedTokens.e1, ["1:Ich", "0:heiße", "2:Anna"]);
 });
+
+const textFillBlank = (over: Partial<GrammarExercise> = {}): GrammarExercise =>
+  base({ id: "tfb1", type: "text_fill_blank", promptText: "Ich {{blank}} und du {{blank}}.", ...over });
+
+const matching = (over: Partial<GrammarExercise> = {}): GrammarExercise =>
+  base({
+    id: "m1",
+    type: "matching",
+    matchingPairs: [{ de: "der Tisch", vi: "cái bàn" }, { de: "die Lampe", vi: "cái đèn" }],
+    ...over,
+  });
+
+test("text_fill_blank: round-trip qua joinBlankAnswers/splitBlankAnswers", () => {
+  const ex = textFillBlank();
+  const raw = "bin|bist";
+  assert.deepEqual(parseAnswer(ex, raw), { kind: "blanks", values: ["bin", "bist"] });
+  assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["bin", "bist"] }), raw);
+});
+
+test("text_fill_blank: thiếu 1 ô thì serialize ra chuỗi rỗng", () => {
+  const ex = textFillBlank();
+  assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["bin", "  "] }), "");
+});
+
+test("matching: round-trip qua serializeMatching/parseMatching", () => {
+  const ex = matching();
+  const raw = "der Tisch:cái bàn|die Lampe:cái đèn";
+  assert.deepEqual(parseAnswer(ex, raw), {
+    kind: "matching",
+    values: { "der Tisch": "cái bàn", "die Lampe": "cái đèn" },
+  });
+  assert.equal(serializeAnswer(ex, parseAnswer(ex, raw)), raw);
+});
+
+test("matching: chưa ghép hết cặp thì serialize ra chuỗi rỗng", () => {
+  const ex = matching();
+  assert.equal(serializeAnswer(ex, { kind: "matching", values: { "der Tisch": "cái bàn" } }), "");
+});
+
+test("emptyAnswer: text_fill_blank và matching", () => {
+  assert.deepEqual(emptyAnswer(textFillBlank()), { kind: "blanks", values: ["", ""] });
+  assert.deepEqual(emptyAnswer(matching()), { kind: "matching", values: {} });
+});
+
+test("parseAnswersIntoFormState: matching phục hồi vào matchedPairs", () => {
+  const exercises = [matching()];
+  const result = parseAnswersIntoFormState(exercises, { m1: "der Tisch:cái bàn|die Lampe:cái đèn" });
+  assert.deepEqual(result.matchedPairs.m1, { "der Tisch": "cái bàn", "die Lampe": "cái đèn" });
+});

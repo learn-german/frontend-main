@@ -1,5 +1,6 @@
 import { GrammarExercise } from "./appTypes";
 import { countBlankMarkers } from "./grammarFillInBlank";
+import { countBlankTokens, joinBlankAnswers, splitBlankAnswers, serializeMatching, parseMatching } from "./quizAnswerCodec";
 
 /**
  * The wire format for one exercise answer, shared by the submit path and the
@@ -10,14 +11,19 @@ export type ParsedAnswer =
   | { kind: "text"; value: string }
   | { kind: "blanks"; values: string[] }
   | { kind: "choice"; index: number | undefined }
-  | { kind: "groups"; values: Record<string, string> };
+  | { kind: "groups"; values: Record<string, string> }
+  | { kind: "matching"; values: Record<string, string> };
 
 export function emptyAnswer(exercise: GrammarExercise): ParsedAnswer {
   if (exercise.type === "fill_in_the_blank") {
     return { kind: "blanks", values: Array(countBlankMarkers(exercise.promptText ?? "")).fill("") };
   }
+  if (exercise.type === "text_fill_blank") {
+    return { kind: "blanks", values: Array(countBlankTokens(exercise.promptText ?? "")).fill("") };
+  }
   if (exercise.type === "multiple_choice") return { kind: "choice", index: undefined };
   if (exercise.type === "classification") return { kind: "groups", values: {} };
+  if (exercise.type === "matching") return { kind: "matching", values: {} };
   return { kind: "text", value: "" };
 }
 
@@ -40,6 +46,21 @@ export function serializeAnswer(exercise: GrammarExercise, answer: ParsedAnswer)
     const items = exercise.classificationItems ?? [];
     if (items.length === 0 || items.some((item) => !answer.values[item])) return "";
     return items.map((item) => `${item}:${answer.values[item]}`).join("|");
+  }
+
+  if (exercise.type === "text_fill_blank") {
+    if (answer.kind !== "blanks") return "";
+    const blankCount = countBlankTokens(exercise.promptText ?? "");
+    if (blankCount === 0 || answer.values.length !== blankCount) return "";
+    if (answer.values.some((value) => !value.trim())) return "";
+    return joinBlankAnswers(answer.values);
+  }
+
+  if (exercise.type === "matching") {
+    if (answer.kind !== "matching") return "";
+    const total = exercise.matchingPairs?.length ?? 0;
+    if (total === 0 || Object.keys(answer.values).length < total) return "";
+    return serializeMatching(answer.values);
   }
 
   if (answer.kind !== "text") return "";
@@ -85,6 +106,15 @@ export function parseAnswer(exercise: GrammarExercise, raw: string): ParsedAnswe
     return { kind: "groups", values };
   }
 
+  if (exercise.type === "text_fill_blank") {
+    const blankCount = countBlankTokens(exercise.promptText ?? "");
+    return { kind: "blanks", values: splitBlankAnswers(raw, blankCount) };
+  }
+
+  if (exercise.type === "matching") {
+    return { kind: "matching", values: parseMatching(raw) };
+  }
+
   return { kind: "text", value: raw };
 }
 
@@ -127,10 +157,11 @@ export interface ParsedFormState {
   itemGroups: Record<string, Record<string, string>>;
   choices: Record<string, number>;
   selectedTokens: Record<string, string[]>;
+  matchedPairs: Record<string, Record<string, string>>;
 }
 
 /**
- * Phân rã 1 object answers (wire format, key theo exercise id) thành 5 state
+ * Phân rã 1 object answers (wire format, key theo exercise id) thành 6 state
  * riêng theo loại câu — dùng chung cho hydrate từ attempt đã nộp lẫn hydrate
  * từ draft chưa nộp, tránh lặp lại đúng vòng lặp này ở 2 nơi.
  */
@@ -143,6 +174,7 @@ export function parseAnswersIntoFormState(
   const itemGroups: Record<string, Record<string, string>> = {};
   const choices: Record<string, number> = {};
   const selectedTokens: Record<string, string[]> = {};
+  const matchedPairs: Record<string, Record<string, string>> = {};
 
   for (const exercise of exercises) {
     const raw = answers[exercise.id];
@@ -154,8 +186,9 @@ export function parseAnswersIntoFormState(
       }
     } else if (parsed.kind === "blanks") blankAnswers[exercise.id] = parsed.values;
     else if (parsed.kind === "groups") itemGroups[exercise.id] = parsed.values;
+    else if (parsed.kind === "matching") matchedPairs[exercise.id] = parsed.values;
     else if (parsed.index !== undefined) choices[exercise.id] = parsed.index;
   }
 
-  return { textAnswers, blankAnswers, itemGroups, choices, selectedTokens };
+  return { textAnswers, blankAnswers, itemGroups, choices, selectedTokens, matchedPairs };
 }
