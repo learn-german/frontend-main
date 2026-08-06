@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { computeGrammarScore, projectAnswers, type ScorableGrammarExercise } from "./scoring.ts";
+import { computeGrammarScore, deriveCorrectAnswers, projectAnswers, type ScorableGrammarExercise } from "./scoring.ts";
 
 const translation = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
   id: "t1",
@@ -365,4 +365,16 @@ test("matching: đúng toàn bộ cặp, không phân biệt thứ tự", () => 
 test("matching: sai 1 cặp thì cả câu sai", () => {
   const r = computeGrammarScore([matching()], { m1: "der Tisch:cái ghế|die Lampe:cái đèn" });
   assert.equal(r.exerciseResults.m1, false);
+});
+
+test("deriveCorrectAnswers: text_fill_blank trả JSON mảng biến thể đầu tiên mỗi ô", () => {
+  const ex = textFillBlank({ prompt_text: "Ich {{bin|Bin}} und du {{bist}}." });
+  const result = deriveCorrectAnswers([ex]);
+  assert.deepEqual(JSON.parse(result.tfb1), ["bin", "bist"]);
+});
+
+test("deriveCorrectAnswers: text_fill_blank không có blank nào trả mảng rỗng, không throw", () => {
+  const ex = textFillBlank({ prompt_text: "Không có ô trống." });
+  const result = deriveCorrectAnswers([ex]);
+  assert.deepEqual(JSON.parse(result.tfb1), []);
 });
