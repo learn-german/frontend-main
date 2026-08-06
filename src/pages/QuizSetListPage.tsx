@@ -442,24 +442,33 @@ const QuizExerciseSetBody: React.FC<{
             {revealed ? "Giải thích từng câu hỏi:" : "Câu đúng / câu sai:"}
           </h4>
           <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
-            {exercises.map((ex, index) => (
-              <ExerciseResultReview
-                key={ex.id}
-                exercise={ex}
-                numberLabel={`Câu ${index + 1} · ${GRAMMAR_TYPE_LABELS[ex.type] ?? ex.type}`}
-                revealed={revealed}
-                submittedText=""
-                exerciseCorrect={result.exerciseResults?.[ex.id]}
-                correctAnswerRaw={result.correctAnswers?.[ex.id]}
-                userGroups={{}}
-                classificationResults={undefined}
-                blankValues={textFillBlankByExercise[ex.id] ?? []}
-                blankResults={result.blankResults?.[ex.id]}
-                selectedChoice={choiceByExercise[ex.id]}
-                choiceResult={result.choiceResults?.[ex.id]}
-                matchedPairs={matchedPairsByExercise[ex.id] ?? {}}
-                explanation={result.explanations?.[ex.id]}
-              />
+            {groups.map((group, groupIndex) => (
+              <div key={group.key} className="space-y-1.5">
+                <p className="text-xs font-display font-bold text-slate-700">
+                  Bài {groupIndex + 1}: {GRAMMAR_TYPE_LABELS[group.type]}
+                </p>
+                {group.exercises.map((ex, childIndex) => (
+                  <ExerciseResultReview
+                    key={ex.id}
+                    exercise={ex}
+                    numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
+                    revealed={revealed}
+                    submittedText={getSubmittedTextFor(ex)}
+                    exerciseCorrect={result.exerciseResults?.[ex.id]}
+                    correctAnswerRaw={result.correctAnswers?.[ex.id]}
+                    userGroups={itemGroupsByExercise[ex.id] ?? {}}
+                    classificationResults={result.classificationResults?.[ex.id]}
+                    blankValues={ex.type === "fill_in_the_blank"
+                      ? (blankAnswersByExercise[ex.id] ?? [])
+                      : (textFillBlankByExercise[ex.id] ?? [])}
+                    blankResults={result.blankResults?.[ex.id]}
+                    selectedChoice={choiceByExercise[ex.id]}
+                    choiceResult={result.choiceResults?.[ex.id]}
+                    matchedPairs={matchedPairsByExercise[ex.id] ?? {}}
+                    explanation={result.explanations?.[ex.id]}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         </div>
