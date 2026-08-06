@@ -35,13 +35,18 @@ export const AdminApp: React.FC = () => {
     }
   }, [activeToast]);
 
-  // Check existing session
+  // Check existing session. Deliberately getUser(), not getSession(): getSession()
+  // only decodes the locally-cached JWT (no network call), so a demoted admin
+  // keeps passing this check for as long as their old access token stays valid
+  // (up to ~1h, or until refresh/re-login) even though app_metadata.role was
+  // already updated in the DB. getUser() hits the Auth server and returns the
+  // user's current row, so a revoked admin is rejected on the very next load.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const role = (session.user.app_metadata?.role as string) ?? "user";
+    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+      if (authUser) {
+        const role = (authUser.app_metadata?.role as string) ?? "user";
         if (role === "admin") {
-          setUser({ id: session.user.id, email: session.user.email ?? "", role });
+          setUser({ id: authUser.id, email: authUser.email ?? "", role });
         } else {
           // Logged in but not admin — sign out silently
           supabase.auth.signOut();
