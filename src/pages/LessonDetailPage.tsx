@@ -17,6 +17,8 @@ import { MarkdownBlock, countHighlightedWords } from "../components/MarkdownBloc
 import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 import { useWritingSubmission, MAX_WRITING_ATTEMPTS } from "../lib/hooks/useWritingSubmission";
+import { useLessonSetSummary } from "../lib/hooks/useLessonSetSummary";
+import type { LessonSetSummary } from "../lib/lessonSetSummary";
 import { BOTTOM_TABS, BottomTab } from "./lessonBottomTabs";
 
 interface LessonDetailPageProps {
@@ -30,6 +32,13 @@ interface LessonDetailPageProps {
   onTabChange?: (tab: BottomTab) => void;
 }
 
+const SetSummaryLine: React.FC<{ summary: LessonSetSummary }> = ({ summary }) => (
+  <p className="text-xs text-slate-400 font-sans">
+    {summary.passedCount}/{summary.totalCount} bài đã đạt · Lần gần nhất: {summary.latestScore}% ·{" "}
+    {new Date(summary.latestSubmittedAt).toLocaleString("vi-VN")}
+  </p>
+);
+
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
   lesson,
   stats,
@@ -42,6 +51,9 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
 }) => {
   const isCompleted = stats.completedLessons.includes(lesson.id);
   const [marked, setMarked] = useState(isCompleted);
+  const { summary: nguphapSummary } = useLessonSetSummary(lesson.id, "nguphap");
+  const { summary: ngheSummary } = useLessonSetSummary(lesson.id, "nghe");
+  const { summary: docSummary } = useLessonSetSummary(lesson.id, "doc");
 
   // Any tab lacking available content for this lesson is hidden entirely
   // (no "Sắp có" placeholder tab shown anymore) — extends the content-gated
@@ -226,6 +238,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {bottomTab === "quiz" && (
             <div className="text-center space-y-4">
               <h3 className="text-sm font-display font-extrabold text-slate-800">Bạn đã hoàn tất bài giảng lý thuyết chứ?</h3>
+              {nguphapSummary && <SetSummaryLine summary={nguphapSummary} />}
               <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
                 Tham gia trả lời <b>4 câu hỏi kiểm tra ngẫu nhiên</b> bám sát từ vựng và ngữ pháp vừa học. Cần vượt qua <b>80%</b> để hoàn tất!
               </p>
@@ -269,6 +282,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
               {lesson.hasNgheQuestions === true ? (
                 <>
                   <h3 className="text-sm font-display font-extrabold text-slate-800">Sẵn sàng luyện nghe chưa?</h3>
+                  {ngheSummary && <SetSummaryLine summary={ngheSummary} />}
                   <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
                     Bấm bắt đầu để nghe file âm thanh và trả lời câu hỏi trắc nghiệm đi kèm.
                   </p>
@@ -306,6 +320,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 <>
                   <div className="text-center space-y-2 pt-1">
                     <h3 className="text-sm font-display font-extrabold text-slate-800">Đã đọc kỹ đoạn văn bên trên chưa?</h3>
+                    {docSummary && <SetSummaryLine summary={docSummary} />}
                     <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
                       Trả lời câu hỏi trắc nghiệm để kiểm tra khả năng đọc hiểu của bạn.
                     </p>
