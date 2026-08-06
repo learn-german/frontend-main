@@ -63,7 +63,7 @@ export const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   matching: "Ghép cặp",
 };
 
-const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
+export const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
   word_reorder: "Sắp xếp các từ sau thành câu đúng:",
   error_correction: "Sửa câu sau cho đúng:",
   translation: "Dịch câu sau sang tiếng Đức:",

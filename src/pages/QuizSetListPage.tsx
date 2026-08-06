@@ -14,8 +14,19 @@ import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
 import { countBlankTokens } from "../lib/quizAnswerCodec";
 import { parseAnswer, parseAnswersIntoFormState, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
-import { countBlankMarkers } from "../lib/grammarFillInBlank";
+import {
+  applyChipToBlank,
+  applyTypedBlankAnswer,
+  countBlankMarkers,
+  findBlankTarget,
+  getUsedWordIndexes,
+  type BlankAssignments,
+  type BlankFocus,
+} from "../lib/grammarFillInBlank";
 import { ExerciseAnswerInput, ExerciseResultReview } from "../components/ExerciseAnswerInput";
+import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
+import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
+import { GRAMMAR_TYPE_LABELS, GRAMMAR_TYPE_INSTRUCTIONS } from "./GrammarExercisePage";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
 
@@ -42,12 +53,6 @@ interface QuizResult {
   correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
 }
-
-const QUIZ_TYPE_LABELS: Record<string, string> = {
-  multiple_choice: "Trắc nghiệm",
-  text_fill_blank: "Điền vào chỗ trống",
-  matching: "Ghép cặp",
-};
 
 const QuizExerciseSetBody: React.FC<{
   lesson: Lesson;
@@ -298,7 +303,7 @@ const QuizExerciseSetBody: React.FC<{
               <ExerciseResultReview
                 key={ex.id}
                 exercise={ex}
-                numberLabel={`Câu ${index + 1} · ${QUIZ_TYPE_LABELS[ex.type] ?? ex.type}`}
+                numberLabel={`Câu ${index + 1} · ${GRAMMAR_TYPE_LABELS[ex.type] ?? ex.type}`}
                 revealed={revealed}
                 submittedText=""
                 exerciseCorrect={result.exerciseResults?.[ex.id]}
@@ -362,7 +367,7 @@ const QuizExerciseSetBody: React.FC<{
           <ExerciseAnswerInput
             key={exercise.id}
             exercise={exercise}
-            numberLabel={`Câu ${index + 1} · ${QUIZ_TYPE_LABELS[exercise.type] ?? exercise.type}`}
+            numberLabel={`Câu ${index + 1} · ${GRAMMAR_TYPE_LABELS[exercise.type] ?? exercise.type}`}
             selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
             onToggleToken={(token, tokenIdx) => {
               const key = `${tokenIdx}:${token}`;
