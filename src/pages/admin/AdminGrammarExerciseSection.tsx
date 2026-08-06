@@ -24,8 +24,6 @@ import {
   type GrammarExerciseGroup,
 } from "../../lib/grammarExerciseGroups";
 import {
-  countBlankMarkers,
-  normalizeBlankDefinitions,
   normalizeWordBank,
   syncBlankDefinitions,
   type BlankDefinition,
@@ -34,15 +32,27 @@ import {
 } from "../../lib/grammarFillInBlank";
 import {
   addOption,
-  buildMultipleChoicePayload,
-  createEmptyChoiceForm,
   moveOption,
   optionLabel,
   parseCorrectIndex,
   removeOption,
   setOption,
-  validateChoiceForm,
 } from "../../lib/grammarMultipleChoice";
+import {
+  type EditForm,
+  EMPTY_FORM,
+  validateForm,
+  buildPayload,
+  addGroupToForm,
+  setGroupInForm,
+  removeGroupFromForm,
+  addItemToForm,
+  setItemInForm,
+  removeItemFromForm,
+  addPairToForm,
+  setPairInForm,
+  removePairFromForm,
+} from "../../lib/grammarExerciseForm";
 
 interface GrammarExercise {
   id: string;
@@ -55,7 +65,9 @@ interface GrammarExercise {
     | "guided_sentence_writing"
     | "classification"
     | "fill_in_the_blank"
-    | "multiple_choice";
+    | "multiple_choice"
+    | "text_fill_blank"
+    | "matching";
   group_id: string | null;
   set_id: string;
   prompt_text: string | null;
@@ -68,6 +80,7 @@ interface GrammarExercise {
   blanks: BlankDefinition[] | null;
   word_bank: WordBank | null;
   options: string[] | null;
+  matching_pairs: { de: string; vi: string }[] | null;
   explanation: string;
   hint: string | null;
   order_index: number;
@@ -92,6 +105,8 @@ const TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   classification: "Phân loại",
   fill_in_the_blank: "Điền vào ô trống",
   multiple_choice: "Trắc nghiệm",
+  text_fill_blank: "Điền vào chỗ trống",
+  matching: "Ghép cặp",
 };
 
 const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
@@ -103,23 +118,9 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
   classification: "bg-teal-50 text-teal-700",
   fill_in_the_blank: "bg-orange-50 text-orange-700",
   multiple_choice: "bg-indigo-50 text-indigo-700",
+  text_fill_blank: "bg-fuchsia-50 text-fuchsia-700",
+  matching: "bg-cyan-50 text-cyan-700",
 };
-
-export interface EditForm {
-  type: GrammarExercise["type"];
-  prompt_text: string;
-  transformation_hint: string;
-  correct_answer: string;
-  acceptable_answers: string[];
-  tokens_input: string;
-  classification_groups: string[];
-  classification_items: { item: string; group: string }[];
-  blanks: BlankDefinition[];
-  options: string[];
-  correct_option_index: number;
-  explanation: string;
-  order_index: number;
-}
 
 type ModalMode = "create-group" | "append-children" | "edit";
 
@@ -129,159 +130,10 @@ interface AppendContext {
   groupNumber: number;
 }
 
-export const EMPTY_FORM: EditForm = {
-  type: "word_reorder",
-  prompt_text: "",
-  transformation_hint: "",
-  correct_answer: "",
-  acceptable_answers: [],
-  tokens_input: "",
-  classification_groups: [],
-  classification_items: [],
-  blanks: [],
-  options: createEmptyChoiceForm().options,
-  correct_option_index: -1,
-  explanation: "",
-  order_index: 0,
-};
-
 const inputBaseCls =
   "px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
 const inputCls = `w-full ${inputBaseCls}`;
 const labelCls = "block text-xs font-bold text-slate-600 mb-1";
-
-const normalizeWord = (s: string): string => s.toLowerCase().replace(/[.,!?]/g, "").trim();
-
-const validateForm = (f: EditForm): string | null => {
-  if (f.type === "word_reorder") {
-    const tokens = f.tokens_input.split("/").map((t) => t.trim()).filter(Boolean);
-    if (tokens.length < 2) return "Cần ít nhất 2 từ.";
-    if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
-    const answerWords = f.correct_answer.split(/\s+/).map(normalizeWord).filter(Boolean).sort();
-    const tokenWords = tokens.flatMap((t) => t.split(/\s+/)).map(normalizeWord).filter(Boolean).sort();
-    if (JSON.stringify(answerWords) !== JSON.stringify(tokenWords)) {
-      return "Các từ cho sẵn không khớp với câu đúng — kiểm tra lại chính tả.";
-    }
-    return null;
-  }
-  if (f.type === "error_correction") {
-    if (!f.prompt_text.trim()) return "Câu sai không được để trống.";
-    if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
-    if (f.prompt_text.trim() === f.correct_answer.trim()) return "Câu sai và câu đúng giống nhau — không có lỗi để sửa.";
-    return null;
-  }
-  if (f.type === "translation") {
-    if (!f.prompt_text.trim()) return "Câu tiếng Việt không được để trống.";
-    if (!f.correct_answer.trim()) return "Câu tiếng Đức không được để trống.";
-    return null;
-  }
-  if (f.type === "sentence_transformation") {
-    if (!f.prompt_text.trim()) return "Câu gốc không được để trống.";
-    if (!f.transformation_hint.trim()) return "Yêu cầu biến đổi không được để trống.";
-    if (!f.correct_answer.trim()) return "Câu đúng sau biến đổi không được để trống.";
-    return null;
-  }
-  if (f.type === "guided_sentence_writing") {
-    if (!f.prompt_text.trim()) return "Dữ liệu gợi ý không được để trống.";
-    if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
-    return null;
-  }
-  if (f.type === "multiple_choice") {
-    return validateChoiceForm(f.prompt_text, { options: f.options, correctIndex: f.correct_option_index });
-  }
-  if (f.type === "fill_in_the_blank") {
-    const blankCount = countBlankMarkers(f.prompt_text);
-    if (blankCount < 1) return "Cần ít nhất 1 marker ___.";
-    if (f.blanks.length !== blankCount) return "Số editor đáp án phải khớp số marker ___.";
-    if (!normalizeBlankDefinitions(f.blanks)) return "Mỗi ô trống cần ít nhất 1 đáp án hợp lệ.";
-    return null;
-  }
-  // classification
-  const groups = f.classification_groups.map((g) => g.trim()).filter(Boolean);
-  const uniqueGroups = new Set(groups.map((g) => g.toLowerCase()));
-  if (groups.length < 2 || uniqueGroups.size !== groups.length) {
-    return "Cần ít nhất 2 nhóm phân loại, không trùng tên.";
-  }
-  if (f.classification_items.length === 0 || f.classification_items.some((it) => !it.item.trim())) {
-    return "Cần ít nhất 1 item để phân loại.";
-  }
-  if (f.classification_items.some((it) => !groups.includes(it.group))) {
-    return "Mỗi item phải thuộc một nhóm hợp lệ.";
-  }
-  return null;
-};
-
-const buildPayload = (form: EditForm) => {
-  const choicePayload = buildMultipleChoicePayload({
-    options: form.options,
-    correctIndex: form.correct_option_index,
-  });
-  return {
-    type: form.type,
-    prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
-    transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
-    correct_answer:
-      form.type === "classification" || form.type === "fill_in_the_blank"
-        ? null
-        : form.type === "multiple_choice"
-          ? choicePayload.correct_answer
-          : form.correct_answer,
-    acceptable_answers:
-      form.type === "translation"
-        ? form.acceptable_answers.map((a) => a.trim()).filter(Boolean)
-        : null,
-    tokens:
-      form.type === "word_reorder"
-        ? form.tokens_input.split("/").map((t) => t.trim()).filter(Boolean)
-        : null,
-    classification_groups:
-      form.type === "classification" ? form.classification_groups.map((g) => g.trim()).filter(Boolean) : null,
-    classification_items:
-      form.type === "classification" ? form.classification_items.filter((it) => it.item.trim()) : null,
-    blanks: form.type === "fill_in_the_blank" ? normalizeBlankDefinitions(form.blanks) : null,
-    options: form.type === "multiple_choice" ? choicePayload.options : null,
-    explanation: form.explanation,
-    order_index: form.order_index,
-  };
-};
-
-const addGroupToForm = (f: EditForm): EditForm => ({ ...f, classification_groups: [...f.classification_groups, ""] });
-
-const setGroupInForm = (f: EditForm, i: number, val: string): EditForm => {
-  const groups = [...f.classification_groups];
-  const oldVal = groups[i];
-  groups[i] = val;
-  return {
-    ...f,
-    classification_groups: groups,
-    classification_items: f.classification_items.map((it) => (it.group === oldVal ? { ...it, group: val } : it)),
-  };
-};
-
-const removeGroupFromForm = (f: EditForm, i: number): EditForm => {
-  const removed = f.classification_groups[i];
-  return {
-    ...f,
-    classification_groups: f.classification_groups.filter((_, idx) => idx !== i),
-    classification_items: f.classification_items.map((it) => (it.group === removed ? { ...it, group: "" } : it)),
-  };
-};
-
-const addItemToForm = (f: EditForm): EditForm => ({
-  ...f,
-  classification_items: [...f.classification_items, { item: "", group: f.classification_groups[0] ?? "" }],
-});
-
-const setItemInForm = (f: EditForm, i: number, key: "item" | "group", val: string): EditForm => {
-  const items = [...f.classification_items];
-  items[i] = { ...items[i], [key]: val };
-  return { ...f, classification_items: items };
-};
-
-const removeItemFromForm = (f: EditForm, i: number): EditForm => ({
-  ...f,
-  classification_items: f.classification_items.filter((_, idx) => idx !== i),
-});
 
 const previewContent = (ex: GrammarExercise): string => {
   if (ex.type === "classification") {
@@ -794,6 +646,77 @@ export const ExerciseEntryFields: React.FC<{
       </>
     )}
 
+    {entry.type === "text_fill_blank" && (
+      <div>
+        <label className={labelCls}>Nội dung câu (có chỗ trống) *</label>
+        <textarea
+          rows={4}
+          value={entry.prompt_text}
+          onChange={(e) => onChange((prev) => ({ ...prev, prompt_text: e.target.value }))}
+          className={inputCls + " resize-none"}
+          placeholder="Ich {{bin|Bin}} Student."
+        />
+        <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+          Đánh dấu chỗ trống bằng <code className="bg-slate-100 px-1 rounded">{"{{đáp_án}}"}</code>, nhiều biến thể đúng cách nhau bởi <code className="bg-slate-100 px-1 rounded">|</code>.
+        </p>
+      </div>
+    )}
+
+    {entry.type === "matching" && (
+      <>
+        <div>
+          <label className={labelCls}>Nội dung câu hỏi *</label>
+          <textarea
+            rows={2}
+            value={entry.prompt_text}
+            onChange={(e) => onChange((prev) => ({ ...prev, prompt_text: e.target.value }))}
+            className={inputCls + " resize-none"}
+            placeholder="Ghép từ tiếng Đức với nghĩa tiếng Việt"
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Các cặp ghép đôi *</label>
+          <div className="space-y-2">
+            {entry.matching_pairs.map((pair, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={pair.de}
+                  onChange={(e) => onChange((prev) => setPairInForm(prev, i, "de", e.target.value))}
+                  className={inputCls + " flex-1"}
+                  placeholder="Tiếng Đức"
+                />
+                <span className="text-slate-300">↔</span>
+                <input
+                  type="text"
+                  value={pair.vi}
+                  onChange={(e) => onChange((prev) => setPairInForm(prev, i, "vi", e.target.value))}
+                  className={inputCls + " flex-1"}
+                  placeholder="Tiếng Việt"
+                />
+                {entry.matching_pairs.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => onChange((prev) => removePairFromForm(prev, i))}
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => onChange(addPairToForm)}
+              className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Thêm cặp
+            </button>
+          </div>
+        </div>
+      </>
+    )}
+
     {entry.type === "classification" && (
       <>
         <div>
@@ -989,6 +912,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         blanks: ex.blanks ?? [],
         options: ex.options ?? [],
         correct_option_index: parseCorrectIndex(ex.correct_answer, (ex.options ?? []).length),
+        matching_pairs: ex.matching_pairs ?? [{ de: "", vi: "" }],
         explanation: ex.explanation,
         order_index: ex.order_index,
       },

@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../../src/index.css";
-import {
-  ExerciseEntryFields,
-  EMPTY_FORM,
-  type EditForm,
-} from "../../../src/pages/admin/AdminGrammarExerciseSection";
+import { ExerciseEntryFields } from "../../../src/pages/admin/AdminGrammarExerciseSection";
+import { EMPTY_FORM, type EditForm } from "../../../src/lib/grammarExerciseForm";
 
 // Dựng đúng cách modal thật nối ExerciseEntryFields vào state: một entry,
 // cập nhật qua updater function. Đây là component THẬT của production,
