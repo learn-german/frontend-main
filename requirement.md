@@ -334,15 +334,3 @@ Response thành công:
 ---
 Áp dụng toàn bộ kiểu câu hỏi từ phần ngữ pháp sang cho nghe và đọc 
 giữ nguyên logic như phần ngữ pháp
----
-[Feature][Lesson][Ngữ pháp/Nghe/Đọc] Hiển thị kết quả làm bài gần nhất ở màn hình học
-
-[Situation]
-
-- User vào lesson, tab Bài tập ngữ pháp/Nghe/Đọc, trước khi bấm nút bắt đầu bài tập — khu vực này hiện chỉ có tiêu đề + mô tả + nút bắt đầu, không cho biết user đã từng làm bài tập này chưa.
-- Áp dụng cho cả 3 phần: ngữ pháp, nghe, đọc.
-- Cần hiển thị tổng hợp kết quả của lesson, gồm:
-    - Số exercise set đã Pass / tổng số set trong lesson (theo từng phần).
-    - Điểm % của lần nộp bài gần nhất.
-    - Thời gian nộp bài gần nhất.
-- Sau khi user nộp bài ở bất kỳ set nào, kết quả vừa nộp phải được cập nhật ngay vào khu vực tổng hợp này, không cần reload trang.
