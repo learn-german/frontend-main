@@ -50,6 +50,7 @@ interface QuizResult {
   blankResults: Record<string, boolean[]>;
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
+  classificationResults: Record<string, boolean[]>;
   correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
 }
@@ -66,6 +67,9 @@ const QuizExerciseSetBody: React.FC<{
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
 
+  const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
+
   const [choiceByExercise, setChoiceByExercise] = useState<Record<string, number>>({});
   const [textFillBlankByExercise, setTextFillBlankByExercise] = useState<Record<string, string[]>>({});
   const [matchedPairsByExercise, setMatchedPairsByExercise] = useState<Record<string, Record<string, string>>>({});
@@ -73,6 +77,9 @@ const QuizExerciseSetBody: React.FC<{
   const [textAnswerByExercise, setTextAnswerByExercise] = useState<Record<string, string>>({});
   const [itemGroupsByExercise, setItemGroupsByExercise] = useState<Record<string, Record<string, string>>>({});
   const [blankAnswersByExercise, setBlankAnswersByExercise] = useState<Record<string, string[]>>({});
+  const [blankAssignments, setBlankAssignments] = useState<BlankAssignments>({});
+  const [focusedBlank, setFocusedBlank] = useState<BlankFocus | null>(null);
+  const [submittedAnswerSnapshot, setSubmittedAnswerSnapshot] = useState<Record<string, string>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -105,6 +112,15 @@ const QuizExerciseSetBody: React.FC<{
     setTextFillBlankByExercise(quizBlanks);
   };
 
+  /** Text-typed submitted answer for the results card, read from the one
+   * snapshot shared by the live-submit and hydrate-after-refresh paths. */
+  const getSubmittedTextFor = (exercise: GrammarExercise): string => {
+    const raw = submittedAnswerSnapshot[exercise.id];
+    if (raw === undefined) return "";
+    const parsed = parseAnswer(exercise, raw);
+    return parsed.kind === "text" ? parsed.value : "";
+  };
+
   React.useEffect(() => {
     // draftLoading: chờ draft load xong trước khi tin hydrateSource === "attempt"
     // — draft và attempt fetch độc lập, không có gì đảm bảo thứ tự resolve. Nếu
@@ -126,8 +142,10 @@ const QuizExerciseSetBody: React.FC<{
       blankResults: attempt.blankResults,
       choiceResults: attempt.choiceResults,
       exerciseResults: attempt.exerciseResults,
+      classificationResults: attempt.classificationResults,
     });
     applyAnswers(attempt.answers);
+    setSubmittedAnswerSnapshot(attempt.answers ?? {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt, retrying, exercises, hydrateSource, draftLoading]);
 
@@ -194,6 +212,7 @@ const QuizExerciseSetBody: React.FC<{
     }
     const res = data as QuizResult;
     setResult(res);
+    setSubmittedAnswerSnapshot(finalAnswers);
     onAttemptUpdate({ isPassed: res.isPassed, attemptCount: res.attemptCount });
     deleteDraft();
     onDraftSaved(false);
@@ -202,6 +221,9 @@ const QuizExerciseSetBody: React.FC<{
 
   const handleRetry = () => {
     submissionIdRef.current = crypto.randomUUID();
+    setExpandedGroupKeys(new Set());
+    setBlankAssignments({});
+    setFocusedBlank(null);
     setChoiceByExercise({});
     setTextFillBlankByExercise({});
     setMatchedPairsByExercise({});
