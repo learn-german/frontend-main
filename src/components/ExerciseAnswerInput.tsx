@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
 import { GrammarExercise } from "../lib/appTypes";
+import { parseAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
 
 /** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */
 const TextAnswerField: React.FC<{
@@ -322,3 +323,202 @@ export const ExerciseAnswerInput: React.FC<{
     </div>
   );
 };
+
+/** Read-only echo of what the learner typed, tinted by whether it was graded correct. */
+export const SubmittedAnswer: React.FC<{ value: string; correct: boolean | undefined }> = ({
+  value,
+  correct,
+}) => (
+  <div
+    className={`mb-2 rounded-lg border px-2.5 py-2 text-xs font-medium whitespace-pre-wrap ${
+      correct === true
+        ? "border-green-300 bg-green-50 text-green-800"
+        : correct === false
+          ? "border-red-300 bg-red-50 text-red-800"
+          : "border-slate-200 bg-slate-50 text-slate-700"
+    }`}
+  >
+    <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wider opacity-60">
+      Bài làm của bạn
+    </span>
+    {value.trim() ? value : "— chưa trả lời —"}
+  </div>
+);
+
+/** Đáp án đúng cho classification, parse từ correctAnswerRaw (wire format
+ * "item:group|...") — chỉ có giá trị thật khi revealed, dùng thẳng
+ * parseAnswer thay vì viết lại logic split/parse riêng. */
+function getCorrectGroups(exercise: GrammarExercise, correctAnswerRaw: string | undefined): Record<string, string> {
+  if (!correctAnswerRaw) return {};
+  const parsed: ParsedAnswer = parseAnswer(exercise, correctAnswerRaw);
+  return parsed.kind === "groups" ? parsed.values : {};
+}
+
+/** Đáp án đúng cho fill_in_the_blank, parse từ correctAnswerRaw (JSON array)
+ * — chỉ có giá trị thật khi revealed. */
+function getCorrectBlanks(exercise: GrammarExercise, correctAnswerRaw: string | undefined): string[] {
+  if (!correctAnswerRaw) return [];
+  const parsed: ParsedAnswer = parseAnswer(exercise, correctAnswerRaw);
+  return parsed.kind === "blanks" ? parsed.values : [];
+}
+
+export const ExerciseResultReview: React.FC<{
+  exercise: GrammarExercise;
+  numberLabel: string;
+  revealed: boolean;
+  submittedText: string;
+  exerciseCorrect: boolean | undefined;
+  correctAnswerRaw: string | undefined;
+  userGroups: Record<string, string>;
+  classificationResults: boolean[] | undefined;
+  blankValues: string[];
+  blankResults: boolean[] | undefined;
+  selectedChoice: number | undefined;
+  choiceResult: boolean | undefined;
+  matchedPairs: Record<string, string>;
+  explanation: string | undefined;
+}> = ({
+  exercise,
+  numberLabel,
+  revealed,
+  submittedText,
+  exerciseCorrect,
+  correctAnswerRaw,
+  userGroups,
+  classificationResults,
+  blankValues,
+  blankResults,
+  selectedChoice,
+  choiceResult,
+  matchedPairs,
+  explanation,
+}) => (
+  <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
+    <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
+      {numberLabel} {exercise.promptText ?? "Phân loại"}
+    </p>
+
+    {(exercise.type === "word_reorder"
+      || exercise.type === "error_correction"
+      || exercise.type === "translation"
+      || exercise.type === "sentence_transformation"
+      || exercise.type === "guided_sentence_writing") && (
+      <>
+        <SubmittedAnswer value={submittedText} correct={exerciseCorrect} />
+        {revealed && exerciseCorrect === false && (
+          <p className="mb-2 text-[11px] text-green-700">
+            <b>Đáp án đúng:</b> {correctAnswerRaw || "—"}
+          </p>
+        )}
+      </>
+    )}
+
+    {exercise.type === "classification" && (
+      <div className="mb-2 space-y-1">
+        {(exercise.classificationItems ?? []).map((item, itemIndex) => {
+          const userGroup = userGroups[item] ?? "—";
+          const correctGroup = revealed ? getCorrectGroups(exercise, correctAnswerRaw)[item] : undefined;
+          const isCorrect = classificationResults?.[itemIndex] ?? false;
+          return (
+            <div key={item} className="flex items-center gap-2 text-xs">
+              <span className="flex-1 text-slate-700">{item}</span>
+              <span
+                className={`rounded-md border px-2 py-1 font-bold ${
+                  isCorrect
+                    ? "border-green-300 bg-green-50 text-green-700"
+                    : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+              >
+                {userGroup}
+              </span>
+              {revealed && !isCorrect && correctGroup && (
+                <span className="rounded-md border border-green-300 bg-green-50 px-2 py-1 font-bold text-green-700">
+                  {correctGroup}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {(exercise.type === "fill_in_the_blank" || exercise.type === "text_fill_blank") && (
+      <div className="mb-2 text-xs leading-9 text-slate-700">
+        {(exercise.promptText ?? "")
+          .split(exercise.type === "fill_in_the_blank" ? "___" : /\{\{[^}]*\}\}/)
+          .map((segment, index, segments) => {
+            const isCorrect = blankResults?.[index];
+            const correctBlank = revealed ? getCorrectBlanks(exercise, correctAnswerRaw)[index] : undefined;
+            return (
+              <React.Fragment key={`${index}:${segment}`}>
+                <span className="whitespace-pre-wrap">{segment}</span>
+                {index < segments.length - 1 && (
+                  <>
+                    <span className={`mx-1 inline-block min-w-20 rounded-md border px-2 py-1 text-center font-bold ${
+                      isCorrect
+                        ? "border-green-300 bg-green-50 text-green-700"
+                        : "border-red-300 bg-red-50 text-red-700"
+                    }`}>
+                      {blankValues[index] ?? "—"}
+                    </span>
+                    {revealed && !isCorrect && correctBlank && (
+                      <span className="mx-1 inline-block min-w-20 rounded-md border border-green-300 bg-green-50 px-2 py-1 text-center font-bold text-green-700">
+                        {correctBlank}
+                      </span>
+                    )}
+                  </>
+                )}
+              </React.Fragment>
+            );
+          })}
+      </div>
+    )}
+
+    {exercise.type === "multiple_choice" && (
+      <div className="mb-2">
+        <MultipleChoiceOptions
+          options={exercise.options ?? []}
+          selectedIndex={selectedChoice}
+          onSelect={() => {}}
+          exerciseId={exercise.id}
+          result={choiceResult}
+          correctIndex={revealed ? Number(correctAnswerRaw) : undefined}
+        />
+      </div>
+    )}
+
+    {exercise.type === "matching" && (
+      <div className="mb-2 space-y-1">
+        {(exercise.matchingPairs ?? []).map((pair) => {
+          const userVi = matchedPairs[pair.de];
+          const isRight = userVi === pair.vi;
+          return (
+            <div key={pair.de} className="flex items-center gap-2 text-xs">
+              <span className="flex-1 text-slate-700">{pair.de}</span>
+              <span
+                className={`rounded-md border px-2 py-1 font-bold ${
+                  isRight
+                    ? "border-green-300 bg-green-50 text-green-700"
+                    : "border-red-300 bg-red-50 text-red-700"
+                }`}
+              >
+                {userVi ?? "—"}
+              </span>
+              {revealed && !isRight && (
+                <span className="rounded-md border border-green-300 bg-green-50 px-2 py-1 font-bold text-green-700">
+                  {pair.vi}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {explanation && (
+      <p className="text-slate-500 text-[11px] leading-relaxed">
+        <b>Giải thích:</b> {explanation}
+      </p>
+    )}
+  </div>
+);

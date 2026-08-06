@@ -4,7 +4,7 @@ import { Button } from "../components/DesignSystem";
 import { showToast } from "../lib/toast";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { MultipleChoiceOptions } from "../components/MultipleChoiceOptions";
-import { ExerciseAnswerInput } from "../components/ExerciseAnswerInput";
+import { ExerciseAnswerInput, SubmittedAnswer, ExerciseResultReview } from "../components/ExerciseAnswerInput";
 import { GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
@@ -76,27 +76,6 @@ const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
   text_fill_blank: "Điền vào chỗ trống:",
   matching: "Ghép cặp từ tương ứng:",
 };
-
-/** Read-only echo of what the learner typed, tinted by whether it was graded correct. */
-const SubmittedAnswer: React.FC<{ value: string; correct: boolean | undefined }> = ({
-  value,
-  correct,
-}) => (
-  <div
-    className={`mb-2 rounded-lg border px-2.5 py-2 text-xs font-medium whitespace-pre-wrap ${
-      correct === true
-        ? "border-green-300 bg-green-50 text-green-800"
-        : correct === false
-          ? "border-red-300 bg-red-50 text-red-800"
-          : "border-slate-200 bg-slate-50 text-slate-700"
-    }`}
-  >
-    <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wider opacity-60">
-      Bài làm của bạn
-    </span>
-    {value.trim() ? value : "— chưa trả lời —"}
-  </div>
-);
 
 export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   set,
