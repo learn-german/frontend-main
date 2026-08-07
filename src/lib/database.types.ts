@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_progress_reports: {
+        Row: {
+          actual_progress_percentage: number
+          completed_required_lessons: number
+          current_lesson_id: string | null
+          error_message: string | null
+          expected_progress_percentage: number | null
+          generated_at: string
+          generation_status: string
+          id: string
+          level_id: string
+          package_remaining_days: number | null
+          progress_gap_percentage_point: number | null
+          progress_status: string | null
+          report_date: string
+          total_required_lessons: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_progress_percentage: number
+          completed_required_lessons: number
+          current_lesson_id?: string | null
+          error_message?: string | null
+          expected_progress_percentage?: number | null
+          generated_at?: string
+          generation_status?: string
+          id?: string
+          level_id: string
+          package_remaining_days?: number | null
+          progress_gap_percentage_point?: number | null
+          progress_status?: string | null
+          report_date: string
+          total_required_lessons: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_progress_percentage?: number
+          completed_required_lessons?: number
+          current_lesson_id?: string | null
+          error_message?: string | null
+          expected_progress_percentage?: number | null
+          generated_at?: string
+          generation_status?: string
+          id?: string
+          level_id?: string
+          package_remaining_days?: number | null
+          progress_gap_percentage_point?: number | null
+          progress_status?: string | null
+          report_date?: string
+          total_required_lessons?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_progress_reports_current_lesson_id_fkey"
+            columns: ["current_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_progress_reports_current_lesson_id_fkey"
+            columns: ["current_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_progress_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_set_attempts: {
         Row: {
           answers: Json
@@ -22,6 +101,7 @@ export type Database = {
           blank_results: Json
           category: string
           choice_results: Json
+          classification_results: Json
           exercise_results: Json
           id: string
           is_passed: boolean
@@ -40,6 +120,7 @@ export type Database = {
           blank_results?: Json
           category: string
           choice_results?: Json
+          classification_results?: Json
           exercise_results?: Json
           id?: string
           is_passed: boolean
@@ -58,6 +139,7 @@ export type Database = {
           blank_results?: Json
           category?: string
           choice_results?: Json
+          classification_results?: Json
           exercise_results?: Json
           id?: string
           is_passed?: boolean
@@ -421,6 +503,38 @@ export type Database = {
           },
         ]
       }
+      level_enrollments: {
+        Row: {
+          id: string
+          level: string
+          planned_completion_date: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          level: string
+          planned_completion_date: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          level?: string
+          planned_completion_date?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listening_clips: {
         Row: {
           id: string
@@ -541,6 +655,7 @@ export type Database = {
           id: string
           is_premium: boolean
           role: string
+          subscription_end_date: string | null
           unlocked_levels: string[]
         }
         Insert: {
@@ -551,6 +666,7 @@ export type Database = {
           id: string
           is_premium?: boolean
           role?: string
+          subscription_end_date?: string | null
           unlocked_levels?: string[]
         }
         Update: {
@@ -561,6 +677,7 @@ export type Database = {
           id?: string
           is_premium?: boolean
           role?: string
+          subscription_end_date?: string | null
           unlocked_levels?: string[]
         }
         Relationships: []
@@ -913,9 +1030,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
