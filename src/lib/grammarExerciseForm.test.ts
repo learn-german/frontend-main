@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EMPTY_FORM, validateForm, buildPayload, type EditForm } from "./grammarExerciseForm";
+import {
+  EMPTY_FORM,
+  validateForm,
+  buildPayload,
+  addWordToGroup,
+  removeGroupFromForm,
+  type EditForm,
+} from "./grammarExerciseForm";
 
 const textFillBlankForm = (overrides: Partial<EditForm> = {}): EditForm => ({
   ...EMPTY_FORM,
@@ -58,4 +65,32 @@ test("buildPayload: matching serialize matching_pairs vào correct_answer, bỏ 
   }));
   assert.equal(payload.correct_answer, "der Tisch:cái bàn");
   assert.deepEqual(payload.matching_pairs, [{ de: "der Tisch", vi: "cái bàn" }]);
+});
+
+test("addWordToGroup thêm 1 item rỗng vào đúng nhóm", () => {
+  const f: EditForm = {
+    ...EMPTY_FORM,
+    classification_groups: ["der", "die"],
+    classification_items: [{ item: "Vater", group: "der" }],
+  };
+  const result = addWordToGroup(f, "die");
+  assert.deepEqual(result.classification_items, [
+    { item: "Vater", group: "der" },
+    { item: "", group: "die" },
+  ]);
+});
+
+test("removeGroupFromForm xoá nhóm và xoá luôn các item thuộc nhóm đó", () => {
+  const f: EditForm = {
+    ...EMPTY_FORM,
+    classification_groups: ["der", "die"],
+    classification_items: [
+      { item: "Vater", group: "der" },
+      { item: "Mutter", group: "die" },
+      { item: "Kind", group: "der" },
+    ],
+  };
+  const result = removeGroupFromForm(f, 0);
+  assert.deepEqual(result.classification_groups, ["die"]);
+  assert.deepEqual(result.classification_items, [{ item: "Mutter", group: "die" }]);
 });

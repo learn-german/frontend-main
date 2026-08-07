@@ -182,9 +182,14 @@ export const removeGroupFromForm = (f: EditForm, i: number): EditForm => {
   return {
     ...f,
     classification_groups: f.classification_groups.filter((_, idx) => idx !== i),
-    classification_items: f.classification_items.map((it) => (it.group === removed ? { ...it, group: "" } : it)),
+    classification_items: f.classification_items.filter((it) => it.group !== removed),
   };
 };
+
+export const addWordToGroup = (f: EditForm, group: string): EditForm => ({
+  ...f,
+  classification_items: [...f.classification_items, { item: "", group }],
+});
 
 export const addItemToForm = (f: EditForm): EditForm => ({
   ...f,
