@@ -32,13 +32,16 @@ interface AdminUser {
   streak: number;
   role: string;
   unlockedLevels: string[];
+  isPremium: boolean;
+  subscriptionEndDate: string | null;
 }
 
 interface CreateForm { email: string; password: string; full_name: string; role: string; }
-interface EditForm { full_name: string; role: string; }
+interface EditForm { full_name: string; role: string; is_premium: boolean; subscription_end_date: string; }
 
 const EMPTY_CREATE: CreateForm = { email: "", password: "", full_name: "", role: "user" };
 const PAGE_SIZE = 15;
+const PLANNED_LEVEL_DAYS: Record<string, number> = { A1: 60, A2: 60, B1: 90, B2: 90 };
 
 export const AdminUsersSection: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -55,7 +58,7 @@ export const AdminUsersSection: React.FC = () => {
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE);
   const [creating, setCreating] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", role: "user" });
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", role: "user", is_premium: false, subscription_end_date: "" });
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -64,7 +67,7 @@ export const AdminUsersSection: React.FC = () => {
   const fetchUsers = () => {
     supabase
       .from("profiles")
-      .select("id, email, full_name, created_at, role, unlocked_levels, user_stats(xp, streak)")
+      .select("id, email, full_name, created_at, role, unlocked_levels, is_premium, subscription_end_date, user_stats(xp, streak)")
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setUsers(
@@ -79,6 +82,8 @@ export const AdminUsersSection: React.FC = () => {
               streak: stats?.streak ?? 0,
               role: (p as unknown as { role?: string }).role ?? "user",
               unlockedLevels: (p as unknown as { unlocked_levels?: string[] }).unlocked_levels ?? [],
+              isPremium: (p as unknown as { is_premium?: boolean }).is_premium ?? false,
+              subscriptionEndDate: (p as unknown as { subscription_end_date?: string | null }).subscription_end_date ?? null,
             };
           }),
         );
@@ -177,7 +182,12 @@ export const AdminUsersSection: React.FC = () => {
     // Update full_name + role column in profiles
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({ full_name: editForm.full_name, role: editForm.role })
+      .update({
+        full_name: editForm.full_name,
+        role: editForm.role,
+        is_premium: editForm.is_premium,
+        subscription_end_date: editForm.subscription_end_date || null,
+      })
       .eq("id", editUser.id);
 
     // Also sync role to auth.app_metadata via Edge Function
@@ -219,9 +229,10 @@ export const AdminUsersSection: React.FC = () => {
 
   const handleToggleLevel = async (user: AdminUser, level: string) => {
     const previousLevels = user.unlockedLevels;
-    const newLevels = previousLevels.includes(level)
-      ? previousLevels.filter((l) => l !== level)
-      : [...previousLevels, level];
+    const isUnlocking = !previousLevels.includes(level);
+    const newLevels = isUnlocking
+      ? [...previousLevels, level]
+      : previousLevels.filter((l) => l !== level);
 
     setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: newLevels } : u)));
 
@@ -230,6 +241,23 @@ export const AdminUsersSection: React.FC = () => {
     if (error) {
       showToast("Cập nhật cấp độ thất bại: " + error.message, "warning");
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: previousLevels } : u)));
+      return;
+    }
+
+    if (!isUnlocking) return;
+
+    const plannedDays = PLANNED_LEVEL_DAYS[level] ?? 60;
+    const startedAt = new Date().toISOString().slice(0, 10);
+    const plannedCompletionDate = new Date(Date.now() + plannedDays * 86400000).toISOString().slice(0, 10);
+    // ignoreDuplicates: bật/tắt/bật lại level không reset started_at đã có.
+    const { error: enrollError } = await supabase
+      .from("level_enrollments")
+      .upsert(
+        { user_id: user.id, level, started_at: startedAt, planned_completion_date: plannedCompletionDate },
+        { onConflict: "user_id,level", ignoreDuplicates: true },
+      );
+    if (enrollError) {
+      showToast("Không tạo được mốc thời gian cho cấp độ: " + enrollError.message, "warning");
     }
   };
 
@@ -404,7 +432,12 @@ export const AdminUsersSection: React.FC = () => {
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => { setEditUser(u); setEditForm({ full_name: u.full_name ?? "", role: u.role }); }}
+                      onClick={() => { setEditUser(u); setEditForm({
+                        full_name: u.full_name ?? "",
+                        role: u.role,
+                        is_premium: u.isPremium,
+                        subscription_end_date: u.subscriptionEndDate ?? "",
+                      }); }}
                       className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
                       title="Chỉnh sửa"
                     >
@@ -531,6 +564,29 @@ export const AdminUsersSection: React.FC = () => {
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">Gói học</label>
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editForm.is_premium}
+                  onChange={e => setEditForm(prev => ({ ...prev, is_premium: e.target.checked }))}
+                  className="w-4 h-4 accent-orange-600 cursor-pointer"
+                />
+                Gói đang active
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">Ngày hết hạn gói</label>
+              <input
+                type="date"
+                value={editForm.subscription_end_date}
+                onChange={e => setEditForm(prev => ({ ...prev, subscription_end_date: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+              />
             </div>
 
             <div className="flex gap-3 pt-2">
