@@ -48,7 +48,7 @@ import {
   addGroupToForm,
   setGroupInForm,
   removeGroupFromForm,
-  addItemToForm,
+  addWordToGroup,
   setItemInForm,
   removeItemFromForm,
   addPairToForm,
@@ -720,81 +720,71 @@ export const ExerciseEntryFields: React.FC<{
     )}
 
     {entry.type === "classification" && (
-      <>
-        <div>
-          <label className={labelCls}>Nhóm phân loại *</label>
-          <div className="space-y-2">
-            {entry.classification_groups.map((g, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={g}
-                  onChange={(e) => onChange((prev) => setGroupInForm(prev, i, e.target.value))}
-                  className={inputCls + " flex-1"}
-                  placeholder={`Nhóm ${i + 1}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => onChange((prev) => removeGroupFromForm(prev, i))}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => onChange(addGroupToForm)}
-              className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" /> Thêm nhóm
-            </button>
-          </div>
-        </div>
-        <div>
-          <label className={labelCls}>Items *</label>
-          <div className="space-y-2">
-            {entry.classification_items.map((it, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={it.item}
-                  onChange={(e) => onChange((prev) => setItemInForm(prev, i, "item", e.target.value))}
-                  className={`${inputBaseCls} flex-1 min-w-0`}
-                  placeholder="Tisch"
-                />
-                <select
-                  value={it.group}
-                  onChange={(e) => onChange((prev) => setItemInForm(prev, i, "group", e.target.value))}
-                  className={`${inputBaseCls} w-28 shrink-0`}
-                >
-                  <option value="">--</option>
-                  {entry.classification_groups.filter(Boolean).map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
+      <div>
+        <label className={labelCls}>Nhóm phân loại *</label>
+        <div className="space-y-3">
+          {entry.classification_groups.map((group, groupIndex) => {
+            const itemsInGroup = entry.classification_items
+              .map((it, i) => ({ ...it, originalIndex: i }))
+              .filter((it) => it.group === group);
+            return (
+              <div key={groupIndex} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={group}
+                    onChange={(e) => onChange((prev) => setGroupInForm(prev, groupIndex, e.target.value))}
+                    className={inputCls + " flex-1 font-bold"}
+                    placeholder={`Nhóm ${groupIndex + 1}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onChange((prev) => removeGroupFromForm(prev, groupIndex))}
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {itemsInGroup.map(({ item, originalIndex }) => (
+                    <div key={originalIndex} className="flex items-center gap-1 rounded-full border border-slate-200 bg-white pl-2.5 pr-1 py-1">
+                      <input
+                        type="text"
+                        value={item}
+                        onChange={(e) => onChange((prev) => setItemInForm(prev, originalIndex, "item", e.target.value))}
+                        className="w-20 text-xs focus:outline-none"
+                        placeholder="Tisch"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onChange((prev) => removeItemFromForm(prev, originalIndex))}
+                        className="p-0.5 rounded-full hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => onChange((prev) => removeItemFromForm(prev, i))}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange((prev) => addWordToGroup(prev, group))}
+                    disabled={!group.trim()}
+                    className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Thêm từ
+                  </button>
+                </div>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => onChange(addItemToForm)}
-              disabled={entry.classification_groups.filter(Boolean).length === 0}
-              className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-3.5 h-3.5" /> Thêm item
-            </button>
-          </div>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => onChange(addGroupToForm)}
+            className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Thêm nhóm
+          </button>
         </div>
-      </>
+      </div>
     )}
 
     <div>
