@@ -107,6 +107,11 @@ Ví dụ:
 - Cho phép bỏ qua bài tập chưa Pass.
 ---
 [Report] Thêm tính năng tạo Daily Progress Report
+
+**Phase A (backend) — [x] Đã xong (2026-08-07)**, xem [2026-08-07-daily-progress-report-backend-design.md](docs/superpowers/specs/2026-08-07-daily-progress-report-backend-design.md). Đã xong: migration `level_enrollments`/`daily_progress_reports`/`profiles.subscription_end_date` (RLS own-read-only, không lặp lại lỗi `grammar_attempts` cũ), edge function `daily-progress-report` (GET tính report tươi + upsert khi user mở Dashboard — đây là cơ chế "cập nhật khi hoàn thành lesson", không cần hook vào `grammar-submit`/`lesson-complete`; GET lịch sử; POST admin regenerate; POST batch cho cron), scheduled job qua `pg_cron`, wiring Admin tạo `level_enrollments` khi unlock level + field gói học (`is_premium`/`subscription_end_date`) trong Edit User modal. Bug tự phát hiện và sửa trước khi deploy: nhánh `mode="batch"` ban đầu không xác thực người gọi — đã sửa chỉ chấp nhận đúng `service_role` key. Gap phát hiện lúc brainstorm: schema gốc không có dữ liệu package/thời hạn level như spec giả định — đã bổ sung field còn thiếu (xem spec). 150/150 test pass, lint sạch — **chưa verify được qua HTTP thật** (sandbox không có `.env.local`/JWT thật), cần tự test theo Task 7 trong [plan](docs/superpowers/plans/2026-08-07-daily-progress-report-backend.md). **Cần thao tác thủ công**: tạo Vault secret `service_role_key` trên Supabase dashboard (SQL Editor) để cron job chạy được — không tự làm được vì không có quyền biết giá trị thật của `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Phase B (frontend) — [ ] Chưa làm**: hook `useDailyProgressReport` + component `DailyProgressReportCard` trên Learning Dashboard, cần API thật từ Phase A để test.
+
 ## Mục tiêu
 
 Thêm tính năng tự động tạo **Daily Progress Report** cho từng học viên, nhằm hiển thị tình trạng học tập mới nhất trong ngày và giúp học viên biết mình đang ở đâu trong lộ trình, có đang chậm tiến độ hay không và cần tiếp tục từ lesson nào.
