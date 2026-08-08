@@ -146,6 +146,7 @@ export const ExerciseAnswerInput: React.FC<{
   onMatch,
 }) => {
   const letter = numberLabel;
+  const [selectedClassificationItem, setSelectedClassificationItem] = useState<string | null>(null);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
@@ -228,23 +229,64 @@ export const ExerciseAnswerInput: React.FC<{
       {exercise.type === "classification" && (
         <>
           <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{letter}</span>
-          <div className="space-y-1.5">
-            {(exercise.classificationItems ?? []).map((item) => (
-              <div key={item} className="flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-800 flex-1">{item}</span>
-                <select
-                  value={itemGroups[item] ?? ""}
-                  onChange={(e) => onItemGroupChange(item, e.target.value)}
-                  className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          <div className="flex flex-wrap gap-1.5">
+            {(exercise.classificationItems ?? [])
+              .filter((item) => !itemGroups[item])
+              .map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setSelectedClassificationItem((prev) => (prev === item ? null : item))}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    selectedClassificationItem === item
+                      ? "bg-orange-50 border-orange-400 text-orange-700"
+                      : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
                 >
-                  <option value="">-- Chọn nhóm --</option>
-                  {(exercise.classificationGroups ?? []).map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  {item}
+                </button>
+              ))}
+            {(exercise.classificationItems ?? []).length > 0 &&
+              (exercise.classificationItems ?? []).every((item) => itemGroups[item]) && (
+                <span className="text-[11px] text-slate-400 italic">Đã xếp hết</span>
+              )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {(exercise.classificationGroups ?? []).map((group) => (
+              <button
+                key={group}
+                type="button"
+                onClick={() => {
+                  if (!selectedClassificationItem) return;
+                  onItemGroupChange(selectedClassificationItem, group);
+                  setSelectedClassificationItem(null);
+                }}
+                className={`rounded-lg border p-2 text-left transition-colors ${
+                  selectedClassificationItem ? "border-orange-300 bg-orange-50/40 animate-pulse" : "border-slate-200 bg-slate-50/50"
+                }`}
+              >
+                <span className="block text-xs font-bold text-slate-700 uppercase mb-1">{group}</span>
+                <div className="flex flex-wrap gap-1">
+                  {(exercise.classificationItems ?? [])
+                    .filter((item) => itemGroups[item] === group)
+                    .map((item) => (
+                      <span
+                        key={item}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedClassificationItem((prev) => (prev === item ? null : item));
+                        }}
+                        className={`px-2 py-1 rounded-md border text-xs cursor-pointer transition-colors ${
+                          selectedClassificationItem === item
+                            ? "bg-orange-50 border-orange-400 text-orange-700"
+                            : "bg-white border-slate-200 text-slate-700 hover:border-orange-300"
+                        }`}
+                      >
+                        {item}
+                      </span>
+                    ))}
+                </div>
+              </button>
             ))}
           </div>
         </>
@@ -414,31 +456,54 @@ export const ExerciseResultReview: React.FC<{
     )}
 
     {exercise.type === "classification" && (
-      <div className="mb-2 space-y-1">
-        {(exercise.classificationItems ?? []).map((item, itemIndex) => {
-          const userGroup = userGroups[item] ?? "—";
-          const correctGroup = revealed ? getCorrectGroups(exercise, correctAnswerRaw)[item] : undefined;
-          const isCorrect = classificationResults?.[itemIndex] ?? false;
+      <div className="mb-2 space-y-2">
+        {(exercise.classificationGroups ?? []).map((group) => {
+          const itemsInGroup = (exercise.classificationItems ?? []).filter((item) => userGroups[item] === group);
+          if (itemsInGroup.length === 0) return null;
           return (
-            <div key={item} className="flex items-center gap-2 text-xs">
-              <span className="flex-1 text-slate-700">{item}</span>
-              <span
-                className={`rounded-md border px-2 py-1 font-bold ${
-                  isCorrect
-                    ? "border-green-300 bg-green-50 text-green-700"
-                    : "border-slate-200 bg-slate-50 text-slate-600"
-                }`}
-              >
-                {userGroup}
-              </span>
-              {revealed && !isCorrect && correctGroup && (
-                <span className="rounded-md border border-green-300 bg-green-50 px-2 py-1 font-bold text-green-700">
-                  {correctGroup}
-                </span>
-              )}
+            <div key={group} className="rounded-lg border border-slate-200 bg-white p-2">
+              <span className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{group}</span>
+              <div className="flex flex-wrap gap-1.5">
+                {itemsInGroup.map((item) => {
+                  const itemIndex = (exercise.classificationItems ?? []).indexOf(item);
+                  const correctGroup = revealed ? getCorrectGroups(exercise, correctAnswerRaw)[item] : undefined;
+                  const isCorrect = classificationResults?.[itemIndex] ?? false;
+                  return (
+                    <span
+                      key={item}
+                      className={`rounded-md border px-2 py-1 text-xs font-bold ${
+                        isCorrect
+                          ? "border-green-300 bg-green-50 text-green-700"
+                          : "border-red-300 bg-red-50 text-red-700"
+                      }`}
+                    >
+                      {item}
+                      {revealed && !isCorrect && correctGroup && (
+                        <span className="ml-1 text-[10px] text-green-700">→ {correctGroup}</span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
+        {(() => {
+          const unanswered = (exercise.classificationItems ?? []).filter((item) => !userGroups[item]);
+          if (unanswered.length === 0) return null;
+          return (
+            <div className="rounded-lg border border-dashed border-slate-200 p-2">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Chưa trả lời</span>
+              <div className="flex flex-wrap gap-1.5">
+                {unanswered.map((item) => (
+                  <span key={item} className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     )}
 
