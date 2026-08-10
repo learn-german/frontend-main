@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Loader2, Trash2, Pencil, X, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Loader2, Trash2, Pencil, X, ChevronUp, Eye } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { showToast } from "../../lib/toast";
 import { LessonStatusBadge } from "../../components/DesignSystem";
@@ -25,6 +25,7 @@ import {
 } from "../../lib/readingExerciseForm";
 import { addOption, setOption, removeOption, optionLabel } from "../../lib/grammarMultipleChoice";
 import { uploadMedia } from "../../lib/uploadMedia";
+import { MarkdownBlock } from "../../components/MarkdownBlock";
 
 interface LessonGroup {
   lesson_id: string;
@@ -47,6 +48,52 @@ interface ReadingQuestionGroupRowData {
   explanation: string | null;
 }
 
+const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData; passageText: string; lessonId: string }> = ({ group, passageText, lessonId }) => {
+  const [picked, setPicked] = useState<Record<number, "richtig" | "falsch">>({});
+  const [chosenOption, setChosenOption] = useState<Record<number, number>>({});
+
+  return (
+    <div className="space-y-3">
+      {group.title && <p className="text-sm font-display font-bold text-slate-800">{group.title}</p>}
+      {group.question_intro && <p className="text-xs text-slate-500">{group.question_intro}</p>}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+        <MarkdownBlock content={passageText} lessonId={lessonId} />
+      </div>
+      {group.question_type === "richtig_falsch" && (group.statements ?? []).map((s, i) => (
+        <div key={i} className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl">
+          <span className="flex-1 text-sm text-slate-700">{s.text}</span>
+          {(["richtig", "falsch"] as const).map((val) => (
+            <button
+              key={val}
+              onClick={() => setPicked((prev) => ({ ...prev, [i]: val }))}
+              className={`px-2 py-1 text-[11px] font-bold rounded-lg border ${picked[i] === val ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-500 border-slate-200"}`}
+            >
+              {val === "richtig" ? "Richtig" : "Falsch"}
+            </button>
+          ))}
+        </div>
+      ))}
+      {group.question_type === "multiple_choice" && (group.sub_questions ?? []).map((q, qi) => (
+        <div key={qi} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+          {q.text_snippet && <p className="text-xs text-slate-500">{q.text_snippet}</p>}
+          <p className="text-sm font-medium text-slate-700">{q.question}</p>
+          <div className="space-y-1">
+            {q.options.map((opt, oi) => (
+              <button
+                key={oi}
+                onClick={() => setChosenOption((prev) => ({ ...prev, [qi]: oi }))}
+                className={`w-full text-left px-3 py-1.5 text-sm rounded-lg border ${chosenOption[qi] === oi ? "bg-orange-50 border-orange-400 text-orange-700" : "bg-white border-slate-200 text-slate-700"}`}
+              >
+                {optionLabel(oi)}. {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const AdminReadingExerciseSection: React.FC = () => {
   const [lessons, setLessons] = useState<LessonGroup[]>([]);
   const [passages, setPassages] = useState<ReadingPassage[]>([]);
@@ -68,6 +115,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [deletingGroup, setDeletingGroup] = useState(false);
   const [modalLessonId, setModalLessonId] = useState("");
   const [subQuestionUploadId, setSubQuestionUploadId] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<ReadingQuestionGroupRowData | null>(null);
 
   const docSets = sets.filter((s) => s.category === "doc");
 
@@ -268,6 +316,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                               </div>
                               <span className="text-xs font-bold text-slate-400 w-6">{i + 1}</span>
                               <span className="text-sm text-slate-700 flex-1 truncate">{group.title || (group.question_type === "richtig_falsch" ? "Richtig/Falsch" : "Trắc nghiệm")}</span>
+                              <button onClick={() => setPreviewTarget(group)} className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600"><Eye className="w-3.5 h-3.5" /></button>
                               <button onClick={() => openEditGroup(group, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600"><Pencil className="w-3.5 h-3.5" /></button>
                               <button onClick={() => setDeleteGroupTarget(group)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
@@ -490,6 +539,22 @@ export const AdminReadingExerciseSection: React.FC = () => {
                 {deletingGroup ? "Đang xóa..." : "Xóa"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-5 max-w-xl w-full my-8 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-display font-bold text-slate-800">Xem trước</h3>
+              <button onClick={() => setPreviewTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
+            </div>
+            <ReadingGroupPreview
+              group={previewTarget}
+              passageText={passages.find((p) => p.id === previewTarget.passage_id)?.text_de ?? ""}
+              lessonId={passages.find((p) => p.id === previewTarget.passage_id)?.lesson_id ?? ""}
+            />
           </div>
         </div>
       )}
