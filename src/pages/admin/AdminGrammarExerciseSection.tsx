@@ -9,7 +9,7 @@ import { showToast } from "../../lib/toast";
 import { uploadMedia } from "../../lib/uploadMedia";
 import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
 import { useExerciseSets, type ExerciseSet } from "../../lib/hooks/useExerciseSets";
-import { type ListeningClip, type ReadingPassage, ClipRow, PassageEditRow } from "./AdminExerciseSetMedia";
+import { type ListeningClip, ClipRow } from "./AdminExerciseSetMedia";
 import {
   GRAMMAR_EXERCISE_HINT_MAX_LENGTH,
   normalizeGrammarHint,
@@ -804,7 +804,7 @@ export const ExerciseEntryFields: React.FC<{
 };
 
 export const AdminGrammarExerciseSection: React.FC<{
-  category: "nguphap" | "nghe" | "doc";
+  category: "nguphap" | "nghe";
 }> = ({ category }) => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -837,23 +837,16 @@ export const AdminGrammarExerciseSection: React.FC<{
   const [previewTarget, setPreviewTarget] = useState<GrammarExercise | null>(null);
 
   const [clips, setClips] = useState<ListeningClip[]>([]);
-  const [passages, setPassages] = useState<ReadingPassage[]>([]);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
-  const [savingPassageId, setSavingPassageId] = useState<string | null>(null);
   const [deleteClipTarget, setDeleteClipTarget] = useState<ListeningClip | null>(null);
   const [deletingClip, setDeletingClip] = useState(false);
-  const [deletePassageTarget, setDeletePassageTarget] = useState<ReadingPassage | null>(null);
-  const [deletingPassage, setDeletingPassage] = useState(false);
   const [mediaId, setMediaId] = useState<string | null>(null);
 
   const fetchMedia = async () => {
     if (category === "nghe") {
       const { data } = await supabase.from("listening_clips").select("*").order("lesson_id").order("order_index");
       setClips((data ?? []) as ListeningClip[]);
-    } else if (category === "doc") {
-      const { data } = await supabase.from("reading_passages").select("*").order("lesson_id").order("order_index");
-      setPassages((data ?? []) as ReadingPassage[]);
     }
   };
 
@@ -893,44 +886,6 @@ export const AdminGrammarExerciseSection: React.FC<{
     } else {
       showToast("Đã xóa file mp3.", "success");
       setDeleteClipTarget(null);
-      fetchMedia();
-    }
-  };
-
-  const handleAddPassage = async (lessonId: string) => {
-    const nextOrder = passages.filter((p) => p.lesson_id === lessonId).length;
-    const { error } = await supabase
-      .from("reading_passages")
-      .insert({ lesson_id: lessonId, text_de: "", order_index: nextOrder });
-    if (error) {
-      showToast("Thêm đoạn văn thất bại: " + error.message, "warning");
-    } else {
-      fetchMedia();
-    }
-  };
-
-  const handleSavePassage = async (passageId: string, textDe: string) => {
-    setSavingPassageId(passageId);
-    const { error } = await supabase.from("reading_passages").update({ text_de: textDe }).eq("id", passageId);
-    setSavingPassageId(null);
-    if (error) {
-      showToast("Lưu thất bại: " + error.message, "warning");
-    } else {
-      showToast("Đã lưu đoạn văn.", "success");
-      fetchMedia();
-    }
-  };
-
-  const handleDeletePassage = async () => {
-    if (!deletePassageTarget) return;
-    setDeletingPassage(true);
-    const { error } = await supabase.from("reading_passages").delete().eq("id", deletePassageTarget.id);
-    setDeletingPassage(false);
-    if (error) {
-      showToast("Xóa thất bại: " + error.message, "warning");
-    } else {
-      showToast("Đã xóa đoạn văn.", "success");
-      setDeletePassageTarget(null);
       fetchMedia();
     }
   };
@@ -1075,11 +1030,8 @@ export const AdminGrammarExerciseSection: React.FC<{
     setEntries((prev) => prev.map((e, i) => (i === idx ? updater(e) : e)));
 
   const handleSave = async () => {
-    if (category !== "nguphap" && modalMode === "create-group" && !mediaId) {
-      showToast(
-        category === "nghe" ? "Chưa chọn file mp3 cho bộ bài tập mới." : "Chưa chọn đoạn văn cho bộ bài tập mới.",
-        "warning",
-      );
+    if (category === "nghe" && modalMode === "create-group" && !mediaId) {
+      showToast("Chưa chọn file mp3 cho bộ bài tập mới.", "warning");
       return;
     }
 
@@ -1130,9 +1082,7 @@ export const AdminGrammarExerciseSection: React.FC<{
       const mediaFields =
         category === "nghe"
           ? { audio_clip_id: mediaId, reading_passage_id: null }
-          : category === "doc"
-            ? { audio_clip_id: null, reading_passage_id: mediaId }
-            : { audio_clip_id: null, reading_passage_id: null };
+          : { audio_clip_id: null, reading_passage_id: null };
       if (setResult.error || !setResult.data) {
         error = { message: setResult.error ?? "Không tạo được bài tập mới." };
       } else {
@@ -1407,28 +1357,6 @@ export const AdminGrammarExerciseSection: React.FC<{
                       </div>
                     )}
 
-                    {category === "doc" && (
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => handleAddPassage(group.lesson_id)}
-                          className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-50 transition-colors w-fit"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Thêm đoạn văn
-                        </button>
-                        {passages.filter((p) => p.lesson_id === group.lesson_id).map((passage, idx) => (
-                          <PassageEditRow
-                            key={passage.id}
-                            passage={passage}
-                            lessonId={group.lesson_id}
-                            index={idx}
-                            saving={savingPassageId === passage.id}
-                            onSave={handleSavePassage}
-                            onDelete={setDeletePassageTarget}
-                          />
-                        ))}
-                      </div>
-                    )}
-
                     {group.exercises.length === 0 ? (
                       <p className="text-center py-6 text-slate-400 text-sm">Chưa có bài tập nào cho bài học này.</p>
                     ) : (
@@ -1485,25 +1413,16 @@ export const AdminGrammarExerciseSection: React.FC<{
               </button>
             </div>
 
-            {category !== "nguphap" && modalMode === "create-group" && (
+            {category === "nghe" && modalMode === "create-group" && (
               <div>
-                <label className={labelCls}>{category === "nghe" ? "Chọn file mp3 cho bộ bài tập mới" : "Chọn đoạn văn cho bộ bài tập mới"} *</label>
-                {category === "nghe" ? (
-                  <select value={mediaId ?? ""} onChange={(e) => setMediaId(e.target.value || null)} className={inputCls}>
-                    <option value="">-- Chọn file mp3 --</option>
-                    {clips.filter((c) => c.lesson_id === editLessonId).map((c, i) => (
-                      <option key={c.id} value={c.id}>File {i + 1}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <select value={mediaId ?? ""} onChange={(e) => setMediaId(e.target.value || null)} className={inputCls}>
-                    <option value="">-- Chọn đoạn văn --</option>
-                    {passages.filter((p) => p.lesson_id === editLessonId).map((p, i) => (
-                      <option key={p.id} value={p.id}>Đoạn {i + 1}{p.text_de ? `: ${p.text_de.slice(0, 30)}...` : ""}</option>
-                    ))}
-                  </select>
-                )}
-                <p className="text-[10px] text-slate-400 mt-1">Chưa có file/đoạn văn? Đóng modal này, thêm ở khu vực phía trên trước.</p>
+                <label className={labelCls}>Chọn file mp3 cho bộ bài tập mới *</label>
+                <select value={mediaId ?? ""} onChange={(e) => setMediaId(e.target.value || null)} className={inputCls}>
+                  <option value="">-- Chọn file mp3 --</option>
+                  {clips.filter((c) => c.lesson_id === editLessonId).map((c, i) => (
+                    <option key={c.id} value={c.id}>File {i + 1}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">Chưa có file? Đóng modal này, thêm ở khu vực phía trên trước.</p>
               </div>
             )}
 
@@ -1661,21 +1580,6 @@ export const AdminGrammarExerciseSection: React.FC<{
               <Button variant="secondary" className="flex-1" onClick={() => setDeleteClipTarget(null)}>Hủy</Button>
               <Button variant="primary" className="flex-1 bg-red-500 hover:bg-red-600" onClick={handleDeleteClip} disabled={deletingClip}>
                 {deletingClip ? "Đang xóa..." : "Xóa"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deletePassageTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h3 className="font-display font-bold text-slate-900">Xóa đoạn văn?</h3>
-            <p className="text-sm text-slate-500">Các câu hỏi đang gắn với đoạn văn này sẽ mất ngữ cảnh.</p>
-            <div className="flex gap-3">
-              <Button variant="secondary" className="flex-1" onClick={() => setDeletePassageTarget(null)}>Hủy</Button>
-              <Button variant="primary" className="flex-1 bg-red-500 hover:bg-red-600" onClick={handleDeletePassage} disabled={deletingPassage}>
-                {deletingPassage ? "Đang xóa..." : "Xóa"}
               </Button>
             </div>
           </div>
