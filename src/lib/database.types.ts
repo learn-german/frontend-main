@@ -952,6 +952,50 @@ export type Database = {
           },
         ]
       }
+      reading_question_groups_public: {
+        Row: {
+          id: string | null
+          lesson_id: string | null
+          order_index: number | null
+          passage_id: string | null
+          question_intro: string | null
+          question_type: string | null
+          set_id: string | null
+          statements: Json | null
+          sub_questions: Json | null
+          title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_sets_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_sets_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reading_question_groups_passage_id_fkey"
+            columns: ["passage_id"]
+            isOneToOne: false
+            referencedRelation: "reading_passages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reading_question_groups_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       increment_xp: {
