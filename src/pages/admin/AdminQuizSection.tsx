@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { AdminGrammarExerciseSection } from "./AdminGrammarExerciseSection";
+import { AdminReadingExerciseSection } from "./AdminReadingExerciseSection";
 
 export const AdminQuizSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"nguphap" | "nghe" | "doc">("nguphap");
@@ -20,7 +21,7 @@ export const AdminQuizSection: React.FC = () => {
         ))}
       </div>
 
-      <AdminGrammarExerciseSection category={activeTab} />
+      {activeTab === "doc" ? <AdminReadingExerciseSection /> : <AdminGrammarExerciseSection category={activeTab} />}
     </div>
   );
 };
