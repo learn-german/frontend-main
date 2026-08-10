@@ -1419,6 +1419,7 @@ export const AdminGrammarExerciseSection: React.FC<{
                           <PassageEditRow
                             key={passage.id}
                             passage={passage}
+                            lessonId={group.lesson_id}
                             index={idx}
                             saving={savingPassageId === passage.id}
                             onSave={handleSavePassage}
