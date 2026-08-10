@@ -210,17 +210,19 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
             </span>
           )}
         </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddChildren(exerciseGroup, groupIndex);
-          }}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-600 hover:bg-orange-50 disabled:opacity-40"
-        >
-          <Plus className="h-3.5 w-3.5" /> Thêm câu
-        </button>
+        {exerciseGroup.type !== "classification" && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddChildren(exerciseGroup, groupIndex);
+            }}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-600 hover:bg-orange-50 disabled:opacity-40"
+          >
+            <Plus className="h-3.5 w-3.5" /> Thêm câu
+          </button>
+        )}
       </div>
       {isExpanded && (
         <div className="divide-y divide-slate-100">
@@ -1621,7 +1623,7 @@ export const AdminGrammarExerciseSection: React.FC<{
               </div>
             ))}
 
-            {modalMode !== "edit" && (
+            {modalMode !== "edit" && entries[0]?.type !== "classification" && (
               <button
                 onClick={addEntry}
                 className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1.5 rounded-lg hover:bg-orange-50 transition-colors"
