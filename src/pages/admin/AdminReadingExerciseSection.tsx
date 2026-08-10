@@ -16,8 +16,15 @@ import {
   setStatementText,
   setStatementAnswer,
   moveStatement,
+  addSubQuestion,
+  removeSubQuestion,
+  setSubQuestionField,
+  setSubQuestionOptions,
+  moveSubQuestion,
   type ReadingQuestionGroupForm,
 } from "../../lib/readingExerciseForm";
+import { addOption, setOption, removeOption, optionLabel } from "../../lib/grammarMultipleChoice";
+import { uploadMedia } from "../../lib/uploadMedia";
 
 interface LessonGroup {
   lesson_id: string;
@@ -59,6 +66,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleteGroupTarget, setDeleteGroupTarget] = useState<ReadingQuestionGroupRowData | null>(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
+  const [modalLessonId, setModalLessonId] = useState("");
+  const [subQuestionUploadId, setSubQuestionUploadId] = useState<string | null>(null);
 
   const docSets = sets.filter((s) => s.category === "doc");
 
@@ -107,18 +116,32 @@ export const AdminReadingExerciseSection: React.FC = () => {
     else { showToast("Đã xóa văn bản (mọi nhóm câu hỏi gắn theo cũng bị xoá).", "success"); setDeletePassageTarget(null); fetchAll(); }
   };
 
-  const openCreateGroup = (setId: string) => {
+  const openCreateGroup = (setId: string, lessonId: string) => {
     setEditingId(null);
     setEditingSetId(setId);
+    setModalLessonId(lessonId);
     setForm(createEmptyReadingForm());
     setModalOpen(true);
   };
 
-  const openEditGroup = (group: ReadingQuestionGroupRowData) => {
+  const openEditGroup = (group: ReadingQuestionGroupRowData, lessonId: string) => {
     setEditingId(group.id);
     setEditingSetId(group.set_id);
+    setModalLessonId(lessonId);
     setForm(parseReadingRow(group));
     setModalOpen(true);
+  };
+
+  const handleSubQuestionImageUpload = async (lessonId: string, subQuestionId: string, file: File) => {
+    setSubQuestionUploadId(subQuestionId);
+    try {
+      const objectKey = await uploadMedia(file, lessonId, "image", () => {});
+      setForm((prev) => setSubQuestionField(prev, subQuestionId, "imageKey", objectKey));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Tải ảnh lên thất bại", "warning");
+    } finally {
+      setSubQuestionUploadId(null);
+    }
   };
 
   const handleSaveGroup = async () => {
@@ -152,7 +175,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const handleCreateSet = async (lessonId: string, nextOrder: number) => {
     const { data, error } = await createSet(lessonId, "doc", nextOrder);
     if (error || !data) { showToast("Tạo nhóm bài thất bại: " + error, "warning"); return; }
-    openCreateGroup(data.id);
+    openCreateGroup(data.id, lessonId);
   };
 
   const handleMoveGroup = async (setId: string, index: number, direction: -1 | 1) => {
@@ -232,7 +255,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                           <span role="button" onClick={() => toggleSetStatus(set.id, set.status)}>
                             <LessonStatusBadge status={set.status} />
                           </span>
-                          <button type="button" onClick={() => openCreateGroup(set.id)} className="ml-auto flex items-center gap-1 text-xs font-bold text-orange-600 hover:bg-orange-50 px-2 py-1 rounded-lg">
+                          <button type="button" onClick={() => openCreateGroup(set.id, lesson.lesson_id)} className="ml-auto flex items-center gap-1 text-xs font-bold text-orange-600 hover:bg-orange-50 px-2 py-1 rounded-lg">
                             <Plus className="w-3.5 h-3.5" /> Thêm nhóm câu hỏi
                           </button>
                         </div>
@@ -245,7 +268,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                               </div>
                               <span className="text-xs font-bold text-slate-400 w-6">{i + 1}</span>
                               <span className="text-sm text-slate-700 flex-1 truncate">{group.title || (group.question_type === "richtig_falsch" ? "Richtig/Falsch" : "Trắc nghiệm")}</span>
-                              <button onClick={() => openEditGroup(group)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600"><Pencil className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => openEditGroup(group, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600"><Pencil className="w-3.5 h-3.5" /></button>
                               <button onClick={() => setDeleteGroupTarget(group)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                           ))}
@@ -357,6 +380,87 @@ export const AdminReadingExerciseSection: React.FC = () => {
                 ))}
                 <button type="button" onClick={() => setForm((prev) => addStatement(prev))} className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700">
                   <Plus className="w-3.5 h-3.5" /> Thêm nhận định
+                </button>
+              </div>
+            )}
+
+            {form.questionType === "multiple_choice" && (
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-500">Câu hỏi *</label>
+                {form.subQuestions.map((q, qi) => (
+                  <div key={q.id} className="p-3 bg-slate-50/60 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-400">Câu {qi + 1}</span>
+                      <div className="flex items-center gap-1">
+                        <button type="button" disabled={qi === 0} onClick={() => setForm((prev) => moveSubQuestion(prev, qi, qi - 1))} className="p-1 text-slate-300 hover:text-slate-600 disabled:opacity-20" aria-label="Đưa câu hỏi lên trên"><ChevronUp className="w-3.5 h-3.5" /></button>
+                        <button type="button" disabled={qi === form.subQuestions.length - 1} onClick={() => setForm((prev) => moveSubQuestion(prev, qi, qi + 1))} className="p-1 text-slate-300 hover:text-slate-600 disabled:opacity-20" aria-label="Đưa câu hỏi xuống dưới"><ChevronDown className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setForm((prev) => removeSubQuestion(prev, q.id))} className="p-1 text-slate-300 hover:text-rose-500"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={q.textSnippet}
+                      onChange={(e) => setForm((prev) => setSubQuestionField(prev, q.id, "textSnippet", e.target.value))}
+                      placeholder="Văn bản ngắn (tuỳ chọn)..."
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl resize-none"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2 py-1 cursor-pointer hover:bg-slate-50">
+                        {subQuestionUploadId === q.id ? "Đang tải..." : "Thêm ảnh"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          disabled={subQuestionUploadId !== null}
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubQuestionImageUpload(modalLessonId, q.id, f); e.target.value = ""; }}
+                        />
+                      </label>
+                      {q.imageKey && <span className="text-[11px] text-emerald-600">Đã có ảnh</span>}
+                    </div>
+                    <input
+                      type="text"
+                      value={q.question}
+                      onChange={(e) => setForm((prev) => setSubQuestionField(prev, q.id, "question", e.target.value))}
+                      placeholder="Câu hỏi..."
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl"
+                    />
+                    <div className="space-y-1.5">
+                      {q.options.map((opt, oi) => (
+                        <div key={oi} className="flex items-center gap-2">
+                          <span className="w-5 text-center text-xs font-display font-bold text-slate-400">{optionLabel(oi)}</span>
+                          <input
+                            type="radio"
+                            checked={q.correctIndex === oi}
+                            onChange={() => setForm((prev) => setSubQuestionOptions(prev, q.id, { options: q.options, correctIndex: oi }))}
+                            className="h-4 w-4 accent-orange-500"
+                          />
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => setForm((prev) => setSubQuestionOptions(prev, q.id, setOption({ options: q.options, correctIndex: q.correctIndex }, oi, e.target.value)))}
+                            className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+                            placeholder={`Phương án ${optionLabel(oi)}`}
+                          />
+                          <button
+                            onClick={() => setForm((prev) => setSubQuestionOptions(prev, q.id, removeOption({ options: q.options, correctIndex: q.correctIndex }, oi)))}
+                            className="p-1 text-slate-300 hover:text-rose-500"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => setSubQuestionOptions(prev, q.id, addOption({ options: q.options, correctIndex: q.correctIndex })))}
+                        className="text-xs font-bold text-orange-600 hover:text-orange-700"
+                      >
+                        + Thêm phương án
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setForm((prev) => addSubQuestion(prev))} className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700">
+                  <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
                 </button>
               </div>
             )}
