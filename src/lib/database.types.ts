@@ -718,6 +718,60 @@ export type Database = {
           },
         ]
       }
+      reading_question_groups: {
+        Row: {
+          explanation: string | null
+          id: string
+          order_index: number
+          passage_id: string
+          question_intro: string | null
+          question_type: string
+          set_id: string
+          statements: Json | null
+          sub_questions: Json | null
+          title: string | null
+        }
+        Insert: {
+          explanation?: string | null
+          id?: string
+          order_index?: number
+          passage_id: string
+          question_intro?: string | null
+          question_type: string
+          set_id: string
+          statements?: Json | null
+          sub_questions?: Json | null
+          title?: string | null
+        }
+        Update: {
+          explanation?: string | null
+          id?: string
+          order_index?: number
+          passage_id?: string
+          question_intro?: string | null
+          question_type?: string
+          set_id?: string
+          statements?: Json | null
+          sub_questions?: Json | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_question_groups_passage_id_fkey"
+            columns: ["passage_id"]
+            isOneToOne: false
+            referencedRelation: "reading_passages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reading_question_groups_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_stats: {
         Row: {
           last_activity_date: string | null
