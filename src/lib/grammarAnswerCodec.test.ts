@@ -65,6 +65,19 @@ test("fill_in_the_blank: thiếu một blank thì serialize ra chuỗi rỗng", 
   assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["ein", "  "] }), "");
 });
 
+test("fill_in_the_blank: partial=true giữ lại ô đã điền dở (draft autosave)", () => {
+  const ex = base({ type: "fill_in_the_blank", promptText: "Das ist ___ Tisch und ___ Lampe." });
+  assert.equal(
+    serializeAnswer(ex, { kind: "blanks", values: ["ein", "  "] }, { partial: true }),
+    JSON.stringify(["ein", "  "]),
+  );
+});
+
+test("fill_in_the_blank: partial=true nhưng chưa điền gì thì vẫn trả rỗng", () => {
+  const ex = base({ type: "fill_in_the_blank", promptText: "Das ist ___ Tisch und ___ Lampe." });
+  assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["", "  "] }, { partial: true }), "");
+});
+
 test("fill_in_the_blank: JSON hỏng parse ra mảng rỗng đúng số blank", () => {
   const ex = base({ type: "fill_in_the_blank", promptText: "Das ist ___ Tisch und ___ Lampe." });
   assert.deepEqual(parseAnswer(ex, "{not json"), { kind: "blanks", values: ["", ""] });
@@ -101,6 +114,34 @@ test("classification: thiếu một item thì serialize ra chuỗi rỗng", () =
     classificationGroups: ["maskulin", "feminin"],
   });
   assert.equal(serializeAnswer(ex, { kind: "groups", values: { "der Tisch": "maskulin" } }), "");
+});
+
+test("classification: partial=true giữ lại item đã xếp dở thay vì trả rỗng (draft autosave)", () => {
+  const ex = base({
+    type: "classification",
+    classificationItems: ["der Tisch", "die Lampe"],
+    classificationGroups: ["maskulin", "feminin"],
+  });
+  const serialized = serializeAnswer(
+    ex,
+    { kind: "groups", values: { "der Tisch": "maskulin" } },
+    { partial: true },
+  );
+  assert.equal(serialized, "der Tisch:maskulin");
+  // Round-trip: item xếp dở phải đọc lại được, không mất khi hydrate draft.
+  assert.deepEqual(parseAnswer(ex, serialized), {
+    kind: "groups",
+    values: { "der Tisch": "maskulin" },
+  });
+});
+
+test("classification: partial=true nhưng chưa xếp gì thì vẫn trả rỗng", () => {
+  const ex = base({
+    type: "classification",
+    classificationItems: ["der Tisch", "die Lampe"],
+    classificationGroups: ["maskulin", "feminin"],
+  });
+  assert.equal(serializeAnswer(ex, { kind: "groups", values: {} }, { partial: true }), "");
 });
 
 test("classification: chuỗi hỏng parse ra map rỗng thay vì crash", () => {
@@ -230,6 +271,11 @@ test("text_fill_blank: thiếu 1 ô thì serialize ra chuỗi rỗng", () => {
   assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["bin", "  "] }), "");
 });
 
+test("text_fill_blank: partial=true nhưng chưa điền gì thì vẫn trả rỗng", () => {
+  const ex = textFillBlank();
+  assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["", ""] }, { partial: true }), "");
+});
+
 test("matching: round-trip qua serializeMatching/parseMatching", () => {
   const ex = matching();
   const raw = "der Tisch:cái bàn|die Lampe:cái đèn";
@@ -243,6 +289,29 @@ test("matching: round-trip qua serializeMatching/parseMatching", () => {
 test("matching: chưa ghép hết cặp thì serialize ra chuỗi rỗng", () => {
   const ex = matching();
   assert.equal(serializeAnswer(ex, { kind: "matching", values: { "der Tisch": "cái bàn" } }), "");
+});
+
+test("matching: partial=true giữ lại cặp đã ghép dở (draft autosave)", () => {
+  const ex = matching();
+  const serialized = serializeAnswer(
+    ex,
+    { kind: "matching", values: { "der Tisch": "cái bàn" } },
+    { partial: true },
+  );
+  assert.equal(serialized, "der Tisch:cái bàn");
+});
+
+test("matching: partial=true nhưng chưa ghép gì thì vẫn trả rỗng", () => {
+  const ex = matching();
+  assert.equal(serializeAnswer(ex, { kind: "matching", values: {} }, { partial: true }), "");
+});
+
+test("text_fill_blank: partial=true giữ lại ô đã điền dở (draft autosave)", () => {
+  const ex = textFillBlank();
+  assert.equal(
+    serializeAnswer(ex, { kind: "blanks", values: ["bin", ""] }, { partial: true }),
+    "bin|",
+  );
 });
 
 test("emptyAnswer: text_fill_blank và matching", () => {

@@ -203,6 +203,14 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   const getAnswerStringFor = (exercise: GrammarExercise): string =>
     serializeAnswer(exercise, getParsedAnswerFor(exercise));
 
+  // Draft autosave dùng bản "partial": không đòi hỏi xếp/điền xong hết mới
+  // lưu, khác với getAnswerStringFor (dùng khi nộp bài, đòi hỏi đủ để chấm
+  // điểm đúng). Thiếu bản riêng này thì mỗi lần autosave chạy trước khi làm
+  // xong classification/matching/fill_in_the_blank sẽ ghi đè draft bằng "",
+  // xoá mất tiến độ đang làm dở của học viên.
+  const getDraftAnswerStringFor = (exercise: GrammarExercise): string =>
+    serializeAnswer(exercise, getParsedAnswerFor(exercise), { partial: true });
+
   /** Text-typed submitted answer for the results card, read from the one
    * snapshot shared by the live-submit and hydrate-after-refresh paths. */
   const getSubmittedTextFor = (exercise: GrammarExercise): string => {
@@ -217,12 +225,15 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   const collectAllAnswers = (): Record<string, string> =>
     Object.fromEntries(exercises.map((exercise) => [exercise.id, getAnswerStringFor(exercise)]));
 
+  const collectDraftAnswers = (): Record<string, string> =>
+    Object.fromEntries(exercises.map((exercise) => [exercise.id, getDraftAnswerStringFor(exercise)]));
+
   // Autosave draft debounce — chỉ chạy khi chưa có kết quả (chưa nộp/chưa
   // hydrate từ attempt), tránh ghi đè draft sau khi đã nộp bài xong.
   React.useEffect(() => {
     if (result !== null || exercises.length === 0) return;
     const timer = setTimeout(() => {
-      saveDraft(collectAllAnswers()).then(({ error }) => {
+      saveDraft(collectDraftAnswers()).then(({ error }) => {
         if (!error) onDraftSaved?.(true);
       });
     }, 1000);

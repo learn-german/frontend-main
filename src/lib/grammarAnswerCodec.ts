@@ -27,12 +27,25 @@ export function emptyAnswer(exercise: GrammarExercise): ParsedAnswer {
   return { kind: "text", value: "" };
 }
 
-export function serializeAnswer(exercise: GrammarExercise, answer: ParsedAnswer): string {
+/**
+ * `partial: true` (draft autosave) chỉ bỏ điều kiện "phải xong hết mới lưu" —
+ * dùng cho classification/matching/blanks, nơi mặc định (submit) yêu cầu đủ
+ * mới serialize ra khác rỗng. Thiếu cờ này thì draft ghi đè "" lên tiến độ
+ * đang làm dở mỗi lần autosave chạy trước khi học viên xếp/điền xong toàn bộ.
+ */
+export function serializeAnswer(
+  exercise: GrammarExercise,
+  answer: ParsedAnswer,
+  opts?: { partial?: boolean },
+): string {
+  const partial = opts?.partial ?? false;
+
   if (exercise.type === "fill_in_the_blank") {
     if (answer.kind !== "blanks") return "";
     const blankCount = countBlankMarkers(exercise.promptText ?? "");
     if (blankCount === 0 || answer.values.length !== blankCount) return "";
-    if (answer.values.some((value) => !value.trim())) return "";
+    if (!partial && answer.values.some((value) => !value.trim())) return "";
+    if (partial && answer.values.every((value) => !value.trim())) return "";
     return JSON.stringify(answer.values);
   }
 
@@ -44,22 +57,28 @@ export function serializeAnswer(exercise: GrammarExercise, answer: ParsedAnswer)
   if (exercise.type === "classification") {
     if (answer.kind !== "groups") return "";
     const items = exercise.classificationItems ?? [];
-    if (items.length === 0 || items.some((item) => !answer.values[item])) return "";
-    return items.map((item) => `${item}:${answer.values[item]}`).join("|");
+    if (items.length === 0) return "";
+    if (!partial && items.some((item) => !answer.values[item])) return "";
+    const assigned = items.filter((item) => answer.values[item]);
+    if (assigned.length === 0) return "";
+    return assigned.map((item) => `${item}:${answer.values[item]}`).join("|");
   }
 
   if (exercise.type === "text_fill_blank") {
     if (answer.kind !== "blanks") return "";
     const blankCount = countBlankTokens(exercise.promptText ?? "");
     if (blankCount === 0 || answer.values.length !== blankCount) return "";
-    if (answer.values.some((value) => !value.trim())) return "";
+    if (!partial && answer.values.some((value) => !value.trim())) return "";
+    if (partial && answer.values.every((value) => !value.trim())) return "";
     return joinBlankAnswers(answer.values);
   }
 
   if (exercise.type === "matching") {
     if (answer.kind !== "matching") return "";
     const total = exercise.matchingPairs?.length ?? 0;
-    if (total === 0 || Object.keys(answer.values).length < total) return "";
+    if (total === 0) return "";
+    if (!partial && Object.keys(answer.values).length < total) return "";
+    if (Object.keys(answer.values).length === 0) return "";
     return serializeMatching(answer.values);
   }
 

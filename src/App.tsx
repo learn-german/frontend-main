@@ -426,6 +426,7 @@ export default function App() {
       <AnimatePresence>
         {activeToast && (
           <motion.div
+            key={activeToast.id}
             id="app-toast-container"
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
