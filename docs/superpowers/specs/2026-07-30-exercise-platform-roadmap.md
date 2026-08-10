@@ -249,6 +249,31 @@ Vì sao để cuối: `actual_progress` đếm lesson bắt buộc đã hoàn th
 "hoàn thành" bị Phase 2–4 thay đổi (pass 80% mới tính). Làm 5b trước Phase 2 thì
 công thức sai ngay sau đó.
 
+## Phase 6 — Bài đọc phong phú (thay thế "Đọc" hiện tại)
+
+**Nguồn:** yêu cầu 2026-08-10, brainstorm riêng (không nằm trong `requirement.md` gốc
+của roadmap này). Thêm vào đây để giữ một nơi duy nhất theo dõi thứ tự phase.
+
+Tách làm hai spec độc lập, không gộp:
+
+- **Phase 6a — Admin tạo/sửa bài đọc.** Bảng mới `reading_exercises` (không mở
+  rộng `grammar_exercises` — cấu trúc lồng nhau statements/sub_questions không
+  hợp với shape phẳng hiện có), vẫn gắn `exercise_sets` để tái dùng draft/publish +
+  sắp xếp. 4 loại văn bản (`plain_text`, `message_text`, `short_notice`,
+  `multi_text`) × 2 dạng câu hỏi (`richtig_falsch`, `multiple_choice`) phối tự do.
+  Tab "Đọc" trong Admin chuyển hẳn sang UI mới; dữ liệu "Đọc" kiểu cũ
+  (`grammar_exercises` category `doc`) **xoá bỏ**, không cần migrate — theo đúng
+  giả định nền "chưa có người dùng thật" ở đầu roadmap này. Preview mô phỏng
+  tương tác học viên, chưa cần trang học viên thật.
+- **Phase 6b — Học viên làm bài + chấm điểm.** `grammar-submit` hiện gắn chặt vào
+  bảng `grammar_exercises` (query cứng tên bảng, rollup dựa trên
+  `grammar_exercises` không rỗng) — cần tách phần chấm điểm để nhánh sang
+  `reading_exercises` khi `category = doc`, hoặc Edge Function riêng tái dùng
+  `exercise_set_attempts`/XP/rollup. Chốt cách tiếp cận khi viết spec phase này.
+
+Rủi ro cần canh ở 6b: đụng đúng vùng logic rollup lesson/XP/idempotency đang chạy
+ổn cho Ngữ pháp — không được phá khi thêm nhánh category doc.
+
 ## Ngoài phạm vi toàn bộ roadmap
 
 - Thay đổi nội dung câu hỏi, đáp án hoặc giải thích do admin đã tạo.
