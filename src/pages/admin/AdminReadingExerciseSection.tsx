@@ -518,7 +518,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                 <div key={i} className="flex items-center gap-3 px-3 py-2.5">
                                                   <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
                                                   <span className="text-sm text-slate-700 flex-1 truncate">{i + 1}. {q.question}</span>
-                                                  <span className="text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">Một đáp án</span>
+                                                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0">
+                                                    Đáp án: {optionLabel(Number(q.correct_option_id))}
+                                                  </span>
                                                   <button onClick={() => openEditItem(group, i, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => setDeleteItemTarget({ group, index: i })} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
