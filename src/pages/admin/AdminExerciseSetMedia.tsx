@@ -18,6 +18,7 @@ export interface ListeningClip {
 export interface ReadingPassage {
   id: string;
   lesson_id: string;
+  set_id: string | null;
   text_de: string;
   order_index: number;
 }
