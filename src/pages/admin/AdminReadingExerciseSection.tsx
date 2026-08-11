@@ -56,7 +56,7 @@ const QUESTION_TYPE_LABEL: Record<ReadingQuestionType, string> = {
   multiple_choice: "Trắc nghiệm",
 };
 
-const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData; passageText: string; lessonId: string }> = ({ group, passageText, lessonId }) => {
+const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({ group }) => {
   const [picked, setPicked] = useState<Record<number, "richtig" | "falsch">>({});
   const [chosenOption, setChosenOption] = useState<Record<number, number>>({});
 
@@ -64,9 +64,6 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData; passag
     <div className="space-y-3">
       {group.title && <p className="text-sm font-display font-bold text-slate-800">{group.title}</p>}
       {group.question_intro && <p className="text-xs text-slate-500">{group.question_intro}</p>}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-        <MarkdownBlock content={passageText} lessonId={lessonId} />
-      </div>
       {group.question_type === "richtig_falsch" && (group.statements ?? []).map((s, i) => (
         <div key={i} className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl">
           <span className="flex-1 text-sm text-slate-700">{s.text}</span>
@@ -120,7 +117,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const { sets, toggleSetStatus, createReadingSet } = useExerciseSets();
 
   const [groups, setGroups] = useState<ReadingQuestionGroupRowData[]>([]);
-  const [previewTarget, setPreviewTarget] = useState<ReadingQuestionGroupRowData | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<string | null>(null);
   const [expandedTypeSections, setExpandedTypeSections] = useState<Set<string>>(new Set());
 
   const [addTypePassageId, setAddTypePassageId] = useState<string | null>(null);
@@ -439,7 +436,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                   <span className="text-xs font-display font-bold text-slate-500 uppercase">Các loại câu hỏi</span>
                                   <div className="flex items-center gap-2">
                                     <button
-                                      onClick={() => setPreviewTarget(passageGroups[0] ?? null)}
+                                      onClick={() => setPreviewTarget(passage.id)}
                                       disabled={passageGroups.length === 0}
                                       className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 disabled:opacity-30 disabled:hover:bg-transparent"
                                     >
@@ -510,7 +507,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                 <div key={i} className="flex items-center gap-3 px-3 py-2.5">
                                                   <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
                                                   <span className="text-sm text-slate-700 flex-1 truncate">{s.text}</span>
-                                                  <span className="text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">Đúng / Sai</span>
+                                                  <span className={`text-[11px] font-bold rounded-full px-2 py-0.5 shrink-0 border ${s.correct_answer === "richtig" ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-rose-600 bg-rose-50 border-rose-200"}`}>
+                                                    {s.correct_answer === "richtig" ? "Richtig" : "Falsch"}
+                                                  </span>
                                                   <button onClick={() => openEditItem(group, i, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => setDeleteItemTarget({ group, index: i })} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
@@ -704,11 +703,17 @@ export const AdminReadingExerciseSection: React.FC = () => {
               <h3 className="text-sm font-display font-bold text-slate-800">Xem trước</h3>
               <button onClick={() => setPreviewTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
             </div>
-            <ReadingGroupPreview
-              group={previewTarget}
-              passageText={passages.find((p) => p.id === previewTarget.passage_id)?.text_de ?? ""}
-              lessonId={passages.find((p) => p.id === previewTarget.passage_id)?.lesson_id ?? ""}
-            />
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <MarkdownBlock
+                content={passages.find((p) => p.id === previewTarget)?.text_de ?? ""}
+                lessonId={passages.find((p) => p.id === previewTarget)?.lesson_id ?? ""}
+              />
+            </div>
+            <div className="space-y-3">
+              {groupsForPassage(groups, previewTarget).map((group) => (
+                <ReadingGroupPreview key={group.id} group={group} />
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -97,7 +97,7 @@ export function useExerciseSets() {
     forLessonId: string,
     orderIndex: number,
   ): Promise<{ data: ExerciseSet | null; error: string | null }> => {
-    const existingCountForLesson = sets.filter((s) => s.lessonId === forLessonId).length;
+    const existingCountForLesson = sets.filter((s) => s.lessonId === forLessonId && s.category === "doc").length;
     const { data, error } = await supabase
       .from("exercise_sets")
       .insert({
