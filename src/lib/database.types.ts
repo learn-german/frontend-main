@@ -687,18 +687,21 @@ export type Database = {
           id: string
           lesson_id: string
           order_index: number
+          set_id: string | null
           text_de: string
         }
         Insert: {
           id?: string
           lesson_id: string
           order_index?: number
+          set_id?: string | null
           text_de: string
         }
         Update: {
           id?: string
           lesson_id?: string
           order_index?: number
+          set_id?: string | null
           text_de?: string
         }
         Relationships: [
@@ -714,6 +717,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reading_passages_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -1128,3 +1138,9 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
