@@ -1,0 +1,59 @@
+export type ReadingQuestionType = "richtig_falsch" | "multiple_choice";
+
+export const READING_QUESTION_TYPES: readonly ReadingQuestionType[] = ["multiple_choice", "richtig_falsch"];
+
+interface PassageLite {
+  set_id: string | null;
+  order_index: number;
+}
+
+interface GroupOrderLite {
+  passage_id: string;
+  order_index: number;
+}
+
+interface GroupCountLite {
+  question_type: ReadingQuestionType;
+  statements: unknown[] | null;
+  sub_questions: unknown[] | null;
+}
+
+interface GroupTypeLite {
+  passage_id: string;
+  question_type: ReadingQuestionType;
+}
+
+export function itemCount(group: GroupCountLite): number {
+  return group.question_type === "richtig_falsch" ? (group.statements ?? []).length : (group.sub_questions ?? []).length;
+}
+
+export function passagesForSet<T extends PassageLite>(passages: T[], setId: string): T[] {
+  return passages.filter((p) => p.set_id === setId).sort((a, b) => a.order_index - b.order_index);
+}
+
+export function groupsForPassage<T extends GroupOrderLite>(groups: T[], passageId: string): T[] {
+  return groups.filter((g) => g.passage_id === passageId).sort((a, b) => a.order_index - b.order_index);
+}
+
+export function missingQuestionTypesForPassage(groups: GroupTypeLite[], passageId: string): ReadingQuestionType[] {
+  return READING_QUESTION_TYPES.filter((qt) => !groups.some((g) => g.passage_id === passageId && g.question_type === qt));
+}
+
+export interface ReadingSetStats {
+  passageCount: number;
+  typeCount: number;
+  questionCount: number;
+}
+
+export function readingSetStats(
+  passages: PassageLite[],
+  groups: (GroupCountLite & { set_id: string })[],
+  setId: string,
+): ReadingSetStats {
+  const setGroups = groups.filter((g) => g.set_id === setId);
+  return {
+    passageCount: passages.filter((p) => p.set_id === setId).length,
+    typeCount: setGroups.length,
+    questionCount: setGroups.reduce((sum, g) => sum + itemCount(g), 0),
+  };
+}
