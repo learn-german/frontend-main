@@ -107,16 +107,17 @@ export const AdminUsersSection: React.FC = () => {
         `)
         .order("order_index")
         .order("order_index", { referencedTable: "lessons" }),
-      // grammar_exercises_public phủ cả 3 category (nguphap/nghe/doc — Nghe/
-      // Đọc đã gộp vào grammar_exercises từ Phase 4), 1 query đủ cho cả 3 cờ,
-      // không cần quiz_questions_public nữa (bảng đó đã xoá).
+      // grammar_exercises_public phủ nguphap/nghe (Nghe đã gộp vào
+      // grammar_exercises từ Phase 4). Đọc từ Phase 6 dùng bảng riêng
+      // (reading_question_groups) nên cần query thứ hai.
       supabase.from("grammar_exercises_public").select("lesson_id, category"),
-    ]).then(([modulesRes, exercisesRes]) => {
+      supabase.from("reading_question_groups_public").select("lesson_id"),
+    ]).then(([modulesRes, exercisesRes, readingRes]) => {
       // Nếu query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
       // không có câu hỏi" -> mọi học viên hiện "Đã xong" sai trên bảng admin.
       // Không có error state riêng cho phần này, nên để orderedLessons rỗng
       // (bảng tiến độ trống) còn hơn build từ dữ liệu sai lệch.
-      if (modulesRes.error || exercisesRes.error) {
+      if (modulesRes.error || exercisesRes.error || readingRes.error) {
         setOrderedLessons([]);
         return;
       }
@@ -124,6 +125,11 @@ export const AdminUsersSection: React.FC = () => {
       for (const row of (exercisesRes.data ?? []) as { lesson_id: string; category: string }[]) {
         const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
         categories.add(row.category);
+        quizCategoriesByLesson.set(row.lesson_id, categories);
+      }
+      for (const row of (readingRes.data ?? []) as { lesson_id: string }[]) {
+        const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
+        categories.add("doc");
         quizCategoriesByLesson.set(row.lesson_id, categories);
       }
       const nguphapLessonIds = new Set(

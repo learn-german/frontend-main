@@ -114,27 +114,35 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
         `)
         .order("order_index")
         .order("order_index", { referencedTable: "lessons" }),
-      // grammar_exercises_public giờ phủ cả 3 category (nguphap/nghe/doc —
-      // Nghe/Đọc đã gộp vào grammar_exercises từ Phase 4), 1 query duy nhất
-      // đủ cho cả 3 cờ has*Questions, không cần quiz_questions_public nữa
-      // (bảng đó đã xoá).
+      // grammar_exercises_public phủ nguphap/nghe (Nghe đã gộp vào
+      // grammar_exercises từ Phase 4). Đọc từ Phase 6 dùng bảng riêng
+      // (reading_question_groups) nên cần query thứ hai — gộp kết quả vào
+      // cùng quizCategoriesByLesson bên dưới.
       supabase
         .from("grammar_exercises_public")
         .select("lesson_id, category"),
-    ]).then(([modulesRes, exercisesRes]) => {
+      supabase
+        .from("reading_question_groups_public")
+        .select("lesson_id"),
+    ]).then(([modulesRes, exercisesRes, readingRes]) => {
       if (cancelled) return;
       if (modulesRes.error) {
         setError(modulesRes.error.message);
-      } else if (exercisesRes.error) {
+      } else if (exercisesRes.error || readingRes.error) {
         // Nếu query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
         // không có câu hỏi" -> tự động hoàn thành sai. Coi lỗi này nghiêm
         // trọng như lỗi modulesRes, không build flags từ tập rỗng.
-        setError(exercisesRes.error.message);
+        setError(exercisesRes.error?.message ?? readingRes.error?.message ?? "Unknown error");
       } else {
         const quizCategoriesByLesson = new Map<string, Set<string>>();
         for (const row of (exercisesRes.data ?? []) as { lesson_id: string; category: string }[]) {
           const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
           categories.add(row.category);
+          quizCategoriesByLesson.set(row.lesson_id, categories);
+        }
+        for (const row of (readingRes.data ?? []) as { lesson_id: string }[]) {
+          const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
+          categories.add("doc");
           quizCategoriesByLesson.set(row.lesson_id, categories);
         }
         const nguphapLessonIds = new Set(
