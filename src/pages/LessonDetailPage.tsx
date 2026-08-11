@@ -312,7 +312,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 {lesson.readingPassages.map((passage, idx) => (
                   <div key={passage.id} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Đoạn {idx + 1}</span>
-                    <p className="text-sm text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">{passage.textDe}</p>
+                    <MarkdownBlock content={passage.textDe} lessonId={lesson.id} />
                   </div>
                 ))}
               </div>

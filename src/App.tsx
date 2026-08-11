@@ -20,6 +20,7 @@ import { RoadmapPage } from "./pages/RoadmapPage";
 import { LessonDetailPage } from "./pages/LessonDetailPage";
 import { QuizSetListPage } from "./pages/QuizSetListPage";
 import { GrammarSetListPage } from "./pages/GrammarSetListPage";
+import { ReadingSetListPage } from "./pages/ReadingSetListPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
@@ -401,6 +402,12 @@ export default function App() {
                   <GrammarSetListPage
                     key={activeLessonObject.id}
                     lessonId={activeLessonObject.id}
+                    onBackToLesson={() => setCurrentPage("lesson-detail")}
+                    onSetFinished={handleQuizFinished}
+                  />
+                ) : activeExerciseCategory === "doc" ? (
+                  <ReadingSetListPage
+                    lesson={activeLessonObject}
                     onBackToLesson={() => setCurrentPage("lesson-detail")}
                     onSetFinished={handleQuizFinished}
                   />
