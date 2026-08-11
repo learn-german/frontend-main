@@ -46,7 +46,7 @@ export interface ReadingSetStats {
 }
 
 export function readingSetStats(
-  passages: PassageLite[],
+  passages: { set_id: string | null }[],
   groups: (GroupCountLite & { set_id: string })[],
   setId: string,
 ): ReadingSetStats {

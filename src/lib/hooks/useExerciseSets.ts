@@ -88,5 +88,41 @@ export function useExerciseSets() {
     return { data: created, error: null };
   };
 
-  return { sets, loading, refetch, toggleSetStatus, createSet };
+  // Bài đọc (category="doc") tạo kèm sẵn 1 văn bản đầu tiên (UX mượt, không để
+  // set rỗng ngay sau khi tạo) — nhưng khác trước, giờ set tạo TRƯỚC rồi mới
+  // insert reading_passages với set_id trỏ về, vì 1 set có thể chứa NHIỀU văn
+  // bản (reading_passages.set_id là N:1, không còn exercise_sets.passage_id
+  // 1:1 nữa). Lỗi ở bước tạo passage -> rollback set vừa tạo.
+  const createReadingSet = async (
+    forLessonId: string,
+    orderIndex: number,
+  ): Promise<{ data: ExerciseSet | null; error: string | null }> => {
+    const existingCountForLesson = sets.filter((s) => s.lessonId === forLessonId).length;
+    const { data, error } = await supabase
+      .from("exercise_sets")
+      .insert({
+        lesson_id: forLessonId,
+        category: "doc",
+        title: nextDefaultSetTitle(existingCountForLesson),
+        order_index: orderIndex,
+        status: "draft",
+      })
+      .select("id, lesson_id, category, title, order_index, status")
+      .single();
+    if (error || !data) return { data: null, error: error?.message ?? "Không tạo được bài đọc." };
+
+    const { error: passageError } = await supabase
+      .from("reading_passages")
+      .insert({ lesson_id: forLessonId, set_id: data.id, text_de: "", order_index: 0 });
+    if (passageError) {
+      await supabase.from("exercise_sets").delete().eq("id", data.id);
+      return { data: null, error: passageError.message };
+    }
+
+    const created = fromRow(data as ExerciseSetRow);
+    setSets((prev) => [...prev, created]);
+    return { data: created, error: null };
+  };
+
+  return { sets, loading, refetch, toggleSetStatus, createSet, createReadingSet };
 }
