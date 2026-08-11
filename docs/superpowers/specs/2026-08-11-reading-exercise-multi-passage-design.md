@@ -47,18 +47,21 @@ exercise_sets (category=doc, 1 "bài đọc" = 1 thẻ admin)
 
 ### Migration mới — revert + bổ sung
 
-Thứ tự an toàn (thêm cột mới → backfill → xoá cột cũ, không xoá trước backfill),
-vì set nào đang có `passage_id` trên Supabase (dữ liệu WIP của session trước)
-phải giữ đúng liên kết văn bản, không được mất:
+Đã kiểm tra thực tế qua `execute_sql`: dữ liệu Đọc hiện có trên Supabase chỉ là
+rác test của WIP trước — 1 `reading_passages` rỗng (`text_de = ''`), 1
+`exercise_sets` category=`doc` ("Bài tập 14", draft, `passage_id` đã là `NULL`
+sẵn — chưa từng link được), 0 `reading_question_groups`. Không có nội dung thật
+cần giữ → **xoá thẳng**, giống quyết định gốc ở
+[2026-08-10-reading-exercise-admin-design.md](2026-08-10-reading-exercise-admin-design.md)
+("chưa có người dùng thật, không cần migrate"), không cần backfill:
 
 ```sql
+DELETE FROM reading_question_groups;
+DELETE FROM reading_passages;
+DELETE FROM exercise_sets WHERE category = 'doc';
+
 ALTER TABLE reading_passages
   ADD COLUMN set_id UUID REFERENCES exercise_sets(id) ON DELETE CASCADE;
-
-UPDATE reading_passages rp
-SET set_id = es.id
-FROM exercise_sets es
-WHERE es.passage_id = rp.id;
 
 ALTER TABLE exercise_sets
   DROP COLUMN passage_id;
@@ -129,6 +132,11 @@ Trong 1 thẻ "bài đọc" (`set`):
 
 `AdminExerciseSetMedia.tsx` — `ReadingPassage` interface thêm field `set_id: string | null`.
 
+Các phép lọc/tính tổng trên (passage theo set, group theo passage, missing
+types theo passage, thống kê set) chuyển vào `src/lib/readingSetView.ts` (hàm
+thuần, test riêng — xem mục Testing) thay vì viết inline trong component như
+`itemCount` hiện tại.
+
 ### `useExerciseSets.createReadingSet`
 
 Đổi bước tạo passage: thay vì gắn `passage_id` lên `exercise_sets`, insert
@@ -149,6 +157,12 @@ tinh thần "rollback khi 1 trong 2 bước insert lỗi" đang có.
 
 ## Testing
 
+- Đơn vị (`node --import tsx --test`, style hiện có ở `lessonSetSummary.test.ts`):
+  tách các phép lọc/tính tổng đang nằm inline trong
+  `AdminReadingExerciseSection.tsx` (`itemCount`, lọc passage theo set, lọc
+  group theo passage, `missingTypes` theo passage, tổng "bài văn/loại câu
+  hỏi/câu hỏi" của set) ra module thuần `src/lib/readingSetView.ts`, test đầy
+  đủ từng hàm.
 - `npm run lint` sau khi code xong.
 - Test thủ công trên browser: tạo bài đọc mới (kỳ vọng tự có 1 văn bản), bấm
   "Thêm văn bản" thêm văn bản thứ 2, thêm câu hỏi riêng cho từng văn bản, xoá 1
@@ -156,19 +170,13 @@ tinh thần "rollback khi 1 trong 2 bước insert lỗi" đang có.
   nguyên), xoá văn bản cuối cùng (kỳ vọng: thẻ về trạng thái "chưa có văn bản",
   không tự xoá thẻ), xoá cả thẻ (kỳ vọng: mọi văn bản + câu hỏi trong thẻ mất
   theo), Preview đúng văn bản đang xem, publish/draft không đổi hành vi.
-- Kiểm tra migration idempotent trên dữ liệu hiện có: set nào đang có
-  `passage_id` (dữ liệu WIP hiện tại trên Supabase) phải giữ đúng liên kết
-  passage sau backfill, không mất văn bản đã nhập.
 
 ## Rủi ro
 
-- Migration chạy trên **remote Supabase đã có dữ liệu thật của session trước**
-  (`exercise_sets.passage_id` đã apply, có thể đã có văn bản test) — bắt buộc
-  backfill trước khi drop cột, không được xoá thẳng như spec gốc đã làm (lúc đó
-  chấp nhận được vì "chưa có ai dùng thật"; giờ đã có dữ liệu WIP cần giữ).
-  Kiểm tra thực tế qua `list_tables`/`execute_sql` trước khi migrate.
+- Đã xác nhận qua `execute_sql` dữ liệu Đọc hiện có trên Supabase toàn rác
+  test rỗng, không có nội dung thật — quyết định xoá thẳng khi migrate (xem
+  phần Migration), không cần backfill.
 - `ON DELETE CASCADE` từ `reading_passages` → `reading_question_groups` (đã có
   từ spec gốc) nay áp dụng cho xoá-từng-văn-bản thường xuyên hơn (trước chỉ xoá
-  khi xoá cả set) — cần confirm dialog rõ ràng "Xoá văn bản này sẽ xoá luôn mọi
-  câu hỏi thuộc văn bản, không khôi phục được" trước khi xoá, không chỉ áp dụng
-  cho xoá cả thẻ như hiện tại.
+  khi xoá cả set) — nút xoá văn bản tái dùng đúng modal confirm đang có sẵn cho
+  "Xoá cả bài đọc" (đổi nội dung cảnh báo phù hợp), không cần cơ chế mới.
