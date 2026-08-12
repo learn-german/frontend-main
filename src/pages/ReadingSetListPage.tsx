@@ -417,15 +417,15 @@ const ReadingExerciseSetBody: React.FC<{
         >
           Lưu
         </Button>
-        {passageReveal === null ? (
+        {isLastPassage ? (
+          <Button variant="primary" disabled={!currentAnswered || submitting} onClick={handleSubmit}>
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Nộp bài
+          </Button>
+        ) : passageReveal === null ? (
           <Button variant="primary" disabled={!currentAnswered || passageSubmitting} onClick={handleSubmitPassage}>
             {passageSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Nộp đoạn này
-          </Button>
-        ) : isLastPassage ? (
-          <Button variant="primary" disabled={submitting} onClick={handleSubmit}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Xem kết quả
           </Button>
         ) : (
           <Button variant="primary" onClick={() => setCurrentPassageIndex((i) => i + 1)}>
