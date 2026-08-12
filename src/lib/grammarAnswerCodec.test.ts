@@ -248,9 +248,6 @@ test("parseAnswersIntoFormState: word_reorder phục hồi selectedTokens để 
   assert.deepEqual(result.selectedTokens.e1, ["1:Ich", "0:heiße", "2:Anna"]);
 });
 
-const textFillBlank = (over: Partial<GrammarExercise> = {}): GrammarExercise =>
-  base({ id: "tfb1", type: "text_fill_blank", promptText: "Ich {{blank}} und du {{blank}}.", ...over });
-
 const matching = (over: Partial<GrammarExercise> = {}): GrammarExercise =>
   base({
     id: "m1",
@@ -258,23 +255,6 @@ const matching = (over: Partial<GrammarExercise> = {}): GrammarExercise =>
     matchingPairs: [{ de: "der Tisch", vi: "cái bàn" }, { de: "die Lampe", vi: "cái đèn" }],
     ...over,
   });
-
-test("text_fill_blank: round-trip qua joinBlankAnswers/splitBlankAnswers", () => {
-  const ex = textFillBlank();
-  const raw = "bin|bist";
-  assert.deepEqual(parseAnswer(ex, raw), { kind: "blanks", values: ["bin", "bist"] });
-  assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["bin", "bist"] }), raw);
-});
-
-test("text_fill_blank: thiếu 1 ô thì serialize ra chuỗi rỗng", () => {
-  const ex = textFillBlank();
-  assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["bin", "  "] }), "");
-});
-
-test("text_fill_blank: partial=true nhưng chưa điền gì thì vẫn trả rỗng", () => {
-  const ex = textFillBlank();
-  assert.equal(serializeAnswer(ex, { kind: "blanks", values: ["", ""] }, { partial: true }), "");
-});
 
 test("matching: round-trip qua serializeMatching/parseMatching", () => {
   const ex = matching();
@@ -306,16 +286,7 @@ test("matching: partial=true nhưng chưa ghép gì thì vẫn trả rỗng", ()
   assert.equal(serializeAnswer(ex, { kind: "matching", values: {} }, { partial: true }), "");
 });
 
-test("text_fill_blank: partial=true giữ lại ô đã điền dở (draft autosave)", () => {
-  const ex = textFillBlank();
-  assert.equal(
-    serializeAnswer(ex, { kind: "blanks", values: ["bin", ""] }, { partial: true }),
-    "bin|",
-  );
-});
-
-test("emptyAnswer: text_fill_blank và matching", () => {
-  assert.deepEqual(emptyAnswer(textFillBlank()), { kind: "blanks", values: ["", ""] });
+test("emptyAnswer: matching", () => {
   assert.deepEqual(emptyAnswer(matching()), { kind: "matching", values: {} });
 });
 

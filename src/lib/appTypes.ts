@@ -49,7 +49,6 @@ export interface GrammarExercise {
     | "classification"
     | "fill_in_the_blank"
     | "multiple_choice"
-    | "text_fill_blank"
     | "matching";
   groupId?: string;
   hint?: string;

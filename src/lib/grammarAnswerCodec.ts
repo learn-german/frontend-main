@@ -1,6 +1,6 @@
 import { GrammarExercise } from "./appTypes";
 import { countBlankMarkers } from "./grammarFillInBlank";
-import { countBlankTokens, joinBlankAnswers, splitBlankAnswers, serializeMatching, parseMatching } from "./quizAnswerCodec";
+import { serializeMatching, parseMatching } from "./quizAnswerCodec";
 
 /**
  * The wire format for one exercise answer, shared by the submit path and the
@@ -17,9 +17,6 @@ export type ParsedAnswer =
 export function emptyAnswer(exercise: GrammarExercise): ParsedAnswer {
   if (exercise.type === "fill_in_the_blank") {
     return { kind: "blanks", values: Array(countBlankMarkers(exercise.promptText ?? "")).fill("") };
-  }
-  if (exercise.type === "text_fill_blank") {
-    return { kind: "blanks", values: Array(countBlankTokens(exercise.promptText ?? "")).fill("") };
   }
   if (exercise.type === "multiple_choice") return { kind: "choice", index: undefined };
   if (exercise.type === "classification") return { kind: "groups", values: {} };
@@ -62,15 +59,6 @@ export function serializeAnswer(
     const assigned = items.filter((item) => answer.values[item]);
     if (assigned.length === 0) return "";
     return assigned.map((item) => `${item}:${answer.values[item]}`).join("|");
-  }
-
-  if (exercise.type === "text_fill_blank") {
-    if (answer.kind !== "blanks") return "";
-    const blankCount = countBlankTokens(exercise.promptText ?? "");
-    if (blankCount === 0 || answer.values.length !== blankCount) return "";
-    if (!partial && answer.values.some((value) => !value.trim())) return "";
-    if (partial && answer.values.every((value) => !value.trim())) return "";
-    return joinBlankAnswers(answer.values);
   }
 
   if (exercise.type === "matching") {
@@ -123,11 +111,6 @@ export function parseAnswer(exercise: GrammarExercise, raw: string): ParsedAnswe
       if (item && group) values[item] = group;
     }
     return { kind: "groups", values };
-  }
-
-  if (exercise.type === "text_fill_blank") {
-    const blankCount = countBlankTokens(exercise.promptText ?? "");
-    return { kind: "blanks", values: splitBlankAnswers(raw, blankCount) };
   }
 
   if (exercise.type === "matching") {

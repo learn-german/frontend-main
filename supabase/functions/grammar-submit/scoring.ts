@@ -57,15 +57,6 @@ function normalizeBlank(s: string): string {
   return s.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-const BLANK_PATTERN = /\{\{([^}]*)\}\}/g;
-
-/** Trích danh sách biến thể đáp án theo thứ tự từ prompt_text, ví dụ
- * "Ich {{bin|Bin}} Student." -> [["bin", "Bin"]]. */
-function extractBlanks(promptText: string): string[][] {
-  const matches = [...promptText.matchAll(BLANK_PATTERN)];
-  return matches.map((m) => m[1].split("|").map((v) => v.trim()));
-}
-
 function normalizeMatching(s: string): string {
   return s
     .split("|")
@@ -138,20 +129,6 @@ export function computeGrammarScore(
       continue;
     }
 
-    if (ex.type === "text_fill_blank") {
-      const blanks = extractBlanks(ex.prompt_text ?? "");
-      const userParts = (answers[ex.id] ?? "").split("|").map((s) => s.trim().toLowerCase());
-      const results = blanks.map((variants, index) => {
-        const userPart = userParts[index] ?? "";
-        return variants.some((v) => v.toLowerCase() === userPart);
-      });
-      blankResults[ex.id] = results;
-      total += results.length;
-      correct += results.filter(Boolean).length;
-      exerciseResults[ex.id] = results.length > 0 && results.every(Boolean);
-      continue;
-    }
-
     if (ex.type === "matching") {
       total += 1;
       const isCorrect = normalizeMatching(answers[ex.id] ?? "") === normalizeMatching(ex.correct_answer ?? "");
@@ -197,7 +174,7 @@ export function computeGrammarScore(
  * Đáp án đúng để hiển thị khi revealed=true, theo format mà client đã biết
  * decode (cùng wire format với answers khi nộp bài):
  * - classification: "item:group|..." — parse như classification_items ẩn group.
- * - fill_in_the_blank / text_fill_blank: JSON array 1 đáp án chấp nhận/blank.
+ * - fill_in_the_blank: JSON array 1 đáp án chấp nhận/blank.
  * - còn lại (word_reorder, error_correction, translation, sentence_transformation,
  *   guided_sentence_writing, multiple_choice lưu index, matching lưu cặp
  *   serialize): dùng thẳng correct_answer.
@@ -213,11 +190,6 @@ export function deriveCorrectAnswers(exercises: ScorableGrammarExercise[]): Reco
     if (ex.type === "fill_in_the_blank") {
       const blanks = Array.isArray(ex.blanks) ? ex.blanks : [];
       result[ex.id] = JSON.stringify(blanks.map((b) => b?.acceptedAnswers?.[0] ?? ""));
-      continue;
-    }
-    if (ex.type === "text_fill_blank") {
-      const blanks = extractBlanks(ex.prompt_text ?? "");
-      result[ex.id] = JSON.stringify(blanks.map((variants) => variants[0] ?? ""));
       continue;
     }
     result[ex.id] = ex.correct_answer ?? "";

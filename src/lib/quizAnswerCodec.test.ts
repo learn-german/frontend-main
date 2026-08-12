@@ -1,16 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { joinBlankAnswers, splitBlankAnswers, serializeMatching, parseMatching, countBlankTokens } from "./quizAnswerCodec";
-
-test("joinBlankAnswers: ghép và trim từng ô", () => {
-  assert.equal(joinBlankAnswers([" bin ", "Bin"]), "bin|Bin");
-});
-
-test("splitBlankAnswers: tách đúng số ô, thiếu thì điền rỗng", () => {
-  assert.deepEqual(splitBlankAnswers("bin|falsch", 2), ["bin", "falsch"]);
-  assert.deepEqual(splitBlankAnswers("bin", 2), ["bin", ""]);
-  assert.deepEqual(splitBlankAnswers("", 2), ["", ""]);
-});
+import { serializeMatching, parseMatching } from "./quizAnswerCodec";
 
 test("serializeMatching: sort theo de để ổn định", () => {
   assert.equal(
@@ -26,9 +16,4 @@ test("parseMatching: tách map de->vi, bỏ qua cặp hỏng", () => {
   });
   assert.deepEqual(parseMatching(""), {});
   assert.deepEqual(parseMatching("hỏng"), {});
-});
-
-test("countBlankTokens: đếm đúng số nhóm {{...}} trong prompt, không phân biệt nội dung bên trong", () => {
-  assert.equal(countBlankTokens("Ich {{bin|Bin}} und du {{bist}}."), 2);
-  assert.equal(countBlankTokens("Không có ô trống."), 0);
 });

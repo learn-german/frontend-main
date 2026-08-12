@@ -119,8 +119,6 @@ export const ExerciseAnswerInput: React.FC<{
   selectedChoice: number | undefined;
   onSelectChoice: (index: number) => void;
   choiceResult?: boolean;
-  textFillBlankValues?: string[];
-  onTextFillBlankChange?: (blankIndex: number, value: string) => void;
   matchedPairs?: Record<string, string>;
   onMatch?: (de: string, vi: string) => void;
 }> = ({
@@ -140,8 +138,6 @@ export const ExerciseAnswerInput: React.FC<{
   selectedChoice,
   onSelectChoice,
   choiceResult,
-  textFillBlankValues = [],
-  onTextFillBlankChange,
   matchedPairs = {},
   onMatch,
 }) => {
@@ -333,25 +329,6 @@ export const ExerciseAnswerInput: React.FC<{
         </>
       )}
 
-      {exercise.type === "text_fill_blank" && (
-        <div className="text-xs leading-9 text-slate-700">
-          <span className="mr-1 font-bold text-slate-400">{letter}</span>
-          {(exercise.promptText ?? "").split(/\{\{[^}]*\}\}/).map((segment, index, segments) => (
-            <React.Fragment key={`${index}:${segment}`}>
-              <span className="whitespace-pre-wrap">{segment}</span>
-              {index < segments.length - 1 && (
-                <input
-                  type="text"
-                  value={textFillBlankValues[index] ?? ""}
-                  onChange={(event) => onTextFillBlankChange?.(index, event.target.value)}
-                  className="mx-1 inline-block w-28 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
-
       {exercise.type === "matching" && (
         <>
           <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{letter}</span>
@@ -507,10 +484,10 @@ export const ExerciseResultReview: React.FC<{
       </div>
     )}
 
-    {(exercise.type === "fill_in_the_blank" || exercise.type === "text_fill_blank") && (
+    {exercise.type === "fill_in_the_blank" && (
       <div className="mb-2 text-xs leading-9 text-slate-700">
         {(exercise.promptText ?? "")
-          .split(exercise.type === "fill_in_the_blank" ? "___" : /\{\{[^}]*\}\}/)
+          .split("___")
           .map((segment, index, segments) => {
             const isCorrect = blankResults?.[index];
             const correctBlank = revealed ? getCorrectBlanks(exercise, correctAnswerRaw)[index] : undefined;

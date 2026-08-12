@@ -8,7 +8,7 @@ import {
   createEmptyChoiceForm,
   validateChoiceForm,
 } from "./grammarMultipleChoice";
-import { serializeMatching, countBlankTokens } from "./quizAnswerCodec";
+import { serializeMatching } from "./quizAnswerCodec";
 
 export interface EditForm {
   type:
@@ -20,7 +20,6 @@ export interface EditForm {
     | "classification"
     | "fill_in_the_blank"
     | "multiple_choice"
-    | "text_fill_blank"
     | "matching";
   prompt_text: string;
   transformation_hint: string;
@@ -100,11 +99,6 @@ export const validateForm = (f: EditForm): string | null => {
     if (!normalizeBlankDefinitions(f.blanks)) return "Mỗi ô trống cần ít nhất 1 đáp án hợp lệ.";
     return null;
   }
-  if (f.type === "text_fill_blank") {
-    if (!f.prompt_text.trim()) return "Nội dung câu hỏi không được để trống.";
-    if (countBlankTokens(f.prompt_text) < 1) return "Cần ít nhất 1 ô trống {{...}}.";
-    return null;
-  }
   if (f.type === "matching") {
     if (!f.prompt_text.trim()) return "Nội dung câu hỏi không được để trống.";
     const validPairs = f.matching_pairs.filter((p) => p.de.trim() && p.vi.trim());
@@ -137,7 +131,7 @@ export const buildPayload = (form: EditForm) => {
     prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
     transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
     correct_answer:
-      form.type === "classification" || form.type === "fill_in_the_blank" || form.type === "text_fill_blank"
+      form.type === "classification" || form.type === "fill_in_the_blank"
         ? null
         : form.type === "multiple_choice"
           ? choicePayload.correct_answer

@@ -68,7 +68,6 @@ interface GrammarExercise {
     | "classification"
     | "fill_in_the_blank"
     | "multiple_choice"
-    | "text_fill_blank"
     | "matching";
   group_id: string | null;
   set_id: string;
@@ -107,7 +106,6 @@ const TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   classification: "Phân loại",
   fill_in_the_blank: "Điền vào ô trống",
   multiple_choice: "Trắc nghiệm",
-  text_fill_blank: "Điền vào chỗ trống",
   matching: "Ghép cặp",
 };
 
@@ -120,7 +118,6 @@ const TYPE_COLORS: Record<GrammarExercise["type"], string> = {
   classification: "bg-teal-50 text-teal-700",
   fill_in_the_blank: "bg-orange-50 text-orange-700",
   multiple_choice: "bg-indigo-50 text-indigo-700",
-  text_fill_blank: "bg-fuchsia-50 text-fuchsia-700",
   matching: "bg-cyan-50 text-cyan-700",
 };
 
@@ -648,22 +645,6 @@ export const ExerciseEntryFields: React.FC<{
           )}
         </div>
       </>
-    )}
-
-    {entry.type === "text_fill_blank" && (
-      <div>
-        <label className={labelCls}>Nội dung câu (có chỗ trống) *</label>
-        <textarea
-          rows={4}
-          value={entry.prompt_text}
-          onChange={(e) => onChange((prev) => ({ ...prev, prompt_text: e.target.value }))}
-          className={inputCls + " resize-none"}
-          placeholder="Ich {{bin|Bin}} Student."
-        />
-        <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-          Đánh dấu chỗ trống bằng <code className="bg-slate-100 px-1 rounded">{"{{đáp_án}}"}</code>, nhiều biến thể đúng cách nhau bởi <code className="bg-slate-100 px-1 rounded">|</code>.
-        </p>
-      </div>
     )}
 
     {entry.type === "matching" && (

@@ -12,7 +12,6 @@ import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
-import { countBlankTokens } from "../lib/quizAnswerCodec";
 import { parseAnswer, parseAnswersIntoFormState, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
 import {
   applyChipToBlank,
@@ -71,7 +70,6 @@ const QuizExerciseSetBody: React.FC<{
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
 
   const [choiceByExercise, setChoiceByExercise] = useState<Record<string, number>>({});
-  const [textFillBlankByExercise, setTextFillBlankByExercise] = useState<Record<string, string[]>>({});
   const [matchedPairsByExercise, setMatchedPairsByExercise] = useState<Record<string, Record<string, string>>>({});
   const [selectedTokensByExercise, setSelectedTokensByExercise] = useState<Record<string, string[]>>({});
   const [textAnswerByExercise, setTextAnswerByExercise] = useState<Record<string, string>>({});
@@ -96,20 +94,7 @@ const QuizExerciseSetBody: React.FC<{
     setItemGroupsByExercise(parsed.itemGroups);
     setChoiceByExercise(parsed.choices);
     setMatchedPairsByExercise(parsed.matchedPairs);
-    // blankAnswers dùng chung cho cả fill_in_the_blank (ngữ pháp) lẫn
-    // text_fill_blank — tách theo type vì 2 loại serialize khác nhau
-    // (JSON.stringify vs joinBlankAnswers), gộp chung vào field
-    // ParsedFormState.blankAnswers vì mỗi exercise chỉ thuộc đúng 1 type.
-    const grammarBlanks: Record<string, string[]> = {};
-    const quizBlanks: Record<string, string[]> = {};
-    for (const exercise of exercises) {
-      const values = parsed.blankAnswers[exercise.id];
-      if (!values) continue;
-      if (exercise.type === "fill_in_the_blank") grammarBlanks[exercise.id] = values;
-      else if (exercise.type === "text_fill_blank") quizBlanks[exercise.id] = values;
-    }
-    setBlankAnswersByExercise(grammarBlanks);
-    setTextFillBlankByExercise(quizBlanks);
+    setBlankAnswersByExercise(parsed.blankAnswers);
   };
 
   /** Text-typed submitted answer for the results card, read from the one
@@ -167,10 +152,6 @@ const QuizExerciseSetBody: React.FC<{
       const blankCount = countBlankMarkers(exercise.promptText ?? "");
       return { kind: "blanks", values: blankAnswersByExercise[exercise.id] ?? Array(blankCount).fill("") };
     }
-    if (exercise.type === "text_fill_blank") {
-      const count = countBlankTokens(exercise.promptText ?? "");
-      return { kind: "blanks", values: textFillBlankByExercise[exercise.id] ?? Array(count).fill("") };
-    }
     if (exercise.type === "multiple_choice") {
       return { kind: "choice", index: choiceByExercise[exercise.id] };
     }
@@ -196,7 +177,7 @@ const QuizExerciseSetBody: React.FC<{
     }, 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choiceByExercise, textFillBlankByExercise, matchedPairsByExercise, selectedTokensByExercise, textAnswerByExercise, itemGroupsByExercise, blankAnswersByExercise, result]);
+  }, [choiceByExercise, matchedPairsByExercise, selectedTokensByExercise, textAnswerByExercise, itemGroupsByExercise, blankAnswersByExercise, result]);
 
   const handleSubmit = async () => {
     const finalAnswers = collectAllAnswers();
@@ -225,7 +206,6 @@ const QuizExerciseSetBody: React.FC<{
     setBlankAssignments({});
     setFocusedBlank(null);
     setChoiceByExercise({});
-    setTextFillBlankByExercise({});
     setMatchedPairsByExercise({});
     setSelectedTokensByExercise({});
     setTextAnswerByExercise({});
@@ -360,14 +340,6 @@ const QuizExerciseSetBody: React.FC<{
               }}
               selectedChoice={choiceByExercise[exercise.id]}
               onSelectChoice={(idx) => setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: idx }))}
-              textFillBlankValues={textFillBlankByExercise[exercise.id] ?? []}
-              onTextFillBlankChange={(blankIndex, value) => {
-                const count = countBlankTokens(exercise.promptText ?? "");
-                const current = textFillBlankByExercise[exercise.id] ?? Array(count).fill("");
-                const next = [...current];
-                next[blankIndex] = value;
-                setTextFillBlankByExercise((prev) => ({ ...prev, [exercise.id]: next }));
-              }}
               matchedPairs={matchedPairsByExercise[exercise.id] ?? {}}
               onMatch={(de, vi) => {
                 const correct = (exercise.matchingPairs ?? []).find((p) => p.de === de && p.vi === vi);
@@ -458,9 +430,7 @@ const QuizExerciseSetBody: React.FC<{
                     correctAnswerRaw={result.correctAnswers?.[ex.id]}
                     userGroups={itemGroupsByExercise[ex.id] ?? {}}
                     classificationResults={result.classificationResults?.[ex.id]}
-                    blankValues={ex.type === "fill_in_the_blank"
-                      ? (blankAnswersByExercise[ex.id] ?? [])
-                      : (textFillBlankByExercise[ex.id] ?? [])}
+                    blankValues={blankAnswersByExercise[ex.id] ?? []}
                     blankResults={result.blankResults?.[ex.id]}
                     selectedChoice={choiceByExercise[ex.id]}
                     choiceResult={result.choiceResults?.[ex.id]}

@@ -305,44 +305,6 @@ test("projectAnswers: answers null/undefined không throw, trả về rỗng cho
   assert.deepEqual(projectAnswers(exercises, undefined), { t1: "", c1: "" });
 });
 
-const textFillBlank = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
-  id: "tfb1",
-  type: "text_fill_blank",
-  correct_answer: null,
-  acceptable_answers: null,
-  classification_items: null,
-  blanks: null,
-  options: null,
-  prompt_text: "Ich {{bin|Bin}} Student.",
-  ...over,
-});
-
-test("text_fill_blank: chấp nhận đáp án đúng theo từng ô trống", () => {
-  const r = computeGrammarScore([textFillBlank()], { tfb1: "bin" });
-  assert.equal(r.correct, 1);
-  assert.equal(r.total, 1);
-  assert.deepEqual(r.blankResults.tfb1, [true]);
-});
-
-test("text_fill_blank: chấp nhận biến thể viết hoa", () => {
-  const r = computeGrammarScore([textFillBlank()], { tfb1: "Bin" });
-  assert.equal(r.correct, 1);
-});
-
-test("text_fill_blank: nhiều ô trống, chấm từng ô độc lập", () => {
-  const ex = textFillBlank({ id: "tfb2", prompt_text: "Ich {{bin}} und du {{bist}}." });
-  const r = computeGrammarScore([ex], { tfb2: "bin|falsch" });
-  assert.equal(r.correct, 1);
-  assert.equal(r.total, 2);
-  assert.deepEqual(r.blankResults.tfb2, [true, false]);
-});
-
-test("text_fill_blank: prompt_text không có {{...}} thì total = 0, không throw", () => {
-  const ex = textFillBlank({ id: "tfb3", prompt_text: "Không có blank." });
-  const r = computeGrammarScore([ex], { tfb3: "bất kỳ" });
-  assert.equal(r.total, 0);
-});
-
 const matching = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarExercise => ({
   id: "m1",
   type: "matching",
@@ -367,14 +329,3 @@ test("matching: sai 1 cặp thì cả câu sai", () => {
   assert.equal(r.exerciseResults.m1, false);
 });
 
-test("deriveCorrectAnswers: text_fill_blank trả JSON mảng biến thể đầu tiên mỗi ô", () => {
-  const ex = textFillBlank({ prompt_text: "Ich {{bin|Bin}} und du {{bist}}." });
-  const result = deriveCorrectAnswers([ex]);
-  assert.deepEqual(JSON.parse(result.tfb1), ["bin", "bist"]);
-});
-
-test("deriveCorrectAnswers: text_fill_blank không có blank nào trả mảng rỗng, không throw", () => {
-  const ex = textFillBlank({ prompt_text: "Không có ô trống." });
-  const result = deriveCorrectAnswers([ex]);
-  assert.deepEqual(JSON.parse(result.tfb1), []);
-});
