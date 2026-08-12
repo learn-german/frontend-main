@@ -303,28 +303,18 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Đọc (Lesen) tab — hidden entirely via visibleTabs when
               readingPassages is empty, so no "Sắp có" fallback needed. */}
           {bottomTab === "doc" && lesson.readingPassages.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="space-y-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
                 <FileText className="w-4 h-4 text-orange-500" />
                 <span className="text-sm font-display font-bold text-slate-800">Bài đọc</span>
               </div>
-              <div className="space-y-4">
-                {lesson.readingPassages.map((passage, idx) => (
-                  <div key={passage.id} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Đoạn {idx + 1}</span>
-                    <MarkdownBlock content={passage.textDe} lessonId={lesson.id} />
-                  </div>
-                ))}
-              </div>
               {lesson.hasDocQuestions === true ? (
                 <>
-                  <div className="text-center space-y-2 pt-1">
-                    <h3 className="text-sm font-display font-extrabold text-slate-800">Đã đọc kỹ đoạn văn bên trên chưa?</h3>
-                    {docSummary && <SetSummaryLine summary={docSummary} />}
-                    <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
-                      Trả lời câu hỏi trắc nghiệm để kiểm tra khả năng đọc hiểu của bạn.
-                    </p>
-                  </div>
+                  <h3 className="text-sm font-display font-extrabold text-slate-800">Sẵn sàng luyện đọc chưa?</h3>
+                  {docSummary && <SetSummaryLine summary={docSummary} />}
+                  <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
+                    Bấm bắt đầu để đọc từng đoạn văn và trả lời câu hỏi trắc nghiệm đi kèm.
+                  </p>
                   <div className="flex justify-center pt-2">
                     <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
                       Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -332,7 +322,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-slate-500 text-center font-sans leading-relaxed pt-1">
+                <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
                   Bài tập đọc đang được cập nhật. Mục này không ảnh hưởng tới việc hoàn thành bài học.
                 </p>
               )}
