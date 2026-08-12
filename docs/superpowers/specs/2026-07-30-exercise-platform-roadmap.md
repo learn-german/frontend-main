@@ -60,11 +60,9 @@ Tài liệu này là **roadmap cấp trên**, không phải spec triển khai. C
 
 ### Daily Progress Report — Phase B (frontend)
 
-**Chưa làm.** Cần hook `useDailyProgressReport` + component
-`DailyProgressReportCard` trên Learning Dashboard, gọi API đã có sẵn từ Phase A
-(`daily-progress-report` Edge Function). Xem chi tiết UI/API trong
-[requirement.md](../../../requirement.md) (mục Daily Progress Report, dòng
-115 trở đi — "Thông tin hiển thị", "Rule xác định trạng thái", "API đề xuất").
+**Bị bỏ theo quyết định 2026-08-12** (ghi lại để không ai vô tình làm lại). Phase
+A (backend) vẫn giữ nguyên, chạy được độc lập — chỉ không xây UI
+`useDailyProgressReport`/`DailyProgressReportCard` trên Learning Dashboard nữa.
 
 ### Phase 5a — Nền gói cước / kế hoạch level
 
