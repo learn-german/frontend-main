@@ -274,6 +274,57 @@ Tách làm hai spec độc lập, không gộp:
 Rủi ro cần canh ở 6b: đụng đúng vùng logic rollup lesson/XP/idempotency đang chạy
 ổn cho Ngữ pháp — không được phá khi thêm nhánh category doc.
 
+## Phase 6c — Làm bài đọc từng đoạn + admin reorg (đã xong)
+
+**Nguồn:** yêu cầu 2026-08-12, tiếp nối Phase 6a/6b ở trên. Spec:
+[2026-08-12-reading-exercise-per-passage-flow-design.md](2026-08-12-reading-exercise-per-passage-flow-design.md),
+plan: [2026-08-12-reading-exercise-per-passage-flow.md](../plans/2026-08-12-reading-exercise-per-passage-flow.md).
+
+- Màn làm bài đọc tách theo từng đoạn văn (1 đoạn/màn, chấm + hiện đáp án ngay sau
+  mỗi đoạn, điểm tổng cuối cùng vẫn là tổng đúng/tổng câu cả set) — `reading-submit`
+  thêm nhánh `passage_id` chấm tạm không ghi DB.
+- Tab "Lesen" (`LessonDetailPage`) bỏ preview toàn bộ văn bản, chỉ còn CTA giống tab
+  "Nghe".
+- Admin "Đọc" nhóm theo Level (A1/A2/B1/B2) giống "Ngữ pháp"/"Nghe" (tái dùng
+  `AdminModuleGroup`), thêm ô tìm kiếm.
+- Preview văn bản trong `PassageEditRow` (đã có từ trước, dễ bị bỏ sót vì chỉ có
+  icon) — thêm nhãn chữ "Xem trước"/"Chỉnh sửa".
+
+## Việc tiếp theo — backlog nhỏ, quy trình bắt buộc
+
+Các mục dưới đây là yêu cầu rời rạc, chưa thuộc phase nào ở trên và **chưa triển
+khai**. Khi bắt đầu bất kỳ mục nào, phải đi đúng 3 bước, theo thứ tự:
+
+1. `/superpowers:brainstorming` — làm rõ yêu cầu, chốt phạm vi + design, viết spec
+   trước khi đụng code (kể cả khi mục nhìn có vẻ đơn giản).
+2. `/ponytail:ponytail` — khi implement, giữ giải pháp tối giản, không thêm
+   abstraction/thư viện không cần thiết.
+3. `/gitnexus-cli` (bộ công cụ GitNexus nói chung — `impact`, `context`, `query`) —
+   chạy impact analysis trước khi sửa hoặc xoá bất kỳ symbol nào đang được dùng ở
+   nhiều nơi, xác nhận không phá luồng khác trước khi commit.
+
+### Task 1 — Xoá dạng bài "Điền vào chỗ trống"
+
+**Nguồn:** yêu cầu 2026-08-12, kèm ảnh chụp modal "Thêm bài tập mới" trong Admin
+Ngữ pháp (`AdminGrammarExerciseSection.tsx`) — dropdown "Loại bài tập" đang có lựa
+chọn "Điền vào chỗ trống" (`fill_in_the_blank`).
+
+Xoá dạng bài tập này khỏi hệ thống — không còn là lựa chọn khi admin tạo bài tập
+mới. Phạm vi cụ thể **chưa chốt**, brainstorm khi bắt đầu task này, tối thiểu cần
+trả lời:
+
+- Bài tập `fill_in_the_blank` đang tồn tại trong DB: xoá thẳng hay giữ lại
+  (chỉ ẩn lựa chọn tạo mới, học viên cũ vẫn thấy bài cũ nếu có)?
+- `src/lib/grammarFillInBlank.ts` (`normalizeWordBank`, `syncBlankDefinitions`,
+  `BlankDefinition`, `WordBank`) và UI nhập liệu tương ứng trong
+  `AdminGrammarExerciseSection.tsx` (`ExerciseEntryFields`, khối
+  `entry.type === "fill_in_the_blank"`) — xoá hẳn hay giữ lại phòng dùng lại sau?
+- `word_bank` liên quan đến cả `text_fill_blank` (dạng khác, đang dùng chung field
+  `word_bank`?) — cần `impact`/`context` xác nhận trước khi xoá, tránh xoá nhầm
+  logic dùng chung.
+- Ảnh hưởng `GrammarExerciseHint`, `grammar-submit` (chấm điểm `fill_in_the_blank`),
+  và dữ liệu học viên đã làm dạng này (nếu có).
+
 ## Ngoài phạm vi toàn bộ roadmap
 
 - Thay đổi nội dung câu hỏi, đáp án hoặc giải thích do admin đã tạo.
