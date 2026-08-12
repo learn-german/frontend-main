@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronRight, CheckCircle2, Loader2, RotateCcw, ArrowRight } from "lucide-react";
 import { Button } from "../components/DesignSystem";
 import { ExercisePageHeader } from "../components/ExercisePageHeader";
 import { MarkdownBlock } from "../components/MarkdownBlock";
@@ -164,6 +164,13 @@ const ReadingExerciseSetBody: React.FC<{
   const [result, setResult] = useState<ReadingResult | null>(null);
   const [retrying, setRetrying] = useState(false);
   const submissionIdRef = React.useRef(crypto.randomUUID());
+  const [currentPassageIndex, setCurrentPassageIndex] = useState(0);
+  const [passageSubmitting, setPassageSubmitting] = useState(false);
+  const [passageReveal, setPassageReveal] = useState<{
+    itemResults: Record<string, boolean>;
+    correctAnswers: Record<string, string>;
+    explanations: Record<string, string>;
+  } | null>(null);
 
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
 
@@ -191,11 +198,28 @@ const ReadingExerciseSetBody: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, retrying, groups, hydrateSource]);
 
-  const allKeys = useMemo(
-    () => groups.flatMap((g) => (g.questionType === "richtig_falsch" ? g.statements : g.subQuestions).map((_, i) => itemKey(g.id, i))),
-    [groups],
+  const passageOrder = useMemo(
+    () =>
+      [...new Set(groups.map((g) => g.passageId))].sort(
+        (a, b) => (passagesById[a]?.orderIndex ?? 0) - (passagesById[b]?.orderIndex ?? 0),
+      ),
+    [groups, passagesById],
   );
-  const allAnswered = allKeys.length > 0 && allKeys.every((key) => !!answersByKey[key]);
+  const currentPassageId = passageOrder[currentPassageIndex];
+  const currentGroups = useMemo(
+    () => groups.filter((g) => g.passageId === currentPassageId),
+    [groups, currentPassageId],
+  );
+  const isLastPassage = currentPassageIndex === passageOrder.length - 1;
+  const currentKeys = useMemo(
+    () => currentGroups.flatMap((g) => (g.questionType === "richtig_falsch" ? g.statements : g.subQuestions).map((_, i) => itemKey(g.id, i))),
+    [currentGroups],
+  );
+  const currentAnswered = currentKeys.length > 0 && currentKeys.every((key) => !!answersByKey[key]);
+
+  React.useEffect(() => {
+    setPassageReveal(null);
+  }, [currentPassageIndex]);
 
   React.useEffect(() => {
     if (result !== null || groups.length === 0) return;
@@ -207,6 +231,21 @@ const ReadingExerciseSetBody: React.FC<{
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answersByKey, result]);
+
+  const handleSubmitPassage = async () => {
+    setPassageSubmitting(true);
+    const { data, error } = await supabase.functions.invoke("reading-submit", {
+      body: { set_id: set.id, submission_id: submissionIdRef.current, passage_id: currentPassageId, answers: answersByKey },
+    });
+    setPassageSubmitting(false);
+    if (error || !data) {
+      showToast("Không thể chấm điểm đoạn này. Vui lòng thử lại.", "warning");
+      return;
+    }
+    setPassageReveal(
+      data as { itemResults: Record<string, boolean>; correctAnswers: Record<string, string>; explanations: Record<string, string> },
+    );
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -233,6 +272,8 @@ const ReadingExerciseSetBody: React.FC<{
     setResult(null);
     setSubmitError(null);
     setRetrying(true);
+    setCurrentPassageIndex(0);
+    setPassageReveal(null);
   };
 
   const awaitingHydration = hydrateSource === "attempt" && !retrying && groups.length > 0 && result === null;
@@ -338,7 +379,10 @@ const ReadingExerciseSetBody: React.FC<{
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
       <div className="space-y-4">
-        {groups.map((group, groupIndex) => (
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          Đoạn {currentPassageIndex + 1}/{passageOrder.length}
+        </span>
+        {currentGroups.map((group, groupIndex) => (
           <div key={group.id} className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider mb-2">Bài {groupIndex + 1}</p>
             <ReadingGroupBody
@@ -347,7 +391,10 @@ const ReadingExerciseSetBody: React.FC<{
               passageText={passagesById[group.passageId]?.textDe ?? ""}
               answersByKey={answersByKey}
               onAnswer={(key, value) => setAnswersByKey((prev) => ({ ...prev, [key]: value }))}
-              revealed={false}
+              itemResults={passageReveal?.itemResults}
+              revealed={passageReveal !== null}
+              correctAnswers={passageReveal?.correctAnswers}
+              explanation={passageReveal?.explanations[group.id]}
             />
           </div>
         ))}
@@ -370,10 +417,21 @@ const ReadingExerciseSetBody: React.FC<{
         >
           Lưu
         </Button>
-        <Button variant="primary" disabled={!allAnswered || submitting} onClick={handleSubmit}>
-          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Nộp bài
-        </Button>
+        {passageReveal === null ? (
+          <Button variant="primary" disabled={!currentAnswered || passageSubmitting} onClick={handleSubmitPassage}>
+            {passageSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Nộp đoạn này
+          </Button>
+        ) : isLastPassage ? (
+          <Button variant="primary" disabled={submitting} onClick={handleSubmit}>
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Xem kết quả
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={() => setCurrentPassageIndex((i) => i + 1)}>
+            Đoạn tiếp theo <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
+        )}
       </div>
     </div>
   );
