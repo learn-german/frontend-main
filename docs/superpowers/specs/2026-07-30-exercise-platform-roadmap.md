@@ -55,8 +55,17 @@ Tài liệu này là **roadmap cấp trên**, không phải spec triển khai. C
   **Cần thao tác thủ công còn nợ:** tạo Vault secret `service_role_key` trên
   Supabase dashboard để cron job chạy được (không tự làm được, không có quyền đọc
   giá trị thật của `SUPABASE_SERVICE_ROLE_KEY`).
+- **Xoá dạng bài "text_fill_blank"** (nhãn UI "Điền vào chỗ trống", markup
+  `{{đáp_án}}` — khác `fill_in_the_blank`/"Điền vào ô trống" dùng `___` + word
+  bank). Xong (2026-08-12) — xác nhận 0 exercise/attempt thật trước khi xoá, gỡ
+  sạch khỏi TS union, admin form, answer codec, scoring, CHECK constraint DB,
+  bỏ luôn regex che `prompt_text` trong view `grammar_exercises_public` (hết tác
+  dụng). 164/164 test pass.
 
-## Còn phải làm
+## Đã quyết định không làm (ghi lại để tránh làm lại)
+
+Không còn hạng mục "chưa làm" nào tính đến 2026-08-12 — cả hai mục dưới đây đã
+bị bỏ, không phải việc còn tồn đọng.
 
 ### Daily Progress Report — Phase B (frontend)
 
@@ -70,41 +79,6 @@ A (backend) vẫn giữ nguyên, chạy được độc lập — chỉ không x
 Daily Progress Report chạy ở chế độ rút gọn, thiếu `expected_progress`,
 `progress_gap`, `package_remaining_days` — trả `insufficient_data` cho các trường
 đó.
-
-## Việc tiếp theo — backlog nhỏ, quy trình bắt buộc
-
-Các mục dưới đây là yêu cầu rời rạc, chưa thuộc phase nào ở trên và **chưa triển
-khai**. Khi bắt đầu bất kỳ mục nào, phải đi đúng 3 bước, theo thứ tự:
-
-1. `/superpowers:brainstorming` — làm rõ yêu cầu, chốt phạm vi + design, viết spec
-   trước khi đụng code (kể cả khi mục nhìn có vẻ đơn giản).
-2. `/ponytail:ponytail` — khi implement, giữ giải pháp tối giản, không thêm
-   abstraction/thư viện không cần thiết.
-3. `/gitnexus-cli` (bộ công cụ GitNexus nói chung — `impact`, `context`, `query`) —
-   chạy impact analysis trước khi sửa hoặc xoá bất kỳ symbol nào đang được dùng ở
-   nhiều nơi, xác nhận không phá luồng khác trước khi commit.
-
-### Task 1 — Xoá dạng bài "Điền vào chỗ trống"
-
-**Nguồn:** yêu cầu 2026-08-12, kèm ảnh chụp modal "Thêm bài tập mới" trong Admin
-Ngữ pháp (`AdminGrammarExerciseSection.tsx`) — dropdown "Loại bài tập" đang có lựa
-chọn "Điền vào chỗ trống" (`fill_in_the_blank`).
-
-Xoá dạng bài tập này khỏi hệ thống — không còn là lựa chọn khi admin tạo bài tập
-mới. Phạm vi cụ thể **chưa chốt**, brainstorm khi bắt đầu task này, tối thiểu cần
-trả lời:
-
-- Bài tập `fill_in_the_blank` đang tồn tại trong DB: xoá thẳng hay giữ lại
-  (chỉ ẩn lựa chọn tạo mới, học viên cũ vẫn thấy bài cũ nếu có)?
-- `src/lib/grammarFillInBlank.ts` (`normalizeWordBank`, `syncBlankDefinitions`,
-  `BlankDefinition`, `WordBank`) và UI nhập liệu tương ứng trong
-  `AdminGrammarExerciseSection.tsx` (`ExerciseEntryFields`, khối
-  `entry.type === "fill_in_the_blank"`) — xoá hẳn hay giữ lại phòng dùng lại sau?
-- `word_bank` liên quan đến cả `text_fill_blank` (dạng khác, đang dùng chung field
-  `word_bank`?) — cần `impact`/`context` xác nhận trước khi xoá, tránh xoá nhầm
-  logic dùng chung.
-- Ảnh hưởng `GrammarExerciseHint`, `grammar-submit` (chấm điểm `fill_in_the_blank`),
-  và dữ liệu học viên đã làm dạng này (nếu có).
 
 ## Ngoài phạm vi toàn bộ roadmap
 
