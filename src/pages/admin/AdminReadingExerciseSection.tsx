@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Loader2, Trash2, Pencil, X, Eye, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Loader2, Trash2, Pencil, X, Eye, FileText, Search } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { AdminModuleGroup } from "./AdminModuleGroup";
 import { showToast } from "../../lib/toast";
 import { LessonStatusBadge } from "../../components/DesignSystem";
 import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
@@ -112,6 +113,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [passages, setPassages] = useState<ReadingPassage[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [moduleExpanded, setModuleExpanded] = useState<Record<string, boolean>>({});
+  const [search, setSearch] = useState("");
   const [savingPassageId, setSavingPassageId] = useState<string | null>(null);
   const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
   const { sets, toggleSetStatus, createReadingSet } = useExerciseSets();
@@ -344,14 +347,48 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
   if (loading || moduleOrderLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-orange-500" /></div>;
 
-  const orderedLessons = moduleOrder
-    .flatMap((mod) => mod.lessonIds)
-    .map((lid) => lessons.find((l) => l.lesson_id === lid))
-    .filter((l): l is LessonGroup => !!l);
+  const filteredLessons = lessons.filter(
+    (l) =>
+      l.lesson_title.toLowerCase().includes(search.toLowerCase()) ||
+      l.module_title.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const moduleSections = moduleOrder
+    .map((mod) => ({
+      id: mod.id,
+      level: mod.level,
+      lessonGroups: mod.lessonIds
+        .map((lid) => filteredLessons.find((l) => l.lesson_id === lid))
+        .filter((l): l is LessonGroup => !!l),
+    }))
+    .filter((mod) => mod.lessonGroups.length > 0);
 
   return (
-    <div className="space-y-3">
-      {orderedLessons.map((lesson) => {
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-xl font-display font-black text-slate-900">Bài tập đọc</h1>
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Tìm bài học..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {moduleSections.map((mod) => (
+          <AdminModuleGroup
+            key={mod.id}
+            title={mod.level}
+            subtitle={`${mod.lessonGroups.length} bài học`}
+            expanded={!!moduleExpanded[mod.id]}
+            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+          >
+      {mod.lessonGroups.map((lesson) => {
         const lessonSets = docSets.filter((s) => s.lessonId === lesson.lesson_id);
         const isExpanded = expanded[lesson.lesson_id] ?? false;
         return (
@@ -545,6 +582,14 @@ export const AdminReadingExerciseSection: React.FC = () => {
           </div>
         );
       })}
+          </AdminModuleGroup>
+        ))}
+        {moduleSections.length === 0 && (
+          <div className="text-center py-10 text-slate-400 text-sm">
+            Không tìm thấy bài học nào khớp với "{search}".
+          </div>
+        )}
+      </div>
 
       {deleteSetTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
