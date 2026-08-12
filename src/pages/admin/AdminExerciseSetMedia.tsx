@@ -112,8 +112,12 @@ export const PassageEditRow: React.FC<{
               onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); e.target.value = ""; }}
             />
           </label>
-          <button onClick={() => setTab(tab === "edit" ? "preview" : "edit")} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" title={tab === "edit" ? "Xem trước" : "Chỉnh sửa"}>
-            {tab === "edit" ? <Eye className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+          <button
+            onClick={() => setTab(tab === "edit" ? "preview" : "edit")}
+            className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2 py-1 hover:bg-slate-50"
+          >
+            {tab === "edit" ? <Eye className="w-3.5 h-3.5 text-orange-500" /> : <Pencil className="w-3.5 h-3.5 text-orange-500" />}
+            {tab === "edit" ? "Xem trước" : "Chỉnh sửa"}
           </button>
           {dirty && (
             <button onClick={() => onSave(passage.id, textDe)} disabled={saving} className="text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50">
