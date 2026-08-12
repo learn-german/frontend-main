@@ -26,6 +26,7 @@ export interface ReadingQuestionGroupPublic {
 export interface ReadingPassageLite {
   id: string;
   textDe: string;
+  orderIndex: number;
 }
 
 /**
@@ -87,7 +88,7 @@ export function useReadingQuestionGroups(setId: string): {
         if (passageIds.length > 0) {
           const { data: passages, error: passagesError } = await supabase
             .from("reading_passages")
-            .select("id, text_de")
+            .select("id, text_de, order_index")
             .in("id", passageIds);
           if (cancelled) return;
           if (passagesError) {
@@ -96,7 +97,7 @@ export function useReadingQuestionGroups(setId: string): {
             return;
           }
           for (const p of passages ?? []) {
-            passageMap[p.id as string] = { id: p.id as string, textDe: p.text_de as string };
+            passageMap[p.id as string] = { id: p.id as string, textDe: p.text_de as string, orderIndex: p.order_index as number };
           }
         }
 
