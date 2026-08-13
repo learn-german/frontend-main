@@ -221,17 +221,6 @@ const ReadingExerciseSetBody: React.FC<{
     setPassageReveal(null);
   }, [currentPassageIndex]);
 
-  React.useEffect(() => {
-    if (result !== null || groups.length === 0) return;
-    const timer = setTimeout(() => {
-      saveDraft(answersByKey).then(({ error }) => {
-        if (!error) onDraftSaved(true);
-      });
-    }, 1000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answersByKey, result]);
-
   const handleSubmitPassage = async () => {
     setPassageSubmitting(true);
     const { data, error } = await supabase.functions.invoke("reading-submit", {

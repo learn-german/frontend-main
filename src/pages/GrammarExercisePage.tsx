@@ -226,19 +226,6 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   const collectDraftAnswers = (): Record<string, string> =>
     Object.fromEntries(exercises.map((exercise) => [exercise.id, getDraftAnswerStringFor(exercise)]));
 
-  // Autosave draft debounce — chỉ chạy khi chưa có kết quả (chưa nộp/chưa
-  // hydrate từ attempt), tránh ghi đè draft sau khi đã nộp bài xong.
-  React.useEffect(() => {
-    if (result !== null || exercises.length === 0) return;
-    const timer = setTimeout(() => {
-      saveDraft(collectDraftAnswers()).then(({ error }) => {
-        if (!error) onDraftSaved?.(true);
-      });
-    }, 1000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTokensByExercise, textAnswerByExercise, itemGroupsByExercise, blankAnswersByExercise, choiceByExercise, result]);
-
   const handleSubmit = async () => {
     const finalAnswers = collectAllAnswers();
 
@@ -555,7 +542,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
         <Button
           variant="secondary"
           onClick={async () => {
-            const { error } = await saveDraft(collectAllAnswers());
+            const { error } = await saveDraft(collectDraftAnswers());
             if (error) {
               showToast("Không thể lưu, vui lòng thử lại.", "warning");
               return;

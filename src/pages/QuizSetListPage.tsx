@@ -168,16 +168,15 @@ const QuizExerciseSetBody: React.FC<{
   const collectAllAnswers = (): Record<string, string> =>
     Object.fromEntries(exercises.map((exercise) => [exercise.id, getAnswerStringFor(exercise)]));
 
-  React.useEffect(() => {
-    if (result !== null || exercises.length === 0) return;
-    const timer = setTimeout(() => {
-      saveDraft(collectAllAnswers()).then(({ error }) => {
-        if (!error) onDraftSaved(true);
-      });
-    }, 1000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choiceByExercise, matchedPairsByExercise, selectedTokensByExercise, textAnswerByExercise, itemGroupsByExercise, blankAnswersByExercise, result]);
+  // Bản "partial" cho nút Lưu — không đòi hỏi xếp/điền xong hết mới lưu,
+  // khác với collectAllAnswers (dùng khi nộp bài). Thiếu bản riêng này thì
+  // Lưu sẽ ghi đè draft bằng "" cho câu classification/matching/fill_in_the_blank
+  // đang làm dở, xoá mất tiến độ (xem grammarAnswerCodec.ts).
+  const getDraftAnswerStringFor = (exercise: GrammarExercise): string =>
+    serializeAnswer(exercise, getParsedAnswerFor(exercise), { partial: true });
+
+  const collectDraftAnswers = (): Record<string, string> =>
+    Object.fromEntries(exercises.map((exercise) => [exercise.id, getDraftAnswerStringFor(exercise)]));
 
   const handleSubmit = async () => {
     const finalAnswers = collectAllAnswers();
@@ -526,7 +525,7 @@ const QuizExerciseSetBody: React.FC<{
         <Button
           variant="secondary"
           onClick={async () => {
-            const { error } = await saveDraft(collectAllAnswers());
+            const { error } = await saveDraft(collectDraftAnswers());
             if (error) {
               showToast("Không thể lưu, vui lòng thử lại.", "warning");
               return;
