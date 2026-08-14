@@ -83,6 +83,8 @@ const ReadingSingleQuestion: React.FC<{
   }
 
   const q = screen.group.subQuestions[screen.questionIndex];
+  const letters = q.options.map((_, i) => String.fromCharCode(65 + i));
+  const questionLabel = q.question.trim() || `Đáp án: ${letters.join(", ")}?`;
   return (
     <div className="space-y-2">
       {q.text_snippet && (
@@ -91,7 +93,7 @@ const ReadingSingleQuestion: React.FC<{
         </div>
       )}
       {q.image_key && <SubQuestionImage lessonId={lesson.id} imageKey={q.image_key} />}
-      <p className="text-sm font-medium text-slate-700">{q.question}</p>
+      <p className="text-sm font-medium text-slate-700">{questionLabel}</p>
       <div className="space-y-1">
         {q.options.map((opt, oi) => {
           const optKey = String(oi);
