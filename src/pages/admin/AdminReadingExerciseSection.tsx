@@ -25,6 +25,9 @@ import {
   itemCount,
   passagesForSet,
   groupsForPassage,
+  groupsForSet,
+  canGroupHaveTitle,
+  canAddGroupToSet,
   missingQuestionTypesForPassage,
   readingSetStats,
   type ReadingQuestionType,
@@ -132,6 +135,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [deletingItem, setDeletingItem] = useState(false);
   const [deleteSetTarget, setDeleteSetTarget] = useState<{ setId: string } | null>(null);
   const [deletingSet, setDeletingSet] = useState(false);
+  const [titleModal, setTitleModal] = useState<{ group: ReadingQuestionGroupRowData; title: string; questionIntro: string } | null>(null);
+  const [savingTitle, setSavingTitle] = useState(false);
   const [deletePassageTarget, setDeletePassageTarget] = useState<ReadingPassage | null>(null);
   const [deletingPassage, setDeletingPassage] = useState(false);
 
@@ -206,6 +211,25 @@ export const AdminReadingExerciseSection: React.FC = () => {
     fetchAll();
   };
 
+  const handleSaveGroupTitle = async () => {
+    if (!titleModal) return;
+    const trimmedTitle = titleModal.title.trim();
+    if (trimmedTitle && !canGroupHaveTitle(groupsForSet(groups, titleModal.group.set_id), titleModal.group.id)) {
+      showToast("Set này đã có nhóm câu hỏi khác — dạng bài có tiêu đề phải nằm trong 1 Bài riêng.", "warning");
+      return;
+    }
+    setSavingTitle(true);
+    const { error } = await supabase
+      .from("reading_question_groups")
+      .update({ title: trimmedTitle || null, question_intro: titleModal.questionIntro.trim() || null })
+      .eq("id", titleModal.group.id);
+    setSavingTitle(false);
+    if (error) { showToast("Lưu thất bại: " + error.message, "warning"); return; }
+    showToast("Đã lưu tiêu đề.", "success");
+    setTitleModal(null);
+    fetchAll();
+  };
+
   // ---- Thêm/sửa/xoá TỪNG câu hỏi — lưu ngay khi bấm Lưu, không gộp nhiều
   // thay đổi vào 1 form rồi mới lưu 1 lần (nguồn gốc bug mất dữ liệu/xoá lỗi
   // ở bản modal-gộp-cả-nhóm trước đây).
@@ -276,6 +300,11 @@ export const AdminReadingExerciseSection: React.FC = () => {
     setSavingItem(true);
 
     if (itemModal.groupId === null) {
+      if (!canAddGroupToSet(groupsForSet(groups, itemModal.setId))) {
+        setSavingItem(false);
+        showToast("Set này đã dùng cho dạng bài có tiêu đề riêng — không thể thêm nhóm câu hỏi khác.", "warning");
+        return;
+      }
       const orderIndex = groupsForPassage(groups, itemForm.passageId).length;
       const payload = buildReadingPayload(itemForm, itemModal.setId, orderIndex);
       const { error } = await supabase.from("reading_question_groups").insert(payload);
@@ -529,6 +558,14 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                         <span className="ml-auto flex items-center gap-2">
                                           <span
                                             role="button"
+                                            onClick={(e) => { e.stopPropagation(); setTitleModal({ group, title: group.title ?? "", questionIntro: group.question_intro ?? "" }); }}
+                                            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-700"
+                                            title="Sửa tiêu đề"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </span>
+                                          <span
+                                            role="button"
                                             onClick={(e) => { e.stopPropagation(); openAddItem(group, lesson.lesson_id); }}
                                             className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
                                           >
@@ -723,6 +760,41 @@ export const AdminReadingExerciseSection: React.FC = () => {
               <button onClick={() => setItemModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Hủy</button>
               <button onClick={handleSaveItem} disabled={savingItem} className="px-4 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl disabled:opacity-50">
                 {savingItem ? "Đang lưu..." : "Lưu"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {titleModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-5 max-w-xl w-full my-8 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-display font-bold text-slate-800">Sửa tiêu đề nhóm</h3>
+              <button onClick={() => setTitleModal(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-500">Tiêu đề (vd "AUFGABE 1")</label>
+              <input
+                type="text"
+                value={titleModal.title}
+                onChange={(e) => setTitleModal((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl"
+                placeholder="Để trống nếu không cần tiêu đề riêng"
+              />
+              <label className="block text-xs font-bold text-slate-500">Yêu cầu (hiện phía trên tiêu đề)</label>
+              <textarea
+                rows={2}
+                value={titleModal.questionIntro}
+                onChange={(e) => setTitleModal((prev) => (prev ? { ...prev, questionIntro: e.target.value } : prev))}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl resize-none"
+                placeholder="Để trống nếu không cần"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button onClick={() => setTitleModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Hủy</button>
+              <button onClick={handleSaveGroupTitle} disabled={savingTitle} className="px-4 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl disabled:opacity-50">
+                {savingTitle ? "Đang lưu..." : "Lưu"}
               </button>
             </div>
           </div>
