@@ -4,8 +4,10 @@ import { inject } from '@vercel/analytics';
 import App from './App.tsx';
 import { AdminApp } from './pages/admin/AdminApp.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { patchDomForExtensions } from './lib/patchDomForExtensions.ts';
 import './index.css';
 
+patchDomForExtensions();
 inject();
 
 const isAdminRoute = window.location.pathname.startsWith('/admin');
