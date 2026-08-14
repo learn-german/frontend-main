@@ -124,6 +124,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [expandedTypeSections, setExpandedTypeSections] = useState<Set<string>>(new Set());
 
   const [addTypePassageId, setAddTypePassageId] = useState<string | null>(null);
+  const [addPassageMenuSetId, setAddPassageMenuSetId] = useState<string | null>(null);
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
   const [itemForm, setItemForm] = useState<ReadingQuestionGroupForm>(createEmptyReadingForm());
   const [savingItem, setSavingItem] = useState(false);
@@ -178,6 +179,49 @@ export const AdminReadingExerciseSection: React.FC = () => {
       .from("reading_passages")
       .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex });
     if (error) { showToast("Thêm văn bản thất bại: " + error.message, "warning"); return; }
+    fetchAll();
+  };
+
+  const handleAddSingleQuestionPassage = async (setId: string, lessonId: string) => {
+    setAddPassageMenuSetId(null);
+    const orderIndex = passagesForSet(passages, setId).length;
+    const { data: passageRow, error: passageError } = await supabase
+      .from("reading_passages")
+      .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex })
+      .select("id")
+      .single();
+    if (passageError || !passageRow) {
+      showToast("Thêm câu hỏi thất bại: " + (passageError?.message ?? "không rõ lỗi"), "warning");
+      return;
+    }
+    const { error: groupError } = await supabase.from("reading_question_groups").insert({
+      passage_id: passageRow.id,
+      set_id: setId,
+      order_index: 0,
+      title: null,
+      question_intro: null,
+      question_type: "multiple_choice",
+      sub_questions: [{ text_snippet: null, image_key: null, question: "", options: ["A", "B", "C"], correct_option_id: "0" }],
+      explanation: null,
+    });
+    if (groupError) {
+      showToast("Tạo đáp án thất bại: " + groupError.message, "warning");
+      return;
+    }
+    fetchAll();
+  };
+
+  const handleSaveSingleQuestionOptions = async (groupId: string, options: string[], correctIndex: number) => {
+    const choicePayload = buildMultipleChoicePayload({ options, correctIndex });
+    const newSubQuestion: ReadingSubQuestionRow = {
+      text_snippet: null,
+      image_key: null,
+      question: "",
+      options: choicePayload.options ?? options,
+      correct_option_id: choicePayload.correct_answer,
+    };
+    const { error } = await supabase.from("reading_question_groups").update({ sub_questions: [newSubQuestion] }).eq("id", groupId);
+    if (error) { showToast("Lưu đáp án thất bại: " + error.message, "warning"); return; }
     fetchAll();
   };
 
@@ -447,13 +491,33 @@ export const AdminReadingExerciseSection: React.FC = () => {
                       <div className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
-                          <button
-                            type="button"
-                            onClick={() => handleAddPassage(set.id, lesson.lesson_id)}
-                            className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Thêm văn bản
-                          </button>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setAddPassageMenuSetId((prev) => (prev === set.id ? null : set.id))}
+                              className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Thêm văn bản
+                            </button>
+                            {addPassageMenuSetId === set.id && (
+                              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => { setAddPassageMenuSetId(null); handleAddPassage(set.id, lesson.lesson_id); }}
+                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600 whitespace-nowrap"
+                                >
+                                  Văn bản nhiều câu hỏi
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddSingleQuestionPassage(set.id, lesson.lesson_id)}
+                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600 whitespace-nowrap"
+                                >
+                                  Câu hỏi A/B/C
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         {setPassages.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có văn bản nào.</p>}
 
