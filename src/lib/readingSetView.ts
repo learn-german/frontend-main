@@ -57,3 +57,23 @@ export function readingSetStats(
     questionCount: setGroups.reduce((sum, g) => sum + itemCount(g), 0),
   };
 }
+
+interface GroupSingleQuestionLite {
+  passage_id: string;
+  question_type: ReadingQuestionType;
+  title: string | null;
+  question_intro: string | null;
+  sub_questions: unknown[] | null;
+}
+
+export function isSingleQuestionPassage(passageId: string, groups: GroupSingleQuestionLite[]): boolean {
+  const passageGroups = groups.filter((g) => g.passage_id === passageId);
+  if (passageGroups.length !== 1) return false;
+  const [group] = passageGroups;
+  return (
+    group.question_type === "multiple_choice" &&
+    (group.sub_questions ?? []).length === 1 &&
+    !group.title?.trim() &&
+    !group.question_intro?.trim()
+  );
+}

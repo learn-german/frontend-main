@@ -6,6 +6,7 @@ import {
   groupsForPassage,
   missingQuestionTypesForPassage,
   readingSetStats,
+  isSingleQuestionPassage,
 } from "./readingSetView";
 
 test("itemCount: richtig_falsch đếm theo statements", () => {
@@ -83,4 +84,58 @@ test("readingSetStats: gộp đúng passageCount/typeCount/questionCount qua nhi
 
 test("readingSetStats: set không có gì -> toàn 0", () => {
   assert.deepEqual(readingSetStats([], [], "s1"), { passageCount: 0, typeCount: 0, questionCount: 0 });
+});
+
+test("isSingleQuestionPassage: đúng 1 nhóm multiple_choice 1 câu, title/intro rỗng -> true", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), true);
+});
+
+test("isSingleQuestionPassage: passage không có nhóm nào -> false", () => {
+  assert.equal(isSingleQuestionPassage("p1", []), false);
+});
+
+test("isSingleQuestionPassage: nhóm richtig_falsch -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "richtig_falsch" as const, title: null, question_intro: null, sub_questions: null },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
+});
+
+test("isSingleQuestionPassage: nhóm multiple_choice nhưng 2 câu -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}, {}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
+});
+
+test("isSingleQuestionPassage: có title -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: "AUFGABE 1", question_intro: null, sub_questions: [{}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
+});
+
+test("isSingleQuestionPassage: có question_intro -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: "Yêu cầu...", sub_questions: [{}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
+});
+
+test("isSingleQuestionPassage: passage có 2 nhóm -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}] },
+    { passage_id: "p1", question_type: "richtig_falsch" as const, title: null, question_intro: null, sub_questions: null },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
+});
+
+test("isSingleQuestionPassage: nhóm của passage khác không ảnh hưởng", () => {
+  const groups = [
+    { passage_id: "p2", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
 });
