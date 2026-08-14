@@ -23,6 +23,10 @@ Quay lại để lùi tự do, và **bỏ hẳn việc chấm điểm giữa ch�
 4. `multiple_choice` cũng áp dụng cùng kiểu 1-câu-1-màn-hình để đồng nhất.
 5. Không thêm nhãn "Nachricht" phía trên box đoạn văn (giữ nguyên như hiện
    tại, không có caption).
+6. Bỏ luôn tiêu đề Teil (`group.title`) và "Yêu cầu" (`group.questionIntro`)
+   khỏi màn làm bài — nội dung đó do admin viết thẳng vào văn bản đoạn văn
+   (`passage.textDe`). Màn làm bài cuối cùng chỉ còn 2 khối: đoạn văn +
+   câu hỏi hiện tại (không còn khối tiêu đề/yêu cầu riêng phía trên).
 
 ## Phạm vi
 
@@ -55,6 +59,11 @@ Quay lại để lùi tự do, và **bỏ hẳn việc chấm điểm giữa ch�
   (`AdminReadingExerciseSection.tsx`) — không đổi.
 - Nút "Lưu" (save draft toàn bộ `answersByKey`) — giữ nguyên hành vi và vị
   trí, không scope theo câu/đoạn hiện tại.
+- Schema/Admin form của `group.title`/`group.questionIntro` — không xoá
+  field, chỉ ngừng render 2 field này ở màn làm bài của học viên. Admin
+  viết nội dung tương đương thẳng vào `passage.textDe`. Màn kết quả cuối
+  (`ReadingGroupBody`, không đổi) vẫn hiện `group.title` như hiện tại —
+  chỉ màn **làm bài** bỏ 2 field này, không phải xoá khỏi toàn bộ luồng.
 
 ## Thiết kế chi tiết
 
@@ -106,12 +115,6 @@ const currentAnswered = !!answersByKey[currentScreen.key];
 ```tsx
 <div className="space-y-4 animate-in fade-in duration-300">
   <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-    {currentScreen.group.title && (
-      <p className="text-sm font-display font-bold text-slate-800">{currentScreen.group.title}</p>
-    )}
-    {currentScreen.group.questionIntro && (
-      <p className="text-xs text-slate-500">{currentScreen.group.questionIntro}</p>
-    )}
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
       <MarkdownBlock content={passagesById[currentScreen.passageId]?.textDe ?? ""} lessonId={lesson.id} />
     </div>
