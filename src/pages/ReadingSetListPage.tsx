@@ -124,7 +124,7 @@ const ReadingGroupBody: React.FC<{
     {group.title && <p className="text-sm font-display font-bold text-slate-800">{group.title}</p>}
     {group.questionIntro && <p className="text-xs text-slate-500">{group.questionIntro}</p>}
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-      <MarkdownBlock content={passageText} lessonId={lesson.id} />
+      <MarkdownBlock content={passageText} lessonId={lesson.id} large />
     </div>
 
     {group.questionType === "richtig_falsch" && group.statements.map((s, i) => {
@@ -407,7 +407,7 @@ const ReadingExerciseSetBody: React.FC<{
     <div className="space-y-4 animate-in fade-in duration-300">
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <MarkdownBlock content={passagesById[currentScreen.passageId]?.textDe ?? ""} lessonId={lesson.id} />
+          <MarkdownBlock content={passagesById[currentScreen.passageId]?.textDe ?? ""} lessonId={lesson.id} large />
         </div>
 
         <ReadingSingleQuestion

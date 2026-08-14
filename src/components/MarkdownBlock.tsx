@@ -263,12 +263,20 @@ const components: Components = {
   ),
 };
 
+// ponytail: chỉ đoạn văn đọc hiểu (MarkdownBlock large) cần cỡ chữ to hơn để
+// dễ đọc — các usage khác (giải thích ngữ pháp, preview admin...) giữ nguyên
+// text-xs mặc định ở `components.p`.
+const largeP = ({ children }: { children?: React.ReactNode }) => (
+  <p className="text-sm text-slate-700 leading-relaxed my-1.5">{children}</p>
+);
+
 export const MarkdownBlock: React.FC<{
   content: string;
   className?: string;
   lessonId?: string;
   onWordClick?: (word: string) => void;
-}> = ({ content, className, lessonId, onWordClick }) => {
+  large?: boolean;
+}> = ({ content, className, lessonId, onWordClick, large }) => {
   // Mutated in place (not reassigned) so its identity stays stable across
   // renders — the `a` component below is memoized and must be able to read
   // freshly-populated words at click time without becoming a useMemo dep
@@ -281,6 +289,7 @@ export const MarkdownBlock: React.FC<{
 
   const activeComponents: Components = useMemo(() => ({
     ...components,
+    ...(large ? { p: largeP } : {}),
     img: ({ src, alt }) => <ContentImage src={src} alt={alt} lessonId={lessonId} />,
     ...(onWordClick
       ? {
@@ -305,7 +314,7 @@ export const MarkdownBlock: React.FC<{
           },
         }
       : {}),
-  }), [lessonId, onWordClick]);
+  }), [lessonId, onWordClick, large]);
 
   return (
     <div className={`space-y-0.5 ${className ?? ""}`}>

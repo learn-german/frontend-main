@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Trash2, Image as ImageIcon, Eye, Pencil } from "lucide-react";
 import { useMediaPlaybackUrl } from "../../lib/hooks/useMediaPlaybackUrl";
 import { uploadMedia } from "../../lib/uploadMedia";
@@ -57,7 +57,18 @@ export const PassageEditRow: React.FC<{
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const baseHeightRef = useRef<number | null>(null);
   const dirty = textDe !== passage.text_de;
+
+  // ponytail: mở rộng theo nội dung, tối đa 200% chiều cao mặc định (rows=4);
+  // dài hơn thì cuộn trong ô thay vì phình vô hạn.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || tab !== "edit") return;
+    if (baseHeightRef.current === null) baseHeightRef.current = el.clientHeight;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, baseHeightRef.current * 2)}px`;
+  }, [textDe, tab]);
 
   const insertImage = (objectKey: string) => {
     const textarea = textareaRef.current;
@@ -137,7 +148,7 @@ export const PassageEditRow: React.FC<{
           onChange={(e) => setTextDe(e.target.value)}
           onPaste={handlePaste}
           placeholder="Nhập văn bản (hỗ trợ Markdown, paste ảnh trực tiếp)..."
-          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-y font-mono"
+          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none overflow-y-auto font-mono"
         />
       ) : (
         <div className="min-h-16 bg-white border border-slate-200 rounded-xl p-3">

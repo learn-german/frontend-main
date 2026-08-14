@@ -117,7 +117,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [search, setSearch] = useState("");
   const [savingPassageId, setSavingPassageId] = useState<string | null>(null);
   const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
-  const { sets, toggleSetStatus, createReadingSet } = useExerciseSets();
+  const { sets, refetch: refetchSets, toggleSetStatus, createReadingSet } = useExerciseSets();
 
   const [groups, setGroups] = useState<ReadingQuestionGroupRowData[]>([]);
   const [previewTarget, setPreviewTarget] = useState<string | null>(null);
@@ -192,6 +192,10 @@ export const AdminReadingExerciseSection: React.FC = () => {
     if (error) { showToast("Xóa thất bại: " + error.message, "warning"); return; }
     showToast("Đã xóa bài đọc.", "success");
     setDeleteSetTarget(null);
+    // fetchAll() chỉ refetch lessons/passages/groups — sets đến từ hook riêng
+    // useExerciseSets(), không tự refetch khi xoá ở đây, nên bài đã xoá vẫn
+    // hiện trên danh sách cho tới khi refetchSets() được gọi.
+    refetchSets();
     fetchAll();
   };
 
