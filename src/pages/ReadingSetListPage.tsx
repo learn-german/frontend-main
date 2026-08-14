@@ -85,7 +85,11 @@ const ReadingSingleQuestion: React.FC<{
   const q = screen.group.subQuestions[screen.questionIndex];
   return (
     <div className="space-y-2">
-      {q.text_snippet && <p className="text-xs text-slate-500">{q.text_snippet}</p>}
+      {q.text_snippet && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <MarkdownBlock content={q.text_snippet} lessonId={lesson.id} />
+        </div>
+      )}
       {q.image_key && <SubQuestionImage lessonId={lesson.id} imageKey={q.image_key} />}
       <p className="text-sm font-medium text-slate-700">{q.question}</p>
       <div className="space-y-1">
@@ -405,7 +409,21 @@ const ReadingExerciseSetBody: React.FC<{
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
+      {currentScreen.group.title && (
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          CÂU {currentScreen.questionIndex + 1}/{currentScreen.questionCount}
+        </span>
+      )}
+      {currentScreen.group.questionIntro && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
+          <span className="font-bold">Yêu cầu: </span>
+          {currentScreen.group.questionIntro}
+        </div>
+      )}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+        {currentScreen.group.title && (
+          <p className="text-base font-display font-bold text-slate-900">{currentScreen.group.title}</p>
+        )}
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
           <MarkdownBlock content={passagesById[currentScreen.passageId]?.textDe ?? ""} lessonId={lesson.id} large />
         </div>

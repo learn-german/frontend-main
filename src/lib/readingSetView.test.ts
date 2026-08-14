@@ -6,6 +6,9 @@ import {
   groupsForPassage,
   missingQuestionTypesForPassage,
   readingSetStats,
+  groupsForSet,
+  canGroupHaveTitle,
+  canAddGroupToSet,
 } from "./readingSetView";
 
 test("itemCount: richtig_falsch đếm theo statements", () => {
@@ -83,4 +86,58 @@ test("readingSetStats: gộp đúng passageCount/typeCount/questionCount qua nhi
 
 test("readingSetStats: set không có gì -> toàn 0", () => {
   assert.deepEqual(readingSetStats([], [], "s1"), { passageCount: 0, typeCount: 0, questionCount: 0 });
+});
+
+test("groupsForSet: lọc đúng theo set_id, không quan tâm passage_id", () => {
+  const groups = [
+    { id: "g1", set_id: "s1", title: null },
+    { id: "g2", set_id: "s2", title: null },
+    { id: "g3", set_id: "s1", title: "X" },
+  ];
+  assert.deepEqual(groupsForSet(groups, "s1").map((g) => g.id), ["g1", "g3"]);
+});
+
+test("groupsForSet: set không có nhóm nào trả mảng rỗng", () => {
+  assert.deepEqual(groupsForSet([{ id: "g1", set_id: "s1", title: null }], "s2"), []);
+});
+
+test("canGroupHaveTitle: set chỉ có chính nhóm đang sửa -> true", () => {
+  const groups = [{ id: "g1", set_id: "s1", title: null }];
+  assert.equal(canGroupHaveTitle(groups, "g1"), true);
+});
+
+test("canGroupHaveTitle: set có thêm nhóm khác -> false", () => {
+  const groups = [
+    { id: "g1", set_id: "s1", title: null },
+    { id: "g2", set_id: "s1", title: null },
+  ];
+  assert.equal(canGroupHaveTitle(groups, "g1"), false);
+});
+
+test("canGroupHaveTitle: đang tạo nhóm mới (excludeGroupId=null) với set đã có nhóm -> false", () => {
+  const groups = [{ id: "g1", set_id: "s1", title: null }];
+  assert.equal(canGroupHaveTitle(groups, null), false);
+});
+
+test("canGroupHaveTitle: đang tạo nhóm mới với set rỗng -> true", () => {
+  assert.equal(canGroupHaveTitle([], null), true);
+});
+
+test("canAddGroupToSet: set rỗng -> true", () => {
+  assert.equal(canAddGroupToSet([]), true);
+});
+
+test("canAddGroupToSet: set có nhóm nhưng title rỗng -> true", () => {
+  const groups = [{ id: "g1", set_id: "s1", title: "" }, { id: "g2", set_id: "s1", title: null }];
+  assert.equal(canAddGroupToSet(groups), true);
+});
+
+test("canAddGroupToSet: set có 1 nhóm title non-empty -> false", () => {
+  const groups = [{ id: "g1", set_id: "s1", title: "AUFGABE 1" }];
+  assert.equal(canAddGroupToSet(groups), false);
+});
+
+test("canAddGroupToSet: title chỉ có khoảng trắng coi như rỗng -> true", () => {
+  const groups = [{ id: "g1", set_id: "s1", title: "   " }];
+  assert.equal(canAddGroupToSet(groups), true);
 });
