@@ -13,6 +13,7 @@ import {
   useReadingQuestionGroups,
   type ReadingQuestionGroupPublic,
 } from "../lib/hooks/useReadingQuestionGroups";
+import { buildReadingScreens, itemKey, type ReadingScreen } from "../lib/readingScreens";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
@@ -40,13 +41,72 @@ interface ReadingResult {
   explanations?: Record<string, string>;
 }
 
-const itemKey = (groupId: string, index: number): string => `${groupId}:${index}`;
-
 const SubQuestionImage: React.FC<{ lessonId: string; imageKey: string }> = ({ lessonId, imageKey }) => {
   const { url, loading, error } = useMediaPlaybackUrl(lessonId, "image", imageKey);
   if (loading) return <div className="rounded-lg bg-slate-100 animate-pulse w-full h-32 my-1" />;
   if (error || !url) return null;
   return <img src={url} alt="" className="rounded-lg max-w-full my-1" />;
+};
+
+const ReadingSingleQuestion: React.FC<{
+  lesson: Lesson;
+  screen: ReadingScreen;
+  answersByKey: Record<string, string>;
+  onAnswer: (value: string) => void;
+}> = ({ lesson, screen, answersByKey, onAnswer }) => {
+  const picked = answersByKey[screen.key];
+
+  if (screen.group.questionType === "richtig_falsch") {
+    const statement = screen.group.statements[screen.questionIndex];
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-slate-700">{statement.text}</p>
+        {(["richtig", "falsch"] as const).map((val) => (
+          <button
+            key={val}
+            type="button"
+            onClick={() => onAnswer(val)}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl border transition-colors ${
+              picked === val ? "border-orange-500 bg-orange-50" : "border-slate-200 bg-white"
+            }`}
+          >
+            <span
+              className={`w-4 h-4 rounded-full border-2 shrink-0 ${
+                picked === val ? "border-orange-500 bg-orange-500" : "border-slate-300"
+              }`}
+            />
+            {val === "richtig" ? "Richtig" : "Falsch"}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  const q = screen.group.subQuestions[screen.questionIndex];
+  return (
+    <div className="space-y-2">
+      {q.text_snippet && <p className="text-xs text-slate-500">{q.text_snippet}</p>}
+      {q.image_key && <SubQuestionImage lessonId={lesson.id} imageKey={q.image_key} />}
+      <p className="text-sm font-medium text-slate-700">{q.question}</p>
+      <div className="space-y-1">
+        {q.options.map((opt, oi) => {
+          const optKey = String(oi);
+          return (
+            <button
+              key={oi}
+              type="button"
+              onClick={() => onAnswer(optKey)}
+              className={`w-full text-left px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                picked === optKey ? "bg-orange-50 border-orange-400 text-orange-700" : "bg-white border-slate-200 text-slate-700"
+              }`}
+            >
+              {String.fromCharCode(65 + oi)}. {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 };
 
 const ReadingGroupBody: React.FC<{
@@ -164,13 +224,7 @@ const ReadingExerciseSetBody: React.FC<{
   const [result, setResult] = useState<ReadingResult | null>(null);
   const [retrying, setRetrying] = useState(false);
   const submissionIdRef = React.useRef(crypto.randomUUID());
-  const [currentPassageIndex, setCurrentPassageIndex] = useState(0);
-  const [passageSubmitting, setPassageSubmitting] = useState(false);
-  const [passageReveal, setPassageReveal] = useState<{
-    itemResults: Record<string, boolean>;
-    correctAnswers: Record<string, string>;
-    explanations: Record<string, string>;
-  } | null>(null);
+  const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
 
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
 
@@ -198,43 +252,10 @@ const ReadingExerciseSetBody: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, retrying, groups, hydrateSource]);
 
-  const passageOrder = useMemo(
-    () =>
-      [...new Set(groups.map((g) => g.passageId))].sort(
-        (a, b) => (passagesById[a]?.orderIndex ?? 0) - (passagesById[b]?.orderIndex ?? 0),
-      ),
-    [groups, passagesById],
-  );
-  const currentPassageId = passageOrder[currentPassageIndex];
-  const currentGroups = useMemo(
-    () => groups.filter((g) => g.passageId === currentPassageId),
-    [groups, currentPassageId],
-  );
-  const isLastPassage = currentPassageIndex === passageOrder.length - 1;
-  const currentKeys = useMemo(
-    () => currentGroups.flatMap((g) => (g.questionType === "richtig_falsch" ? g.statements : g.subQuestions).map((_, i) => itemKey(g.id, i))),
-    [currentGroups],
-  );
-  const currentAnswered = currentKeys.length > 0 && currentKeys.every((key) => !!answersByKey[key]);
-
-  React.useEffect(() => {
-    setPassageReveal(null);
-  }, [currentPassageIndex]);
-
-  const handleSubmitPassage = async () => {
-    setPassageSubmitting(true);
-    const { data, error } = await supabase.functions.invoke("reading-submit", {
-      body: { set_id: set.id, submission_id: submissionIdRef.current, passage_id: currentPassageId, answers: answersByKey },
-    });
-    setPassageSubmitting(false);
-    if (error || !data) {
-      showToast("Không thể chấm điểm đoạn này. Vui lòng thử lại.", "warning");
-      return;
-    }
-    setPassageReveal(
-      data as { itemResults: Record<string, boolean>; correctAnswers: Record<string, string>; explanations: Record<string, string> },
-    );
-  };
+  const screens = useMemo(() => buildReadingScreens(groups, passagesById), [groups, passagesById]);
+  const currentScreen = screens[currentScreenIndex];
+  const isLastScreen = currentScreenIndex === screens.length - 1;
+  const currentAnswered = !!currentScreen && !!answersByKey[currentScreen.key];
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -261,8 +282,7 @@ const ReadingExerciseSetBody: React.FC<{
     setResult(null);
     setSubmitError(null);
     setRetrying(true);
-    setCurrentPassageIndex(0);
-    setPassageReveal(null);
+    setCurrentScreenIndex(0);
   };
 
   const awaitingHydration = hydrateSource === "attempt" && !retrying && groups.length > 0 && result === null;
@@ -365,60 +385,69 @@ const ReadingExerciseSetBody: React.FC<{
     );
   }
 
+  if (!currentScreen) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-slate-500">Bài tập cho phần này chưa được soạn.</p>
+      </div>
+    );
+  }
+
+  const handleSaveDraft = async () => {
+    const { error } = await saveDraft(answersByKey);
+    if (error) {
+      showToast("Không thể lưu, vui lòng thử lại.", "warning");
+      return;
+    }
+    showToast("Đã lưu bài làm dở.", "success");
+    onDraftSaved(true);
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
-      <div className="space-y-4">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-          Đoạn {currentPassageIndex + 1}/{passageOrder.length}
-        </span>
-        {currentGroups.map((group, groupIndex) => (
-          <div key={group.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider mb-2">Bài {groupIndex + 1}</p>
-            <ReadingGroupBody
-              lesson={lesson}
-              group={group}
-              passageText={passagesById[group.passageId]?.textDe ?? ""}
-              answersByKey={answersByKey}
-              onAnswer={(key, value) => setAnswersByKey((prev) => ({ ...prev, [key]: value }))}
-              itemResults={passageReveal?.itemResults}
-              revealed={passageReveal !== null}
-              correctAnswers={passageReveal?.correctAnswers}
-              explanation={passageReveal?.explanations[group.id]}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <MarkdownBlock content={passagesById[currentScreen.passageId]?.textDe ?? ""} lessonId={lesson.id} />
+        </div>
+
+        <ReadingSingleQuestion
+          lesson={lesson}
+          screen={currentScreen}
+          answersByKey={answersByKey}
+          onAnswer={(value) => setAnswersByKey((prev) => ({ ...prev, [currentScreen.key]: value }))}
+        />
+
+        <div className="flex items-center justify-center gap-1.5 pt-1">
+          {Array.from({ length: currentScreen.questionCount }, (_, i) => (
+            <span
+              key={i}
+              className={`w-2 h-2 rounded-full ${i === currentScreen.questionIndex ? "bg-red-500" : "bg-slate-200"}`}
             />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
       <div className="flex justify-end gap-3">
-        <Button
-          variant="secondary"
-          onClick={async () => {
-            const { error } = await saveDraft(answersByKey);
-            if (error) {
-              showToast("Không thể lưu, vui lòng thử lại.", "warning");
-              return;
-            }
-            showToast("Đã lưu bài làm dở.", "success");
-            onDraftSaved(true);
-          }}
-        >
+        <Button variant="secondary" onClick={handleSaveDraft}>
           Lưu
         </Button>
-        {isLastPassage ? (
+        <Button
+          variant="secondary"
+          disabled={currentScreenIndex === 0}
+          onClick={() => setCurrentScreenIndex((i) => i - 1)}
+        >
+          Quay lại
+        </Button>
+        {isLastScreen ? (
           <Button variant="primary" disabled={!currentAnswered || submitting} onClick={handleSubmit}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Nộp bài
           </Button>
-        ) : passageReveal === null ? (
-          <Button variant="primary" disabled={!currentAnswered || passageSubmitting} onClick={handleSubmitPassage}>
-            {passageSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Nộp đoạn này
-          </Button>
         ) : (
-          <Button variant="primary" onClick={() => setCurrentPassageIndex((i) => i + 1)}>
-            Đoạn tiếp theo <ArrowRight className="w-4 h-4 ml-1.5" />
+          <Button variant="primary" disabled={!currentAnswered} onClick={() => setCurrentScreenIndex((i) => i + 1)}>
+            Tiếp theo <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
         )}
       </div>
