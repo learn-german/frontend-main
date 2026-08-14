@@ -6,9 +6,7 @@ import {
   groupsForPassage,
   missingQuestionTypesForPassage,
   readingSetStats,
-  groupsForSet,
-  canGroupHaveTitle,
-  canAddGroupToSet,
+  isSingleQuestionPassage,
 } from "./readingSetView";
 
 test("itemCount: richtig_falsch đếm theo statements", () => {
@@ -88,56 +86,56 @@ test("readingSetStats: set không có gì -> toàn 0", () => {
   assert.deepEqual(readingSetStats([], [], "s1"), { passageCount: 0, typeCount: 0, questionCount: 0 });
 });
 
-test("groupsForSet: lọc đúng theo set_id, không quan tâm passage_id", () => {
+test("isSingleQuestionPassage: đúng 1 nhóm multiple_choice 1 câu, title/intro rỗng -> true", () => {
   const groups = [
-    { id: "g1", set_id: "s1", title: null },
-    { id: "g2", set_id: "s2", title: null },
-    { id: "g3", set_id: "s1", title: "X" },
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}] },
   ];
-  assert.deepEqual(groupsForSet(groups, "s1").map((g) => g.id), ["g1", "g3"]);
+  assert.equal(isSingleQuestionPassage("p1", groups), true);
 });
 
-test("groupsForSet: set không có nhóm nào trả mảng rỗng", () => {
-  assert.deepEqual(groupsForSet([{ id: "g1", set_id: "s1", title: null }], "s2"), []);
+test("isSingleQuestionPassage: passage không có nhóm nào -> false", () => {
+  assert.equal(isSingleQuestionPassage("p1", []), false);
 });
 
-test("canGroupHaveTitle: set chỉ có chính nhóm đang sửa -> true", () => {
-  const groups = [{ id: "g1", set_id: "s1", title: null }];
-  assert.equal(canGroupHaveTitle(groups, "g1"), true);
-});
-
-test("canGroupHaveTitle: set có thêm nhóm khác -> false", () => {
+test("isSingleQuestionPassage: nhóm richtig_falsch -> false", () => {
   const groups = [
-    { id: "g1", set_id: "s1", title: null },
-    { id: "g2", set_id: "s1", title: null },
+    { passage_id: "p1", question_type: "richtig_falsch" as const, title: null, question_intro: null, sub_questions: null },
   ];
-  assert.equal(canGroupHaveTitle(groups, "g1"), false);
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
 });
 
-test("canGroupHaveTitle: đang tạo nhóm mới (excludeGroupId=null) với set đã có nhóm -> false", () => {
-  const groups = [{ id: "g1", set_id: "s1", title: null }];
-  assert.equal(canGroupHaveTitle(groups, null), false);
+test("isSingleQuestionPassage: nhóm multiple_choice nhưng 2 câu -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}, {}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
 });
 
-test("canGroupHaveTitle: đang tạo nhóm mới với set rỗng -> true", () => {
-  assert.equal(canGroupHaveTitle([], null), true);
+test("isSingleQuestionPassage: có title -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: "AUFGABE 1", question_intro: null, sub_questions: [{}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
 });
 
-test("canAddGroupToSet: set rỗng -> true", () => {
-  assert.equal(canAddGroupToSet([]), true);
+test("isSingleQuestionPassage: có question_intro -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: "Yêu cầu...", sub_questions: [{}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
 });
 
-test("canAddGroupToSet: set có nhóm nhưng title rỗng -> true", () => {
-  const groups = [{ id: "g1", set_id: "s1", title: "" }, { id: "g2", set_id: "s1", title: null }];
-  assert.equal(canAddGroupToSet(groups), true);
+test("isSingleQuestionPassage: passage có 2 nhóm -> false", () => {
+  const groups = [
+    { passage_id: "p1", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}] },
+    { passage_id: "p1", question_type: "richtig_falsch" as const, title: null, question_intro: null, sub_questions: null },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
 });
 
-test("canAddGroupToSet: set có 1 nhóm title non-empty -> false", () => {
-  const groups = [{ id: "g1", set_id: "s1", title: "AUFGABE 1" }];
-  assert.equal(canAddGroupToSet(groups), false);
-});
-
-test("canAddGroupToSet: title chỉ có khoảng trắng coi như rỗng -> true", () => {
-  const groups = [{ id: "g1", set_id: "s1", title: "   " }];
-  assert.equal(canAddGroupToSet(groups), true);
+test("isSingleQuestionPassage: nhóm của passage khác không ảnh hưởng", () => {
+  const groups = [
+    { passage_id: "p2", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}] },
+  ];
+  assert.equal(isSingleQuestionPassage("p1", groups), false);
 });

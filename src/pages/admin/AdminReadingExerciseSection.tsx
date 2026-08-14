@@ -25,11 +25,9 @@ import {
   itemCount,
   passagesForSet,
   groupsForPassage,
-  groupsForSet,
-  canGroupHaveTitle,
-  canAddGroupToSet,
   missingQuestionTypesForPassage,
   readingSetStats,
+  isSingleQuestionPassage,
   type ReadingQuestionType,
 } from "../../lib/readingSetView";
 
@@ -103,6 +101,64 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
   );
 };
 
+const SingleQuestionAnswers: React.FC<{
+  group: ReadingQuestionGroupRowData;
+  onSaveOptions: (options: string[], correctIndex: number) => void;
+}> = ({ group, onSaveOptions }) => {
+  const initial = group.sub_questions?.[0];
+  const [options, setOptions] = useState<string[]>(initial?.options ?? ["A", "B", "C"]);
+  const [correctIndex, setCorrectIndex] = useState<number>(initial ? Number(initial.correct_option_id) : 0);
+
+  return (
+    <div className="space-y-2">
+      <span className="text-xs font-display font-bold text-slate-500 uppercase">Đáp án</span>
+      <div className="space-y-1.5">
+        {options.map((opt, oi) => (
+          <div key={oi} className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={correctIndex === oi}
+              onChange={() => { setCorrectIndex(oi); onSaveOptions(options, oi); }}
+              className="h-4 w-4 accent-orange-500"
+            />
+            <input
+              type="text"
+              value={opt}
+              onChange={(e) => setOptions((prev) => prev.map((o, i) => (i === oi ? e.target.value : o)))}
+              onBlur={() => onSaveOptions(options, correctIndex)}
+              className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+              placeholder={`Đáp án ${optionLabel(oi)}`}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const next = removeOption({ options, correctIndex }, oi);
+                setOptions(next.options);
+                setCorrectIndex(next.correctIndex);
+                onSaveOptions(next.options, next.correctIndex);
+              }}
+              className="p-1 text-slate-300 hover:text-rose-500"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const next = addOption({ options, correctIndex });
+            setOptions(next.options);
+            onSaveOptions(next.options, next.correctIndex);
+          }}
+          className="text-xs font-bold text-orange-600 hover:text-orange-700"
+        >
+          + Thêm đáp án
+        </button>
+      </div>
+    </div>
+  );
+};
+
 interface ItemModalState {
   setId: string;
   lessonId: string;
@@ -127,6 +183,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [expandedTypeSections, setExpandedTypeSections] = useState<Set<string>>(new Set());
 
   const [addTypePassageId, setAddTypePassageId] = useState<string | null>(null);
+  const [addPassageMenuSetId, setAddPassageMenuSetId] = useState<string | null>(null);
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
   const [itemForm, setItemForm] = useState<ReadingQuestionGroupForm>(createEmptyReadingForm());
   const [savingItem, setSavingItem] = useState(false);
@@ -135,8 +192,6 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [deletingItem, setDeletingItem] = useState(false);
   const [deleteSetTarget, setDeleteSetTarget] = useState<{ setId: string } | null>(null);
   const [deletingSet, setDeletingSet] = useState(false);
-  const [titleModal, setTitleModal] = useState<{ group: ReadingQuestionGroupRowData; title: string; questionIntro: string } | null>(null);
-  const [savingTitle, setSavingTitle] = useState(false);
   const [deletePassageTarget, setDeletePassageTarget] = useState<ReadingPassage | null>(null);
   const [deletingPassage, setDeletingPassage] = useState(false);
 
@@ -186,6 +241,49 @@ export const AdminReadingExerciseSection: React.FC = () => {
     fetchAll();
   };
 
+  const handleAddSingleQuestionPassage = async (setId: string, lessonId: string) => {
+    setAddPassageMenuSetId(null);
+    const orderIndex = passagesForSet(passages, setId).length;
+    const { data: passageRow, error: passageError } = await supabase
+      .from("reading_passages")
+      .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex })
+      .select("id")
+      .single();
+    if (passageError || !passageRow) {
+      showToast("Thêm câu hỏi thất bại: " + (passageError?.message ?? "không rõ lỗi"), "warning");
+      return;
+    }
+    const { error: groupError } = await supabase.from("reading_question_groups").insert({
+      passage_id: passageRow.id,
+      set_id: setId,
+      order_index: 0,
+      title: null,
+      question_intro: null,
+      question_type: "multiple_choice",
+      sub_questions: [{ text_snippet: null, image_key: null, question: "", options: ["A", "B", "C"], correct_option_id: "0" }],
+      explanation: null,
+    });
+    if (groupError) {
+      showToast("Tạo đáp án thất bại: " + groupError.message, "warning");
+      return;
+    }
+    fetchAll();
+  };
+
+  const handleSaveSingleQuestionOptions = async (groupId: string, options: string[], correctIndex: number) => {
+    const choicePayload = buildMultipleChoicePayload({ options, correctIndex });
+    const newSubQuestion: ReadingSubQuestionRow = {
+      text_snippet: null,
+      image_key: null,
+      question: "",
+      options: choicePayload.options ?? options,
+      correct_option_id: choicePayload.correct_answer,
+    };
+    const { error } = await supabase.from("reading_question_groups").update({ sub_questions: [newSubQuestion] }).eq("id", groupId);
+    if (error) { showToast("Lưu đáp án thất bại: " + error.message, "warning"); return; }
+    fetchAll();
+  };
+
   const handleDeleteSet = async () => {
     if (!deleteSetTarget) return;
     setDeletingSet(true);
@@ -212,25 +310,6 @@ export const AdminReadingExerciseSection: React.FC = () => {
     if (error) { showToast("Xóa thất bại: " + error.message, "warning"); return; }
     showToast("Đã xóa văn bản.", "success");
     setDeletePassageTarget(null);
-    fetchAll();
-  };
-
-  const handleSaveGroupTitle = async () => {
-    if (!titleModal) return;
-    const trimmedTitle = titleModal.title.trim();
-    if (trimmedTitle && !canGroupHaveTitle(groupsForSet(groups, titleModal.group.set_id), titleModal.group.id)) {
-      showToast("Set này đã có nhóm câu hỏi khác — dạng bài có tiêu đề phải nằm trong 1 Bài riêng.", "warning");
-      return;
-    }
-    setSavingTitle(true);
-    const { error } = await supabase
-      .from("reading_question_groups")
-      .update({ title: trimmedTitle || null, question_intro: titleModal.questionIntro.trim() || null })
-      .eq("id", titleModal.group.id);
-    setSavingTitle(false);
-    if (error) { showToast("Lưu thất bại: " + error.message, "warning"); return; }
-    showToast("Đã lưu tiêu đề.", "success");
-    setTitleModal(null);
     fetchAll();
   };
 
@@ -304,11 +383,6 @@ export const AdminReadingExerciseSection: React.FC = () => {
     setSavingItem(true);
 
     if (itemModal.groupId === null) {
-      if (!canAddGroupToSet(groupsForSet(groups, itemModal.setId))) {
-        setSavingItem(false);
-        showToast("Set này đã dùng cho dạng bài có tiêu đề riêng — không thể thêm nhóm câu hỏi khác.", "warning");
-        return;
-      }
       const orderIndex = groupsForPassage(groups, itemForm.passageId).length;
       const payload = buildReadingPayload(itemForm, itemModal.setId, orderIndex);
       const { error } = await supabase.from("reading_question_groups").insert(payload);
@@ -476,19 +550,40 @@ export const AdminReadingExerciseSection: React.FC = () => {
                       <div className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
-                          <button
-                            type="button"
-                            onClick={() => handleAddPassage(set.id, lesson.lesson_id)}
-                            className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Thêm văn bản
-                          </button>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setAddPassageMenuSetId((prev) => (prev === set.id ? null : set.id))}
+                              className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Thêm văn bản
+                            </button>
+                            {addPassageMenuSetId === set.id && (
+                              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => { setAddPassageMenuSetId(null); handleAddPassage(set.id, lesson.lesson_id); }}
+                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600 whitespace-nowrap"
+                                >
+                                  Văn bản nhiều câu hỏi
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddSingleQuestionPassage(set.id, lesson.lesson_id)}
+                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600 whitespace-nowrap"
+                                >
+                                  Câu hỏi A/B/C
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         {setPassages.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có văn bản nào.</p>}
 
                         {setPassages.map((passage, passageIndex) => {
                           const passageGroups = groupsForPassage(groups, passage.id);
                           const missingTypes = missingQuestionTypesForPassage(groups, passage.id);
+                          const singleQuestion = isSingleQuestionPassage(passage.id, groups) ? passageGroups[0] : null;
 
                           return (
                             <div key={passage.id} className="border border-slate-200 rounded-xl p-3 space-y-3">
@@ -501,6 +596,12 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 onDelete={() => setDeletePassageTarget(passage)}
                               />
 
+                              {singleQuestion ? (
+                                <SingleQuestionAnswers
+                                  group={singleQuestion}
+                                  onSaveOptions={(options, correctIndex) => handleSaveSingleQuestionOptions(singleQuestion.id, options, correctIndex)}
+                                />
+                              ) : (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-display font-bold text-slate-500 uppercase">Các loại câu hỏi</span>
@@ -562,14 +663,6 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                         <span className="ml-auto flex items-center gap-2">
                                           <span
                                             role="button"
-                                            onClick={(e) => { e.stopPropagation(); setTitleModal({ group, title: group.title ?? "", questionIntro: group.question_intro ?? "" }); }}
-                                            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-700"
-                                            title="Sửa tiêu đề"
-                                          >
-                                            <Pencil className="w-3.5 h-3.5" />
-                                          </span>
-                                          <span
-                                            role="button"
                                             onClick={(e) => { e.stopPropagation(); openAddItem(group, lesson.lesson_id); }}
                                             className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
                                           >
@@ -611,6 +704,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 })}
                                 {passageGroups.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có loại câu hỏi nào.</p>}
                               </div>
+                              )}
                             </div>
                           );
                         })}
@@ -764,41 +858,6 @@ export const AdminReadingExerciseSection: React.FC = () => {
               <button onClick={() => setItemModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Hủy</button>
               <button onClick={handleSaveItem} disabled={savingItem} className="px-4 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl disabled:opacity-50">
                 {savingItem ? "Đang lưu..." : "Lưu"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {titleModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-5 max-w-xl w-full my-8 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-display font-bold text-slate-800">Sửa tiêu đề nhóm</h3>
-              <button onClick={() => setTitleModal(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-500">Tiêu đề (vd "AUFGABE 1")</label>
-              <input
-                type="text"
-                value={titleModal.title}
-                onChange={(e) => setTitleModal((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl"
-                placeholder="Để trống nếu không cần tiêu đề riêng"
-              />
-              <label className="block text-xs font-bold text-slate-500">Yêu cầu (hiện phía trên tiêu đề)</label>
-              <textarea
-                rows={2}
-                value={titleModal.questionIntro}
-                onChange={(e) => setTitleModal((prev) => (prev ? { ...prev, questionIntro: e.target.value } : prev))}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl resize-none"
-                placeholder="Để trống nếu không cần"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <button onClick={() => setTitleModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Hủy</button>
-              <button onClick={handleSaveGroupTitle} disabled={savingTitle} className="px-4 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl disabled:opacity-50">
-                {savingTitle ? "Đang lưu..." : "Lưu"}
               </button>
             </div>
           </div>

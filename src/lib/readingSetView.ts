@@ -58,26 +58,22 @@ export function readingSetStats(
   };
 }
 
-export interface GroupSetLite {
-  id: string;
-  set_id: string;
+interface GroupSingleQuestionLite {
+  passage_id: string;
+  question_type: ReadingQuestionType;
   title: string | null;
+  question_intro: string | null;
+  sub_questions: unknown[] | null;
 }
 
-export function groupsForSet<T extends GroupSetLite>(groups: T[], setId: string): T[] {
-  return groups.filter((g) => g.set_id === setId);
-}
-
-// "Nhóm có tiêu đề" phải là nhóm DUY NHẤT trong set — set đã có nhóm khác
-// (dù có tiêu đề hay không) thì không được thêm/gắn tiêu đề nữa, và
-// ngược lại một set đã "khoá" bởi 1 nhóm có tiêu đề thì không nhận thêm
-// nhóm nào khác. excludeGroupId dùng khi validate SỬA 1 nhóm đã có sẵn
-// (loại chính nó ra khỏi danh sách "nhóm khác" khi so sánh); null khi
-// đang tạo nhóm mới (không có gì để loại trừ).
-export function canGroupHaveTitle(groupsInSet: GroupSetLite[], excludeGroupId: string | null): boolean {
-  return groupsInSet.every((g) => g.id === excludeGroupId);
-}
-
-export function canAddGroupToSet(groupsInSet: GroupSetLite[]): boolean {
-  return !groupsInSet.some((g) => !!g.title?.trim());
+export function isSingleQuestionPassage(passageId: string, groups: GroupSingleQuestionLite[]): boolean {
+  const passageGroups = groups.filter((g) => g.passage_id === passageId);
+  if (passageGroups.length !== 1) return false;
+  const [group] = passageGroups;
+  return (
+    group.question_type === "multiple_choice" &&
+    (group.sub_questions ?? []).length === 1 &&
+    !group.title?.trim() &&
+    !group.question_intro?.trim()
+  );
 }
