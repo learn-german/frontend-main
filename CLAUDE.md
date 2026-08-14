@@ -107,6 +107,18 @@ npm run gen:types  # Regenerate database.types.ts từ Supabase schema
 3. Test thủ công trên browser
 4. Nếu có thay đổi DB schema → chạy `npm run gen:types` để cập nhật types
 
+## Skills Bắt Buộc
+
+- **Trước khi code bất kỳ feature/thay đổi hành vi nào**: dùng
+  `/superpowers:brainstorming` để hỏi rõ yêu cầu, chốt thiết kế và viết
+  spec trước — không code thẳng kể cả khi task trông đơn giản.
+- **Khi viết/sửa code**: áp dụng `/ponytail:ponytail` (mặc định level
+  full) — ưu tiên giải pháp tối giản, tái dùng code/pattern có sẵn trong
+  repo trước khi thêm cái mới, tránh over-engineering.
+- **Khi GitNexus báo index cũ, hoặc trước khi tra cứu/refactor/debug
+  code**: dùng `/gitnexus-cli` (`node .gitnexus/run.cjs analyze`) để
+  reindex trước.
+
 ## Environment Variables
 
 ```
@@ -121,7 +133,7 @@ GEMINI_API_KEY=          # Google Gemini API key
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **frontend-main** (2486 symbols, 4189 relationships, 136 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **frontend-main** (2504 symbols, 4150 relationships, 118 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
