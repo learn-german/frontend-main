@@ -27,6 +27,7 @@ import {
   groupsForPassage,
   missingQuestionTypesForPassage,
   readingSetStats,
+  isSingleQuestionPassage,
   type ReadingQuestionType,
 } from "../../lib/readingSetView";
 
@@ -96,6 +97,64 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
           </div>
         </div>
       ))}
+    </div>
+  );
+};
+
+const SingleQuestionAnswers: React.FC<{
+  group: ReadingQuestionGroupRowData;
+  onSaveOptions: (options: string[], correctIndex: number) => void;
+}> = ({ group, onSaveOptions }) => {
+  const initial = group.sub_questions?.[0];
+  const [options, setOptions] = useState<string[]>(initial?.options ?? ["A", "B", "C"]);
+  const [correctIndex, setCorrectIndex] = useState<number>(initial ? Number(initial.correct_option_id) : 0);
+
+  return (
+    <div className="space-y-2">
+      <span className="text-xs font-display font-bold text-slate-500 uppercase">Đáp án</span>
+      <div className="space-y-1.5">
+        {options.map((opt, oi) => (
+          <div key={oi} className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={correctIndex === oi}
+              onChange={() => { setCorrectIndex(oi); onSaveOptions(options, oi); }}
+              className="h-4 w-4 accent-orange-500"
+            />
+            <input
+              type="text"
+              value={opt}
+              onChange={(e) => setOptions((prev) => prev.map((o, i) => (i === oi ? e.target.value : o)))}
+              onBlur={() => onSaveOptions(options, correctIndex)}
+              className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+              placeholder={`Đáp án ${optionLabel(oi)}`}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const next = removeOption({ options, correctIndex }, oi);
+                setOptions(next.options);
+                setCorrectIndex(next.correctIndex);
+                onSaveOptions(next.options, next.correctIndex);
+              }}
+              className="p-1 text-slate-300 hover:text-rose-500"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const next = addOption({ options, correctIndex });
+            setOptions(next.options);
+            onSaveOptions(next.options, next.correctIndex);
+          }}
+          className="text-xs font-bold text-orange-600 hover:text-orange-700"
+        >
+          + Thêm đáp án
+        </button>
+      </div>
     </div>
   );
 };
@@ -524,6 +583,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                         {setPassages.map((passage, passageIndex) => {
                           const passageGroups = groupsForPassage(groups, passage.id);
                           const missingTypes = missingQuestionTypesForPassage(groups, passage.id);
+                          const singleQuestion = isSingleQuestionPassage(passage.id, groups) ? passageGroups[0] : null;
 
                           return (
                             <div key={passage.id} className="border border-slate-200 rounded-xl p-3 space-y-3">
@@ -536,6 +596,12 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 onDelete={() => setDeletePassageTarget(passage)}
                               />
 
+                              {singleQuestion ? (
+                                <SingleQuestionAnswers
+                                  group={singleQuestion}
+                                  onSaveOptions={(options, correctIndex) => handleSaveSingleQuestionOptions(singleQuestion.id, options, correctIndex)}
+                                />
+                              ) : (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-display font-bold text-slate-500 uppercase">Các loại câu hỏi</span>
@@ -638,6 +704,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 })}
                                 {passageGroups.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có loại câu hỏi nào.</p>}
                               </div>
+                              )}
                             </div>
                           );
                         })}
