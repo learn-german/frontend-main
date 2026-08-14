@@ -28,7 +28,6 @@ serve(async (req) => {
     const set_id: string = body.set_id;
     const submission_id: string = body.submission_id;
     const rawAnswers: Record<string, unknown> | undefined = body.answers;
-    const passage_id: string | undefined = body.passage_id;
 
     if (!set_id || !submission_id || !rawAnswers) {
       return new Response(JSON.stringify({ error: "set_id, submission_id and answers required" }), {
@@ -67,7 +66,7 @@ serve(async (req) => {
 
     const { data: groups, error: groupsErr } = await supabase
       .from("reading_question_groups")
-      .select("id, passage_id, question_type, statements, sub_questions, explanation")
+      .select("id, question_type, statements, sub_questions, explanation")
       .eq("set_id", set_id);
 
     if (groupsErr || !groups || groups.length === 0) {
@@ -75,29 +74,6 @@ serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    // Chấm điểm tạm cho 1 đoạn văn — dùng khi học viên bấm "Nộp đoạn này"
-    // giữa chừng luồng làm bài từng đoạn. Không ghi DB/XP/rollup, chỉ trả
-    // đáp án + giải thích của riêng đoạn đó để hiện ngay tại chỗ.
-    if (passage_id) {
-      const passageGroups = groups.filter((g) => g.passage_id === passage_id);
-      if (passageGroups.length === 0) {
-        return new Response(JSON.stringify({ error: "Passage not found in set" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const passageAnswers = projectAnswers(passageGroups, rawAnswers);
-      const { itemResults: passageItemResults } = computeReadingScore(passageGroups, passageAnswers);
-      return new Response(
-        JSON.stringify({
-          itemResults: passageItemResults,
-          correctAnswers: deriveCorrectAnswers(passageGroups),
-          explanations: deriveExplanations(passageGroups),
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
     }
 
     const answers = projectAnswers(groups, rawAnswers);
