@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Trophy,
   Flame,
@@ -12,16 +12,15 @@ import {
   CheckCircle,
   TrendingUp,
   Plus,
-  ArrowRight,
   ListRestart,
   HeartCrack,
   Award
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
-import { countHighlightedWords } from "../components/MarkdownBlock";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
 import { LessonStatus } from "../lib/completion";
-import { selectPlannedLessons } from "../lib/dashboardProgress";
+import { selectPlannedLessons, lessonsNeededToCatchUp } from "../lib/dashboardProgress";
+import { supabase } from "../lib/supabase";
 
 interface DashboardPageProps {
   user: { email: string; fullName: string };
@@ -30,8 +29,27 @@ interface DashboardPageProps {
   orderedLessons: Lesson[];
   lessonStatuses: Record<string, LessonStatus>;
   onNavigateLesson: (lessonId: string) => void;
-  onNavigateRoadmap: () => void;
 }
+
+interface DailyProgressReport {
+  report_date: string;
+  level_id: string;
+  current_lesson_id: string | null;
+  completed_required_lessons: number;
+  total_required_lessons: number;
+  actual_progress_percentage: number;
+  expected_progress_percentage: number | null;
+  progress_gap_percentage_point: number | null;
+  progress_status: "on_track" | "attention" | "behind" | null;
+  package_remaining_days: number | null;
+  generation_status: "success" | "insufficient_data" | "empty";
+}
+
+const PROGRESS_STATUS_BADGE: Record<"on_track" | "attention" | "behind", { label: string; className: string }> = {
+  on_track: { label: "✓ Đúng tiến độ", className: "bg-green-50 text-green-700 border border-green-200" },
+  attention: { label: "⚠ Cần chú ý", className: "bg-amber-50 text-amber-700 border border-amber-200" },
+  behind: { label: "⚠ Chậm tiến độ", className: "bg-red-50 text-red-700 border border-red-200" },
+};
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
@@ -39,31 +57,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   modules,
   orderedLessons,
   lessonStatuses,
-  onNavigateLesson,
-  onNavigateRoadmap
+  onNavigateLesson
 }) => {
   const allLessons = modules.flatMap(m => m.lessons);
 
   // Find current next lesson to suggest
   const nextSuggestedLesson: Lesson | undefined = allLessons.find(l => !stats.completedLessons.includes(l.id)) ?? allLessons[0];
 
-  // Tiến độ tính theo level của nextSuggestedLesson (level học viên đang
-  // học dở) — gộp mọi module cùng level (hiện mỗi level chỉ có 1 module,
-  // nhưng .filter() đúng hơn .find() nếu sau này có nhiều module/level).
-  const currentLevel = nextSuggestedLesson?.level;
-  const currentLevelLessons = currentLevel
-    ? modules.filter(m => m.level === currentLevel).flatMap(m => m.lessons)
-    : [];
-  const totalLessonsInLevel = currentLevelLessons.length;
-  const completedLessonsInLevel = currentLevelLessons.filter(l => stats.completedLessons.includes(l.id)).length;
-  const progressLevelPercentage = totalLessonsInLevel > 0
-    ? Math.round((completedLessonsInLevel / totalLessonsInLevel) * 100)
-    : 0;
+  const [report, setReport] = useState<DailyProgressReport | null>(null);
 
-  const LEVEL_ORDER: readonly string[] = ["A1", "A2", "B1", "B2"];
-  const nextLevel = currentLevel
-    ? LEVEL_ORDER[LEVEL_ORDER.indexOf(currentLevel) + 1]
-    : undefined;
+  useEffect(() => {
+    supabase.functions.invoke("daily-progress-report", { method: "GET" }).then(({ data }) => {
+      setReport(data ?? null);
+    });
+  }, []);
+
+  const catchUpLessons = report
+    ? lessonsNeededToCatchUp(report.progress_gap_percentage_point, report.total_required_lessons)
+    : 0;
 
   const planLessons = selectPlannedLessons(orderedLessons, lessonStatuses, stats.completedLessons);
 
@@ -113,94 +124,117 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* Grid of details */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Left Column (Main widgets) */}
         <div className="lg:col-span-8 space-y-8">
-          
-          {/* Continue Learning card */}
-          <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative overflow-hidden">
+
+          {/* Tổng quan: tiến độ thực tế so với kế hoạch (daily-progress-report) */}
+          <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-4 relative overflow-hidden">
             <div className="absolute top-0 left-0 h-1.5 w-full bg-orange-600" />
-            <div className="space-y-3 flex-1">
-              <div className="inline-flex items-center gap-2">
-                <span className="text-xs font-display font-bold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-full uppercase">Bài học tiếp theo</span>
-                <LevelBadge level={nextSuggestedLesson.level} />
-              </div>
-              <h3 className="text-lg font-display font-extrabold text-slate-900 leading-tight">
-                {nextSuggestedLesson.title}
-              </h3>
-              <p className="text-slate-500 text-xs font-sans">
-                {nextSuggestedLesson.titleVi} • Thuộc module {nextSuggestedLesson.moduleTitle}
-              </p>
-              <div className="flex items-center gap-4 text-xs text-slate-400 mt-2">
-                <span className="flex items-center gap-1">⏰ {nextSuggestedLesson.duration} phút học</span>
-                <span className="flex items-center gap-1">📖 {countHighlightedWords(nextSuggestedLesson.vocabularyMd)} từ vựng then chốt</span>
-              </div>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">Tổng quan</h3>
+              {report && (
+                <span className="text-[11px] text-slate-400">
+                  Ngày báo cáo: {new Date(report.report_date).toLocaleDateString("vi-VN")}
+                </span>
+              )}
             </div>
-            
+
+            <div className="flex flex-wrap items-center gap-3">
+              <LevelBadge level={nextSuggestedLesson.level} />
+              <span className="text-sm font-display font-bold text-slate-800">{nextSuggestedLesson.title}</span>
+            </div>
+
+            {!report ? (
+              <div className="h-16 flex items-center">
+                <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline flex-wrap gap-2">
+                    <span className="text-xs text-slate-500">
+                      Tiến độ hiện tại: <b className="text-slate-800">{Math.round(report.actual_progress_percentage)}%</b>
+                    </span>
+                    {report.generation_status === "success" && report.expected_progress_percentage !== null && (
+                      <span className="text-xs text-slate-500">
+                        Kỳ vọng: <b className="text-slate-800">{Math.round(report.expected_progress_percentage)}%</b>
+                      </span>
+                    )}
+                  </div>
+                  <ProgressBar value={report.actual_progress_percentage} />
+                </div>
+
+                {report.generation_status === "success" && report.progress_status && (
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <span className={`text-xs font-display font-bold px-2.5 py-1 rounded-lg ${PROGRESS_STATUS_BADGE[report.progress_status].className}`}>
+                      {PROGRESS_STATUS_BADGE[report.progress_status].label}
+                    </span>
+                    {report.progress_gap_percentage_point !== null && report.progress_gap_percentage_point > 0 && (
+                      <span className="text-xs text-red-600 font-display font-bold">
+                        -{Math.round(report.progress_gap_percentage_point)} điểm %
+                      </span>
+                    )}
+                    {report.package_remaining_days !== null && (
+                      <span className="text-xs text-slate-500">
+                        Còn lại: <b className="text-slate-800">{report.package_remaining_days} ngày</b>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100/80 text-xs text-slate-500">
+                  <span>Bài học hoàn tất: <b className="text-slate-800">{report.completed_required_lessons}/{report.total_required_lessons}</b></span>
+                  {catchUpLessons > 0 && (
+                    <span>Cần hoàn thành thêm <b className="text-slate-800">{catchUpLessons}</b> bài để bắt kịp kế hoạch</span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Bài học hiện tại */}
+          <div className="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <LevelBadge level={nextSuggestedLesson.level} />
+              <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Bài học hiện tại</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-display font-extrabold text-slate-900 leading-tight">{nextSuggestedLesson.title}</h3>
+              <p className="text-slate-500 text-xs font-sans mt-1">
+                Thuộc module {nextSuggestedLesson.moduleTitle} • ⏰ {nextSuggestedLesson.duration} phút học
+              </p>
+            </div>
             <Button
               id="btn-dash-continue-learn"
               variant="primary"
               size="lg"
-              className="w-full sm:w-auto shrink-0"
+              className="w-full"
               onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
             >
               <PlayCircle className="w-4.5 h-4.5 mr-2" /> Tiếp tục học
             </Button>
           </div>
 
-          {/* Performance stats bento panel */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            
-            {/* Level progress */}
-            <div className="bg-white border border-slate-200/60 p-6 rounded-3xl shadow-sm flex flex-col justify-between">
-              <div className="space-y-2">
-                <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Tiến độ cấp độ {currentLevel}</span>
-                <div className="flex justify-between items-baseline pt-1">
-                  <h4 className="text-2xl font-display font-black text-green-600">{progressLevelPercentage}%</h4>
-                  <span className="text-xs text-slate-500">{completedLessonsInLevel}/{totalLessonsInLevel} bài hoàn tất</span>
-                </div>
-                <ProgressBar value={progressLevelPercentage} className="pt-2 text-xs" />
-                <p className="text-[11px] text-slate-400 truncate">Đang học: <b className="text-slate-600">{nextSuggestedLesson.titleVi}</b></p>
-              </div>
-              <div className="pt-4 border-t border-slate-100/80 mt-4 flex justify-between items-center text-xs">
-                {nextLevel ? (
-                  <span className="text-slate-500">Mục tiêu tiếp theo là khóa <b>{nextLevel}</b></span>
-                ) : (
-                  <span className="text-slate-500">Bạn đang ở cấp độ cao nhất 🎉</span>
-                )}
-                <button
-                  id="btn-dash-view-road"
-                  onClick={onNavigateRoadmap} 
-                  className="text-orange-600 font-display font-bold hover:underline cursor-pointer flex items-center gap-0.5"
-                >
-                  Mở bản đồ <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Total XP Score card */}
-            <div className="bg-white border border-slate-200/60 p-6 rounded-3xl shadow-sm flex flex-col justify-between">
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Tổng điểm tích lũy</span>
-                  <h4 className="text-3xl font-display font-black text-slate-800 mt-1">{stats.xp} <span className="text-base text-slate-400 font-bold">XP</span></h4>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-lg shadow-sm">
-                  🏆
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+          {/* Total XP Score card */}
+          <div className="bg-white border border-slate-200/60 p-6 rounded-3xl shadow-sm flex items-center justify-between gap-4">
+            <div>
+              <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Tổng điểm tích lũy</span>
+              <h4 className="text-3xl font-display font-black text-slate-800 mt-1">{stats.xp} <span className="text-base text-slate-400 font-bold">XP</span></h4>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed max-w-sm">
                 Tích đủ <b>500 XP</b> để nhận danh hiệu <b>"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!
               </p>
             </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-lg shadow-sm shrink-0">
+              🏆
+            </div>
           </div>
-
 
         </div>
 
         {/* Right Column (Test history, upcoming lists) */}
         <div className="lg:col-span-4 space-y-8">
-          
+
           {/* Recent Quiz Scores */}
           <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
             <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -234,15 +268,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </div>
                     {/* Score badge with conditional colors */}
                     <span className={`text-xs font-display font-black px-2.5 py-1 rounded-lg ${
-                      item.score >= 80 
-                        ? "bg-green-50 text-green-700 border border-green-200" 
+                      item.score >= 80
+                        ? "bg-green-50 text-green-700 border border-green-200"
                         : "bg-red-50 text-red-700 border border-red-200"
                     }`}>
                       {item.score}%
                     </span>
                   </div>
                 ))}
-                
+
                 <p className="text-[10px] text-center text-slate-400 font-sans mt-2">
                   *Điểm số được đồng bộ hóa tức thì từ bài viết quiz của từng bài học.
                 </p>
