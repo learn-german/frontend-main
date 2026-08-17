@@ -22,6 +22,7 @@ import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
 import { LessonStatus } from "../lib/completion";
 import { selectPlannedLessons, lessonsNeededToCatchUp } from "../lib/dashboardProgress";
+import { itemCount } from "../lib/readingSetView";
 import { supabase } from "../lib/supabase";
 
 interface DashboardPageProps {
@@ -113,18 +114,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     .filter(l => lessonIdsCompletedToday.includes(l.id))
     .reduce((sum, l) => sum + parseDurationMinutes(l.duration), 0);
 
-  // % câu hỏi (ngữ pháp/nghe/đọc) của bài hiện tại đã có điểm — không có
-  // progress % per-lesson sẵn trong data nên suy ra từ số category đã làm.
-  const lessonCategoryProgress = (lesson: Lesson): number => {
-    const categories: ("nguphap" | "nghe" | "doc")[] = [];
-    if (lesson.hasNguphapQuestions) categories.push("nguphap");
-    if (lesson.hasNgheQuestions) categories.push("nghe");
-    if (lesson.hasDocQuestions) categories.push("doc");
-    if (categories.length === 0) return 0;
-    const scores = stats.quizScoresByCategory[lesson.id] ?? {};
-    const done = categories.filter(c => scores[c] !== undefined).length;
-    return Math.round((done / categories.length) * 100);
-  };
+  // Tiến độ bài học = % câu hỏi thật đã làm / tổng số câu hỏi của bài (ngữ
+  // pháp + nghe nằm trong grammar_exercises_public, đọc nằm trong
+  // reading_question_groups_public dưới dạng nhóm — dùng lại itemCount() có
+  // sẵn để đếm đúng số câu trong mỗi nhóm thay vì tính theo số category).
+  // Submit theo set trọn gói (không có trạng thái "làm dở"), nên 1 category
+  // đã có điểm nghĩa là toàn bộ câu hỏi của category đó tính là đã làm.
+  const [lessonQuestionCounts, setLessonQuestionCounts] = useState<{ nguphap: number; nghe: number; doc: number }>({ nguphap: 0, nghe: 0, doc: 0 });
+
+  useEffect(() => {
+    if (!nextSuggestedLesson) return;
+    const lessonId = nextSuggestedLesson.id;
+    Promise.all([
+      supabase.from("grammar_exercises_public").select("category").eq("lesson_id", lessonId),
+      supabase.from("reading_question_groups_public").select("question_type, statements, sub_questions").eq("lesson_id", lessonId),
+    ]).then(([exercisesRes, readingRes]) => {
+      const exerciseRows = (exercisesRes.data ?? []) as { category: string | null }[];
+      const docGroups = (readingRes.data ?? []) as { question_type: string | null; statements: unknown[] | null; sub_questions: unknown[] | null }[];
+      setLessonQuestionCounts({
+        nguphap: exerciseRows.filter(r => r.category === "nguphap").length,
+        nghe: exerciseRows.filter(r => r.category === "nghe").length,
+        doc: docGroups.reduce((sum, g) => sum + itemCount({ ...g, question_type: (g.question_type ?? "multiple_choice") as "richtig_falsch" | "multiple_choice" }), 0),
+      });
+    });
+  }, [nextSuggestedLesson?.id]);
+
+  const lessonProgressPercent = (() => {
+    const total = lessonQuestionCounts.nguphap + lessonQuestionCounts.nghe + lessonQuestionCounts.doc;
+    if (total === 0 || !nextSuggestedLesson) return 0;
+    const scores = stats.quizScoresByCategory[nextSuggestedLesson.id] ?? {};
+    const completed =
+      (scores.nguphap !== undefined ? lessonQuestionCounts.nguphap : 0) +
+      (scores.nghe !== undefined ? lessonQuestionCounts.nghe : 0) +
+      (scores.doc !== undefined ? lessonQuestionCounts.doc : 0);
+    return Math.round((completed / total) * 100);
+  })();
 
   const [report, setReport] = useState<DailyProgressReport | null>(null);
 
@@ -280,9 +304,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="mt-1.5 space-y-1">
                     <div className="flex justify-between text-[11px] text-slate-400">
                       <span>Tiến độ bài học</span>
-                      <span>{lessonCategoryProgress(nextSuggestedLesson)}%</span>
+                      <span>{lessonProgressPercent}%</span>
                     </div>
-                    <ProgressBar value={lessonCategoryProgress(nextSuggestedLesson)} />
+                    <ProgressBar value={lessonProgressPercent} />
                   </div>
                 </div>
               </div>
