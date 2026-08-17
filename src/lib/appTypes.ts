@@ -109,5 +109,5 @@ export interface LessonPosition {
 }
 
 export interface AppState {
-  currentPage: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard";
+  currentPage: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard" | "packages" | "help";
 }

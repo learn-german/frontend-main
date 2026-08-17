@@ -7,11 +7,13 @@ export type AppPage =
   | "dashboard"
   | "roadmap"
   | "leaderboard"
+  | "packages"
+  | "help"
   | "lesson-detail"
   | "quiz";
 
 export type AppRoute =
-  | { page: "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" }
+  | { page: "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" }
   | { page: "lesson-detail"; lessonId: string; tab?: BottomTab }
   | { page: "quiz"; lessonId: string; category: QuizCategory };
 
@@ -19,6 +21,8 @@ const PROTECTED_PAGES: AppPage[] = [
   "dashboard",
   "roadmap",
   "leaderboard",
+  "packages",
+  "help",
   "lesson-detail",
   "quiz",
 ];
@@ -54,6 +58,10 @@ export function parseRoute(pathname: string): AppRoute {
       return { page: "roadmap" };
     case "leaderboard":
       return { page: "leaderboard" };
+    case "packages":
+      return { page: "packages" };
+    case "help":
+      return { page: "help" };
     case "lesson": {
       if (!second) return { page: "landing" };
       const tab = toBottomTab(third);
