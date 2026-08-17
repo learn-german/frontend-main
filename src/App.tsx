@@ -284,7 +284,7 @@ export default function App() {
 
   // Layout check selectors
   const showNav = effectivePage !== "login";
-  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "packages" || effectivePage === "help");
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -311,6 +311,7 @@ export default function App() {
             currentPage={effectivePage}
             onNavigate={handleNavigate}
             streak={stats.streak}
+            currentLessonTitle={orderedLessons.find(l => lessonStatuses[l.id] === "current")?.titleVi}
           />
         )}
 

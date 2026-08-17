@@ -16,7 +16,9 @@ import {
   TrendingUp,
   Award,
   Globe,
-  Trophy
+  Trophy,
+  Gift,
+  HelpCircle
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { Button } from "./DesignSystem";
@@ -326,13 +328,17 @@ interface SidebarProps {
   currentPage: string;
   onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz") => void;
   streak: number;
+  currentLessonTitle?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streak }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streak, currentLessonTitle }) => {
   const links = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
-    { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ bài học A1-B1", icon: Map },
-    { id: "lesson-detail", label: "Bài học hiện tại", desc: "Bài học đang xem", icon: BookOpen },
+    { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
+    { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
+    { id: "packages", label: "Gói học", desc: "Xem gói & quyền lợi", icon: Gift },
+    { id: "leaderboard", label: "Bảng xếp hạng", desc: "Thành tích học tập", icon: Trophy },
+    { id: "help", label: "Trợ giúp học tập", desc: "Giải đáp thắc mắc", icon: HelpCircle },
   ];
 
   return (
