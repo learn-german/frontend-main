@@ -21,7 +21,7 @@ interface LessonRow extends LessonQuizFlags {
 }
 
 /** Tính report tươi cho 1 user tại report_date, upsert vào daily_progress_reports.
- * Trả về { generationStatus: "empty" } (không upsert) nếu user không đủ điều
+ * Trả về { generation_status: "empty" } (không upsert) nếu user không đủ điều
  * kiện (chưa mở level nào, hoặc gói không active) — đúng rule "chỉ tạo report
  * cho user có package active và level đang học". */
 async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, reportDate: string) {
@@ -37,7 +37,7 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     && profile.subscription_end_date >= reportDate;
 
   if (!packageActive || unlockedLevels.length === 0) {
-    return { generationStatus: "empty" as const };
+    return { generation_status: "empty" as const };
   }
 
   const { data: modulesRes } = await supabase
@@ -96,7 +96,7 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
   }
 
   if (!chosenLevel || chosenLessons.length === 0) {
-    return { generationStatus: "empty" as const };
+    return { generation_status: "empty" as const };
   }
 
   const completedIds = computeCompletedLessons(chosenLessons, progress);
@@ -141,7 +141,7 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     .single();
 
   if (error) {
-    return { generationStatus: "error" as const, errorMessage: error.message };
+    return { generation_status: "error" as const, error_message: error.message };
   }
   return upserted;
 }

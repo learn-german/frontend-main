@@ -359,6 +359,7 @@ export default function App() {
                   orderedLessons={orderedLessons}
                   lessonStatuses={lessonStatuses}
                   onNavigateLesson={handleSelectLesson}
+                  onNavigateRoadmap={() => handleNavigate("roadmap")}
                 />
               )}
 
