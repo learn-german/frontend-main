@@ -356,6 +356,8 @@ export default function App() {
                   user={user}
                   stats={stats}
                   modules={modules}
+                  orderedLessons={orderedLessons}
+                  lessonStatuses={lessonStatuses}
                   onNavigateLesson={handleSelectLesson}
                   onNavigateRoadmap={() => handleNavigate("roadmap")}
                 />

@@ -20,11 +20,15 @@ import {
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { countHighlightedWords } from "../components/MarkdownBlock";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
+import { LessonStatus } from "../lib/completion";
+import { selectPlannedLessons } from "../lib/dashboardProgress";
 
 interface DashboardPageProps {
   user: { email: string; fullName: string };
   stats: UserStats;
   modules: Module[];
+  orderedLessons: Lesson[];
+  lessonStatuses: Record<string, LessonStatus>;
   onNavigateLesson: (lessonId: string) => void;
   onNavigateRoadmap: () => void;
 }
@@ -33,6 +37,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
   stats,
   modules,
+  orderedLessons,
+  lessonStatuses,
   onNavigateLesson,
   onNavigateRoadmap
 }) => {
@@ -59,6 +65,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     ? LEVEL_ORDER[LEVEL_ORDER.indexOf(currentLevel) + 1]
     : undefined;
 
+  const planLessons = selectPlannedLessons(orderedLessons, lessonStatuses, stats.completedLessons);
+
+  const planStatusLabel = (index: number): string => {
+    if (index === 0) return "Đang học";
+    if (index === 1) return "Tiếp theo";
+    return "Sắp học";
+  };
+
   // Check recent scores list
   const recentScores = Object.entries(stats.quizScores).map(([lessonId, score]) => {
     const match = allLessons.find(l => l.id === lessonId);
@@ -80,7 +94,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Hallo, {user.fullName}! 👋
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm font-sans max-w-md">
-            Hôm nay là một ngày tuyệt vời để học từ mới tiếng Đức. Mục tiêu hàng ngày của bạn đã đạt 40%!
+            Hôm nay là một ngày tuyệt vời để chinh phục tiếng Đức. Hãy bắt đầu từ một bài học nhỏ!
           </p>
         </div>
 
@@ -236,31 +250,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
           </div>
 
-          {/* Upcoming lessons list */}
-          <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-indigo-505" /> Kế hoạch bài học nổi bật
-            </h3>
+          {/* Kế hoạch học tập: 4 bài gần nhất theo thứ tự thật của roadmap */}
+          {planLessons.length > 0 && (
+            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
+              <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-indigo-505" /> Kế hoạch học tập
+              </h3>
 
-            <div className="space-y-3">
-              {[
-                { de: "Das deutsche Alphabet", vi: "Bảng chữ cái & Số đếm", level: "A1", desc: "Bài kế của Nhập môn" },
-                { de: "Einkaufen im Supermarkt", vi: "Mua đồ trong siêu thị Đức", level: "A2", desc: "Mẫu câu đàm thoại mua thực phẩm" },
-                { de: "Meinung äußern", vi: "Bày tỏ quan điểm cá nhân", level: "B1", desc: "Kỹ năng phản xạ tranh luận" }
-              ].map((item, i) => (
-                <div key={i} className="flex gap-3 items-start border-b border-slate-50 pb-2.5 last:border-0 last:pb-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 font-display font-bold text-[10px] flex items-center justify-center shrink-0">
-                    {item.level}
+              <div className="space-y-3">
+                {planLessons.map((lesson, i) => (
+                  <div key={lesson.id} className="flex gap-3 items-start border-b border-slate-50 pb-2.5 last:border-0 last:pb-0">
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 font-display font-bold text-[10px] flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs font-display font-bold text-slate-800 leading-snug truncate">{lesson.title}</h4>
+                        <span className={`text-[9px] font-display font-bold shrink-0 ${i === 0 ? "text-orange-600" : "text-slate-400"}`}>
+                          {planStatusLabel(i)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-none truncate">{lesson.titleVi}</p>
+                      <p className="text-[9px] text-slate-400 mt-1">{lesson.duration} phút</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-display font-bold text-slate-800 leading-snug">{item.de}</h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-none">{item.vi}</p>
-                    <p className="text-[9px] text-green-600 italic mt-1">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
