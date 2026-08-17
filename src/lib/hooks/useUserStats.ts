@@ -30,6 +30,7 @@ export function useUserStats(
     scorePercentage: number,
     xpEarned: number,
   ) => void;
+  lessonIdsCompletedToday: string[];
 } {
   const [base, setBase] = useState<BaseStats>(EMPTY_BASE);
   const [progressRows, setProgressRows] = useState<LessonProgressRow[]>([]);
@@ -46,7 +47,7 @@ export function useUserStats(
 
     const [statsRes, progressRes, profileRes] = await Promise.all([
       supabase.from("user_stats").select("xp, streak").eq("user_id", userId).single(),
-      supabase.from("lesson_progress").select("lesson_id, category, quiz_score").eq("user_id", userId),
+      supabase.from("lesson_progress").select("lesson_id, category, quiz_score, completed_at").eq("user_id", userId),
       supabase.from("profiles").select("unlocked_levels").eq("id", userId).single(),
     ]);
 
@@ -69,6 +70,17 @@ export function useUserStats(
   );
 
   const quizScoresByCategory = useMemo(() => buildScoresByLesson(progressRows), [progressRows]);
+
+  // "Đã học hôm nay" = bài có ít nhất 1 lượt làm bài (lesson_progress) hôm
+  // nay — không chỉ bài đã hoàn thành, để phản ánh đúng hoạt động trong ngày.
+  const lessonIdsCompletedToday = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const ids = new Set<string>();
+    for (const row of progressRows) {
+      if (row.completed_at?.slice(0, 10) === today) ids.add(row.lesson_id);
+    }
+    return Array.from(ids);
+  }, [progressRows]);
 
   const quizScores = useMemo(() => {
     const out: Record<string, number> = {};
@@ -96,16 +108,17 @@ export function useUserStats(
       setBase((prev) => ({ ...prev, xp: prev.xp + xpEarned }));
       setProgressRows((prev) => {
         const idx = prev.findIndex((r) => r.lesson_id === lessonId && r.category === category);
+        const completed_at = new Date().toISOString();
         if (idx === -1) {
-          return [...prev, { lesson_id: lessonId, category, quiz_score: scorePercentage }];
+          return [...prev, { lesson_id: lessonId, category, quiz_score: scorePercentage, completed_at }];
         }
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], quiz_score: scorePercentage };
+        copy[idx] = { ...copy[idx], quiz_score: scorePercentage, completed_at };
         return copy;
       });
     },
     [],
   );
 
-  return { stats, statsLoading, applyLessonCompleteReward, applyQuizResult };
+  return { stats, statsLoading, applyLessonCompleteReward, applyQuizResult, lessonIdsCompletedToday };
 }

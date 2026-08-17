@@ -39,7 +39,7 @@ export default function App() {
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
   const { positions } = useLessonPositions(user?.id ?? null);
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
-  const { stats, statsLoading, applyLessonCompleteReward, applyQuizResult } = useUserStats(user?.id ?? null, flatLessons);
+  const { stats, statsLoading, applyLessonCompleteReward, applyQuizResult, lessonIdsCompletedToday } = useUserStats(user?.id ?? null, flatLessons);
 
   // Đúng thứ tự người học thấy trên Lộ trình: đã lọc level chưa mở khóa,
   // sort theo orderIndex, và bỏ các bài draft.
@@ -358,6 +358,7 @@ export default function App() {
                   modules={modules}
                   orderedLessons={orderedLessons}
                   lessonStatuses={lessonStatuses}
+                  lessonIdsCompletedToday={lessonIdsCompletedToday}
                   onNavigateLesson={handleSelectLesson}
                   onNavigateRoadmap={() => handleNavigate("roadmap")}
                 />
