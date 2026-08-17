@@ -64,7 +64,7 @@ export const Navbar: React.FC<NavigationProps> = ({
             <GraduationCap className="w-5.5 h-5.5" />
           </div>
           <span className="font-display font-extrabold text-xl tracking-tight text-slate-900 font-sans">
-            DeutschPath
+            SelbstDeutsch
           </span>
         </div>
 

@@ -108,7 +108,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <GraduationCap className="w-4.5 h-4.5" />
               </div>
               <span className="font-display font-extrabold text-lg tracking-tight text-slate-900">
-                DeutschPath
+                SelbstDeutsch
               </span>
             </div>
 
@@ -119,7 +119,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <p className="text-sm text-slate-500 leading-normal">
                 {isRegister 
                   ? "Bắt đầu học tiếng Đức miễn phí ngay hôm nay" 
-                  : "Đồng hành cùng DeutschPath trên con đường chinh phục ngoại ngữ"
+                  : "Đồng hành cùng SelbstDeutsch trên con đường chinh phục ngoại ngữ"
                 }
               </p>
             </div>
@@ -245,7 +245,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </p>
             ) : (
               <p>
-                Bạn mới sử dụng DeutschPath?{" "}
+                Bạn mới sử dụng SelbstDeutsch?{" "}
                 <button
                   id="btn-toggle-register"
                   type="button"

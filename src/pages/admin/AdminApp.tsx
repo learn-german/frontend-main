@@ -135,7 +135,7 @@ export const AdminApp: React.FC = () => {
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-white text-sm">DeutschPath</span>
+              <span className="font-display font-bold text-white text-sm">SelbstDeutsch</span>
               <span className="text-slate-600 text-xs">/</span>
               <span className="text-orange-400 text-xs font-bold uppercase tracking-widest">Admin</span>
             </div>
@@ -193,7 +193,7 @@ export const AdminApp: React.FC = () => {
             <GraduationCap className="w-7 h-7 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="font-display font-extrabold text-white text-xl">DeutschPath</h1>
+            <h1 className="font-display font-extrabold text-white text-xl">SelbstDeutsch</h1>
             <p className="text-slate-400 text-xs mt-0.5 font-bold uppercase tracking-widest">Admin Portal</p>
           </div>
         </div>

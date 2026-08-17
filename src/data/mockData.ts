@@ -411,13 +411,13 @@ export const TESTIMONIALS = [
     name: "Lê Minh Anh",
     role: "Du học sinh Đức ngành Điều dưỡng tại Munich",
     avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
-    content: "Nhờ học theo lộ trình của DeutschPath từ A1 lên B1, mình đã thi đỗ bằng Goethe B1 chỉ trong vòng 8 tháng học tích cực. Các bài giảng video rất dễ hiểu và phần luyện từ vựng thực tế cực kỳ sướng!"
+    content: "Nhờ học theo lộ trình của SelbstDeutsch từ A1 lên B1, mình đã thi đỗ bằng Goethe B1 chỉ trong vòng 8 tháng học tích cực. Các bài giảng video rất dễ hiểu và phần luyện từ vựng thực tế cực kỳ sướng!"
   },
   {
     name: "Nguyễn Quốc Bảo",
     role: "Kỹ sư Công nghệ thông tin theo diện Blue Card tại Berlin",
     avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&h=150&q=80",
-    content: "Học giao tiếp công sở ở mức B1 trên DeutschPath giúp tôi tự tin trao đổi với sếp người Đức ngay trong những tuần đầu nhận việc. Hệ thống bài tập fill-blank rất sát đề thi thực."
+    content: "Học giao tiếp công sở ở mức B1 trên SelbstDeutsch giúp tôi tự tin trao đổi với sếp người Đức ngay trong những tuần đầu nhận việc. Hệ thống bài tập fill-blank rất sát đề thi thực."
   },
   {
     name: "Trần Minh Thư",
