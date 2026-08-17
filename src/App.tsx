@@ -22,6 +22,7 @@ import { QuizSetListPage } from "./pages/QuizSetListPage";
 import { GrammarSetListPage } from "./pages/GrammarSetListPage";
 import { ReadingSetListPage } from "./pages/ReadingSetListPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
@@ -262,7 +263,7 @@ export default function App() {
       setInitialLessonTab(undefined);
       setCurrentPage("lesson-detail");
     } else {
-      showToast("Đỉnh quá! Bạn đã hoàn thành toàn bộ kho bài học của DeutschPath.", "success");
+      showToast("Đỉnh quá! Bạn đã hoàn thành toàn bộ kho bài học của SelbstDeutsch.", "success");
       setCurrentPage("dashboard");
     }
   };
@@ -283,7 +284,7 @@ export default function App() {
 
   // Layout check selectors
   const showNav = effectivePage !== "login";
-  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail");
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -310,6 +311,7 @@ export default function App() {
             currentPage={effectivePage}
             onNavigate={handleNavigate}
             streak={stats.streak}
+            currentLessonTitle={orderedLessons.find(l => lessonStatuses[l.id] === "current")?.titleVi}
           />
         )}
 
@@ -354,8 +356,9 @@ export default function App() {
                   user={user}
                   stats={stats}
                   modules={modules}
+                  orderedLessons={orderedLessons}
+                  lessonStatuses={lessonStatuses}
                   onNavigateLesson={handleSelectLesson}
-                  onNavigateRoadmap={() => handleNavigate("roadmap")}
                 />
               )}
 
@@ -422,6 +425,12 @@ export default function App() {
               )}
               {effectivePage === "leaderboard" && user && (
                 <LeaderboardPage currentUserId={user.id} />
+              )}
+              {effectivePage === "packages" && user && (
+                <ComingSoonPage title="Gói học" />
+              )}
+              {effectivePage === "help" && user && (
+                <ComingSoonPage title="Trợ giúp học tập" />
               )}
             </motion.div>
           </AnimatePresence>

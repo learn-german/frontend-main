@@ -7,6 +7,8 @@ assert.deepEqual(parseRoute("/login"), { page: "login" });
 assert.deepEqual(parseRoute("/dashboard"), { page: "dashboard" });
 assert.deepEqual(parseRoute("/roadmap"), { page: "roadmap" });
 assert.deepEqual(parseRoute("/leaderboard"), { page: "leaderboard" });
+assert.deepEqual(parseRoute("/packages"), { page: "packages" });
+assert.deepEqual(parseRoute("/help"), { page: "help" });
 
 // bỏ qua dấu / thừa
 assert.deepEqual(parseRoute("/dashboard/"), { page: "dashboard" });
@@ -54,6 +56,8 @@ assert.equal(serializeRoute({ page: "login" }), "/login");
 assert.equal(serializeRoute({ page: "dashboard" }), "/dashboard");
 assert.equal(serializeRoute({ page: "roadmap" }), "/roadmap");
 assert.equal(serializeRoute({ page: "leaderboard" }), "/leaderboard");
+assert.equal(serializeRoute({ page: "packages" }), "/packages");
+assert.equal(serializeRoute({ page: "help" }), "/help");
 assert.equal(serializeRoute({ page: "lesson-detail", lessonId: "a1-l3" }), "/lesson/a1-l3");
 assert.equal(
   serializeRoute({ page: "lesson-detail", lessonId: "a1-l3", tab: "nghe" }),
@@ -71,6 +75,8 @@ const routes: AppRoute[] = [
   { page: "dashboard" },
   { page: "roadmap" },
   { page: "leaderboard" },
+  { page: "packages" },
+  { page: "help" },
   { page: "lesson-detail", lessonId: "a1-l3" },
   { page: "lesson-detail", lessonId: "a1-l3", tab: "tuvung" },
   { page: "quiz", lessonId: "a1-l3", category: "nghe" },
@@ -83,6 +89,8 @@ for (const route of routes) {
 assert.equal(isProtectedPage("dashboard"), true);
 assert.equal(isProtectedPage("roadmap"), true);
 assert.equal(isProtectedPage("leaderboard"), true);
+assert.equal(isProtectedPage("packages"), true);
+assert.equal(isProtectedPage("help"), true);
 assert.equal(isProtectedPage("lesson-detail"), true);
 assert.equal(isProtectedPage("quiz"), true);
 assert.equal(isProtectedPage("landing"), false);

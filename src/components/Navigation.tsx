@@ -14,9 +14,10 @@ import {
   X,
   LogOut,
   TrendingUp,
-  Award,
   Globe,
-  Trophy
+  Trophy,
+  Gift,
+  HelpCircle
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { Button } from "./DesignSystem";
@@ -64,7 +65,7 @@ export const Navbar: React.FC<NavigationProps> = ({
             <GraduationCap className="w-5.5 h-5.5" />
           </div>
           <span className="font-display font-extrabold text-xl tracking-tight text-slate-900 font-sans">
-            DeutschPath
+            SelbstDeutsch
           </span>
         </div>
 
@@ -111,63 +112,9 @@ export const Navbar: React.FC<NavigationProps> = ({
         ) : (
           /* Desktop Menu - For logged in */
           <nav className="hidden md:flex items-center gap-6">
-            {/* Daily Streak Indicator */}
-            <div 
-              id="nav-streak"
-              className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50 text-amber-600 border border-yellow-200/60 rounded-full cursor-help"
-              title="Chuỗi hằng ngày của bạn"
-            >
-              <span className="text-sm">🔥</span>
-              <span className="text-xs font-display font-bold">{streak} Ngày</span>
-            </div>
-
-            {/* XP Indicator */}
-            <div 
-              id="nav-xp"
-              className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 border border-green-200/50 rounded-full"
-              title="Điểm kinh nghiệm"
-            >
-              <Award className="w-3.5 h-3.5" />
-              <span className="text-xs font-display font-bold">{xp} XP</span>
-            </div>
-
             <NotificationBell onNavigate={onNotificationNavigate} />
 
             <div className="h-4 w-[1px] bg-slate-200" />
-
-            {/* Quick Nav Links */}
-            <button 
-              id="nav-dashboard"
-              onClick={() => onNavigate("dashboard")}
-              className={`flex items-center gap-1.5 text-sm font-display font-medium transition cursor-pointer ${
-                currentPage === "dashboard" ? "text-orange-600 font-bold" : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <Compass className="w-4 h-4" />
-              Bảng điều khiển
-            </button>
-
-            <button
-              id="nav-roadmap"
-              onClick={() => onNavigate("roadmap")}
-              className={`flex items-center gap-1.5 text-sm font-display font-medium transition cursor-pointer ${
-                currentPage === "roadmap" ? "text-orange-600 font-bold" : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <Map className="w-4 h-4" />
-              Lộ trình học
-            </button>
-
-            <button
-              id="nav-leaderboard"
-              onClick={() => onNavigate("leaderboard")}
-              className={`flex items-center gap-1.5 text-sm font-display font-medium transition cursor-pointer ${
-                currentPage === "leaderboard" ? "text-orange-600 font-bold" : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <Trophy className="w-4 h-4" />
-              Bảng xếp hạng
-            </button>
 
             {/* User profile dropdown snippet */}
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full pl-2 pr-3.5 py-1">
@@ -191,13 +138,15 @@ export const Navbar: React.FC<NavigationProps> = ({
 
       {/* Flag decoration & Mobile Toggle */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1 text-[13px] bg-gray-50 border border-gray-100 px-2.5 py-1.5 rounded-full font-sans select-none text-gray-500">
-          <Globe className="w-3.5 h-3.5 text-gray-400 mr-0.5" />
-          <span>DE</span>
-          <span className="text-gray-300">|</span>
-          <span>VI</span>
-        </div>
-        
+        {!user && (
+          <div className="flex items-center gap-1 text-[13px] bg-gray-50 border border-gray-100 px-2.5 py-1.5 rounded-full font-sans select-none text-gray-500">
+            <Globe className="w-3.5 h-3.5 text-gray-400 mr-0.5" />
+            <span>DE</span>
+            <span className="text-gray-300">|</span>
+            <span>VI</span>
+          </div>
+        )}
+
         {/* Mobile menu button */}
         <button
           id="btn-mobile-toggle"
@@ -326,13 +275,17 @@ interface SidebarProps {
   currentPage: string;
   onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz") => void;
   streak: number;
+  currentLessonTitle?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streak }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streak, currentLessonTitle }) => {
   const links = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
-    { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ bài học A1-B1", icon: Map },
-    { id: "lesson-detail", label: "Bài học hiện tại", desc: "Bài học đang xem", icon: BookOpen },
+    { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
+    { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
+    { id: "packages", label: "Gói học", desc: "Xem gói & quyền lợi", icon: Gift },
+    { id: "leaderboard", label: "Bảng xếp hạng", desc: "Thành tích học tập", icon: Trophy },
+    { id: "help", label: "Trợ giúp học tập", desc: "Giải đáp thắc mắc", icon: HelpCircle },
   ];
 
   return (

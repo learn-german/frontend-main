@@ -192,7 +192,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
             <span className="text-xs font-display font-extrabold text-orange-600 tracking-wider uppercase">
-              Phương pháp DeutschPath
+              Phương pháp SelbstDeutsch
             </span>
             <h2 className="text-3xl md:text-4xl font-display font-extrabold text-slate-900 tracking-tight font-sans">
               Bật Cao Trình Độ Với Trải Nghiệm Học Đặc Sắc
@@ -402,7 +402,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
           <span className="text-xs font-display font-extrabold text-orange-600 tracking-wider uppercase">Ý kiến học viên</span>
           <h2 className="text-3xl md:text-4xl font-display font-extrabold text-slate-900 tracking-tight font-sans">Thành tựu từ những người đi trước</h2>
-          <p className="text-slate-500 text-sm">Hơn cả hàng ngàn lời quảng cáo, hãy lắng nghe đánh giá chân thực từ cộng đồng DeutschPath Việt Nam!</p>
+          <p className="text-slate-500 text-sm">Hơn cả hàng ngàn lời quảng cáo, hãy lắng nghe đánh giá chân thực từ cộng đồng SelbstDeutsch Việt Nam!</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -517,7 +517,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-4xl mx-auto px-4 space-y-5">
           <h2 className="text-3xl font-display font-black font-sans">Sẵn sàng chinh phục giấc mơ nước Đức chứ?</h2>
           <p className="text-orange-100 max-w-xl mx-auto text-sm">
-            Hàng ngàn bạn học là du học sinh, điều dưỡng đã và đang đạt được chứng chỉ A2/B1 với lộ trình thông minh của DeutschPath. Khởi đầu ngay hôm nay!
+            Hàng ngàn bạn học là du học sinh, điều dưỡng đã và đang đạt được chứng chỉ A2/B1 với lộ trình thông minh của SelbstDeutsch. Khởi đầu ngay hôm nay!
           </p>
           <div className="pt-2">
             <Button id="btn-cta-footer" variant="secondary" size="lg" className="bg-white text-orange-700 hover:bg-orange-50 border-white active:scale-95" onClick={onStartLearning}>
@@ -530,7 +530,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Simple Footer */}
       <footer className="bg-slate-950 text-gray-500 py-10 text-center text-xs font-sans tracking-wide">
         <div className="max-w-7xl mx-auto px-4 space-y-2">
-          <p className="font-display font-bold text-gray-300 font-sans">© 2026 DeutschPath.</p>
+          <p className="font-display font-bold text-gray-300 font-sans">© 2026 SelbstDeutsch.</p>
           <p>Phương pháp trực quan, học ngữ pháp và từ vựng thông minh cho người Việt.</p>
         </div>
       </footer>
