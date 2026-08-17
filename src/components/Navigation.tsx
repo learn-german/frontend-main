@@ -325,7 +325,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
         </p>
         <div className="mt-3 flex items-center gap-1">
           <span className="text-sm">🔥</span>
-          <span className="text-xs font-display font-bold text-amber-800">{streak} ngày liên tiếp</span>
+          <span className="text-xs font-display font-bold text-amber-800">{streak > 0 ? `${streak} ngày liên tiếp` : "Học 15 phút để bắt đầu streak"}</span>
         </div>
       </div>
     </aside>
