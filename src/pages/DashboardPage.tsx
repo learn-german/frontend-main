@@ -55,13 +55,16 @@ const PROGRESS_STATUS_BADGE: Record<"on_track" | "attention" | "behind", { label
   behind: { label: "⚠ Chậm tiến độ", className: "bg-red-50 text-red-700 border border-red-200" },
 };
 
-// duration được lưu dạng "mm:ss" (xem mockData.ts) — parse ra phút lẻ để tính tổng thời gian học.
+// duration đa số lưu dạng "mm:ss" (xem mockData.ts), nhưng một số bài seed
+// cũ chỉ lưu số phút thuần không có ":" — parse an toàn cho cả 2 dạng.
 const parseDurationMinutes = (duration: string): number => {
+  if (!duration.includes(":")) return Number(duration) || 0;
   const [m, s] = duration.split(":").map(Number);
   return (m || 0) + (s || 0) / 60;
 };
 
 const formatDuration = (duration: string): string => {
+  if (!duration.includes(":")) return `${Number(duration) || 0} phút`;
   const [m, s] = duration.split(":").map(Number);
   return s ? `${m} phút ${s} giây` : `${m} phút`;
 };
@@ -256,69 +259,76 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
           </div>
 
-          {/* Bài học hiện tại */}
-          <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3">
-            <div className="flex items-center gap-2">
-              <LevelBadge level={nextSuggestedLesson.level} />
-              <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Bài học hiện tại</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-lg shrink-0">
-                👋
+          {/* Bài học hiện tại + Tổng điểm tích lũy: 2 cột ngang hàng */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Bài học hiện tại */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3 flex flex-col">
+              <div className="flex items-center gap-2">
+                <LevelBadge level={nextSuggestedLesson.level} />
+                <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Bài học hiện tại</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-display font-extrabold text-slate-900 leading-tight">{nextSuggestedLesson.title}</h3>
-                <p className="text-slate-500 text-xs font-sans mt-0.5">
-                  Module: {nextSuggestedLesson.moduleTitle} • Thời lượng: {formatDuration(nextSuggestedLesson.duration)}
-                </p>
-                <div className="mt-2 space-y-1">
-                  <div className="flex justify-between text-[11px] text-slate-400">
-                    <span>Tiến độ bài học</span>
-                    <span>{lessonCategoryProgress(nextSuggestedLesson)}%</span>
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-lg shrink-0">
+                  👋
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-display font-extrabold text-slate-900 leading-tight truncate">{nextSuggestedLesson.title}</h3>
+                  <p className="text-slate-500 text-[11px] font-sans mt-0.5">
+                    {nextSuggestedLesson.moduleTitle} • {formatDuration(nextSuggestedLesson.duration)}
+                  </p>
+                  <div className="mt-1.5 space-y-1">
+                    <div className="flex justify-between text-[11px] text-slate-400">
+                      <span>Tiến độ bài học</span>
+                      <span>{lessonCategoryProgress(nextSuggestedLesson)}%</span>
+                    </div>
+                    <ProgressBar value={lessonCategoryProgress(nextSuggestedLesson)} />
                   </div>
-                  <ProgressBar value={lessonCategoryProgress(nextSuggestedLesson)} />
                 </div>
               </div>
+              <div className="flex flex-col gap-2 mt-auto">
+                <Button
+                  id="btn-dash-continue-learn"
+                  variant="primary"
+                  size="md"
+                  onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
+                >
+                  <PlayCircle className="w-4 h-4 mr-2" /> Tiếp tục học
+                </Button>
+                <Button
+                  id="btn-dash-view-lesson"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
+                >
+                  Xem chi tiết bài học
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                id="btn-dash-continue-learn"
-                variant="primary"
-                size="md"
-                className="flex-1"
-                onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
-              >
-                <PlayCircle className="w-4 h-4 mr-2" /> Tiếp tục học
-              </Button>
-              <Button
-                id="btn-dash-view-lesson"
-                variant="secondary"
-                size="md"
-                onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
-              >
-                Xem chi tiết bài học
-              </Button>
-            </div>
-          </div>
 
-          {/* Total XP Score card */}
-          <div className="bg-white border border-slate-200/60 p-4 rounded-2xl shadow-sm space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Tổng điểm tích lũy</span>
-                <h4 className="text-2xl font-display font-black text-slate-800 mt-0.5">{stats.xp} <span className="text-sm text-slate-400 font-bold">XP</span></h4>
+            {/* Total XP Score card */}
+            <div className="bg-white border border-slate-200/60 p-4 rounded-2xl shadow-sm space-y-3 flex flex-col">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="text-xs font-display font-bold text-slate-400 uppercase tracking-wider">Tổng điểm tích lũy</span>
+                  <h4 className="text-2xl font-display font-black text-slate-800 mt-0.5">{stats.xp} <span className="text-sm text-slate-400 font-bold">XP</span></h4>
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-base shadow-sm shrink-0">
+                  🏆
+                </div>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-base shadow-sm shrink-0">
-                🏆
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Tích đủ <b>500 XP</b> để nhận danh hiệu <b>"Bảo bối nói tiếng Đức"</b>!
+              </p>
+              <div className="pt-2 border-t border-slate-100/80 space-y-1 mt-auto">
+                <div className="flex justify-between text-[11px] text-slate-400">
+                  <span>Cấp tiếp theo (500 XP)</span>
+                  <span>{Math.min(stats.xp, 500)} / 500 XP</span>
+                </div>
+                <ProgressBar value={stats.xp} max={500} />
               </div>
             </div>
-            <div className="pt-2 border-t border-slate-100/80 space-y-1">
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span>Cấp tiếp theo (500 XP)</span>
-                <span>{Math.min(stats.xp, 500)} / 500 XP</span>
-              </div>
-              <ProgressBar value={stats.xp} max={500} />
-            </div>
+
           </div>
 
         </div>
