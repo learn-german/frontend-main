@@ -69,6 +69,12 @@ export const Navbar: React.FC<NavigationProps> = ({
           </span>
         </div>
 
+        {/* Right-side cluster: nav/user + flag/mobile-toggle, grouped into ONE
+            flex child so `justify-between` on <header> only ever sees 2 items
+            (brand, this group) — 3 direct children would center the middle
+            one instead of pinning it to the right edge. */}
+        <div className="flex items-center gap-3">
+
         {/* Desktop Menu - For logged out / landing page */}
         {!user ? (
           <nav className="hidden md:flex items-center gap-6">
@@ -136,26 +142,27 @@ export const Navbar: React.FC<NavigationProps> = ({
           </nav>
         )}
 
-      {/* Flag decoration & Mobile Toggle */}
-      <div className="flex items-center gap-3">
-        {!user && (
-          <div className="flex items-center gap-1 text-[13px] bg-gray-50 border border-gray-100 px-2.5 py-1.5 rounded-full font-sans select-none text-gray-500">
-            <Globe className="w-3.5 h-3.5 text-gray-400 mr-0.5" />
-            <span>DE</span>
-            <span className="text-gray-300">|</span>
-            <span>VI</span>
-          </div>
-        )}
+        {/* Flag decoration & Mobile Toggle */}
+        <div className="flex items-center gap-3">
+          {!user && (
+            <div className="flex items-center gap-1 text-[13px] bg-gray-50 border border-gray-100 px-2.5 py-1.5 rounded-full font-sans select-none text-gray-500">
+              <Globe className="w-3.5 h-3.5 text-gray-400 mr-0.5" />
+              <span>DE</span>
+              <span className="text-gray-300">|</span>
+              <span>VI</span>
+            </div>
+          )}
 
-        {/* Mobile menu button */}
-        <button
-          id="btn-mobile-toggle"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-50 focus:outline-none transition cursor-pointer"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      </div>
+          {/* Mobile menu button */}
+          <button
+            id="btn-mobile-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-50 focus:outline-none transition cursor-pointer"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+        </div>
 
       {/* Mobile drop menu */}
       {mobileMenuOpen && (
