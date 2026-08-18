@@ -8,7 +8,6 @@ import {
   BookOpen,
   Map,
   Compass,
-  GraduationCap,
   User,
   Menu,
   X,
@@ -20,6 +19,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
+import { BrandLogo } from "./BrandLogo";
 import { Button } from "./DesignSystem";
 import type { AppNotification } from "../lib/hooks/useNotifications";
 
@@ -61,9 +61,7 @@ export const Navbar: React.FC<NavigationProps> = ({
           className="flex items-center gap-2 cursor-pointer select-none"
           onClick={() => onNavigate(user ? "dashboard" : "landing")}
         >
-          <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white">
-            <GraduationCap className="w-5.5 h-5.5" />
-          </div>
+          <BrandLogo size="md" />
           <span className="font-display font-extrabold text-xl tracking-tight text-slate-900 font-sans">
             SelbstDeutsch
           </span>

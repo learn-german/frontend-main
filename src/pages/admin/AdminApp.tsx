@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { GraduationCap, LogOut, Loader2, ShieldCheck } from "lucide-react";
+import { LogOut, Loader2, ShieldCheck } from "lucide-react";
+import { BrandLogo } from "../../components/BrandLogo";
 import { supabase } from "../../lib/supabase";
 import { AdminPage, type AdminSection } from "./AdminPage";
 import { NotificationBell } from "../../components/NotificationBell";
@@ -131,9 +132,7 @@ export const AdminApp: React.FC = () => {
         {/* Admin topbar */}
         <header className="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-4 h-4 text-white" />
-            </div>
+            <BrandLogo size="sm" />
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-white text-sm">SelbstDeutsch</span>
               <span className="text-slate-600 text-xs">/</span>
@@ -189,9 +188,7 @@ export const AdminApp: React.FC = () => {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 bg-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-900/40">
-            <GraduationCap className="w-7 h-7 text-white" />
-          </div>
+          <BrandLogo size="lg" className="shadow-lg shadow-orange-900/40" />
           <div className="text-center">
             <h1 className="font-display font-extrabold text-white text-xl">SelbstDeutsch</h1>
             <p className="text-slate-400 text-xs mt-0.5 font-bold uppercase tracking-widest">Admin Portal</p>

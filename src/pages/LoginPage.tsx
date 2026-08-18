@@ -10,9 +10,9 @@ import {
   ArrowRight,
   User,
   CheckCircle2,
-  GraduationCap,
   Loader2
 } from "lucide-react";
+import { BrandLogo } from "../components/BrandLogo";
 import { Button, Input } from "../components/DesignSystem";
 import { showToast } from "../lib/toast";
 import { signIn, signUp, signInWithGoogle, resetPassword } from "../lib/auth";
@@ -104,9 +104,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               onClick={onNavigateHome} 
               className="flex items-center gap-2 cursor-pointer select-none mb-8"
             >
-              <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center text-white">
-                <GraduationCap className="w-4.5 h-4.5" />
-              </div>
+              <BrandLogo size="sm" />
               <span className="font-display font-extrabold text-lg tracking-tight text-slate-900">
                 SelbstDeutsch
               </span>
