@@ -15,7 +15,8 @@ import {
   ArrowRight,
   ListRestart,
   HeartCrack,
-  Award
+  Award,
+  Calendar
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
@@ -53,6 +54,13 @@ const PROGRESS_STATUS_BADGE: Record<"on_track" | "attention" | "behind", { label
   attention: { label: "⚠ Cần chú ý", className: "bg-amber-50 text-amber-700 border border-amber-200" },
   behind: { label: "⚠ Chậm tiến độ", className: "bg-red-50 text-red-700 border border-red-200" },
 };
+
+// Data tĩnh cho card "Lịch hỗ trợ trực tiếp (tuần này)" — chưa nối với backend,
+// chờ tính năng lịch học trực tiếp thật (separate task).
+const LIVE_SESSIONS_THIS_WEEK = [
+  { dow: "T2", date: 26, title: "Hỏi đáp ngữ pháp A1", time: "19:30 - 20:15", teacher: "N.P." },
+  { dow: "T4", date: 28, title: "Luyện nói theo chủ đề", time: "19:30 - 20:15", teacher: "L.H." },
+];
 
 // duration đa số lưu dạng "mm:ss" (xem mockData.ts), nhưng một số bài seed
 // cũ chỉ lưu số phút thuần không có ":" — parse an toàn cho cả 2 dạng.
@@ -467,6 +475,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             </div>
           )}
+
+          {/* Lịch hỗ trợ trực tiếp (tuần này) — data tĩnh, chờ tính năng thật */}
+          <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-orange-600" /> Lịch hỗ trợ trực tiếp (tuần này)
+              </h3>
+              <span className="text-orange-600 text-[11px] font-display font-bold cursor-pointer shrink-0">
+                Xem lịch đầy đủ
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {LIVE_SESSIONS_THIS_WEEK.map((s, i) => (
+                <div key={i} className="flex items-center gap-3 border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[10px] font-display font-bold text-slate-400 uppercase leading-none">{s.dow}</span>
+                    <span className="text-lg font-display font-black text-slate-800 leading-none mt-0.5">{s.date}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-display font-bold text-slate-800 leading-snug truncate">{s.title}</h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{s.time} · GV {s.teacher}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[11px] font-display font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 px-2.5 py-1.5 rounded-lg cursor-pointer shrink-0"
+                  >
+                    Tham gia
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
         </div>
 
