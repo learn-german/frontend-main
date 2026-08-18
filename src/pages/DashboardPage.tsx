@@ -15,8 +15,7 @@ import {
   ArrowRight,
   ListRestart,
   HeartCrack,
-  Award,
-  Clock
+  Award
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
@@ -69,13 +68,6 @@ const formatDuration = (duration: string): string => {
   return s ? `${m} phút ${s} giây` : `${m} phút`;
 };
 
-const formatStudyTime = (totalMinutes: number): string => {
-  const mins = Math.round(totalMinutes);
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h > 0 ? `${h} giờ ${m} phút` : `${m} phút`;
-};
-
 const scoreStatusLabel = (score: number): string => (score >= 80 ? "Xuất sắc" : "Cần ôn lại");
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -105,13 +97,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const progressLevelPercentage = totalLessonsInLevel > 0
     ? Math.round((completedLessonsInLevel / totalLessonsInLevel) * 100)
     : 0;
-  const totalStudyMinutes = currentLevelLessons
-    .filter(l => stats.completedLessons.includes(l.id))
-    .reduce((sum, l) => sum + parseDurationMinutes(l.duration), 0);
-
-  const todayStudyMinutes = allLessons
-    .filter(l => lessonIdsCompletedToday.includes(l.id))
-    .reduce((sum, l) => sum + parseDurationMinutes(l.duration), 0);
 
   // % câu hỏi (ngữ pháp/nghe/đọc) của bài hiện tại đã có điểm — không có
   // progress % per-lesson sẵn trong data nên suy ra từ số category đã làm.
@@ -192,69 +177,128 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Left Column (Main widgets) */}
         <div className="lg:col-span-8 space-y-4">
 
-          {/* Tổng quan học tập: số liệu local (luôn có) + bổ sung từ daily-progress-report khi có */}
-          <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3 relative overflow-hidden">
-            <div className="absolute top-0 left-0 h-1 w-full bg-orange-600" />
+          {/* Card "Tổng quan" (v2 — mockup đã duyệt) */}
+          <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3">
+            {/* Header: icon + "Tổng quan" + "Ngày báo cáo" — CHỈ hiện khi generation_status
+                === "success". Edge function trả về object KHÔNG có field report_date ở
+                nhánh "empty"/"error" (supabase/functions/daily-progress-report/index.ts:
+                40,99,144) — gate lỏng hơn (chỉ `report &&`) sẽ ra "Invalid Date" cho phần
+                lớn user test hiện tại (chưa có level_enrollments, xem risk note trong
+                2026-08-17-dashboard-redesign-design.md). Đây đúng loại bug repo đã fix
+                trước đó (branch claude/dashboard-nan-invalid-date-fix) — không được lặp lại. */}
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-orange-600" /> Tổng quan học tập
+                <TrendingUp className="w-3.5 h-3.5 text-orange-600" /> Tổng quan
               </h3>
-              <div className="flex items-center gap-2.5 text-[11px] text-slate-400">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Hôm nay: <b className="text-slate-700">{formatStudyTime(todayStudyMinutes)}</b>
+              {report && report.generation_status === "success" && (
+                <span className="text-[11px] text-slate-400">
+                  Ngày báo cáo: <b className="text-slate-700">{new Date(report.report_date).toLocaleDateString("vi-VN")}</b>
                 </span>
-                <span className="flex items-center gap-1.5">
-                  Hôm nay, {new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                </span>
-              </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Hàng 2 cột: Level hiện tại + Lesson hiện tại */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="text-[11px] text-slate-400">Cấp độ hiện tại</span>
+                <span className="text-[11px] text-slate-400">Level hiện tại</span>
                 <div className="mt-1"><LevelBadge level={nextSuggestedLesson.level} /></div>
               </div>
               <div>
-                <span className="text-[11px] text-slate-400">Tiến độ khóa học</span>
-                <p className="text-lg font-display font-black text-green-600 mt-0.5 leading-none">{progressLevelPercentage}%</p>
-                <ProgressBar value={progressLevelPercentage} className="mt-1.5" />
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-400">Tổng thời gian học</span>
-                <p className="text-sm font-display font-bold text-slate-800 mt-1.5">{formatStudyTime(totalStudyMinutes)}</p>
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-400">Bài học hoàn tất</span>
-                <p className="text-sm font-display font-bold text-slate-800 mt-1.5">{completedLessonsInLevel} / {totalLessonsInLevel}</p>
+                <span className="text-[11px] text-slate-400">Lesson hiện tại</span>
+                <p className="text-sm font-display font-bold text-slate-800 mt-1 flex items-center gap-1.5 leading-tight">
+                  <BookOpen className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <span className="truncate">{nextSuggestedLesson.title}</span>
+                </p>
               </div>
             </div>
 
-            {report && report.generation_status === "success" && report.progress_status && (
-              <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100/80">
-                <span className={`text-xs font-display font-bold px-2 py-0.5 rounded-lg ${PROGRESS_STATUS_BADGE[report.progress_status].className}`}>
-                  {PROGRESS_STATUS_BADGE[report.progress_status].label}
-                </span>
-                {report.expected_progress_percentage !== null && (
-                  <span className="text-xs text-slate-500">
-                    Kỳ vọng: <b className="text-slate-800">{Math.round(report.expected_progress_percentage)}%</b>
-                  </span>
-                )}
-                {report.progress_gap_percentage_point !== null && report.progress_gap_percentage_point > 0 && (
-                  <span className="text-xs text-red-600 font-display font-bold">
-                    -{Math.round(report.progress_gap_percentage_point)} điểm %
-                  </span>
-                )}
-                {report.package_remaining_days !== null && (
-                  <span className="text-xs text-slate-500">
-                    Còn lại: <b className="text-slate-800">{report.package_remaining_days} ngày</b>
-                  </span>
-                )}
+            {/* Nhánh success: đầy đủ trạng thái + marker + 4 ô. `report &&
+                report.generation_status === "success"` để TypeScript narrow `report`
+                non-null (cùng pattern code cũ dòng 233) VÀ tránh Invalid Date (xem
+                comment ở header phía trên — đây là cùng 1 điều kiện, bắt buộc khớp nhau). */}
+            {report && report.generation_status === "success" && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="text-xs text-slate-500">Trạng thái tiến độ:</span>
+                  {report.progress_status && (
+                    <span className={`text-xs font-display font-bold px-2 py-0.5 rounded-lg ${PROGRESS_STATUS_BADGE[report.progress_status].className}`}>
+                      {PROGRESS_STATUS_BADGE[report.progress_status].label}
+                    </span>
+                  )}
+                  {report.progress_gap_percentage_point !== null && report.progress_gap_percentage_point > 0 && (
+                    <span className="text-xs text-red-600 font-display font-bold">
+                      -{Math.round(report.progress_gap_percentage_point)} điểm %
+                    </span>
+                  )}
+                </div>
+
+                <ProgressBar
+                  value={report.actual_progress_percentage}
+                  markerValue={report.expected_progress_percentage ?? undefined}
+                />
+
+                {/* Mỗi ô có nền/viền (bg-slate-50/50 + border-slate-100/60) — đúng "ô"
+                    trong mockup, tái dùng pattern đã có ở card "Kết quả kiểm tra gần đây"
+                    (dòng 368 hiện tại: bg-slate-50/50 rounded-xl border border-slate-100/60).
+                    KHÔNG dùng <div> trần — mockup không phải chữ nổi tự do, là chữ trong ô. */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
+                    <span className="text-[11px] text-slate-400">Thời gian còn lại</span>
+                    <p className="text-2xl font-display font-black text-slate-800 mt-1 leading-none">
+                      {report.package_remaining_days ?? "—"}
+                      {report.package_remaining_days !== null && (
+                        <span className="text-sm text-slate-400 font-bold ml-1">ngày</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
+                    <span className="text-[11px] text-slate-400">Bài học hoàn tất</span>
+                    <p className="text-2xl font-display font-black text-slate-800 mt-1 leading-none">
+                      {completedLessonsInLevel}<span className="text-sm text-slate-400 font-bold mx-0.5">/</span>{totalLessonsInLevel}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
+                    <span className="text-[11px] text-slate-400">Tiến độ hiện tại</span>
+                    <p className="text-2xl font-display font-black text-green-600 mt-1 leading-none">
+                      {progressLevelPercentage}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
+                    </p>
+                  </div>
+                  <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
+                    <span className="text-[11px] text-slate-400">Tiến độ kỳ vọng</span>
+                    <p className="text-2xl font-display font-black text-slate-800 mt-1 leading-none">
+                      {Math.round(report.expected_progress_percentage ?? 0)}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
+                    </p>
+                  </div>
+                </div>
+
                 {catchUpLessons > 0 && (
-                  <span className="text-xs text-slate-500">
-                    Cần thêm <b className="text-slate-800">{catchUpLessons}</b> bài để bắt kịp
-                  </span>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Hiện tại <b className="text-slate-800">{progressLevelPercentage}%</b> · Kỳ vọng{" "}
+                    <b className="text-slate-800">{Math.round(report.expected_progress_percentage ?? 0)}%</b> · Cần hoàn thành thêm{" "}
+                    <b className="text-slate-800">{catchUpLessons}</b> bài để bắt kịp.
+                  </p>
                 )}
+              </div>
+            )}
+
+            {/* Nhánh non-success: chỉ Level/Lesson header + 2 ô (luôn tính được từ local).
+                Bao gồm cả `!report` (null/loading) và mọi generation_status khác "success"
+                (thực tế edge function chỉ trả "empty"/"error" ngoài "success" — xem
+                supabase/functions/daily-progress-report/index.ts). */}
+            {(!report || report.generation_status !== "success") && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
+                  <span className="text-[11px] text-slate-400">Bài học hoàn tất</span>
+                  <p className="text-2xl font-display font-black text-slate-800 mt-1 leading-none">
+                    {completedLessonsInLevel}<span className="text-sm text-slate-400 font-bold mx-0.5">/</span>{totalLessonsInLevel}
+                  </p>
+                </div>
+                <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
+                  <span className="text-[11px] text-slate-400">Tiến độ hiện tại</span>
+                  <p className="text-2xl font-display font-black text-green-600 mt-1 leading-none">
+                    {progressLevelPercentage}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
+                  </p>
+                </div>
               </div>
             )}
           </div>
