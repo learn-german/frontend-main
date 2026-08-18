@@ -336,10 +336,22 @@ const ReadingExerciseSetBody: React.FC<{
 
   React.useEffect(() => {
     const frame = requestAnimationFrame(measureCarouselWidth);
+    const node = carouselRef.current;
+    if (!node) {
+      return () => cancelAnimationFrame(frame);
+    }
+
+    const observer = new ResizeObserver(() => {
+      measureCarouselWidth();
+    });
+    observer.observe(node);
+
     const onResize = () => measureCarouselWidth();
     window.addEventListener("resize", onResize);
+
     return () => {
       cancelAnimationFrame(frame);
+      observer.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, [measureCarouselWidth, set.id]);
