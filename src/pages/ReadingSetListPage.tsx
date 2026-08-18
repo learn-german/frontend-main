@@ -273,8 +273,6 @@ const ReadingExerciseSetBody: React.FC<{
   const [retrying, setRetrying] = useState(false);
   const submissionIdRef = React.useRef(crypto.randomUUID());
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
-  const carouselRef = React.useRef<HTMLDivElement | null>(null);
-  const [carouselWidth, setCarouselWidth] = useState(0);
 
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
   const sortedGroups = useMemo(
@@ -328,39 +326,6 @@ const ReadingExerciseSetBody: React.FC<{
     : currentScreen.kind === "single_rf_summary"
       ? currentScreen.items.every((item) => !!answersByKey[item.key])
       : !!answersByKey[currentScreen.key];
-
-  const measureCarouselWidth = React.useCallback(() => {
-    const width = carouselRef.current?.offsetWidth ?? 0;
-    setCarouselWidth((prev) => (prev === width ? prev : width));
-  }, []);
-
-  React.useEffect(() => {
-    const frame = requestAnimationFrame(measureCarouselWidth);
-    const node = carouselRef.current;
-    if (!node) {
-      return () => cancelAnimationFrame(frame);
-    }
-
-    const observer = new ResizeObserver(() => {
-      measureCarouselWidth();
-    });
-    observer.observe(node);
-
-    const onResize = () => measureCarouselWidth();
-    window.addEventListener("resize", onResize);
-
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      window.removeEventListener("resize", onResize);
-    };
-  }, [measureCarouselWidth, set.id]);
-
-  React.useEffect(() => {
-    if (screens.length === 0) return;
-    const frame = requestAnimationFrame(measureCarouselWidth);
-    return () => cancelAnimationFrame(frame);
-  }, [screens.length, currentScreenIndex, measureCarouselWidth]);
 
   React.useEffect(() => {
     setCurrentScreenIndex(0);
@@ -571,7 +536,7 @@ const ReadingExerciseSetBody: React.FC<{
   };
 
   const isMultiPassage = built.layout === "multi_passage";
-  const slideWidth = carouselWidth > 0 ? carouselWidth : 1;
+  const slideShare = screens.length > 0 ? 100 / screens.length : 100;
   const introText = sortedGroups[0]?.questionIntro?.trim() ?? "";
   const singlePassageId = screens[0]?.passageId ?? sortedGroups[0]?.passageId ?? "";
 
@@ -603,18 +568,23 @@ const ReadingExerciseSetBody: React.FC<{
         </>
       )}
 
-      <div className="overflow-hidden w-full" ref={carouselRef}>
+      <div className="overflow-hidden w-full">
         <div
           className="flex transition-transform duration-300"
-          style={{ transform: `translateX(-${currentScreenIndex * slideWidth}px)` }}
+          style={{
+            width: `${screens.length * 100}%`,
+            transform: `translateX(-${currentScreenIndex * slideShare}%)`,
+          }}
         >
           {screens.map((screen) => {
+            const slideStyle = { width: `${slideShare}%`, flex: "0 0 auto" as const };
+
             if (screen.kind === "multi_passage") {
               const group = groupsById[screen.groupId];
               const question = group?.subQuestions[0];
               if (!group || !question) {
                 return (
-                  <div key={`${screen.passageId}:${screen.slideIndex}`} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                  <div key={`${screen.passageId}:${screen.slideIndex}`} style={slideStyle}>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Cấu trúc câu hỏi chưa hợp lệ.</p>
                     </div>
@@ -623,7 +593,7 @@ const ReadingExerciseSetBody: React.FC<{
               }
               const passageOrder = passagesById[screen.passageId]?.orderIndex ?? screen.slideIndex;
               return (
-                <div key={screen.key} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                <div key={screen.key} style={slideStyle}>
                   <ReadingMcSlide
                     lesson={lesson}
                     question={question}
@@ -641,7 +611,7 @@ const ReadingExerciseSetBody: React.FC<{
               const question = group?.subQuestions[screen.questionIndex];
               if (!group || !question) {
                 return (
-                  <div key={screen.key} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                  <div key={screen.key} style={slideStyle}>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-sm text-slate-500">Cấu trúc câu hỏi chưa hợp lệ.</p>
                     </div>
@@ -649,7 +619,7 @@ const ReadingExerciseSetBody: React.FC<{
                 );
               }
               return (
-                <div key={screen.key} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                <div key={screen.key} style={slideStyle}>
                   <ReadingMcSlide
                     lesson={lesson}
                     question={question}
@@ -661,7 +631,7 @@ const ReadingExerciseSetBody: React.FC<{
             }
 
             return (
-              <div key={`${screen.passageId}:${screen.slideIndex}`} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+              <div key={`${screen.passageId}:${screen.slideIndex}`} style={slideStyle}>
                 <ReadingRfSummarySlide
                   items={screen.items}
                   answersByKey={answersByKey}
