@@ -204,6 +204,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
   const [addTypePassageId, setAddTypePassageId] = useState<string | null>(null);
   const [addPassageMenuSetId, setAddPassageMenuSetId] = useState<string | null>(null);
+  const [lessonTypeModal, setLessonTypeModal] = useState<{ lessonId: string; nextOrder: number } | null>(null);
+  const [pickedSetType, setPickedSetType] = useState<"multi" | "single">("multi");
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
   const [itemForm, setItemForm] = useState<ReadingQuestionGroupForm>(createEmptyReadingForm());
   const [savingItem, setSavingItem] = useState(false);
@@ -523,7 +525,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                 <div className="flex items-center justify-end">
                   <button
                     type="button"
-                    onClick={() => handleCreateReadingSet(lesson.lesson_id, lessonSets.length)}
+                    onClick={() => { setPickedSetType("multi"); setLessonTypeModal({ lessonId: lesson.lesson_id, nextOrder: lessonSets.length }); }}
                     className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                   >
                     <Plus className="w-3.5 h-3.5" /> Thêm bài đọc
@@ -586,33 +588,13 @@ export const AdminReadingExerciseSection: React.FC = () => {
                         )}
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setAddPassageMenuSetId((prev) => (prev === set.id ? null : set.id))}
-                              className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> Thêm văn bản
-                            </button>
-                            {addPassageMenuSetId === set.id && (
-                              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                                <button
-                                  type="button"
-                                  onClick={() => { setAddPassageMenuSetId(null); handleAddPassage(set.id, lesson.lesson_id); }}
-                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 whitespace-nowrap"
-                                >
-                                  Văn bản nhiều câu hỏi
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddSingleQuestionPassage(set.id, lesson.lesson_id)}
-                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 whitespace-nowrap"
-                                >
-                                  Câu hỏi A/B/C
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAddPassage(set.id, lesson.lesson_id)}
+                            className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Thêm văn bản
+                          </button>
                         </div>
                         {setPassages.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có văn bản nào.</p>}
 
@@ -937,6 +919,77 @@ export const AdminReadingExerciseSection: React.FC = () => {
               {groupsForPassage(groups, previewTarget).map((group) => (
                 <ReadingGroupPreview key={group.id} group={group} />
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lessonTypeModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-5 max-w-[640px] w-full my-8 space-y-4">
+            <div className="flex flex-col items-center text-center gap-1 relative pr-6">
+              <h3 className="text-base font-display font-black text-slate-800">Chọn loại bài học</h3>
+              <p className="text-xs text-slate-500">Chọn cấu trúc phù hợp với nội dung bạn muốn tạo.</p>
+              <button
+                onClick={() => setLessonTypeModal(null)}
+                className="absolute right-0 top-0 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3.5">
+              <button
+                type="button"
+                onClick={() => setPickedSetType("multi")}
+                className={`relative text-left border-2 rounded-2xl p-5 flex flex-col gap-2.5 cursor-pointer transition-colors ${
+                  pickedSetType === "multi" ? "border-red-500 bg-red-50/30" : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                {pickedSetType === "multi" && (
+                  <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  </span>
+                )}
+                <span className="text-sm font-display font-black text-slate-800">Nhiều văn bản</span>
+                <span className="text-xs text-slate-500">Một bài học có nhiều văn bản. Mỗi văn bản có 1 bộ đáp án riêng.</span>
+                <span className="text-[11px] text-slate-400 italic">Ví dụ: Văn bản 1, Văn bản 2, Văn bản 3</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedSetType("single")}
+                className={`relative text-left border-2 rounded-2xl p-5 flex flex-col gap-2.5 cursor-pointer transition-colors ${
+                  pickedSetType === "single" ? "border-red-500 bg-red-50/30" : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                {pickedSetType === "single" && (
+                  <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  </span>
+                )}
+                <span className="text-sm font-display font-black text-slate-800">1 văn bản · nhiều câu hỏi</span>
+                <span className="text-xs text-slate-500">Bộ câu hỏi chỉ có 1 văn bản, nhưng có nhiều loại câu hỏi.</span>
+                <span className="text-[11px] text-slate-400 italic">Ví dụ: A/B/C, điền từ, đúng/sai</span>
+              </button>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setLessonTypeModal(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-500 rounded-xl hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const { lessonId, nextOrder } = lessonTypeModal;
+                  setLessonTypeModal(null);
+                  await handleCreateReadingSet(lessonId, nextOrder);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700"
+              >
+                Tiếp tục
+              </button>
             </div>
           </div>
         </div>
