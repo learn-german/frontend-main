@@ -203,7 +203,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [expandedTypeSections, setExpandedTypeSections] = useState<Set<string>>(new Set());
 
   const [addTypePassageId, setAddTypePassageId] = useState<string | null>(null);
-  const [addPassageMenuSetId, setAddPassageMenuSetId] = useState<string | null>(null);
+  const [setModeById, setSetModeById] = useState<Record<string, "multi" | "single">>({});
   const [lessonTypeModal, setLessonTypeModal] = useState<{ lessonId: string; nextOrder: number } | null>(null);
   const [pickedSetType, setPickedSetType] = useState<"multi" | "single">("multi");
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
@@ -248,46 +248,38 @@ export const AdminReadingExerciseSection: React.FC = () => {
     else { showToast("Đã lưu văn bản.", "success"); fetchAll(); }
   };
 
-  const handleCreateReadingSet = async (lessonId: string, nextOrder: number) => {
-    const { error } = await createReadingSet(lessonId, nextOrder);
+  const handleCreateReadingSet = async (lessonId: string, nextOrder: number, mode: "multi" | "single") => {
+    const { data, error } = await createReadingSet(lessonId, nextOrder);
     if (error) { showToast("Tạo bài đọc thất bại: " + error, "warning"); return; }
+    if (data) {
+      setSetModeById((prev) => ({ ...prev, [data.id]: mode }));
+    }
     fetchAll();
   };
 
-  const handleAddPassage = async (setId: string, lessonId: string) => {
+  const handleAddPassage = async (setId: string, lessonId: string, mode: "multi" | "single") => {
     const orderIndex = passagesForSet(passages, setId).length;
-    const { error } = await supabase
-      .from("reading_passages")
-      .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex });
-    if (error) { showToast("Thêm văn bản thất bại: " + error.message, "warning"); return; }
-    fetchAll();
-  };
-
-  const handleAddSingleQuestionPassage = async (setId: string, lessonId: string) => {
-    setAddPassageMenuSetId(null);
-    const orderIndex = passagesForSet(passages, setId).length;
-    const { data: passageRow, error: passageError } = await supabase
+    const { data: passageRow, error } = await supabase
       .from("reading_passages")
       .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex })
       .select("id")
       .single();
-    if (passageError || !passageRow) {
-      showToast("Thêm câu hỏi thất bại: " + (passageError?.message ?? "không rõ lỗi"), "warning");
-      return;
-    }
-    const { error: groupError } = await supabase.from("reading_question_groups").insert({
-      passage_id: passageRow.id,
-      set_id: setId,
-      order_index: 0,
-      title: null,
-      question_intro: null,
-      question_type: "multiple_choice",
-      sub_questions: [{ text_snippet: null, image_key: null, question: "", options: ["A", "B", "C"], correct_option_id: "0" }],
-      explanation: null,
-    });
-    if (groupError) {
-      showToast("Tạo đáp án thất bại: " + groupError.message, "warning");
-      return;
+    if (error) { showToast("Thêm văn bản thất bại: " + error.message, "warning"); return; }
+    if (mode === "multi" && passageRow?.id) {
+      const { error: groupError } = await supabase.from("reading_question_groups").insert({
+        passage_id: passageRow.id,
+        set_id: setId,
+        order_index: 0,
+        title: null,
+        question_intro: null,
+        question_type: "multiple_choice",
+        sub_questions: [{ text_snippet: null, image_key: null, question: "", options: ["A", "B", "C"], correct_option_id: "0" }],
+        explanation: null,
+      });
+      if (groupError) {
+        showToast("Tạo đáp án thất bại: " + groupError.message, "warning");
+        return;
+      }
     }
     fetchAll();
   };
@@ -535,7 +527,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
                 {lessonSets.map((set) => {
                   const setPassages = passagesForSet(passages, set.id);
-                  const isMultiPassage = setPassages.length > 1;
+                  const inferredMode = setPassages.length > 1 ? "multi" : "single";
+                  const setMode = setModeById[set.id] ?? inferredMode;
+                  const isMultiPassage = setMode === "multi";
                   const stats = readingSetStats(passages, groups, set.id);
 
                   return (
@@ -590,7 +584,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
                           <button
                             type="button"
-                            onClick={() => handleAddPassage(set.id, lesson.lesson_id)}
+                            onClick={() => handleAddPassage(set.id, lesson.lesson_id, setMode)}
                             className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                           >
                             <Plus className="w-3.5 h-3.5" /> Thêm văn bản
@@ -602,6 +596,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                           const passageGroups = groupsForPassage(groups, passage.id);
                           const missingTypes = missingQuestionTypesForPassage(groups, passage.id);
                           const singleQuestion = isSingleQuestionPassage(passage.id, groups) ? passageGroups[0] : null;
+                          const multiChoiceGroup = passageGroups.find((g) => g.question_type === "multiple_choice") ?? null;
 
                           return (
                             <div key={passage.id} className="border border-slate-200 rounded-xl p-3 space-y-3">
@@ -620,10 +615,12 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 onDelete={() => setDeletePassageTarget(passage)}
                               />
 
-                              {singleQuestion ? (
+                              {(isMultiPassage ? multiChoiceGroup : singleQuestion) ? (
                                 <SingleQuestionAnswers
-                                  group={singleQuestion}
-                                  onSaveOptions={(options, correctIndex) => handleSaveSingleQuestionOptions(singleQuestion.id, options, correctIndex)}
+                                  group={(isMultiPassage ? multiChoiceGroup : singleQuestion)!}
+                                  onSaveOptions={(options, correctIndex) =>
+                                    handleSaveSingleQuestionOptions((isMultiPassage ? multiChoiceGroup : singleQuestion)!.id, options, correctIndex)
+                                  }
                                 />
                               ) : (
                               <div className="space-y-2">
@@ -637,7 +634,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                     >
                                       <Eye className="w-3.5 h-3.5" />
                                     </button>
-                                    {missingTypes.length > 0 && (
+                                    {!isMultiPassage && missingTypes.length > 0 && (
                                       <div className="relative">
                                         <button
                                           type="button"
@@ -728,6 +725,15 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 })}
                                 {passageGroups.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có loại câu hỏi nào.</p>}
                               </div>
+                              )}
+                              {isMultiPassage && !multiChoiceGroup && (
+                                <button
+                                  type="button"
+                                  onClick={() => openAddType(set.id, lesson.lesson_id, "multiple_choice", passage.id)}
+                                  className="text-xs font-bold text-red-600 hover:text-red-700"
+                                >
+                                  + Tạo đáp án A/B/C
+                                </button>
                               )}
                             </div>
                           );
@@ -984,7 +990,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                 onClick={async () => {
                   const { lessonId, nextOrder } = lessonTypeModal;
                   setLessonTypeModal(null);
-                  await handleCreateReadingSet(lessonId, nextOrder);
+                  await handleCreateReadingSet(lessonId, nextOrder, pickedSetType);
                 }}
                 className="px-4 py-2 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700"
               >
