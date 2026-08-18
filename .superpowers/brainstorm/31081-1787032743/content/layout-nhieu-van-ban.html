@@ -1,0 +1,61 @@
+<h2>Loại 1 — Nhiều văn bản: user làm bài thế nào?</h2>
+<p class="subtitle">Admin soạn 3 đoạn riêng, mỗi đoạn 1 câu A/B/C. Chọn layout làm bài cho học viên.</p>
+
+<div class="cards">
+  <div class="card" data-choice="wizard" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Bài 1 · Câu 2/3</div>
+        <div class="mockup-body">
+          <p class="label">Đọc đoạn văn sau. Sau đó chọn A, B hoặc C.</p>
+          <div class="placeholder" style="min-height:72px;margin:8px 0">Văn bản 2: Sofia kauft die Sachen im Supermarkt…</div>
+          <p style="font-size:13px;margin:8px 0 4px">Sofia kauft was?</p>
+          <button class="mock-button">A. Kuli, Hefte, Schere</button>
+          <button class="mock-button">B. Bücher und Stifte</button>
+          <button class="mock-button">C. Kleidung</button>
+          <p class="subtitle" style="margin-top:10px">● ● ●  (dots)</p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Wizard — 1 màn / 1 văn bản</h3>
+      <p>Giữ flow mockup user cũ. Mỗi bước một đoạn + một câu A/B/C.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="stacked" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Bài 1 · cuộn trang</div>
+        <div class="mockup-body">
+          <p class="label">Tiêu đề chung</p>
+          <div class="placeholder" style="min-height:40px;margin:6px 0">Văn bản 1 + A B C</div>
+          <div class="placeholder" style="min-height:40px;margin:6px 0">Văn bản 2 + A B C</div>
+          <div class="placeholder" style="min-height:40px;margin:6px 0">Văn bản 3 + A B C</div>
+          <button class="mock-button">Nộp bài</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Tất cả trên 1 trang</h3>
+      <p>Thấy hết các đoạn một lúc. Gần form admin, nhưng dài khi nhiều văn bản.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="accordion" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Bài 1 · từng đoạn</div>
+        <div class="mockup-body">
+          <div class="placeholder" style="min-height:28px;margin:6px 0">▸ Văn bản 1</div>
+          <div class="placeholder" style="min-height:64px;margin:6px 0">▾ Văn bản 2 + A B C (đang mở)</div>
+          <div class="placeholder" style="min-height:28px;margin:6px 0">▸ Văn bản 3</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Accordion từng văn bản</h3>
+      <p>Cùng trang, mở từng đoạn. Gần danh sách Bài 1/2/3 hiện tại.</p>
+    </div>
+  </div>
+</div>
