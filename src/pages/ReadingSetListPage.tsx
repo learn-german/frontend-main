@@ -65,11 +65,20 @@ const ReadingMcSlide: React.FC<{
     <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
       {passageMarkdown && (
         <div className="space-y-2">
-          {passageLabel && (
-            <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[10.5px] font-bold text-orange-500">
-              {passageLabel}
-            </span>
-          )}
+          {passageLabel && (() => {
+            const match = passageLabel.match(/(\d+)$/);
+            const num = match?.[1];
+            return (
+              <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                {num && (
+                  <span className="w-[22px] h-[22px] rounded-md bg-orange-50 text-orange-500 text-[11px] font-black flex items-center justify-center shrink-0">
+                    {num}
+                  </span>
+                )}
+                {passageLabel}
+              </span>
+            );
+          })()}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
             <MarkdownBlock content={passageMarkdown} lessonId={lesson.id} large />
           </div>
@@ -83,19 +92,28 @@ const ReadingMcSlide: React.FC<{
       )}
       {question.image_key && <SubQuestionImage lessonId={lesson.id} imageKey={question.image_key} />}
       <p className="text-sm font-medium text-slate-700">{questionLabel}</p>
-      <div className="space-y-1">
+      <div className="flex flex-col gap-2">
         {question.options.map((opt, oi) => {
           const optKey = String(oi);
+          const selected = picked === optKey;
           return (
             <button
               key={oi}
               type="button"
               onClick={() => onAnswer(optKey)}
-              className={`w-full text-left px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                picked === optKey ? "bg-orange-50 border-orange-400 text-orange-700" : "bg-white border-slate-200 text-slate-700"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-[13.5px] rounded-xl border transition-colors ${
+                selected ? "border-orange-500 bg-orange-50" : "border-slate-200 bg-white"
+              } text-slate-700`}
             >
-              {String.fromCharCode(65 + oi)}. {opt}
+              <span
+                className={`w-4 h-4 rounded-full border-2 shrink-0 ${
+                  selected ? "border-orange-500 bg-orange-500" : "border-slate-300"
+                }`}
+              />
+              <span className={`w-4 text-center text-[11px] font-extrabold ${selected ? "text-orange-600" : "text-slate-400"}`}>
+                {String.fromCharCode(65 + oi)}
+              </span>
+              <span>{opt}</span>
             </button>
           );
         })}
@@ -432,23 +450,65 @@ const ReadingExerciseSetBody: React.FC<{
           <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
             {revealed ? "Giải thích từng bài:" : "Câu đúng / câu sai:"}
           </h4>
-          <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
-            {groups.map((group, groupIndex) => (
-              <div key={group.id} className="space-y-1.5">
-                <p className="text-xs font-display font-bold text-slate-700">Bài {groupIndex + 1}</p>
-                <ReadingGroupBody
-                  lesson={lesson}
-                  group={group}
-                  passageText={passagesById[group.passageId]?.textDe ?? ""}
-                  answersByKey={answersByKey}
-                  onAnswer={() => {}}
-                  itemResults={result.itemResults}
-                  revealed={revealed}
-                  correctAnswers={result.correctAnswers}
-                  explanation={result.explanations?.[group.id]}
-                />
-              </div>
-            ))}
+          <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+            {groups.flatMap((group) => {
+              if (group.questionType === "richtig_falsch") {
+                return group.statements.map((s, i) => {
+                  const key = itemKey(group.id, i);
+                  const correct = result.itemResults?.[key];
+                  const chosen = answersByKey[key];
+                  const correctAns = result.correctAnswers?.[key];
+                  return (
+                    <div
+                      key={key}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
+                        correct ? "border-green-200 bg-green-50 text-slate-700" : "border-red-300 bg-red-50 text-slate-700"
+                      }`}
+                    >
+                      {correct
+                        ? <CheckCircle2 className="w-[15px] h-[15px] text-green-600 shrink-0" />
+                        : <span className="w-[15px] h-[15px] text-red-600 shrink-0 flex items-center justify-center font-black text-xs">✕</span>}
+                      <span className="flex-1">
+                        {s.text} — {chosen === "richtig" ? "Richtig" : chosen === "falsch" ? "Falsch" : "—"}
+                      </span>
+                      {!correct && correctAns && (
+                        <span className="text-[11px] text-red-600 shrink-0">
+                          Đáp án đúng: {correctAns === "richtig" ? "Richtig" : "Falsch"}
+                        </span>
+                      )}
+                    </div>
+                  );
+                });
+              }
+              return group.subQuestions.map((q, qi) => {
+                const key = itemKey(group.id, qi);
+                const correct = result.itemResults?.[key];
+                const chosen = answersByKey[key];
+                const correctAns = result.correctAnswers?.[key];
+                const chosenLabel = chosen !== undefined ? String.fromCharCode(65 + Number(chosen)) : "—";
+                const optionText = chosen !== undefined ? q.options[Number(chosen)] : "";
+                return (
+                  <div
+                    key={key}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
+                      correct ? "border-green-200 bg-green-50 text-slate-700" : "border-red-300 bg-red-50 text-slate-700"
+                    }`}
+                  >
+                    {correct
+                      ? <CheckCircle2 className="w-[15px] h-[15px] text-green-600 shrink-0" />
+                      : <span className="w-[15px] h-[15px] text-red-600 shrink-0 flex items-center justify-center font-black text-xs">✕</span>}
+                    <span className="flex-1">
+                      {q.question} — {chosenLabel}. {optionText}
+                    </span>
+                    {!correct && correctAns && (
+                      <span className="text-[11px] text-red-600 shrink-0">
+                        Đáp án đúng: {String.fromCharCode(65 + Number(correctAns))}
+                      </span>
+                    )}
+                  </div>
+                );
+              });
+            })}
           </div>
         </div>
 
