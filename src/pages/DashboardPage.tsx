@@ -183,7 +183,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* Left Column (Main widgets) */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="lg:col-span-8 flex flex-col gap-4 justify-between">
 
           {/* Card "Tổng quan" (v2 — mockup đã duyệt) */}
           <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3">
@@ -386,7 +386,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Right Column (Test history, upcoming lists) */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="lg:col-span-4 flex flex-col gap-4 justify-between">
 
           {/* Recent Quiz Scores */}
           <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3">
