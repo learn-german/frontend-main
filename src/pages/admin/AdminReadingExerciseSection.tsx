@@ -28,6 +28,7 @@ import {
   missingQuestionTypesForPassage,
   readingSetStats,
   isSingleQuestionPassage,
+  readingSetTypeTag,
   type ReadingQuestionType,
 } from "../../lib/readingSetView";
 
@@ -73,7 +74,7 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
             <button
               key={val}
               onClick={() => setPicked((prev) => ({ ...prev, [i]: val }))}
-              className={`px-2 py-1 text-[11px] font-bold rounded-lg border ${picked[i] === val ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-500 border-slate-200"}`}
+              className={`px-2 py-1 text-[11px] font-bold rounded-lg border ${picked[i] === val ? "bg-red-500 text-white border-red-500" : "bg-white text-slate-500 border-slate-200"}`}
             >
               {val === "richtig" ? "Richtig" : "Falsch"}
             </button>
@@ -89,7 +90,7 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
               <button
                 key={oi}
                 onClick={() => setChosenOption((prev) => ({ ...prev, [qi]: oi }))}
-                className={`w-full text-left px-3 py-1.5 text-sm rounded-lg border ${chosenOption[qi] === oi ? "bg-orange-50 border-orange-400 text-orange-700" : "bg-white border-slate-200 text-slate-700"}`}
+                className={`w-full text-left px-3 py-1.5 text-sm rounded-lg border ${chosenOption[qi] === oi ? "bg-red-50 border-red-400 text-red-700" : "bg-white border-slate-200 text-slate-700"}`}
               >
                 {optionLabel(oi)}. {opt}
               </button>
@@ -119,7 +120,7 @@ const SingleQuestionAnswers: React.FC<{
               type="radio"
               checked={correctIndex === oi}
               onChange={() => { setCorrectIndex(oi); onSaveOptions(options, oi); }}
-              className="h-4 w-4 accent-orange-500"
+              className="h-4 w-4 accent-red-500"
             />
             <input
               type="text"
@@ -150,7 +151,7 @@ const SingleQuestionAnswers: React.FC<{
             setOptions(next.options);
             onSaveOptions(next.options, next.correctIndex);
           }}
-          className="text-xs font-bold text-orange-600 hover:text-orange-700"
+          className="text-xs font-bold text-red-600 hover:text-red-700"
         >
           + Thêm đáp án
         </button>
@@ -166,6 +167,25 @@ interface ItemModalState {
   groupId: string | null;
   itemIndex: number | null;
 }
+
+const AdminReadingPageHeader: React.FC<{
+  search: string;
+  onSearchChange: (value: string) => void;
+}> = ({ search, onSearchChange }) => (
+  <div className="flex items-center justify-between gap-3 flex-wrap">
+    <h1 className="text-xl font-display font-black text-slate-900">Bài tập đọc</h1>
+    <div className="relative w-64">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <input
+        type="text"
+        placeholder="Tìm bài học..."
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+      />
+    </div>
+  </div>
+);
 
 export const AdminReadingExerciseSection: React.FC = () => {
   const [lessons, setLessons] = useState<LessonGroup[]>([]);
@@ -452,7 +472,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
     fetchAll();
   };
 
-  if (loading || moduleOrderLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-orange-500" /></div>;
+  if (loading || moduleOrderLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-red-500" /></div>;
 
   const filteredLessons = lessons.filter(
     (l) =>
@@ -472,19 +492,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-display font-black text-slate-900">Bài tập đọc</h1>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Tìm bài học..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-          />
-        </div>
-      </div>
+      <AdminReadingPageHeader search={search} onSearchChange={setSearch} />
 
       <div className="space-y-3">
         {moduleSections.map((mod) => (
@@ -516,7 +524,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleCreateReadingSet(lesson.lesson_id, lessonSets.length)}
-                    className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
+                    className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                   >
                     <Plus className="w-3.5 h-3.5" /> Thêm bài đọc
                   </button>
@@ -525,15 +533,24 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
                 {lessonSets.map((set) => {
                   const setPassages = passagesForSet(passages, set.id);
+                  const isMultiPassage = setPassages.length > 1;
                   const stats = readingSetStats(passages, groups, set.id);
 
                   return (
                     <div key={set.id} className="rounded-2xl border border-slate-200 bg-white">
                       <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-slate-100">
-                        <div className="w-9 h-9 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0">
                           <FileText className="w-4 h-4" />
                         </div>
                         <span className="text-sm font-display font-black text-slate-900">{set.title}</span>
+                        {(() => {
+                          const tag = readingSetTypeTag(setPassages.length);
+                          return tag ? (
+                            <span className="text-[10.5px] font-bold text-slate-500 border border-slate-200 rounded-full px-2 py-0.5">
+                              {tag}
+                            </span>
+                          ) : null;
+                        })()}
                         <span role="button" onClick={() => toggleSetStatus(set.id, set.status)}>
                           <LessonStatusBadge status={set.status} />
                         </span>
@@ -548,13 +565,32 @@ export const AdminReadingExerciseSection: React.FC = () => {
                       </div>
 
                       <div className="p-4 space-y-3">
+                        {isMultiPassage && (
+                          <div className="border border-red-200 bg-red-50 rounded-[14px] p-3 space-y-2.5">
+                            <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                              Tiêu đề chung
+                              <span className="normal-case font-medium text-slate-400 text-[11px] ml-1.5">
+                                Áp dụng cho tất cả văn bản bên dưới
+                              </span>
+                            </span>
+                            <textarea
+                              className="w-full min-h-[52px] border border-slate-200 rounded-[10px] px-3 py-2.5 text-[13.5px] resize-y text-slate-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
+                              defaultValue={(() => {
+                                const sortedGroups = [...groupsForPassage(groups, setPassages[0]?.id ?? "")];
+                                return sortedGroups[0]?.question_intro ?? "";
+                              })()}
+                              placeholder="Tiêu đề chung cho các văn bản..."
+                              readOnly
+                            />
+                          </div>
+                        )}
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
                           <div className="relative">
                             <button
                               type="button"
                               onClick={() => setAddPassageMenuSetId((prev) => (prev === set.id ? null : set.id))}
-                              className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
+                              className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                             >
                               <Plus className="w-3.5 h-3.5" /> Thêm văn bản
                             </button>
@@ -563,14 +599,14 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => { setAddPassageMenuSetId(null); handleAddPassage(set.id, lesson.lesson_id); }}
-                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600 whitespace-nowrap"
+                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 whitespace-nowrap"
                                 >
                                   Văn bản nhiều câu hỏi
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleAddSingleQuestionPassage(set.id, lesson.lesson_id)}
-                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600 whitespace-nowrap"
+                                  className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 whitespace-nowrap"
                                 >
                                   Câu hỏi A/B/C
                                 </button>
@@ -587,6 +623,12 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
                           return (
                             <div key={passage.id} className="border border-slate-200 rounded-xl p-3 space-y-3">
+                              <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                <span className="w-[22px] h-[22px] rounded-md bg-red-50 text-red-500 text-[11px] font-black flex items-center justify-center shrink-0">
+                                  {passageIndex + 1}
+                                </span>
+                                Văn bản {passageIndex + 1}
+                              </div>
                               <PassageEditRow
                                 passage={passage}
                                 lessonId={lesson.lesson_id}
@@ -609,7 +651,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                     <button
                                       onClick={() => setPreviewTarget(passage.id)}
                                       disabled={passageGroups.length === 0}
-                                      className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 disabled:opacity-30 disabled:hover:bg-transparent"
+                                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 disabled:opacity-30 disabled:hover:bg-transparent"
                                     >
                                       <Eye className="w-3.5 h-3.5" />
                                     </button>
@@ -618,7 +660,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                         <button
                                           type="button"
                                           onClick={() => setAddTypePassageId((prev) => (prev === passage.id ? null : passage.id))}
-                                          className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
+                                          className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                                         >
                                           <Plus className="w-3.5 h-3.5" /> Thêm loại câu hỏi
                                         </button>
@@ -629,7 +671,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                 key={qt}
                                                 type="button"
                                                 onClick={() => openAddType(set.id, lesson.lesson_id, qt, passage.id)}
-                                                className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600 whitespace-nowrap"
+                                                className="block w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 whitespace-nowrap"
                                               >
                                                 {QUESTION_TYPE_LABEL[qt]}
                                               </button>
@@ -656,15 +698,15 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                         className="w-full flex items-center gap-2 px-3 py-2.5 bg-slate-50 text-left"
                                       >
                                         {group.question_type === "richtig_falsch"
-                                          ? <span className="w-5 h-5 rounded border border-orange-300 text-orange-500 flex items-center justify-center text-[10px] font-black shrink-0">✓✗</span>
-                                          : <span className="w-5 h-5 rounded border border-orange-300 text-orange-500 flex items-center justify-center text-[10px] font-black shrink-0">≡</span>}
+                                          ? <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">✓✗</span>
+                                          : <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">≡</span>}
                                         <span className="text-sm font-display font-bold text-slate-700">{QUESTION_TYPE_LABEL[group.question_type]}</span>
                                         <span className="text-[11px] font-bold text-slate-400 bg-white border border-slate-200 rounded-full px-2 py-0.5">{itemCount(group)} câu hỏi</span>
                                         <span className="ml-auto flex items-center gap-2">
                                           <span
                                             role="button"
                                             onClick={(e) => { e.stopPropagation(); openAddItem(group, lesson.lesson_id); }}
-                                            className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
+                                            className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                                           >
                                             <Plus className="w-3.5 h-3.5" /> Thêm câu hỏi
                                           </span>
@@ -780,7 +822,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                       key={val}
                       type="button"
                       onClick={() => setItemForm((prev) => setStatementAnswer(prev, prev.statements[0].id, val))}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${itemForm.statements[0]?.correctAnswer === val ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-500 border-slate-200"}`}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${itemForm.statements[0]?.correctAnswer === val ? "bg-red-500 text-white border-red-500" : "bg-white text-slate-500 border-slate-200"}`}
                     >
                       {val === "richtig" ? "Đúng (Richtig)" : "Sai (Falsch)"}
                     </button>
@@ -828,7 +870,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                           type="radio"
                           checked={q.correctIndex === oi}
                           onChange={() => setItemForm((prev) => setSubQuestionOptions(prev, q.id, { options: q.options, correctIndex: oi }))}
-                          className="h-4 w-4 accent-orange-500"
+                          className="h-4 w-4 accent-red-500"
                         />
                         <input
                           type="text"
@@ -846,7 +888,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setItemForm((prev) => setSubQuestionOptions(prev, prev.subQuestions[0].id, addOption({ options: prev.subQuestions[0].options, correctIndex: prev.subQuestions[0].correctIndex })))}
-                    className="text-xs font-bold text-orange-600 hover:text-orange-700"
+                    className="text-xs font-bold text-red-600 hover:text-red-700"
                   >
                     + Thêm phương án
                   </button>
@@ -856,7 +898,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button onClick={() => setItemModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Hủy</button>
-              <button onClick={handleSaveItem} disabled={savingItem} className="px-4 py-2 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-xl disabled:opacity-50">
+              <button onClick={handleSaveItem} disabled={savingItem} className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50">
                 {savingItem ? "Đang lưu..." : "Lưu"}
               </button>
             </div>
