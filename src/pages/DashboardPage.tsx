@@ -268,7 +268,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
                     <span className="text-[11px] text-slate-400">Tiến độ hiện tại</span>
                     <p className="text-2xl font-display font-black text-green-600 mt-1 leading-none">
-                      {progressLevelPercentage}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
+                      {Math.round(report.actual_progress_percentage)}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
                     </p>
                   </div>
                   <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
@@ -281,7 +281,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                 {catchUpLessons > 0 && (
                   <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Hiện tại <b className="text-slate-800">{progressLevelPercentage}%</b> · Kỳ vọng{" "}
+                    Hiện tại <b className="text-slate-800">{Math.round(report.actual_progress_percentage)}%</b> · Kỳ vọng{" "}
                     <b className="text-slate-800">{Math.round(report.expected_progress_percentage ?? 0)}%</b> · Cần hoàn thành thêm{" "}
                     <b className="text-slate-800">{catchUpLessons}</b> bài để bắt kịp.
                   </p>
