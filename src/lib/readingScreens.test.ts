@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { itemKey, buildReadingScreens } from "./readingScreens";
+import { itemKey, buildReadingCarouselScreens } from "./readingScreens";
 import type { ReadingQuestionGroupPublic, ReadingPassageLite } from "./hooks/useReadingQuestionGroups";
 
 const passage = (id: string, orderIndex: number): ReadingPassageLite => ({ id, textDe: `text-${id}`, orderIndex });
@@ -45,44 +45,77 @@ test("itemKey: ghép groupId và index bằng dấu hai chấm", () => {
   assert.equal(itemKey("g1", 2), "g1:2");
 });
 
-test("buildReadingScreens: 1 nhóm richtig_falsch 2 câu -> 2 screen đúng thứ tự", () => {
-  const groups = [richtigFalschGroup("g1", "p1", 2)];
-  const passagesById = { p1: passage("p1", 0) };
-  const screens = buildReadingScreens(groups, passagesById);
-  assert.equal(screens.length, 2);
-  assert.deepEqual(
-    screens.map((s) => [s.questionIndex, s.questionCount, s.key]),
-    [
-      [0, 2, "g1:0"],
-      [1, 2, "g1:1"],
-    ],
-  );
-  assert.equal(screens[0].passageId, "p1");
-  assert.equal(screens[0].group.id, "g1");
-});
-
-test("buildReadingScreens: multiple_choice đếm theo subQuestions", () => {
-  const groups = [multipleChoiceGroup("g1", "p1", 3)];
-  const passagesById = { p1: passage("p1", 0) };
-  const screens = buildReadingScreens(groups, passagesById);
-  assert.equal(screens.length, 3);
-  assert.deepEqual(screens.map((s) => s.questionIndex), [0, 1, 2]);
-});
-
-test("buildReadingScreens: nhiều đoạn -> gộp phẳng theo thứ tự passage.orderIndex, giữ nguyên thứ tự nhóm trong cùng đoạn", () => {
+test("buildReadingCarouselScreens: 3 passages each 1 MC -> 3 multi_passage slides", () => {
   const groups = [
-    richtigFalschGroup("g-p2", "p2", 1),
-    richtigFalschGroup("g-p1-a", "p1", 1),
-    richtigFalschGroup("g-p1-b", "p1", 1),
+    multipleChoiceGroup("g1", "p1", 1),
+    multipleChoiceGroup("g2", "p2", 1),
+    multipleChoiceGroup("g3", "p3", 1),
   ];
-  const passagesById = { p1: passage("p1", 0), p2: passage("p2", 1) };
-  const screens = buildReadingScreens(groups, passagesById);
-  assert.deepEqual(
-    screens.map((s) => s.group.id),
-    ["g-p1-a", "g-p1-b", "g-p2"],
-  );
+  const passagesById = { p1: passage("p1", 0), p2: passage("p2", 1), p3: passage("p3", 2) };
+  const result = buildReadingCarouselScreens(groups, passagesById, 3);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.layout, "multi_passage");
+  assert.equal(result.screens.length, 3);
+  assert.equal(result.screens[0].kind, "multi_passage");
+  assert.deepEqual(result.screens.map((s) => s.kind), ["multi_passage", "multi_passage", "multi_passage"]);
 });
 
-test("buildReadingScreens: mảng groups rỗng -> mảng screens rỗng", () => {
-  assert.deepEqual(buildReadingScreens([], {}), []);
+test("buildReadingCarouselScreens: multi-passage with questionIntro still ok", () => {
+  const g = multipleChoiceGroup("g1", "p1", 1);
+  g.questionIntro = "Đọc đoạn văn sau.";
+  const result = buildReadingCarouselScreens(
+    [g, multipleChoiceGroup("g2", "p2", 1)],
+    { p1: passage("p1", 0), p2: passage("p2", 1) },
+    2,
+  );
+  assert.equal(result.ok, true);
+});
+
+test("buildReadingCarouselScreens: multi-passage with 2 MC sub-questions -> error", () => {
+  const result = buildReadingCarouselScreens(
+    [multipleChoiceGroup("g1", "p1", 2), multipleChoiceGroup("g2", "p2", 1)],
+    { p1: passage("p1", 0), p2: passage("p2", 1) },
+    2,
+  );
+  assert.equal(result.ok, false);
+});
+
+test("buildReadingCarouselScreens: single-passage 2 MC + 4 RF -> 3 slides", () => {
+  const mc = multipleChoiceGroup("g-mc", "p1", 2);
+  const rf = richtigFalschGroup("g-rf", "p1", 4);
+  rf.orderIndex = 1;
+  const result = buildReadingCarouselScreens([mc, rf], { p1: passage("p1", 0) }, 1);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.layout, "single_passage");
+  assert.equal(result.screens.length, 3);
+  assert.equal(result.screens[0].kind, "single_mc");
+  assert.equal(result.screens[1].kind, "single_mc");
+  assert.equal(result.screens[2].kind, "single_rf_summary");
+  if (result.screens[2].kind === "single_rf_summary") {
+    assert.equal(result.screens[2].items.length, 4);
+    assert.equal(result.screens[2].items[0].key, "g-rf:0");
+  }
+});
+
+test("buildReadingCarouselScreens: RF-only single-passage -> 1 summary slide", () => {
+  const result = buildReadingCarouselScreens(
+    [richtigFalschGroup("g1", "p1", 2)],
+    { p1: passage("p1", 0) },
+    1,
+  );
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.screens.length, 1);
+  assert.equal(result.screens[0].kind, "single_rf_summary");
+});
+
+test("buildReadingCarouselScreens: passageCount 0 -> error", () => {
+  const result = buildReadingCarouselScreens(
+    [multipleChoiceGroup("g1", "p1", 1)],
+    { p1: passage("p1", 0) },
+    0,
+  );
+  assert.equal(result.ok, false);
 });

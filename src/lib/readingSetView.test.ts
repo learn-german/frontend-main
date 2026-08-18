@@ -7,6 +7,8 @@ import {
   missingQuestionTypesForPassage,
   readingSetStats,
   isSingleQuestionPassage,
+  getReadingSetLayout,
+  readingSetTypeTag,
 } from "./readingSetView";
 
 test("itemCount: richtig_falsch đếm theo statements", () => {
@@ -138,4 +140,23 @@ test("isSingleQuestionPassage: nhóm của passage khác không ảnh hưởng",
     { passage_id: "p2", question_type: "multiple_choice" as const, title: null, question_intro: null, sub_questions: [{}] },
   ];
   assert.equal(isSingleQuestionPassage("p1", groups), false);
+});
+
+test("getReadingSetLayout: >1 passage -> multi_passage", () => {
+  assert.equal(getReadingSetLayout(3), "multi_passage");
+});
+test("getReadingSetLayout: 1 passage -> single_passage", () => {
+  assert.equal(getReadingSetLayout(1), "single_passage");
+});
+test("getReadingSetLayout: 0 passages -> single_passage (tag handles empty)", () => {
+  assert.equal(getReadingSetLayout(0), "single_passage");
+});
+test("readingSetTypeTag: 3 -> Nhiều văn bản", () => {
+  assert.equal(readingSetTypeTag(3), "Nhiều văn bản");
+});
+test("readingSetTypeTag: 1 -> 1 văn bản · nhiều câu hỏi", () => {
+  assert.equal(readingSetTypeTag(1), "1 văn bản · nhiều câu hỏi");
+});
+test("readingSetTypeTag: 0 -> null", () => {
+  assert.equal(readingSetTypeTag(0), null);
 });

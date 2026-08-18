@@ -19,7 +19,6 @@ type SupabaseLesson = {
   grammar_md: string | null;
   speaking_md: string | null;
   writing_prompt_md: string | null;
-  listening_url: string | null;
   video_r2_key: string | null;
   listening_clips: { id: string; r2_key: string; order_index: number }[];
   reading_passages: { id: string; text_de: string; order_index: number }[];

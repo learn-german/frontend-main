@@ -9,11 +9,13 @@ import { useExerciseSetAttempt, useExerciseSetAttempts } from "../lib/hooks/useE
 import { useExerciseSetDraft } from "../lib/hooks/useExerciseSetDraft";
 import { useExerciseSetDrafts } from "../lib/hooks/useExerciseSetDrafts";
 import { useNonEmptyReadingSetIds } from "../lib/hooks/useNonEmptyReadingSetIds";
+import { useReadingSetPassageCounts } from "../lib/hooks/useReadingSetPassageCounts";
+import { readingSetTypeTag } from "../lib/readingSetView";
 import {
   useReadingQuestionGroups,
   type ReadingQuestionGroupPublic,
 } from "../lib/hooks/useReadingQuestionGroups";
-import { buildReadingScreens, itemKey, type ReadingScreen } from "../lib/readingScreens";
+import { buildReadingCarouselScreens, itemKey, type ReadingCarouselScreen } from "../lib/readingScreens";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
@@ -48,54 +50,41 @@ const SubQuestionImage: React.FC<{ lessonId: string; imageKey: string }> = ({ le
   return <img src={url} alt="" className="rounded-lg max-w-full my-1" />;
 };
 
-const ReadingSingleQuestion: React.FC<{
+const ReadingMcSlide: React.FC<{
   lesson: Lesson;
-  screen: ReadingScreen;
-  answersByKey: Record<string, string>;
+  question: ReadingQuestionGroupPublic["subQuestions"][number];
+  picked: string | undefined;
   onAnswer: (value: string) => void;
-}> = ({ lesson, screen, answersByKey, onAnswer }) => {
-  const picked = answersByKey[screen.key];
+  passageMarkdown?: string;
+  passageLabel?: string;
+}> = ({ lesson, question, picked, onAnswer, passageMarkdown, passageLabel }) => {
+  const letters = question.options.map((_, i) => String.fromCharCode(65 + i));
+  const questionLabel = question.question.trim() || `Đáp án: ${letters.join(", ")}?`;
 
-  if (screen.group.questionType === "richtig_falsch") {
-    const statement = screen.group.statements[screen.questionIndex];
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-slate-700">{statement.text}</p>
-        {(["richtig", "falsch"] as const).map((val) => (
-          <button
-            key={val}
-            type="button"
-            onClick={() => onAnswer(val)}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl border transition-colors ${
-              picked === val ? "border-orange-500 bg-orange-50" : "border-slate-200 bg-white"
-            }`}
-          >
-            <span
-              className={`w-4 h-4 rounded-full border-2 shrink-0 ${
-                picked === val ? "border-orange-500 bg-orange-500" : "border-slate-300"
-              }`}
-            />
-            {val === "richtig" ? "Richtig" : "Falsch"}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  const q = screen.group.subQuestions[screen.questionIndex];
-  const letters = q.options.map((_, i) => String.fromCharCode(65 + i));
-  const questionLabel = q.question.trim() || `Đáp án: ${letters.join(", ")}?`;
   return (
-    <div className="space-y-2">
-      {q.text_snippet && (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <MarkdownBlock content={q.text_snippet} lessonId={lesson.id} />
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+      {passageMarkdown && (
+        <div className="space-y-2">
+          {passageLabel && (
+            <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[10.5px] font-bold text-orange-500">
+              {passageLabel}
+            </span>
+          )}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <MarkdownBlock content={passageMarkdown} lessonId={lesson.id} large />
+          </div>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Chọn đáp án</p>
         </div>
       )}
-      {q.image_key && <SubQuestionImage lessonId={lesson.id} imageKey={q.image_key} />}
+      {question.text_snippet && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <MarkdownBlock content={question.text_snippet} lessonId={lesson.id} />
+        </div>
+      )}
+      {question.image_key && <SubQuestionImage lessonId={lesson.id} imageKey={question.image_key} />}
       <p className="text-sm font-medium text-slate-700">{questionLabel}</p>
       <div className="space-y-1">
-        {q.options.map((opt, oi) => {
+        {question.options.map((opt, oi) => {
           const optKey = String(oi);
           return (
             <button
@@ -114,6 +103,40 @@ const ReadingSingleQuestion: React.FC<{
     </div>
   );
 };
+
+const ReadingRfSummarySlide: React.FC<{
+  items: { key: string; text: string }[];
+  answersByKey: Record<string, string>;
+  onAnswer: (key: string, value: string) => void;
+}> = ({ items, answersByKey, onAnswer }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+    <h4 className="text-sm font-display font-bold text-slate-900">Đúng / Sai</h4>
+    <div className="space-y-2">
+      {items.map((item) => {
+        const picked = answersByKey[item.key];
+        return (
+          <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+            <p className="text-sm text-slate-700 flex-1">{item.text}</p>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {(["richtig", "falsch"] as const).map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => onAnswer(item.key, val)}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors ${
+                    picked === val ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-500 border-slate-200"
+                  }`}
+                >
+                  {val === "richtig" ? "Richtig" : "Falsch"}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
 
 const ReadingGroupBody: React.FC<{
   lesson: Lesson;
@@ -215,11 +238,12 @@ const ReadingGroupBody: React.FC<{
 const ReadingExerciseSetBody: React.FC<{
   lesson: Lesson;
   set: { id: string; title: string };
+  passageCount: number;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onCollapse: () => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
-}> = ({ lesson, set, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
+}> = ({ lesson, set, passageCount, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
   const { groups, passagesById, loading: groupsLoading, error: groupsError } = useReadingQuestionGroups(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
@@ -231,8 +255,24 @@ const ReadingExerciseSetBody: React.FC<{
   const [retrying, setRetrying] = useState(false);
   const submissionIdRef = React.useRef(crypto.randomUUID());
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
+  const carouselRef = React.useRef<HTMLDivElement | null>(null);
+  const [carouselWidth, setCarouselWidth] = useState(0);
 
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
+  const sortedGroups = useMemo(
+    () =>
+      [...groups].sort((a, b) => {
+        const passageA = passagesById[a.passageId]?.orderIndex ?? 0;
+        const passageB = passagesById[b.passageId]?.orderIndex ?? 0;
+        if (passageA !== passageB) return passageA - passageB;
+        return a.orderIndex - b.orderIndex;
+      }),
+    [groups, passagesById],
+  );
+  const groupsById = useMemo(
+    () => Object.fromEntries(groups.map((group) => [group.id, group] as const)),
+    [groups],
+  );
 
   React.useEffect(() => {
     if (retrying || groups.length === 0 || draftLoading || hydrateSource !== "attempt" || !attempt) return;
@@ -258,10 +298,45 @@ const ReadingExerciseSetBody: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, retrying, groups, hydrateSource]);
 
-  const screens = useMemo(() => buildReadingScreens(groups, passagesById), [groups, passagesById]);
+  const built = useMemo(
+    () => buildReadingCarouselScreens(groups, passagesById, passageCount),
+    [groups, passagesById, passageCount],
+  );
+  const screens: ReadingCarouselScreen[] = built.ok ? built.screens : [];
   const currentScreen = screens[currentScreenIndex];
-  const isLastScreen = currentScreenIndex === screens.length - 1;
-  const currentAnswered = !!currentScreen && !!answersByKey[currentScreen.key];
+  const isLastScreen = screens.length > 0 && currentScreenIndex === screens.length - 1;
+  const currentAnswered = !currentScreen
+    ? false
+    : currentScreen.kind === "single_rf_summary"
+      ? currentScreen.items.every((item) => !!answersByKey[item.key])
+      : !!answersByKey[currentScreen.key];
+
+  const measureCarouselWidth = React.useCallback(() => {
+    const width = carouselRef.current?.offsetWidth ?? 0;
+    setCarouselWidth((prev) => (prev === width ? prev : width));
+  }, []);
+
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(measureCarouselWidth);
+    const onResize = () => measureCarouselWidth();
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [measureCarouselWidth, set.id]);
+
+  React.useEffect(() => {
+    setCurrentScreenIndex(0);
+  }, [set.id]);
+
+  React.useEffect(() => {
+    if (screens.length === 0) {
+      setCurrentScreenIndex(0);
+      return;
+    }
+    setCurrentScreenIndex((prev) => Math.min(prev, screens.length - 1));
+  }, [screens.length]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -391,6 +466,14 @@ const ReadingExerciseSetBody: React.FC<{
     );
   }
 
+  if (built.ok === false) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-slate-500">{built.error}</p>
+      </div>
+    );
+  }
+
   if (!currentScreen) {
     return (
       <div className="text-center py-8">
@@ -409,54 +492,131 @@ const ReadingExerciseSetBody: React.FC<{
     onDraftSaved(true);
   };
 
+  const isMultiPassage = built.layout === "multi_passage";
+  const slideWidth = carouselWidth > 0 ? carouselWidth : 1;
+  const introText = sortedGroups[0]?.questionIntro?.trim() ?? "";
+  const singlePassageId = screens[0]?.passageId ?? sortedGroups[0]?.passageId ?? "";
+
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
-      {currentScreen.group.title && (
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-          CÂU {currentScreen.questionIndex + 1}/{currentScreen.questionCount}
-        </span>
+      {isMultiPassage ? (
+        <>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            CÂU {currentScreenIndex + 1}/{screens.length}
+          </span>
+          {introText && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
+              <span className="font-bold">Yêu cầu: </span>
+              {introText}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Văn bản</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <MarkdownBlock content={passagesById[singlePassageId]?.textDe ?? ""} lessonId={lesson.id} large />
+            </div>
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            CÂU {currentScreenIndex + 1}/{screens.length}
+          </span>
+        </>
       )}
-      {currentScreen.group.questionIntro && (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-          <span className="font-bold">Yêu cầu: </span>
-          {currentScreen.group.questionIntro}
-        </div>
-      )}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-        {currentScreen.group.title && (
-          <p className="text-base font-display font-bold text-slate-900">{currentScreen.group.title}</p>
-        )}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <MarkdownBlock content={passagesById[currentScreen.passageId]?.textDe ?? ""} lessonId={lesson.id} large />
-        </div>
 
-        <ReadingSingleQuestion
-          lesson={lesson}
-          screen={currentScreen}
-          answersByKey={answersByKey}
-          onAnswer={(value) => setAnswersByKey((prev) => ({ ...prev, [currentScreen.key]: value }))}
-        />
+      <div className="overflow-hidden w-full" ref={carouselRef}>
+        <div
+          className="flex transition-transform duration-300"
+          style={{ transform: `translateX(-${currentScreenIndex * slideWidth}px)` }}
+        >
+          {screens.map((screen) => {
+            if (screen.kind === "multi_passage") {
+              const group = groupsById[screen.groupId];
+              const question = group?.subQuestions[0];
+              if (!group || !question) {
+                return (
+                  <div key={`${screen.passageId}:${screen.slideIndex}`} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Cấu trúc câu hỏi chưa hợp lệ.</p>
+                    </div>
+                  </div>
+                );
+              }
+              const passageOrder = passagesById[screen.passageId]?.orderIndex ?? screen.slideIndex;
+              return (
+                <div key={screen.key} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                  <ReadingMcSlide
+                    lesson={lesson}
+                    question={question}
+                    picked={answersByKey[screen.key]}
+                    onAnswer={(value) => setAnswersByKey((prev) => ({ ...prev, [screen.key]: value }))}
+                    passageMarkdown={passagesById[screen.passageId]?.textDe ?? ""}
+                    passageLabel={`Văn bản ${passageOrder + 1}`}
+                  />
+                </div>
+              );
+            }
 
-        <div className="flex items-center justify-center gap-1.5 pt-1">
-          {Array.from({ length: currentScreen.questionCount }, (_, i) => (
-            <span
-              key={i}
-              className={`w-2 h-2 rounded-full ${i === currentScreen.questionIndex ? "bg-red-500" : "bg-slate-200"}`}
-            />
-          ))}
+            if (screen.kind === "single_mc") {
+              const group = groupsById[screen.groupId];
+              const question = group?.subQuestions[screen.questionIndex];
+              if (!group || !question) {
+                return (
+                  <div key={screen.key} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-sm text-slate-500">Cấu trúc câu hỏi chưa hợp lệ.</p>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={screen.key} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                  <ReadingMcSlide
+                    lesson={lesson}
+                    question={question}
+                    picked={answersByKey[screen.key]}
+                    onAnswer={(value) => setAnswersByKey((prev) => ({ ...prev, [screen.key]: value }))}
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <div key={`${screen.passageId}:${screen.slideIndex}`} style={{ width: `${slideWidth}px`, flex: "0 0 auto" }}>
+                <ReadingRfSummarySlide
+                  items={screen.items}
+                  answersByKey={answersByKey}
+                  onAnswer={(key, value) => setAnswersByKey((prev) => ({ ...prev, [key]: value }))}
+                />
+              </div>
+            );
+          })}
         </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-1.5 pt-1">
+        {screens.map((screen, index) => (
+          <button
+            key={`dot:${screen.passageId}:${screen.slideIndex}`}
+            type="button"
+            aria-label={`Đi tới câu ${index + 1}`}
+            onClick={() => setCurrentScreenIndex(index)}
+            className={`h-2 w-2 rounded-full transition-colors ${index === currentScreenIndex ? "bg-orange-500" : "bg-slate-200"}`}
+          />
+        ))}
       </div>
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-wrap justify-end gap-3">
         <Button variant="secondary" onClick={handleSaveDraft}>
           Lưu
         </Button>
         <Button
           variant="secondary"
           disabled={currentScreenIndex === 0}
-          onClick={() => setCurrentScreenIndex((i) => i - 1)}
+          onClick={() => setCurrentScreenIndex((i) => Math.max(0, i - 1))}
         >
           Quay lại
         </Button>
@@ -466,7 +626,11 @@ const ReadingExerciseSetBody: React.FC<{
             Nộp bài
           </Button>
         ) : (
-          <Button variant="primary" disabled={!currentAnswered} onClick={() => setCurrentScreenIndex((i) => i + 1)}>
+          <Button
+            variant="primary"
+            disabled={!currentAnswered}
+            onClick={() => setCurrentScreenIndex((i) => Math.min(screens.length - 1, i + 1))}
+          >
             Tiếp theo <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
         )}
@@ -479,17 +643,26 @@ const SetRow: React.FC<{
   lesson: Lesson;
   set: ExerciseSet;
   orderNumber: number;
+  passageCount: number;
   status: SetStatus;
   isExpanded: boolean;
   onToggle: () => void;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
-}> = ({ lesson, set, orderNumber, status, isExpanded, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => (
+}> = ({ lesson, set, orderNumber, passageCount, status, isExpanded, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => {
+  const typeTag = readingSetTypeTag(passageCount);
+
+  return (
   <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-slate-50">
       {isExpanded ? <ChevronDown className="h-5 w-5 text-slate-400 shrink-0" /> : <ChevronRight className="h-5 w-5 text-slate-400 shrink-0" />}
       <span className="flex-1 text-base font-display font-black text-slate-900">Bài {orderNumber}</span>
+      {typeTag && (
+        <span className="text-[10.5px] font-bold text-slate-500 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">
+          {typeTag}
+        </span>
+      )}
       <span className="ml-auto flex items-center gap-2 shrink-0">
         {status === "passed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
         <span className={`text-[10px] font-display font-bold uppercase px-2 py-0.5 rounded-full ${SET_STATUS_BADGE_CLASS[status]}`}>
@@ -502,6 +675,7 @@ const SetRow: React.FC<{
         <ReadingExerciseSetBody
           lesson={lesson}
           set={{ id: set.id, title: set.title }}
+          passageCount={passageCount}
           onSetFinished={onSetFinished}
           onCollapse={onToggle}
           onAttemptUpdate={onAttemptUpdate}
@@ -510,7 +684,8 @@ const SetRow: React.FC<{
       </div>
     )}
   </section>
-);
+  );
+};
 
 export const ReadingSetListPage: React.FC<ReadingSetListPageProps> = ({ lesson, onBackToLesson, onSetFinished }) => {
   const { sets: allSets, loading: setsLoading } = useExerciseSets();
@@ -525,11 +700,12 @@ export const ReadingSetListPage: React.FC<ReadingSetListPageProps> = ({ lesson, 
   const { attemptsBySetId, loading: attemptsLoading, updateAttempt } = useExerciseSetAttempts(candidateSetIds);
   const { draftSetIds, loading: draftsLoading, markDraftSaved } = useExerciseSetDrafts(candidateSetIds);
   const { nonEmptySetIds, loading: nonEmptyLoading } = useNonEmptyReadingSetIds(candidateSetIds);
+  const { passageCountBySetId, loading: passageCountsLoading } = useReadingSetPassageCounts(candidateSetIds);
   const lessonSets = useMemo(() => candidateSets.filter((s) => nonEmptySetIds.has(s.id)), [candidateSets, nonEmptySetIds]);
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
   const title = "Bài tập đọc";
 
-  if (setsLoading || attemptsLoading || draftsLoading || nonEmptyLoading) {
+  if (setsLoading || attemptsLoading || draftsLoading || nonEmptyLoading || passageCountsLoading) {
     return (
       <div className="max-w-3xl mx-auto space-y-8">
         <ExercisePageHeader title={title} onBackToLesson={onBackToLesson} />
@@ -561,6 +737,7 @@ export const ReadingSetListPage: React.FC<ReadingSetListPageProps> = ({ lesson, 
             lesson={lesson}
             set={set}
             orderNumber={index + 1}
+            passageCount={passageCountBySetId.get(set.id) ?? 0}
             status={computeSetStatus(attemptsBySetId[set.id], draftSetIds.has(set.id))}
             isExpanded={expandedSetId === set.id}
             onToggle={() => setExpandedSetId((prev) => (prev === set.id ? null : set.id))}

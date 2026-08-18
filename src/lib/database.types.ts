@@ -408,13 +408,10 @@ export type Database = {
           grammar_md: string | null
           id: string
           level: string
-          listening_url: string | null
           module_id: string | null
           next_lesson_id: string | null
           objective: string | null
           order_index: number
-          reading_text: string | null
-          reading_text_vi: string | null
           speaking_md: string | null
           status: string
           summary: string | null
@@ -434,13 +431,10 @@ export type Database = {
           grammar_md?: string | null
           id: string
           level: string
-          listening_url?: string | null
           module_id?: string | null
           next_lesson_id?: string | null
           objective?: string | null
           order_index?: number
-          reading_text?: string | null
-          reading_text_vi?: string | null
           speaking_md?: string | null
           status?: string
           summary?: string | null
@@ -460,13 +454,10 @@ export type Database = {
           grammar_md?: string | null
           id?: string
           level?: string
-          listening_url?: string | null
           module_id?: string | null
           next_lesson_id?: string | null
           objective?: string | null
           order_index?: number
-          reading_text?: string | null
-          reading_text_vi?: string | null
           speaking_md?: string | null
           status?: string
           summary?: string | null

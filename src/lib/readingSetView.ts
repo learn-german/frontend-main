@@ -77,3 +77,15 @@ export function isSingleQuestionPassage(passageId: string, groups: GroupSingleQu
     !group.question_intro?.trim()
   );
 }
+
+export type ReadingSetLayout = "multi_passage" | "single_passage";
+
+export function getReadingSetLayout(passageCount: number): ReadingSetLayout {
+  return passageCount > 1 ? "multi_passage" : "single_passage";
+}
+
+export function readingSetTypeTag(passageCount: number): string | null {
+  if (passageCount > 1) return "Nhiều văn bản";
+  if (passageCount === 1) return "1 văn bản · nhiều câu hỏi";
+  return null;
+}
