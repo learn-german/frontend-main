@@ -104,11 +104,34 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
 
 const SingleQuestionAnswers: React.FC<{
   group: ReadingQuestionGroupRowData;
-  onSaveOptions: (options: string[], correctIndex: number) => void;
+  onSaveOptions: (options: string[], correctIndex: number) => Promise<void> | void;
 }> = ({ group, onSaveOptions }) => {
   const initial = group.sub_questions?.[0];
   const [options, setOptions] = useState<string[]>(initial?.options ?? ["A", "B", "C"]);
   const [correctIndex, setCorrectIndex] = useState<number>(initial ? Number(initial.correct_option_id) : 0);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const next = group.sub_questions?.[0];
+    setOptions(next?.options ?? ["A", "B", "C"]);
+    setCorrectIndex(next ? Number(next.correct_option_id) : 0);
+  }, [group.id, group.sub_questions]);
+
+  const initialOptions = initial?.options ?? ["A", "B", "C"];
+  const initialCorrectIndex = initial ? Number(initial.correct_option_id) : 0;
+  const hasChanges =
+    correctIndex !== initialCorrectIndex ||
+    options.length !== initialOptions.length ||
+    options.some((opt, idx) => opt !== (initialOptions[idx] ?? ""));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSaveOptions(options, correctIndex);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -119,14 +142,13 @@ const SingleQuestionAnswers: React.FC<{
             <input
               type="radio"
               checked={correctIndex === oi}
-              onChange={() => { setCorrectIndex(oi); onSaveOptions(options, oi); }}
+              onChange={() => setCorrectIndex(oi)}
               className="h-4 w-4 accent-red-500"
             />
             <input
               type="text"
               value={opt}
               onChange={(e) => setOptions((prev) => prev.map((o, i) => (i === oi ? e.target.value : o)))}
-              onBlur={() => onSaveOptions(options, correctIndex)}
               className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
               placeholder={`Đáp án ${optionLabel(oi)}`}
             />
@@ -136,7 +158,6 @@ const SingleQuestionAnswers: React.FC<{
                 const next = removeOption({ options, correctIndex }, oi);
                 setOptions(next.options);
                 setCorrectIndex(next.correctIndex);
-                onSaveOptions(next.options, next.correctIndex);
               }}
               className="p-1 text-slate-300 hover:text-rose-500"
             >
@@ -149,12 +170,21 @@ const SingleQuestionAnswers: React.FC<{
           onClick={() => {
             const next = addOption({ options, correctIndex });
             setOptions(next.options);
-            onSaveOptions(next.options, next.correctIndex);
           }}
           className="text-xs font-bold text-red-600 hover:text-red-700"
         >
           + Thêm đáp án
         </button>
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+          >
+            {saving ? "Đang lưu..." : "Lưu"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -195,6 +225,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [moduleExpanded, setModuleExpanded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
   const [savingPassageId, setSavingPassageId] = useState<string | null>(null);
+  const [savingSharedTitleSetId, setSavingSharedTitleSetId] = useState<string | null>(null);
+  const [sharedTitleDraftBySet, setSharedTitleDraftBySet] = useState<Record<string, string>>({});
   const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
   const { sets, refetch: refetchSets, toggleSetStatus, createReadingSet } = useExerciseSets();
 
@@ -246,6 +278,27 @@ export const AdminReadingExerciseSection: React.FC = () => {
     setSavingPassageId(null);
     if (error) showToast("Lưu thất bại: " + error.message, "warning");
     else { showToast("Đã lưu văn bản.", "success"); fetchAll(); }
+  };
+
+  const handleSaveSharedTitle = async (setId: string, title: string) => {
+    const setPassages = passagesForSet(passages, setId);
+    const allGroups = setPassages.flatMap((p) => groupsForPassage(groups, p.id));
+    if (allGroups.length === 0) {
+      showToast("Chưa có nhóm câu hỏi để lưu tiêu đề chung.", "warning");
+      return;
+    }
+    setSavingSharedTitleSetId(setId);
+    const { error } = await supabase
+      .from("reading_question_groups")
+      .update({ question_intro: title.trim() || null })
+      .eq("set_id", setId);
+    setSavingSharedTitleSetId(null);
+    if (error) {
+      showToast("Lưu tiêu đề chung thất bại: " + error.message, "warning");
+      return;
+    }
+    showToast("Đã lưu tiêu đề chung.", "success");
+    fetchAll();
   };
 
   const handleCreateReadingSet = async (lessonId: string, nextOrder: number, mode: "multi" | "single") => {
@@ -531,6 +584,13 @@ export const AdminReadingExerciseSection: React.FC = () => {
                   const setMode = setModeById[set.id] ?? inferredMode;
                   const isMultiPassage = setMode === "multi";
                   const stats = readingSetStats(passages, groups, set.id);
+                  const savedSharedTitle = (() => {
+                    const firstPassageId = setPassages[0]?.id ?? "";
+                    const sortedGroups = [...groupsForPassage(groups, firstPassageId)];
+                    return sortedGroups[0]?.question_intro ?? "";
+                  })();
+                  const sharedTitleDraft = sharedTitleDraftBySet[set.id] ?? savedSharedTitle;
+                  const sharedTitleDirty = sharedTitleDraft !== savedSharedTitle;
 
                   return (
                     <div key={set.id} className="rounded-2xl border border-slate-200 bg-white">
@@ -563,20 +623,27 @@ export const AdminReadingExerciseSection: React.FC = () => {
                       <div className="p-4 space-y-3">
                         {isMultiPassage && (
                           <div className="border border-red-200 bg-red-50 rounded-[14px] p-3 space-y-2.5">
-                            <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
-                              Tiêu đề chung
-                              <span className="normal-case font-medium text-slate-400 text-[11px] ml-1.5">
-                                Áp dụng cho tất cả văn bản bên dưới
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                                Tiêu đề chung
+                                <span className="normal-case font-medium text-slate-400 text-[11px] ml-1.5">
+                                  Áp dụng cho tất cả văn bản bên dưới
+                                </span>
                               </span>
-                            </span>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveSharedTitle(set.id, sharedTitleDraft)}
+                                disabled={!sharedTitleDirty || savingSharedTitleSetId === set.id}
+                                className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                              >
+                                {savingSharedTitleSetId === set.id ? "Đang lưu..." : "Lưu"}
+                              </button>
+                            </div>
                             <textarea
                               className="w-full min-h-[52px] border border-slate-200 rounded-[10px] px-3 py-2.5 text-[13.5px] resize-y text-slate-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
-                              defaultValue={(() => {
-                                const sortedGroups = [...groupsForPassage(groups, setPassages[0]?.id ?? "")];
-                                return sortedGroups[0]?.question_intro ?? "";
-                              })()}
+                              value={sharedTitleDraft}
+                              onChange={(e) => setSharedTitleDraftBySet((prev) => ({ ...prev, [set.id]: e.target.value }))}
                               placeholder="Tiêu đề chung cho các văn bản..."
-                              readOnly
                             />
                           </div>
                         )}
