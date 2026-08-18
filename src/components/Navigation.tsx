@@ -54,7 +54,7 @@ export const Navbar: React.FC<NavigationProps> = ({
         <div className="flex-1 bg-slate-100" />
       </div>
 
-      <header className="w-full bg-white/95 backdrop-blur border-b border-slate-200 px-4 md:px-8 py-3.5 flex justify-between items-center">
+      <header className="relative z-50 w-full bg-white/95 backdrop-blur border-b border-slate-200 px-4 md:px-8 py-3.5 flex justify-between items-center">
         {/* Brand logo */}
         <div 
           id="nav-logo"
@@ -296,7 +296,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen">
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen -mt-[73px] pt-[73px]">
       {/* Dynamic Nav List */}
       <div className="flex flex-col gap-1.5 flex-1">
         {links.map((link) => {
