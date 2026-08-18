@@ -55,7 +55,7 @@ serve(async (req) => {
 
       const topUserIds = Object.entries(weeklyMap)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 50)
+        .slice(0, 5)
         .map(([id]) => id);
 
       const { data: profiles } = await supabase
@@ -77,12 +77,12 @@ serve(async (req) => {
       });
     }
 
-    // Global leaderboard: top 50 by total XP
+    // Global leaderboard: top 5 by total XP
     const { data: stats } = await supabase
       .from("user_stats")
       .select("user_id, xp")
       .order("xp", { ascending: false })
-      .limit(50);
+      .limit(5);
 
     const userIds = (stats ?? []).map((s) => s.user_id);
     const { data: profiles } = await supabase

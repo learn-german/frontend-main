@@ -21,7 +21,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserId 
   useEffect(() => {
     setLoading(true);
     supabase.functions.invoke(`leaderboard?type=${tab}`, { method: "GET" }).then(({ data }) => {
-      setEntries(data?.leaderboard ?? []);
+      setEntries((data?.leaderboard ?? []).slice(0, 5));
       setLoading(false);
     });
   }, [tab]);
