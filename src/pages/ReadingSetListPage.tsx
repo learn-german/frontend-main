@@ -345,6 +345,12 @@ const ReadingExerciseSetBody: React.FC<{
   }, [measureCarouselWidth, set.id]);
 
   React.useEffect(() => {
+    if (screens.length === 0) return;
+    const frame = requestAnimationFrame(measureCarouselWidth);
+    return () => cancelAnimationFrame(frame);
+  }, [screens.length, currentScreenIndex, measureCarouselWidth]);
+
+  React.useEffect(() => {
     setCurrentScreenIndex(0);
   }, [set.id]);
 

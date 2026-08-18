@@ -27,7 +27,6 @@ import {
   groupsForPassage,
   missingQuestionTypesForPassage,
   readingSetStats,
-  isSingleQuestionPassage,
   readingSetTypeTag,
   type ReadingQuestionType,
 } from "../../lib/readingSetView";
@@ -662,7 +661,6 @@ export const AdminReadingExerciseSection: React.FC = () => {
                         {setPassages.map((passage, passageIndex) => {
                           const passageGroups = groupsForPassage(groups, passage.id);
                           const missingTypes = missingQuestionTypesForPassage(groups, passage.id);
-                          const singleQuestion = isSingleQuestionPassage(passage.id, groups) ? passageGroups[0] : null;
                           const multiChoiceGroup = passageGroups.find((g) => g.question_type === "multiple_choice") ?? null;
 
                           return (
@@ -682,12 +680,10 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 onDelete={() => setDeletePassageTarget(passage)}
                               />
 
-                              {(isMultiPassage ? multiChoiceGroup : singleQuestion) ? (
+                              {isMultiPassage && multiChoiceGroup ? (
                                 <SingleQuestionAnswers
-                                  group={(isMultiPassage ? multiChoiceGroup : singleQuestion)!}
-                                  onSaveOptions={(options, correctIndex) =>
-                                    handleSaveSingleQuestionOptions((isMultiPassage ? multiChoiceGroup : singleQuestion)!.id, options, correctIndex)
-                                  }
+                                  group={multiChoiceGroup}
+                                  onSaveOptions={(options, correctIndex) => handleSaveSingleQuestionOptions(multiChoiceGroup.id, options, correctIndex)}
                                 />
                               ) : (
                               <div className="space-y-2">
