@@ -4,6 +4,7 @@ import {
   addCalendarDaysUtc,
   computeDailyProgressReport,
   defaultPlannedCompletionDate,
+  earliestStudyDate,
   type DailyProgressReportInput,
 } from "./report.ts";
 
@@ -124,4 +125,23 @@ test("defaultPlannedCompletionDate A1 = 90 ngày UTC", () => {
   assert.equal(addCalendarDaysUtc("2026-08-19", 90), "2026-11-17");
   assert.equal(defaultPlannedCompletionDate("2026-08-19", "A1"), "2026-11-17");
   assert.equal(defaultPlannedCompletionDate("2026-08-19", "A2"), "2026-11-17");
+});
+
+test("earliestStudyDate lấy ngày sớm nhất và bỏ qua completed_at rỗng", () => {
+  assert.equal(
+    earliestStudyDate([undefined, "2026-08-19T02:00:00+00:00", null, "2026-07-04T23:30:00+00:00"]),
+    "2026-07-04",
+  );
+  assert.equal(earliestStudyDate([]), null);
+  assert.equal(earliestStudyDate([undefined, null]), null);
+});
+
+test("expected_progress > 0 khi start_at là ngày học bài đầu tiên", () => {
+  const startedAt = earliestStudyDate(["2026-07-20T01:00:00+00:00"])!;
+  const result = computeDailyProgressReport(baseInput({
+    levelStartedAt: startedAt,
+    plannedCompletionDate: defaultPlannedCompletionDate(startedAt, "A1"), // 90 ngày
+    reportDate: "2026-08-19", // elapsed 30/90 ngày
+  }));
+  assert.equal(Math.round(result.expectedProgressPercentage!), 33);
 });
