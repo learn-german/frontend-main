@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavigationProps> = ({
   return (
     <div className="w-full flex flex-col shrink-0">
       {/* Subtle German flag-inspired micro-stripe (un-equal proportions, non-political accenting) */}
-      <div className="w-full h-1 bg-slate-100 flex select-none pointer-events-none">
+      <div className="relative z-50 w-full h-1 bg-slate-100 flex select-none pointer-events-none">
         <div className="w-10 bg-slate-950" />
         <div className="w-14 bg-red-600" />
         <div className="w-6 bg-yellow-400" />
