@@ -296,7 +296,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen">
       {/* Dynamic Nav List */}
-      <div className="flex flex-col gap-1.5 flex-1">
+      <div className="flex flex-col gap-1.5">
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = currentPage === link.id || (link.id === "lesson-detail" && currentPage === "quiz");
@@ -322,7 +322,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
       </div>
 
       { /* Decorative minimalist Card */ }
-      <div className="bg-yellow-50/50 border border-yellow-200/50 p-4 rounded-xl relative overflow-hidden">
+      <div className="bg-yellow-50/50 border border-yellow-200/50 p-4 rounded-xl relative overflow-hidden mt-4">
         <div className="absolute right-[-10px] bottom-[-10px] text-5xl opacity-10 rotate-12 select-none">🔥</div>
         <h4 className="text-xs font-display font-bold text-amber-805 text-amber-900">Streak hằng ngày!</h4>
         <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
