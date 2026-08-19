@@ -283,7 +283,7 @@ export default function App() {
     (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail");
 
   // Layout check selectors
-  const showNav = effectivePage !== "login";
+  const showNav = effectivePage !== "login" && effectivePage !== "landing";
   const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
 
   return (
@@ -316,7 +316,7 @@ export default function App() {
         )}
 
         {/* Content canvas panel */}
-        <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden ${!showSidebar ? "w-full" : ""}`}>
+        <main className={`flex-1 ${effectivePage === "landing" ? "" : "overflow-x-hidden p-4 sm:p-6 lg:p-8"} ${!showSidebar ? "w-full" : ""}`}>
           {showModulesLoader && (
             <div className="flex items-center justify-center h-64">
               <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
@@ -334,13 +334,6 @@ export default function App() {
               {effectivePage === "landing" && (
                 <LandingPage
                   onStartLearning={() => handleNavigate("login")}
-                  onViewRoadmap={() => {
-                    if (user) {
-                      setCurrentPage("roadmap");
-                    } else {
-                      setCurrentPage("login");
-                    }
-                  }}
                   onNavigateLogin={() => handleNavigate("login")}
                 />
               )}
