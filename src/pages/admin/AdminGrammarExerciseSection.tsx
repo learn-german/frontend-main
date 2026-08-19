@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import { uploadMedia } from "../../lib/uploadMedia";
+import { clipLabel } from "../../lib/clipLabel";
 import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
 import { useExerciseSets, type ExerciseSet } from "../../lib/hooks/useExerciseSets";
 import { type ListeningClip, ClipRow } from "./AdminExerciseSetMedia";
@@ -1400,7 +1401,7 @@ export const AdminGrammarExerciseSection: React.FC<{
                 <select value={mediaId ?? ""} onChange={(e) => setMediaId(e.target.value || null)} className={inputCls}>
                   <option value="">-- Chọn file mp3 --</option>
                   {clips.filter((c) => c.lesson_id === editLessonId).map((c, i) => (
-                    <option key={c.id} value={c.id}>File {i + 1}</option>
+                    <option key={c.id} value={c.id}>{clipLabel(c, i)}</option>
                   ))}
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">Chưa có file? Đóng modal này, thêm ở khu vực phía trên trước.</p>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Trash2, Image as ImageIcon, Eye, Pencil } from "lucide-react";
 import { useMediaPlaybackUrl } from "../../lib/hooks/useMediaPlaybackUrl";
 import { uploadMedia } from "../../lib/uploadMedia";
+import { clipLabel } from "../../lib/clipLabel";
 import { showToast } from "../../lib/toast";
 import { MarkdownBlock } from "../../components/MarkdownBlock";
 
@@ -32,7 +33,9 @@ export const ClipRow: React.FC<{ lessonId: string; clip: ListeningClip; index: n
   const playback = useMediaPlaybackUrl(lessonId, "audio", clip.r2_key, clip.id);
   return (
     <div className="flex items-center gap-3 p-2.5 bg-slate-50/60 rounded-xl">
-      <span className="text-xs font-display font-bold text-slate-600 shrink-0">File {index + 1}</span>
+      <span className="text-xs font-display font-bold text-slate-600 shrink-0 max-w-[10rem] truncate" title={clipLabel(clip, index)}>
+        {clipLabel(clip, index)}
+      </span>
       <div className="flex-1 min-w-0">
         {playback.loading && <p className="text-[11px] text-slate-400">Đang tải...</p>}
         {playback.url && <audio controls src={playback.url} className="w-full h-8">Trình duyệt không hỗ trợ audio.</audio>}
