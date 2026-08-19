@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-labelledby="title description">
+  <title id="title">SelbstDeutsch</title>
+  <desc id="description">Monogram chữ S cao lồng qua chữ D màu vàng</desc>
+  <rect width="40" height="40" rx="9" fill="#e4003b"/>
+  <path
+    d="M15 11.5h4.2c8.6 0 13.3 3.5 13.3 8.5s-4.7 8.5-13.3 8.5H15v-17Z"
+    fill="#ffcc00"
+  />
+  <path
+    d="M21 15h.8c3.5 0 5.4 1.7 5.4 5s-1.9 5-5.4 5H21V15Z"
+    fill="#e4003b"
+  />
+  <path
+    d="M20 7.5h-6.2c-3.2 0-5.4 2.1-5.4 5.2s2.2 5.1 5.4 5.1h2.6c3.2 0 5.4 2.2 5.4 5.5s-2.2 7.2-5.7 7.2H9"
+    fill="none"
+    stroke="#ffcc00"
+    stroke-width="4.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M20 7.5h-6.2c-3.2 0-5.4 2.1-5.4 5.2s2.2 5.1 5.4 5.1h2.6c3.2 0 5.4 2.2 5.4 5.5s-2.2 7.2-5.7 7.2H9"
+    fill="none"
+    stroke="#101828"
+    stroke-width="2.7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
