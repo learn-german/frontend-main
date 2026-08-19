@@ -24,14 +24,38 @@ export function isAllowedExt(mediaType: MediaType, ext: string): boolean {
   return ALLOWED_EXT[mediaType].includes(ext.toLowerCase());
 }
 
-export function buildObjectKey(mediaType: MediaType, lessonId: string, ext: string, clipId?: string, randomId?: string): string {
+const MAX_FILE_NAME_LENGTH = 100;
+
+/**
+ * Giữ lại tên file gốc để admin nhận ra clip (audio_19_3, audio_6_2, ...).
+ * Trả về "" khi tên không dùng được — lúc đó key quay về dạng phẳng theo clipId.
+ */
+export function sanitizeFileName(fileName: string | undefined): string {
+  const baseName = (fileName ?? "").split(/[/\\]/).pop() ?? "";
+  const withoutExt = baseName.replace(/\.[^.]+$/, "");
+  const safe = withoutExt.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, MAX_FILE_NAME_LENGTH);
+  return /[A-Za-z0-9]/.test(safe) ? safe : "";
+}
+
+export function buildObjectKey(
+  mediaType: MediaType,
+  lessonId: string,
+  ext: string,
+  clipId?: string,
+  randomId?: string,
+  fileName?: string,
+): string {
   if (mediaType === "video") {
     return `videos/${lessonId}.${ext.toLowerCase()}`;
   }
   if (mediaType === "image") {
     return `images/${lessonId}/${randomId}.${ext.toLowerCase()}`;
   }
-  return `audio/${lessonId}/${clipId}.${ext.toLowerCase()}`;
+  const safeName = sanitizeFileName(fileName);
+  // Thư mục riêng theo clipId nên hai file trùng tên vẫn không đè nhau.
+  return safeName
+    ? `audio/${lessonId}/${clipId}/${safeName}.${ext.toLowerCase()}`
+    : `audio/${lessonId}/${clipId}.${ext.toLowerCase()}`;
 }
 
 interface AuthUser {
@@ -92,8 +116,8 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const body = req.body as { lessonId?: string; mediaType?: string; fileExt?: string; clipId?: string };
-  const { lessonId, fileExt, clipId } = body;
+  const body = req.body as { lessonId?: string; mediaType?: string; fileExt?: string; clipId?: string; fileName?: string };
+  const { lessonId, fileExt, clipId, fileName } = body;
   const mediaType = body.mediaType;
 
   if (!lessonId || (mediaType !== "video" && mediaType !== "audio" && mediaType !== "image") || !fileExt) {
@@ -109,7 +133,7 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
-  const objectKey = buildObjectKey(mediaType, lessonId, fileExt, clipId, mediaType === "image" ? randomUUID() : undefined);
+  const objectKey = buildObjectKey(mediaType, lessonId, fileExt, clipId, mediaType === "image" ? randomUUID() : undefined, fileName);
 
   const s3 = new S3Client({
     region: "auto",
