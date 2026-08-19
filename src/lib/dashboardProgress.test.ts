@@ -23,16 +23,16 @@ test("lessonsNeededToCatchUp: totalRequiredLessons = 0 trả về 0", () => {
 
 const lesson = (id: string) => ({ id });
 
-test("selectPlannedLessons: lấy bài current + 3 bài kế tiếp theo thứ tự", () => {
+test("selectPlannedLessons: lấy bài current + 2 bài kế tiếp theo thứ tự", () => {
   const lessons = [lesson("a"), lesson("b"), lesson("c"), lesson("d"), lesson("e")];
   const statuses: Record<string, LessonStatus> = {
     a: "completed", b: "current", c: "locked", d: "locked", e: "locked",
   };
   const result = selectPlannedLessons(lessons, statuses, ["a"]);
-  assert.deepEqual(result.map((l) => l.id), ["b", "c", "d", "e"]);
+  assert.deepEqual(result.map((l) => l.id), ["b", "c", "d"]);
 });
 
-test("selectPlannedLessons: không đủ 4 bài sau current thì lấy hết phần còn lại", () => {
+test("selectPlannedLessons: không đủ 3 bài sau current thì lấy hết phần còn lại", () => {
   const lessons = [lesson("a"), lesson("b")];
   const statuses: Record<string, LessonStatus> = { a: "completed", b: "current" };
   const result = selectPlannedLessons(lessons, statuses, ["a"]);

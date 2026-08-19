@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SelbstDeutsch — Dashboard Mockup</title>
+  <!-- Same fonts as src/index.css -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* @theme from src/index.css */
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+      --red: #dc2626;
+      --red-dark: #b91c1c;
+      --red-light: #fef2f2;
+      --maroon: #991b1b;
+      --orange: #ea580c;
+      --navy: #0f172a;
+      --navy-mid: #1e293b;
+      --bg: #f8f9fa;
+      --white: #ffffff;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --amber: #f59e0b;
+      --amber-light: #fef3c7;
+      --yellow: #facc15;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --radius: 16px;
+    }
+
+    .font-sans { font-family: var(--font-sans); }
+    .font-display { font-family: var(--font-display); }
+    .font-mono { font-family: var(--font-mono); }
+
+    /* Typography — mirrors font-display / font-sans in src/pages & Navigation */
+    .font-display,
+    .brand-name,
+    .nav-link .label,
+    .welcome-tag,
+    .welcome-title,
+    .streak-badge .streak-label,
+    .streak-badge .streak-days,
+    .card-title,
+    .lesson-card-title,
+    .stat-value,
+    .level-badge,
+    .info-box .info-value,
+    .lesson-title,
+    .btn-primary,
+    .xp-value,
+    .test-item h4,
+    .plan-item h4,
+    .plan-tag,
+    .status-pill,
+    .progress-label-row .gap,
+    .user-name,
+    .streak-count,
+    .streak-card h4,
+    .score-badge,
+    .plan-num,
+    .plan-link,
+    .test-card-title {
+      font-family: var(--font-display);
+    }
+
+    .font-sans,
+    .welcome-sub,
+    .nav-link .desc,
+    .streak-card p,
+    .report-date,
+    .info-box .info-label,
+    .lesson-meta,
+    .lesson-duration,
+    .xp-desc,
+    .overview-footer,
+    .test-item .test-status,
+    .plan-module,
+    .plan-duration,
+    .plan-subtitle,
+    .test-footnote,
+    .progress-label-row,
+    .stat-label,
+    .streak-badge .streak-status {
+      font-family: var(--font-sans);
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--slate-800);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Flag stripe */
+    .flag-stripe { display: flex; height: 4px; }
+    .flag-stripe span:nth-child(1) { width: 40px; background: var(--slate-900); }
+    .flag-stripe span:nth-child(2) { width: 56px; background: var(--red); }
+    .flag-stripe span:nth-child(3) { width: 24px; background: var(--yellow); }
+    .flag-stripe span:nth-child(4) { flex: 1; background: var(--slate-100); }
+
+    /* Header */
+    header {
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--slate-200);
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: var(--red);
+    }
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: 800; /* font-extrabold */
+      color: var(--slate-900);
+      letter-spacing: -0.025em;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--slate-200);
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--slate-500);
+    }
+
+    .user-block {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px 5px 5px;
+      border-radius: 999px;
+      border: 1px solid var(--slate-200);
+      background: var(--white);
+      cursor: pointer;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--slate-800);
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-name { font-weight: 600; font-size: 13px; color: var(--slate-800); }
+
+    /* Shell */
+    .app-shell { display: flex; min-height: calc(100vh - 69px); }
+
+    /* Sidebar */
+    aside {
+      width: 248px;
+      flex-shrink: 0;
+      background: var(--white);
+      border-right: 1px solid var(--slate-200);
+      padding: 16px 0 16px 16px;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 69px;
+      height: calc(100vh - 69px);
+    }
+
+    .nav-links { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border: none;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      width: 100%;
+      border-radius: 10px 0 0 10px;
+      transition: background 0.15s;
+    }
+
+    .nav-link svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--slate-400); stroke-width: 2; }
+
+    .nav-link .label {
+      font-size: 14px;
+      font-weight: 700; /* font-bold when active, font-semibold otherwise */
+      color: var(--slate-600);
+      line-height: 1.2;
+    }
+
+    .nav-link .desc { font-size: 10px; color: var(--slate-400); margin-top: 1px; }
+
+    .nav-link:hover { background: var(--slate-50); }
+
+    .nav-link.active {
+      background: var(--red-light);
+      border-right: 3px solid var(--red);
+      margin-right: 0;
+      padding-right: 17px;
+    }
+    .nav-link.active svg { color: var(--red); }
+    .nav-link.active .label { color: var(--red); font-weight: 700; }
+    .nav-link.active .desc { color: #ef4444; }
+
+    .streak-card {
+      margin: 12px 16px 0 0;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 12px;
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .streak-card .bg-flame {
+      position: absolute;
+      right: -8px;
+      bottom: -8px;
+      font-size: 44px;
+      opacity: 0.12;
+      transform: rotate(12deg);
+      user-select: none;
+    }
+
+    .streak-card h4 { font-size: 11px; font-weight: 700; color: #92400e; }
+    .streak-card p { font-size: 10px; color: var(--slate-500); margin-top: 4px; line-height: 1.45; }
+    .streak-count {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #92400e;
+    }
+
+    /* Main */
+    main { flex: 1; padding: 14px 20px 28px; overflow-y: auto; min-width: 0; }
+    .content-stack { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Welcome banner */
+    .welcome-banner {
+      background: linear-gradient(120deg, #0f172a 0%, #1a2744 45%, #2a1f4e 100%);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-banner::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    .welcome-text { position: relative; z-index: 1; }
+
+    .welcome-tag {
+      font-size: 12px;
+      font-weight: 700; /* font-bold */
+      color: var(--yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.05em; /* tracking-wider */
+    }
+
+    .welcome-title {
+      font-size: 24px;
+      font-weight: 900; /* font-black */
+      margin-top: 4px;
+      line-height: 1.25; /* leading-tight */
+      letter-spacing: -0.025em;
+    }
+
+    .welcome-sub {
+      font-size: 12px;
+      font-weight: 400;
+      color: #94a3b8;
+      margin-top: 4px;
+      max-width: 400px;
+    }
+
+    .streak-badge {
+      position: relative;
+      z-index: 1;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 160px;
+    }
+
+    .streak-icon-box {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(234, 88, 12, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .streak-badge .streak-label {
+      font-size: 10px;
+      font-weight: 600; /* font-semibold */
+      color: #94a3b8;
+      display: block;
+      letter-spacing: 0.02em;
+    }
+
+    .streak-badge .streak-days {
+      font-size: 18px;
+      font-weight: 800; /* font-extrabold */
+      display: block;
+      line-height: 1.25;
+    }
+
+    .streak-badge .streak-status {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--yellow);
+      display: block;
+    }
+
+    /* Grid — stretch both columns so the last row shares one baseline */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 290px;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .left-col,
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    /* Card base */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 700; /* font-bold */
+      color: var(--slate-400);
+      text-transform: uppercase;
+      letter-spacing: 0.1em; /* tracking-widest */
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-title svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .card-title.red { color: var(--red); }
+    .card-title.red svg { color: var(--red); }
+
+    /* Overview */
+    .overview-card .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .report-date { font-size: 11px; color: var(--slate-400); }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .info-box {
+      background: var(--slate-50);
+      border: 1px solid var(--slate-100);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .info-box .info-label { font-size: 10px; color: var(--slate-400); margin-bottom: 4px; }
+
+    .level-badge {
+      display: inline-block;
+      background: var(--green-light);
+      color: var(--green);
+      font-weight: 800;
+      font-size: 13px;
+      padding: 2px 10px;
+      border-radius: 6px;
+    }
+
+    .info-box .info-value {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--slate-800);
+      line-height: 1.35;
+    }
+
+    .progress-section { margin-bottom: 14px; }
+
+    .progress-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      margin-bottom: 8px;
+      color: var(--slate-500);
+    }
+
+    .progress-label-row b { color: var(--slate-700); font-weight: 600; }
+    .progress-label-row .gap {
+      color: var(--amber);
+      font-weight: 700;
+      background: var(--amber-light);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    .progress-bar-track {
+      height: 8px;
+      background: var(--slate-100);
+      border-radius: 99px;
+      overflow: visible;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 38%;
+      background: linear-gradient(90deg, #fbbf24 0%, #84cc16 60%, #22c55e 100%);
+      border-radius: 99px;
+    }
+
+    .progress-marker {
+      position: absolute;
+      top: -3px;
+      left: 45%;
+      width: 3px;
+      height: 14px;
+      background: var(--slate-500);
+      border-radius: 2px;
+      transform: translateX(-50%);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      padding-top: 14px;
+      border-top: 1px solid var(--slate-100);
+    }
+
+    .stat-item .stat-label {
+      font-size: 10px;
+      color: var(--slate-400);
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .stat-item .stat-value {
+      font-size: 24px;
+      font-weight: 900; /* font-black — matches DashboardPage stat cells */
+      color: var(--slate-800);
+      line-height: 1;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: var(--amber-light);
+      color: #b45309;
+      border: 1px solid #fde68a;
+      white-space: nowrap;
+    }
+
+    .overview-footer {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--slate-500);
+      padding-top: 10px;
+      border-top: 1px solid var(--slate-50);
+    }
+
+    .overview-footer b { color: var(--slate-700); font-weight: 700; }
+
+    /* Bottom row fills leftover height so bottoms line up with the right column */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: stretch;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Lesson card */
+    .lesson-card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 20px;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .lesson-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lesson-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #991b1b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .level-pill {
+      display: inline-block;
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      line-height: 1.4;
+    }
+
+    .lesson-body {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .play-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: #fff5f5;
+      border: 1px solid #ffe4e6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #b91c1c;
+    }
+
+    .lesson-info { flex: 1; min-width: 0; }
+
+    .lesson-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a1a2e;
+      line-height: 1.35;
+    }
+
+    .lesson-meta {
+      font-size: 11px;
+      font-weight: 400;
+      color: #757575;
+      margin-top: 4px;
+    }
+
+    .lesson-duration {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 400;
+      color: #757575;
+      margin-top: 3px;
+    }
+
+    .lesson-duration svg { flex-shrink: 0; color: #94a3b8; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px 20px;
+      background: #991b1b;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: auto;
+      box-shadow: 0 4px 14px rgba(153, 27, 27, 0.22);
+    }
+    .btn-primary:hover { background: #7f1d1d; }
+
+    /* XP card */
+    .xp-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .xp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .xp-header .card-title {
+      color: #78716c;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .xp-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 0 24px;
+    }
+
+    .xp-value {
+      font-size: 48px;
+      font-weight: 900; /* font-black */
+      color: var(--slate-800);
+      line-height: 1;
+      letter-spacing: -0.025em;
+    }
+
+    .xp-value .xp-unit {
+      font-size: 32px;
+      font-weight: 900; /* font-black — large mockup display */
+      color: var(--slate-800);
+    }
+
+    .trophy-box {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .xp-desc {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--slate-500);
+      line-height: 1.55;
+      text-align: center;
+    }
+
+    .xp-desc b { color: var(--slate-700); font-weight: 700; }
+
+    /* Test results */
+    .test-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--slate-500);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .test-card-title svg { width: 14px; height: 14px; color: var(--slate-500); flex-shrink: 0; }
+
+    .test-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      gap: 10px;
+    }
+
+    .test-item h4 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--slate-800);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 175px;
+    }
+
+    .test-item .test-status {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--slate-400);
+      margin-top: 3px;
+      display: block;
+    }
+
+    .score-badge {
+      min-width: 40px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid #fecaca;
+      background: #fff1f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--red);
+      flex-shrink: 0;
+    }
+
+    .test-footnote {
+      margin-top: 10px;
+      font-size: 10px;
+      font-style: italic;
+      color: var(--slate-400);
+      line-height: 1.45;
+    }
+
+    /* Study plan — last card grows so its bottom matches the left column */
+    .right-col > .card:last-child {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    /* Study plan */
+    .plan-header { margin-bottom: 4px; }
+
+    .plan-subtitle {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--slate-400);
+      margin-bottom: 12px;
+    }
+
+    .plan-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 8px;
+      background: var(--white);
+      flex: 1;
+    }
+
+    .plan-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 10px 10px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--slate-200);
+      background: var(--white);
+      flex: 1;
+    }
+
+    .plan-item.active {
+      background: #fff5f5;
+      border-left: 4px solid var(--red);
+      border-color: #fecaca;
+      border-left-color: var(--red);
+    }
+
+    .plan-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--slate-100);
+      border: 1px solid var(--slate-200);
+      color: var(--slate-600);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .plan-item-content { flex: 1; min-width: 0; }
+
+    .plan-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .plan-item h4 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--slate-800);
+      line-height: 1.35;
+    }
+
+    .plan-module {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--slate-400);
+      margin-top: 2px;
+    }
+
+    .plan-duration {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--slate-400);
+      margin-top: 2px;
+    }
+
+    .plan-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .plan-tag.learning { background: #ffe4e6; color: var(--red); border: 1px solid #fecaca; }
+    .plan-tag.next { background: var(--green-light); color: var(--green); border: 1px solid #bbf7d0; }
+    .plan-tag.upcoming { background: #eef2ff; color: var(--slate-500); border: 1px solid #e2e8f0; }
+
+    @media (max-width: 1100px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      aside { display: none; }
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .welcome-banner { flex-direction: column; align-items: flex-start; }
+      .bottom-row { grid-template-columns: 1fr; }
+      .info-row { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body class="font-sans">
+
+  <div class="flag-stripe"><span></span><span></span><span></span><span></span></div>
+
+  <header>
+    <div class="brand">
+      <img class="brand-logo" src="../../public/logo.png" alt="SelbstDeutsch" onerror="this.style.background='#dc2626'" />
+      <span class="brand-name">SelbstDeutsch</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" aria-label="Thông báo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      </button>
+      <div class="user-block">
+        <div class="avatar">N</div>
+        <span class="user-name">Nguyen Thang</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside>
+      <nav class="nav-links">
+        <button class="nav-link active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          <div><div class="label">Dashboard</div><div class="desc">Bảng tổng quan</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+          <div><div class="label">Lộ trình</div><div class="desc">Sơ đồ khóa học</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          <div><div class="label">Bài học hiện tại</div><div class="desc">Đang học: Video 7</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>
+          <div><div class="label">Gói học</div><div class="desc">Xem gói &amp; quyền lợi</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          <div><div class="label">Bảng xếp hạng</div><div class="desc">Thành tích học tập</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          <div><div class="label">Trợ giúp học tập</div><div class="desc">Giải đáp thắc mắc</div></div>
+        </button>
+      </nav>
+
+      <div class="streak-card">
+        <div class="bg-flame">🔥</div>
+        <h4>Streak hằng ngày!</h4>
+        <p>Học tối thiểu 1 bài học mỗi ngày để duy trì chuỗi đỏ lấp lánh của bạn. Tích cực lên nhé!</p>
+        <div class="streak-count"><span>🔥</span><span>0 ngày liên tiếp</span></div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="content-stack">
+
+        <!-- Banner -->
+        <section class="welcome-banner">
+          <div class="welcome-text">
+            <p class="welcome-tag">Chào ngày mới!</p>
+            <h1 class="welcome-title">Hallo, Nguyen Thang! 👋</h1>
+            <p class="welcome-sub">Hôm nay là một ngày tuyệt vời để chinh phục tiếng Đức. Hãy bắt đầu từ một bài học nhỏ!</p>
+          </div>
+          <div class="streak-badge">
+            <div class="streak-icon-box">🔥</div>
+            <div>
+              <span class="streak-label">STREAK HÀNG NGÀY</span>
+              <span class="streak-days">0 ngày</span>
+              <span class="streak-status">Đã an toàn hôm nay</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="dashboard-grid">
+          <div class="left-col">
+
+            <!-- Tổng quan -->
+            <section class="card overview-card">
+              <div class="card-header">
+                <h3 class="card-title red">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  Tổng quan
+                </h3>
+                <span class="report-date">Ngày báo cáo: 05/08/2026</span>
+              </div>
+
+              <div class="info-row">
+                <div class="info-box">
+                  <div class="info-label">Level hiện tại</div>
+                  <span class="level-badge">A1</span>
+                </div>
+                <div class="info-box">
+                  <div class="info-label">Lesson hiện tại</div>
+                  <div class="info-value">Video 7 — Phủ định nicht và kein</div>
+                </div>
+              </div>
+
+              <div class="progress-section">
+                <div class="progress-label-row">
+                  <span>Trạng thái tiến độ: <b>đang thấp hơn kế hoạch</b></span>
+                  <span class="gap">-7 điểm %</span>
+                </div>
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill"></div>
+                  <div class="progress-marker"></div>
+                </div>
+              </div>
+
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-label">Trạng thái</div>
+                  <span class="status-pill">⚠ Cần chú ý</span>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">Thời gian còn lại</div>
+                  <div class="stat-value">42 ngày</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">Bài học hoàn tất</div>
+                  <div class="stat-value">8/21</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">Tiến độ hiện tại</div>
+                  <div class="stat-value">38%</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">Tiến độ kỳ vọng</div>
+                  <div class="stat-value">45%</div>
+                </div>
+              </div>
+
+              <p class="overview-footer">
+                Hiện tại <b>38%</b> — Kỳ vọng <b>45%</b> — Cần hoàn thành thêm <b>2 bài</b> để bắt kịp.
+              </p>
+            </section>
+
+            <div class="bottom-row">
+
+              <!-- Bài học hiện tại -->
+              <section class="card lesson-card">
+                <div class="lesson-header">
+                  <h3 class="lesson-card-title font-display">Bài học hiện tại</h3>
+                  <span class="level-pill font-display">A1</span>
+                </div>
+                <div class="lesson-body">
+                  <div class="play-icon-box">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                  </div>
+                  <div class="lesson-info">
+                    <h3 class="lesson-title font-display">Video 7 — Phủ định nicht và kein</h3>
+                    <p class="lesson-meta font-sans">Thuộc module Ngữ pháp cơ bản</p>
+                    <p class="lesson-duration font-sans">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      05:40 phút học
+                    </p>
+                  </div>
+                </div>
+                <button class="btn-primary font-display">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+                  Tiếp tục học
+                </button>
+              </section>
+
+              <!-- Tổng điểm tích lũy -->
+              <section class="card xp-card">
+                <div class="xp-header">
+                  <h3 class="card-title">Tổng điểm tích lũy</h3>
+                  <div class="trophy-box">🏆</div>
+                </div>
+                <div class="xp-center">
+                  <div class="xp-value">0 <span class="xp-unit">XP</span></div>
+                </div>
+                <p class="xp-desc">
+                  Tích đủ <b>500 XP</b> để nhận danh hiệu <b>"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!
+                </p>
+              </section>
+
+            </div>
+          </div>
+
+          <div class="right-col">
+
+            <!-- Kết quả kiểm tra -->
+            <section class="card">
+              <h3 class="test-card-title font-display">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Kết quả kiểm tra gần đây
+              </h3>
+              <div class="test-item">
+                <div>
+                  <h4 class="font-display">Chào hỏi và Giới thiệu bản...</h4>
+                  <span class="test-status font-sans">Đã hoàn thành</span>
+                </div>
+                <div class="score-badge font-display">0%</div>
+              </div>
+              <p class="test-footnote font-sans">*Điểm số được đồng bộ hóa tức thì từ bài viết quiz của từng bài học.</p>
+            </section>
+
+            <!-- Kế hoạch học tập -->
+            <section class="card">
+              <div class="plan-header">
+                <h3 class="card-title font-display" style="margin:0">Kế hoạch học tập</h3>
+              </div>
+              <p class="plan-subtitle font-sans">3 bài trong lộ trình gần nhất</p>
+
+              <div class="plan-list">
+                <div class="plan-item active">
+                  <div class="plan-num font-display">1</div>
+                  <div class="plan-item-content">
+                    <div class="plan-item-row">
+                      <h4 class="font-display">Video 7 — Phủ định nicht và kein</h4>
+                      <span class="plan-tag learning font-display">Đang học</span>
+                    </div>
+                    <div class="plan-module font-sans">Ngữ pháp cơ bản</div>
+                    <div class="plan-duration font-sans">05:40 phút</div>
+                  </div>
+                </div>
+                <div class="plan-item">
+                  <div class="plan-num font-display">2</div>
+                  <div class="plan-item-content">
+                    <div class="plan-item-row">
+                      <h4 class="font-display">Präsens</h4>
+                      <span class="plan-tag next font-display">Tiếp theo</span>
+                    </div>
+                    <div class="plan-module font-sans">Ngữ pháp cơ bản</div>
+                    <div class="plan-duration font-sans">08:00 phút</div>
+                  </div>
+                </div>
+                <div class="plan-item">
+                  <div class="plan-num font-display">3</div>
+                  <div class="plan-item-content">
+                    <div class="plan-item-row">
+                      <h4 class="font-display">Artikel: der, die, das</h4>
+                      <span class="plan-tag upcoming font-display">Sắp học</span>
+                    </div>
+                    <div class="plan-module font-sans">Ngữ pháp cơ bản</div>
+                    <div class="plan-duration font-sans">06:30 phút</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+</body>
+</html>
