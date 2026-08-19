@@ -26,6 +26,13 @@ export function addCalendarDaysUtc(isoDate: string, days: number): string {
   return new Date(Date.parse(`${isoDate}T00:00:00.000Z`) + days * MS_PER_DAY).toISOString().slice(0, 10);
 }
 
+/** Ngày sớm nhất user đụng tới level — mốc "bắt đầu học bài đầu tiên".
+ * null khi chưa có lesson_progress nào trong level. */
+export function earliestStudyDate(completedAts: (string | null | undefined)[]): string | null {
+  const dates = completedAts.filter((v): v is string => !!v).map((v) => v.slice(0, 10)).sort();
+  return dates[0] ?? null;
+}
+
 export function defaultPlannedCompletionDate(startedAtIso: string, level: string): string {
   return addCalendarDaysUtc(startedAtIso, PLANNED_LEVEL_DAYS[level] ?? 90);
 }
