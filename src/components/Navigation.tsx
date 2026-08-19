@@ -294,7 +294,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen -mt-[73px] pt-[73px]">
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen">
       {/* Dynamic Nav List */}
       <div className="flex flex-col gap-1.5 flex-1">
         {links.map((link) => {
