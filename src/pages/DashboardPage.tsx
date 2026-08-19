@@ -9,6 +9,7 @@ import {
   Calendar,
   Clock,
   Users,
+  HelpCircle,
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
@@ -57,6 +58,19 @@ const formatDurationLabel = (duration: string): string => {
   if (!duration.includes(":")) return `${Number(duration) || 0} phút`;
   return `${duration} phút`;
 };
+
+const NoData: React.FC<{ size?: "sm" | "md" }> = ({ size = "md" }) => (
+  <span
+    className="inline-flex items-center gap-0.5 text-slate-400"
+    title="Chưa có dữ liệu"
+  >
+    <span className={size === "md" ? "text-xl font-display font-black leading-none" : "text-[11px] font-display font-bold"}>
+      —
+    </span>
+    <HelpCircle className={size === "md" ? "w-3.5 h-3.5" : "w-3 h-3"} aria-hidden />
+    <span className="sr-only">Chưa có dữ liệu</span>
+  </span>
+);
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user,
@@ -107,6 +121,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   if (!nextSuggestedLesson) return null;
 
   const reportSuccess = report?.generation_status === "success";
+  const actualProgress = reportSuccess && report
+    ? report.actual_progress_percentage
+    : progressLevelPercentage;
+  const expectedProgress = reportSuccess && report?.expected_progress_percentage !== null && report?.expected_progress_percentage !== undefined
+    ? report.expected_progress_percentage
+    : null;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -145,11 +165,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <h3 className="text-xs font-display font-bold text-red-700 uppercase tracking-widest flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-red-700" /> Tổng quan
               </h3>
-              {reportSuccess && report && (
-                <span className="text-[11px] text-slate-400">
-                  Ngày báo cáo: {new Date(report.report_date).toLocaleDateString("vi-VN")}
-                </span>
-              )}
+              <span className="text-[11px] text-slate-400 inline-flex items-center gap-1">
+                Ngày báo cáo:{" "}
+                {reportSuccess && report?.report_date
+                  ? new Date(report.report_date).toLocaleDateString("vi-VN")
+                  : <NoData size="sm" />}
+              </span>
             </div>
 
             <div className="bg-slate-50 rounded-[10px] px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -165,111 +186,103 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             </div>
 
-            {reportSuccess && report && (
-              <div className="space-y-3.5">
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[11px] text-slate-500">
-                      Trạng thái tiến độ:{" "}
+            <div className="space-y-3.5">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-[11px] text-slate-500 inline-flex items-center gap-1 flex-wrap">
+                    Trạng thái tiến độ:{" "}
+                    {reportSuccess && report?.progress_status ? (
                       <b className="font-semibold text-slate-700">
-                        {report.progress_status ? PROGRESS_STATUS_PHRASE[report.progress_status] : "—"}
+                        {PROGRESS_STATUS_PHRASE[report.progress_status]}
                       </b>
-                    </span>
-                    {report.progress_gap_percentage_point !== null && report.progress_gap_percentage_point > 0 && (
-                      <span className="text-[11px] font-display font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
-                        -{Math.round(report.progress_gap_percentage_point)} điểm %
-                      </span>
+                    ) : (
+                      <NoData size="sm" />
                     )}
+                  </span>
+                  {reportSuccess && report?.progress_gap_percentage_point != null && report.progress_gap_percentage_point > 0 ? (
+                    <span className="text-[11px] font-display font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                      -{Math.round(report.progress_gap_percentage_point)} điểm %
+                    </span>
+                  ) : !reportSuccess ? (
+                    <NoData size="sm" />
+                  ) : null}
+                </div>
+                <ProgressBar
+                  value={actualProgress}
+                  markerValue={expectedProgress ?? undefined}
+                  barClassName="bg-gradient-to-r from-amber-400 via-lime-400 to-green-500"
+                  markerClassName="bg-slate-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3.5 border-t border-slate-100">
+                {([
+                  {
+                    label: "Trạng thái",
+                    value: reportSuccess && report?.progress_status ? (
+                      <span className={`inline-flex items-center text-[11px] font-display font-bold px-2 py-1 rounded-lg whitespace-nowrap ${PROGRESS_STATUS_BADGE[report.progress_status].className}`}>
+                        {PROGRESS_STATUS_BADGE[report.progress_status].label}
+                      </span>
+                    ) : (
+                      <NoData />
+                    ),
+                  },
+                  {
+                    label: "Thời gian còn lại",
+                    value: reportSuccess && report?.package_remaining_days != null ? (
+                      <p className="text-xl font-display font-black text-slate-800 leading-none">
+                        {report.package_remaining_days} ngày
+                      </p>
+                    ) : (
+                      <NoData />
+                    ),
+                  },
+                  {
+                    label: "Bài học hoàn tất",
+                    value: (
+                      <p className="text-xl font-display font-black text-slate-800 leading-none">
+                        {completedLessonsInLevel}/{totalLessonsInLevel}
+                      </p>
+                    ),
+                  },
+                  {
+                    label: "Tiến độ hiện tại",
+                    value: (
+                      <p className="text-xl font-display font-black text-slate-800 leading-none">
+                        {Math.round(actualProgress)}%
+                      </p>
+                    ),
+                  },
+                  {
+                    label: "Tiến độ kỳ vọng",
+                    value: expectedProgress !== null ? (
+                      <p className="text-xl font-display font-black text-slate-800 leading-none">
+                        {Math.round(expectedProgress)}%
+                      </p>
+                    ) : (
+                      <NoData />
+                    ),
+                  },
+                ] as const).map((item) => (
+                  <div key={item.label} className="flex flex-col h-[52px]">
+                    <span className="text-[10px] text-slate-400 leading-none">{item.label}</span>
+                    <div className="mt-auto">{item.value}</div>
                   </div>
-                  <ProgressBar
-                    value={report.actual_progress_percentage}
-                    markerValue={report.expected_progress_percentage ?? undefined}
-                    barClassName="bg-gradient-to-r from-amber-400 via-lime-400 to-green-500"
-                    markerClassName="bg-slate-600"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3.5 border-t border-slate-100">
-                  {([
-                    {
-                      label: "Trạng thái",
-                      value: report.progress_status ? (
-                        <span className={`inline-flex items-center text-[11px] font-display font-bold px-2 py-1 rounded-lg whitespace-nowrap ${PROGRESS_STATUS_BADGE[report.progress_status].className}`}>
-                          {PROGRESS_STATUS_BADGE[report.progress_status].label}
-                        </span>
-                      ) : (
-                        <span className="text-xl font-display font-black text-slate-400 leading-none">—</span>
-                      ),
-                    },
-                    {
-                      label: "Thời gian còn lại",
-                      value: (
-                        <p className="text-xl font-display font-black text-slate-800 leading-none">
-                          {report.package_remaining_days ?? "—"}
-                          {report.package_remaining_days !== null && " ngày"}
-                        </p>
-                      ),
-                    },
-                    {
-                      label: "Bài học hoàn tất",
-                      value: (
-                        <p className="text-xl font-display font-black text-slate-800 leading-none">
-                          {completedLessonsInLevel}/{totalLessonsInLevel}
-                        </p>
-                      ),
-                    },
-                    {
-                      label: "Tiến độ hiện tại",
-                      value: (
-                        <p className="text-xl font-display font-black text-slate-800 leading-none">
-                          {Math.round(report.actual_progress_percentage)}%
-                        </p>
-                      ),
-                    },
-                    {
-                      label: "Tiến độ kỳ vọng",
-                      value: (
-                        <p className="text-xl font-display font-black text-slate-800 leading-none">
-                          {Math.round(report.expected_progress_percentage ?? 0)}%
-                        </p>
-                      ),
-                    },
-                  ] as const).map((item) => (
-                    <div key={item.label} className="flex flex-col h-[52px]">
-                      <span className="text-[10px] text-slate-400 leading-none">{item.label}</span>
-                      <div className="mt-auto">{item.value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="text-[11px] text-slate-500 pt-2.5 border-t border-slate-100">
-                  Hiện tại <b className="text-slate-800">{Math.round(report.actual_progress_percentage)}%</b> — Kỳ vọng{" "}
-                  <b className="text-slate-800">{Math.round(report.expected_progress_percentage ?? 0)}%</b>
-                  {catchUpLessons > 0 && (
-                    <>
-                      {" "}— Cần hoàn thành thêm <b className="text-slate-800">{catchUpLessons} bài</b> để bắt kịp.
-                    </>
-                  )}
-                </p>
+                ))}
               </div>
-            )}
 
-            {(!report || report.generation_status !== "success") && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
-                  <span className="text-[11px] text-slate-400">Bài học hoàn tất</span>
-                  <p className="text-2xl font-display font-black text-slate-800 mt-1 leading-none">
-                    {completedLessonsInLevel}<span className="text-sm text-slate-400 font-bold mx-0.5">/</span>{totalLessonsInLevel}
-                  </p>
-                </div>
-                <div className="bg-slate-50/50 rounded-xl border border-slate-100/60 p-3">
-                  <span className="text-[11px] text-slate-400">Tiến độ hiện tại</span>
-                  <p className="text-2xl font-display font-black text-green-600 mt-1 leading-none">
-                    {progressLevelPercentage}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
-                  </p>
-                </div>
-              </div>
-            )}
+              <p className="text-[11px] text-slate-500 pt-2.5 border-t border-slate-100 inline-flex flex-wrap items-center gap-x-1">
+                Hiện tại <b className="text-slate-800">{Math.round(actualProgress)}%</b> — Kỳ vọng{" "}
+                {expectedProgress !== null
+                  ? <b className="text-slate-800">{Math.round(expectedProgress)}%</b>
+                  : <NoData size="sm" />}
+                {" "}— Cần hoàn thành thêm{" "}
+                {catchUpLessons > 0
+                  ? <b className="text-slate-800">{catchUpLessons} bài</b>
+                  : <NoData size="sm" />}
+                {" "}để bắt kịp.
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 min-h-0 items-stretch">
