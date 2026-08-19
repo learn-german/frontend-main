@@ -19,6 +19,7 @@ import { showToast } from "../lib/toast";
 import { useWritingSubmission, MAX_WRITING_ATTEMPTS } from "../lib/hooks/useWritingSubmission";
 import { useLessonSetSummary } from "../lib/hooks/useLessonSetSummary";
 import type { LessonSetSummary } from "../lib/lessonSetSummary";
+import { PASS_THRESHOLD } from "../lib/completion";
 import { BOTTOM_TABS, BottomTab } from "./lessonBottomTabs";
 
 interface LessonDetailPageProps {
@@ -37,6 +38,22 @@ const SetSummaryLine: React.FC<{ summary: LessonSetSummary }> = ({ summary }) =>
     {summary.passedCount}/{summary.totalCount} bài đã đạt · Lần gần nhất: {summary.latestScore}% ·{" "}
     {new Date(summary.latestSubmittedAt).toLocaleString("vi-VN")}
   </p>
+);
+
+/** Khối "bắt đầu làm bài" dùng chung cho cả 3 tab bài tập: ngữ pháp, nghe, đọc. */
+const ExerciseStartPanel: React.FC<{
+  heading: string;
+  summary: LessonSetSummary | null;
+  children: React.ReactNode;
+}> = ({ heading, summary, children }) => (
+  <>
+    <h3 className="text-sm font-display font-extrabold text-slate-800">{heading}</h3>
+    {summary && <SetSummaryLine summary={summary} />}
+    <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
+      Cần vượt qua <b>{PASS_THRESHOLD}%</b> để hoàn tất!
+    </p>
+    <div className="flex justify-center gap-3 pt-1">{children}</div>
+  </>
 );
 
 export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
@@ -237,12 +254,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Bài tập ngữ pháp tab */}
           {bottomTab === "quiz" && (
             <div className="text-center space-y-4">
-              <h3 className="text-sm font-display font-extrabold text-slate-800">Bạn đã hoàn tất bài giảng lý thuyết chứ?</h3>
-              {nguphapSummary && <SetSummaryLine summary={nguphapSummary} />}
-              <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
-                Cần vượt qua <b>80%</b> để hoàn tất!
-              </p>
-              <div className="flex justify-center gap-3 pt-1">
+              <ExerciseStartPanel heading="Bạn đã hoàn tất bài giảng lý thuyết chứ?" summary={nguphapSummary}>
                 {!marked && isCompleted && (
                   <Button id="btn-lesson-mark-complete-bottom" variant="secondary" onClick={handleCompleteClick}>
                     Đánh dấu đã học
@@ -251,7 +263,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 <Button id="btn-lesson-start-quiz-bottom" variant="primary" onClick={() => onStartQuiz(lesson.id)}>
                   Bắt đầu bài tập ngữ pháp <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
-              </div>
+              </ExerciseStartPanel>
             </div>
           )}
 
@@ -280,18 +292,11 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
               </div>
               {lesson.hasNgheQuestions === true ? (
-                <>
-                  <h3 className="text-sm font-display font-extrabold text-slate-800">Sẵn sàng luyện nghe chưa?</h3>
-                  {ngheSummary && <SetSummaryLine summary={ngheSummary} />}
-                  <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
-                    Bấm bắt đầu để nghe file âm thanh và trả lời câu hỏi trắc nghiệm đi kèm.
-                  </p>
-                  <div className="flex justify-center pt-2">
-                    <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
-                      Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
-                    </Button>
-                  </div>
-                </>
+                <ExerciseStartPanel heading="Sẵn sàng luyện nghe chưa?" summary={ngheSummary}>
+                  <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
+                    Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Button>
+                </ExerciseStartPanel>
               ) : (
                 <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
                   Bài tập nghe đang được cập nhật. Mục này không ảnh hưởng tới việc hoàn thành bài học.
@@ -309,18 +314,11 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 <span className="text-sm font-display font-bold text-slate-800">Bài đọc</span>
               </div>
               {lesson.hasDocQuestions === true ? (
-                <>
-                  <h3 className="text-sm font-display font-extrabold text-slate-800">Sẵn sàng luyện đọc chưa?</h3>
-                  {docSummary && <SetSummaryLine summary={docSummary} />}
-                  <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
-                    Bấm bắt đầu để đọc từng đoạn văn và trả lời câu hỏi trắc nghiệm đi kèm.
-                  </p>
-                  <div className="flex justify-center pt-2">
-                    <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
-                      Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
-                    </Button>
-                  </div>
-                </>
+                <ExerciseStartPanel heading="Sẵn sàng luyện đọc chưa?" summary={docSummary}>
+                  <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
+                    Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Button>
+                </ExerciseStartPanel>
               ) : (
                 <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
                   Bài tập đọc đang được cập nhật. Mục này không ảnh hưởng tới việc hoàn thành bài học.
