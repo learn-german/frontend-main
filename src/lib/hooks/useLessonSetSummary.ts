@@ -33,8 +33,15 @@ export function useLessonSetSummary(
           return;
         }
 
+        // Câu hỏi bài đọc nằm ở bảng riêng (reading_question_groups) chứ
+        // không phải grammar_exercises — cùng lý do như useNonEmptyReadingSetIds.
+        // Query nhầm bảng thì nonEmptySetIds luôn rỗng và tóm tắt của Đọc
+        // không bao giờ hiện.
+        const questionTable =
+          category === "doc" ? "reading_question_groups_public" : "grammar_exercises_public";
+
         const [exercisesRes, attemptsRes] = await Promise.all([
-          supabase.from("grammar_exercises_public").select("set_id").in("set_id", candidateIds),
+          supabase.from(questionTable).select("set_id").in("set_id", candidateIds),
           supabase.from("exercise_set_attempts")
             .select("set_id, is_passed, score, submitted_at")
             .in("set_id", candidateIds),
