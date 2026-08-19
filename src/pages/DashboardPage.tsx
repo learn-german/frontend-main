@@ -152,12 +152,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2.5">
-              <div className="bg-slate-50 border border-slate-100 rounded-[10px] px-3 py-2.5">
+            <div className="bg-slate-50 rounded-[10px] px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
                 <span className="text-[10px] text-slate-400 block mb-1">Level hiện tại</span>
                 <LevelBadge level={nextSuggestedLesson.level} />
               </div>
-              <div className="bg-slate-50 border border-slate-100 rounded-[10px] px-3 py-2.5">
+              <div>
                 <span className="text-[10px] text-slate-400 block mb-1">Lesson hiện tại</span>
                 <p className="text-xs font-display font-bold text-slate-800 leading-snug truncate">
                   {nextSuggestedLesson.title}
@@ -176,7 +176,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </b>
                     </span>
                     {report.progress_gap_percentage_point !== null && report.progress_gap_percentage_point > 0 && (
-                      <span className="text-[11px] font-display font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                      <span className="text-[11px] font-display font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
                         -{Math.round(report.progress_gap_percentage_point)} điểm %
                       </span>
                     )}
@@ -184,56 +184,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <ProgressBar
                     value={report.actual_progress_percentage}
                     markerValue={report.expected_progress_percentage ?? undefined}
+                    barClassName="bg-gradient-to-r from-amber-400 via-lime-400 to-green-500"
+                    markerClassName="bg-slate-600"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3.5 border-t border-slate-100">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block mb-1">Trạng thái</span>
-                    {report.progress_status ? (
-                      <span className={`inline-flex items-center text-[11px] font-display font-bold px-2 py-1 rounded-lg whitespace-nowrap ${PROGRESS_STATUS_BADGE[report.progress_status].className}`}>
-                        {PROGRESS_STATUS_BADGE[report.progress_status].label}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-slate-400">—</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block mb-1">Thời gian còn lại</span>
-                    <p className="text-2xl font-display font-black text-slate-800 leading-none">
-                      {report.package_remaining_days ?? "—"}
-                      {report.package_remaining_days !== null && (
-                        <span className="text-sm text-slate-400 font-bold ml-1">ngày</span>
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block mb-1">Bài học hoàn tất</span>
-                    <p className="text-2xl font-display font-black text-slate-800 leading-none">
-                      {completedLessonsInLevel}<span className="text-sm text-slate-400 font-bold mx-0.5">/</span>{totalLessonsInLevel}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block mb-1">Tiến độ hiện tại</span>
-                    <p className="text-2xl font-display font-black text-slate-800 leading-none">
-                      {Math.round(report.actual_progress_percentage)}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block mb-1">Tiến độ kỳ vọng</span>
-                    <p className="text-2xl font-display font-black text-slate-800 leading-none">
-                      {Math.round(report.expected_progress_percentage ?? 0)}<span className="text-sm text-slate-400 font-bold ml-0.5">%</span>
-                    </p>
-                  </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3.5 border-t border-slate-100">
+                  {([
+                    {
+                      label: "Trạng thái",
+                      value: report.progress_status ? (
+                        <span className={`inline-flex items-center text-[11px] font-display font-bold px-2 py-1 rounded-lg whitespace-nowrap ${PROGRESS_STATUS_BADGE[report.progress_status].className}`}>
+                          {PROGRESS_STATUS_BADGE[report.progress_status].label}
+                        </span>
+                      ) : (
+                        <span className="text-xl font-display font-black text-slate-400 leading-none">—</span>
+                      ),
+                    },
+                    {
+                      label: "Thời gian còn lại",
+                      value: (
+                        <p className="text-xl font-display font-black text-slate-800 leading-none">
+                          {report.package_remaining_days ?? "—"}
+                          {report.package_remaining_days !== null && " ngày"}
+                        </p>
+                      ),
+                    },
+                    {
+                      label: "Bài học hoàn tất",
+                      value: (
+                        <p className="text-xl font-display font-black text-slate-800 leading-none">
+                          {completedLessonsInLevel}/{totalLessonsInLevel}
+                        </p>
+                      ),
+                    },
+                    {
+                      label: "Tiến độ hiện tại",
+                      value: (
+                        <p className="text-xl font-display font-black text-slate-800 leading-none">
+                          {Math.round(report.actual_progress_percentage)}%
+                        </p>
+                      ),
+                    },
+                    {
+                      label: "Tiến độ kỳ vọng",
+                      value: (
+                        <p className="text-xl font-display font-black text-slate-800 leading-none">
+                          {Math.round(report.expected_progress_percentage ?? 0)}%
+                        </p>
+                      ),
+                    },
+                  ] as const).map((item) => (
+                    <div key={item.label} className="flex flex-col h-[52px]">
+                      <span className="text-[10px] text-slate-400 leading-none">{item.label}</span>
+                      <div className="mt-auto">{item.value}</div>
+                    </div>
+                  ))}
                 </div>
 
-                {catchUpLessons > 0 && (
-                  <p className="text-[11px] text-slate-500 pt-2.5 border-t border-slate-50">
-                    Hiện tại <b className="text-slate-700">{Math.round(report.actual_progress_percentage)}%</b> — Kỳ vọng{" "}
-                    <b className="text-slate-700">{Math.round(report.expected_progress_percentage ?? 0)}%</b> — Cần hoàn thành thêm{" "}
-                    <b className="text-slate-700">{catchUpLessons} bài</b> để bắt kịp.
-                  </p>
-                )}
+                <p className="text-[11px] text-slate-500 pt-2.5 border-t border-slate-100">
+                  Hiện tại <b className="text-slate-800">{Math.round(report.actual_progress_percentage)}%</b> — Kỳ vọng{" "}
+                  <b className="text-slate-800">{Math.round(report.expected_progress_percentage ?? 0)}%</b>
+                  {catchUpLessons > 0 && (
+                    <>
+                      {" "}— Cần hoàn thành thêm <b className="text-slate-800">{catchUpLessons} bài</b> để bắt kịp.
+                    </>
+                  )}
+                </p>
               </div>
             )}
 

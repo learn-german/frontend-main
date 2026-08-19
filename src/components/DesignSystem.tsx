@@ -132,9 +132,19 @@ export const ProgressBar: React.FC<{
   value: number;
   max?: number;
   className?: string;
+  barClassName?: string;
+  markerClassName?: string;
   showText?: boolean;
   markerValue?: number; // optional: vẽ vạch mốc (VD: tiến độ kỳ vọng)
-}> = ({ value, max = 100, className = "", showText = false, markerValue }) => {
+}> = ({
+  value,
+  max = 100,
+  className = "",
+  barClassName = "bg-green-600",
+  markerClassName = "bg-orange-600",
+  showText = false,
+  markerValue,
+}) => {
   const percent = Math.min(Math.max(Math.round((value / max) * 100), 0), 100);
   const markerPercent = markerValue !== undefined
     ? Math.min(Math.max(Math.round((markerValue / max) * 100), 0), 100)
@@ -150,12 +160,12 @@ export const ProgressBar: React.FC<{
       )}
       <div className="relative w-full h-2 bg-slate-100 rounded-full overflow-visible border border-slate-200/40">
         <div
-          className="h-full bg-green-600 rounded-full transition-all duration-500 ease-out"
+          className={`h-full rounded-full transition-all duration-500 ease-out ${barClassName}`}
           style={{ width: `${percent}%` }}
         />
         {markerPercent !== null && (
           <div
-            className="absolute -top-0.5 w-0.5 h-3 rounded-sm bg-orange-600"
+            className={`absolute -top-0.5 w-0.5 h-3 rounded-sm ${markerClassName}`}
             style={{ left: `${markerPercent}%` }}
             title={`Kỳ vọng ${markerPercent}%`}
           />
