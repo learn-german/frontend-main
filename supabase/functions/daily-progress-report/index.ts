@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeCompletedLessons, computeLessonStatuses, type LessonQuizFlags, type LessonProgressRow } from "./completion.ts";
-import { computeDailyProgressReport } from "./report.ts";
+import { computeDailyProgressReport, defaultPlannedCompletionDate } from "./report.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,15 +15,55 @@ const json = (body: unknown, status = 200) =>
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+interface LevelEnrollmentDates {
+  started_at: string;
+  planned_completion_date: string;
+}
+
+/** Tạo enrollment nếu chưa có. ON CONFLICT DO NOTHING — không ghi đè mốc admin đã set. */
+async function ensureLevelEnrollment(
+  supabase: SupabaseClient,
+  userId: string,
+  level: string,
+  reportDate: string,
+): Promise<LevelEnrollmentDates | null> {
+  const { data: existing } = await supabase
+    .from("level_enrollments")
+    .select("started_at, planned_completion_date")
+    .eq("user_id", userId)
+    .eq("level", level)
+    .maybeSingle();
+
+  if (existing?.started_at && existing?.planned_completion_date) {
+    return existing;
+  }
+
+  const startedAt = reportDate;
+  const plannedCompletionDate = defaultPlannedCompletionDate(startedAt, level);
+  await supabase.from("level_enrollments").upsert(
+    { user_id: userId, level, started_at: startedAt, planned_completion_date: plannedCompletionDate },
+    { onConflict: "user_id,level", ignoreDuplicates: true },
+  );
+
+  const { data: created } = await supabase
+    .from("level_enrollments")
+    .select("started_at, planned_completion_date")
+    .eq("user_id", userId)
+    .eq("level", level)
+    .maybeSingle();
+
+  return created ?? { started_at: startedAt, planned_completion_date: plannedCompletionDate };
+}
+
 interface LessonRow extends LessonQuizFlags {
   level: string;
   order_index: number;
 }
 
 /** Tính report tươi cho 1 user tại report_date, upsert vào daily_progress_reports.
- * Trả về { generation_status: "empty" } (không upsert) nếu user không đủ điều
- * kiện (chưa mở level nào, hoặc gói không active) — đúng rule "chỉ tạo report
- * cho user có package active và level đang học". */
+ * Trả về { generation_status: "empty" } (không upsert) nếu chưa unlock level nào.
+ * Gói hết hạn / chưa có subscription_end_date vẫn tính tiến độ kỳ vọng;
+ * package_remaining_days = null → UI hiện "—". */
 async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, reportDate: string) {
   const { data: profile } = await supabase
     .from("profiles")
@@ -32,11 +72,8 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     .single();
 
   const unlockedLevels: string[] = profile?.unlocked_levels ?? [];
-  const packageActive = !!profile?.is_premium
-    && !!profile?.subscription_end_date
-    && profile.subscription_end_date >= reportDate;
 
-  if (!packageActive || unlockedLevels.length === 0) {
+  if (unlockedLevels.length === 0) {
     return { generation_status: "empty" as const };
   }
 
@@ -102,12 +139,7 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
   const completedIds = computeCompletedLessons(chosenLessons, progress);
   const currentLesson = chosenLessons.find((l) => chosenStatuses[l.id] === "current");
 
-  const { data: enrollment } = await supabase
-    .from("level_enrollments")
-    .select("started_at, planned_completion_date")
-    .eq("user_id", userId)
-    .eq("level", chosenLevel)
-    .maybeSingle();
+  const enrollment = await ensureLevelEnrollment(supabase, userId, chosenLevel, reportDate);
 
   const computed = computeDailyProgressReport({
     reportDate,
@@ -115,7 +147,7 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     totalRequiredLessons: chosenLessons.length,
     levelStartedAt: enrollment?.started_at ?? null,
     plannedCompletionDate: enrollment?.planned_completion_date ?? null,
-    subscriptionEndDate: profile.subscription_end_date,
+    subscriptionEndDate: profile.subscription_end_date ?? null,
   });
 
   const row = {

@@ -41,7 +41,7 @@ interface EditForm { full_name: string; role: string; is_premium: boolean; subsc
 
 const EMPTY_CREATE: CreateForm = { email: "", password: "", full_name: "", role: "user" };
 const PAGE_SIZE = 15;
-const PLANNED_LEVEL_DAYS: Record<string, number> = { A1: 60, A2: 60, B1: 90, B2: 90 };
+const PLANNED_LEVEL_DAYS: Record<string, number> = { A1: 90, A2: 90, B1: 90, B2: 90 };
 
 export const AdminUsersSection: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -252,7 +252,7 @@ export const AdminUsersSection: React.FC = () => {
 
     if (!isUnlocking) return;
 
-    const plannedDays = PLANNED_LEVEL_DAYS[level] ?? 60;
+    const plannedDays = PLANNED_LEVEL_DAYS[level] ?? 90;
     const startedAt = new Date().toISOString().slice(0, 10);
     const plannedCompletionDate = new Date(Date.now() + plannedDays * 86400000).toISOString().slice(0, 10);
     // ignoreDuplicates: bật/tắt/bật lại level không reset started_at đã có.

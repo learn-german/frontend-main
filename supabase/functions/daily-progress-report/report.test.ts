@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { computeDailyProgressReport, type DailyProgressReportInput } from "./report.ts";
+import {
+  addCalendarDaysUtc,
+  computeDailyProgressReport,
+  defaultPlannedCompletionDate,
+  type DailyProgressReportInput,
+} from "./report.ts";
 
 const MS_PER_DAY = 86400000;
 /** Ngày ISO N ngày sau `iso`, tính bằng cộng mốc thời gian thay vì cộng tay
@@ -113,4 +118,10 @@ test("package_remaining_days null khi không có subscriptionEndDate", () => {
 test("package_remaining_days tính đúng số ngày còn lại", () => {
   const result = computeDailyProgressReport(baseInput({ reportDate: "2026-08-07", subscriptionEndDate: "2026-08-17" }));
   assert.equal(result.packageRemainingDays, 10);
+});
+
+test("defaultPlannedCompletionDate A1 = 90 ngày UTC", () => {
+  assert.equal(addCalendarDaysUtc("2026-08-19", 90), "2026-11-17");
+  assert.equal(defaultPlannedCompletionDate("2026-08-19", "A1"), "2026-11-17");
+  assert.equal(defaultPlannedCompletionDate("2026-08-19", "A2"), "2026-11-17");
 });

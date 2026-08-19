@@ -19,6 +19,17 @@ export interface DailyProgressReportResult {
 const MS_PER_DAY = 86400000;
 const clamp = (n: number): number => Math.max(0, Math.min(100, n));
 
+/** Số ngày kế hoạch theo level. Giữ đồng bộ với AdminUsersSection.PLANNED_LEVEL_DAYS. */
+export const PLANNED_LEVEL_DAYS: Record<string, number> = { A1: 90, A2: 90, B1: 90, B2: 90 };
+
+export function addCalendarDaysUtc(isoDate: string, days: number): string {
+  return new Date(Date.parse(`${isoDate}T00:00:00.000Z`) + days * MS_PER_DAY).toISOString().slice(0, 10);
+}
+
+export function defaultPlannedCompletionDate(startedAtIso: string, level: string): string {
+  return addCalendarDaysUtc(startedAtIso, PLANNED_LEVEL_DAYS[level] ?? 90);
+}
+
 function computeRemainingDays(subscriptionEndDate: string | null, reportDate: string): number | null {
   if (!subscriptionEndDate) return null;
   const diffDays = (new Date(subscriptionEndDate).getTime() - new Date(reportDate).getTime()) / MS_PER_DAY;
