@@ -151,42 +151,74 @@ const list = [
 ];
 
 test("TS-13 filterTickets không lọc gì khi search rỗng và status all", () => {
-  assert.equal(filterTickets(list, "", "all").length, 3);
+  assert.equal(filterTickets(list, "", "all", "all").length, 3);
 });
 
 test("TS-14 filterTickets khớp mã không phân biệt hoa thường", () => {
-  assert.equal(filterTickets(list, "sd-2000", "all")[0].id, "b");
-  assert.equal(filterTickets(list, "SD-2000", "all")[0].id, "b");
+  assert.equal(filterTickets(list, "sd-2000", "all", "all")[0].id, "b");
+  assert.equal(filterTickets(list, "SD-2000", "all", "all")[0].id, "b");
 });
 
 test("TS-15 filterTickets khớp tiêu đề có dấu, không phân biệt hoa thường", () => {
-  assert.equal(filterTickets(list, "ĐÁP ÁN", "all")[0].id, "b");
-  assert.equal(filterTickets(list, "đáp án", "all")[0].id, "b");
+  assert.equal(filterTickets(list, "ĐÁP ÁN", "all", "all")[0].id, "b");
+  assert.equal(filterTickets(list, "đáp án", "all", "all")[0].id, "b");
 });
 
 test("TS-16 filterTickets bỏ khoảng trắng thừa quanh từ khoá", () => {
-  assert.equal(filterTickets(list, "   sd-3000   ", "all")[0].id, "c");
+  assert.equal(filterTickets(list, "   sd-3000   ", "all", "all")[0].id, "c");
 });
 
 test("TS-17 filterTickets trả rỗng khi không khớp gì", () => {
-  assert.deepEqual(filterTickets(list, "không tồn tại xyz", "all"), []);
+  assert.deepEqual(filterTickets(list, "không tồn tại xyz", "all", "all"), []);
 });
 
 test("TS-18 filterTickets lọc theo trạng thái", () => {
-  assert.equal(filterTickets(list, "", "pending").length, 1);
-  assert.equal(filterTickets(list, "", "processing").length, 1);
-  assert.equal(filterTickets(list, "", "resolved").length, 1);
+  assert.equal(filterTickets(list, "", "pending", "all").length, 1);
+  assert.equal(filterTickets(list, "", "processing", "all").length, 1);
+  assert.equal(filterTickets(list, "", "resolved", "all").length, 1);
 });
 
 test("TS-19 filterTickets áp đồng thời cả từ khoá lẫn trạng thái", () => {
-  assert.equal(filterTickets(list, "không", "pending").length, 1,
+  assert.equal(filterTickets(list, "không", "pending", "all").length, 1,
     "hai ticket chứa chữ 'không' nhưng chỉ một ticket pending");
-  assert.equal(filterTickets(list, "không", "resolved").length, 1);
-  assert.equal(filterTickets(list, "sd-1000", "resolved").length, 0);
+  assert.equal(filterTickets(list, "không", "resolved", "all").length, 1);
+  assert.equal(filterTickets(list, "sd-1000", "resolved", "all").length, 0);
 });
 
 test("TS-20 filterTickets không sửa mảng gốc", () => {
   const before = [...list];
-  filterTickets(list, "sd-1000", "pending");
+  filterTickets(list, "sd-1000", "pending", "all");
   assert.deepEqual(list, before);
+});
+
+// -------------------------------------------------------- filterTickets (topic)
+
+const topicList = [
+  mapTicket({ ...ticketRow, id: "a", code: "SD-1000", title: "Không mở được bài nghe", topic: "lesson_content", status: "pending" }),
+  mapTicket({ ...ticketRow, id: "b", code: "SD-2000", title: "Trang web bị lỗi", topic: "website_issue", status: "processing" }),
+  mapTicket({ ...ticketRow, id: "c", code: "SD-3000", title: "Không đăng nhập được", topic: "account_access", status: "resolved" }),
+];
+
+test("TS-21 filterTickets lọc đúng một chủ đề", () => {
+  const result = filterTickets(topicList, "", "all", "website_issue");
+  assert.equal(result.length, 1);
+  assert.equal(result[0].id, "b");
+});
+
+test("TS-22 filterTickets topic 'all' cho toàn bộ danh sách đi qua", () => {
+  assert.equal(filterTickets(topicList, "", "all", "all").length, 3);
+});
+
+test("TS-23 filterTickets kết hợp chủ đề với trạng thái và từ khoá", () => {
+  assert.equal(filterTickets(topicList, "không", "resolved", "account_access").length, 1,
+    "khớp cả ba điều kiện thì phải ra đúng ticket c");
+  assert.equal(filterTickets(topicList, "không", "resolved", "account_access")[0].id, "c");
+  // Đúng trạng thái + từ khoá nhưng sai chủ đề -> rỗng.
+  assert.equal(filterTickets(topicList, "không", "resolved", "website_issue").length, 0);
+  // Đúng chủ đề + trạng thái nhưng sai từ khoá -> rỗng.
+  assert.equal(filterTickets(topicList, "trang web", "resolved", "account_access").length, 0);
+});
+
+test("TS-24 filterTickets trả rỗng khi không ticket nào khớp chủ đề", () => {
+  assert.deepEqual(filterTickets(topicList, "", "all", "exercise_feedback"), []);
 });

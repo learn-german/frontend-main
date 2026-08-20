@@ -78,12 +78,14 @@ export function filterTickets(
   tickets: SupportTicket[],
   search: string,
   status: SupportTicketStatus | "all",
+  topic: SupportTicketTopic | "all",
 ): SupportTicket[] {
   const q = search.trim().toLowerCase();
   return tickets.filter((t) => {
     const matchStatus = status === "all" || t.status === status;
+    const matchTopic = topic === "all" || t.topic === topic;
     const matchSearch =
       !q || t.title.toLowerCase().includes(q) || t.code.toLowerCase().includes(q);
-    return matchStatus && matchSearch;
+    return matchStatus && matchTopic && matchSearch;
   });
 }
