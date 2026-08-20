@@ -18,14 +18,16 @@ import {
   Gift,
   HelpCircle
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { BrandLogo } from "./BrandLogo";
 import { Button } from "./DesignSystem";
 import type { AppNotification } from "../lib/hooks/useNotifications";
+import type { AppPage } from "../lib/router";
 
 interface NavigationProps {
   currentPage: string;
-  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard") => void;
+  onNavigate: (page: AppPage) => void;
   user: { email: string; fullName: string; role?: string } | null;
   onLogout: () => void;
   streak: number;
@@ -278,13 +280,13 @@ export const Navbar: React.FC<NavigationProps> = ({
 
 interface SidebarProps {
   currentPage: string;
-  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz") => void;
+  onNavigate: (page: AppPage) => void;
   streak: number;
   currentLessonTitle?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streak, currentLessonTitle }) => {
-  const links = [
+  const links: { id: AppPage; label: string; desc: string; icon: LucideIcon }[] = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
     { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
@@ -304,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
             <button
               id={`sidebar-link-${link.id}`}
               key={link.id}
-              onClick={() => onNavigate(link.id as any)}
+              onClick={() => onNavigate(link.id)}
               className={`flex items-center gap-3.5 px-5 py-3 rounded-xl text-left transition duration-150 group cursor-pointer ${
                 isActive
                   ? "bg-orange-50/40 text-orange-700 border-r-4 border-orange-600 font-medium"
