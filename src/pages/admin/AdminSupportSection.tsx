@@ -8,6 +8,7 @@ import {
   type SupportTicket,
   type SupportTicketMessage,
   type SupportTicketStatus,
+  type SupportTicketTopic,
 } from "../../lib/appTypes";
 import {
   listAllTickets,
@@ -26,6 +27,7 @@ const STATUS_PILL: Record<SupportTicketStatus, string> = {
 };
 
 const STATUS_OPTIONS = Object.keys(SUPPORT_STATUS_LABELS) as SupportTicketStatus[];
+const TOPIC_OPTIONS = Object.keys(SUPPORT_TOPIC_LABELS) as SupportTicketTopic[];
 
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString("vi-VN");
 const formatTime = (iso: string) =>
@@ -36,6 +38,7 @@ export const AdminSupportSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<SupportTicketStatus | "all">("all");
+  const [topicFilter, setTopicFilter] = useState<SupportTicketTopic | "all">("all");
   const [page, setPage] = useState(1);
   const [active, setActive] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportTicketMessage[]>([]);
@@ -58,8 +61,8 @@ export const AdminSupportSection: React.FC = () => {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const filtered = useMemo(
-    () => filterTickets(tickets, search, statusFilter),
-    [tickets, search, statusFilter],
+    () => filterTickets(tickets, search, statusFilter, topicFilter),
+    [tickets, search, statusFilter, topicFilter],
   );
 
   // Ba thẻ số liệu suy từ chính danh sách đã tải, không query đếm riêng.
@@ -74,6 +77,7 @@ export const AdminSupportSection: React.FC = () => {
   const openTicket = async (ticket: SupportTicket) => {
     setActive(ticket);
     setReply("");
+    setMessages([]);
     openRequestId.current = ticket.id;
     try {
       const rows = await listMessages(ticket.id);
@@ -105,12 +109,15 @@ export const AdminSupportSection: React.FC = () => {
   const handleReply = async () => {
     const body = reply.trim();
     if (!body || !active) return;
+    const ticketId = active.id;
     setBusy(true);
     try {
-      await sendMessage(active.id, body);
+      await sendMessage(ticketId, body);
       setReply("");
       // Trigger vừa đặt ticket sang resolved — phải tải lại mới thấy đúng.
-      setMessages(await listMessages(active.id));
+      const rows = await listMessages(ticketId);
+      // Admin có thể đã quay lại danh sách rồi mở ticket khác trong lúc chờ — bỏ nếu vậy.
+      if (openRequestId.current === ticketId) setMessages(rows);
       await refresh();
       showToast("Đã gửi phản hồi cho học viên.", "success");
     } catch {
@@ -299,6 +306,16 @@ export const AdminSupportSection: React.FC = () => {
           <option value="all">Tất cả trạng thái</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{SUPPORT_STATUS_LABELS[s]}</option>
+          ))}
+        </select>
+        <select
+          value={topicFilter}
+          onChange={(e) => { setTopicFilter(e.target.value as SupportTicketTopic | "all"); setPage(1); }}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+        >
+          <option value="all">Tất cả chủ đề</option>
+          {TOPIC_OPTIONS.map((t) => (
+            <option key={t} value={t}>{SUPPORT_TOPIC_LABELS[t]}</option>
           ))}
         </select>
       </div>
