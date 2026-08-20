@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { PostgrestError } from "@supabase/supabase-js";
+import { HelpCircle } from "lucide-react";
 import { Button } from "../components/DesignSystem";
 import { Skeleton } from "../components/Skeleton";
 import { showToast } from "../lib/toast";
@@ -23,6 +24,16 @@ const STATUS_BADGE: Record<SupportTicketStatus, string> = {
   processing: "bg-amber-50 text-amber-700",
   resolved: "bg-green-50 text-green-700",
 };
+
+// Chỉ dùng để diễn giải thêm cho từng trạng thái ở card chú giải — nhãn trạng
+// thái tự thân vẫn lấy từ SUPPORT_STATUS_LABELS, không hardcode ở đây.
+const STATUS_LEGEND_HINT: Record<SupportTicketStatus, string> = {
+  pending: "Ticket đã gửi, chờ đội ngũ tiếp nhận.",
+  processing: "Đội ngũ đang kiểm tra yêu cầu của bạn.",
+  resolved: "Đã gửi phản hồi hoàn tất.",
+};
+
+const STATUS_ORDER: SupportTicketStatus[] = ["pending", "processing", "resolved"];
 
 interface CreateTicketModalProps {
   sending: boolean;
@@ -154,6 +165,7 @@ export const SupportPage: React.FC = () => {
 
   const openTicket = async (ticket: SupportTicket) => {
     setActiveTicket(ticket);
+    setMessages([]);
     activeTicketIdRef.current = ticket.id;
     try {
       const rows = await listMessages(ticket.id);
@@ -233,47 +245,85 @@ export const SupportPage: React.FC = () => {
       </div>
 
       {activeTicket === null ? (
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="font-display text-xs font-bold text-red-600 uppercase tracking-wider">Yêu cầu của bạn</div>
-            <span className="text-xs text-slate-400">{tickets.length} ticket</span>
-          </div>
-          {loading ? (
-            <div className="p-4 flex flex-col gap-3">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-3.5 items-start">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="font-display text-xs font-bold text-red-600 uppercase tracking-wider">Yêu cầu của bạn</div>
+              <span className="text-xs text-slate-400">{tickets.length} ticket</span>
             </div>
-          ) : tickets.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-400">
-              Bạn chưa gửi yêu cầu hỗ trợ nào.
-            </div>
-          ) : (
-            <div className="p-1.5">
-              {tickets.map((ticket) => (
-                <button
-                  key={ticket.id}
-                  type="button"
-                  onClick={() => void openTicket(ticket)}
-                  className="w-full grid grid-cols-[1fr_auto] gap-3.5 items-center p-3 rounded-xl border border-transparent hover:bg-slate-50 hover:border-slate-200 text-left transition-colors"
-                >
-                  <div>
-                    <div className="font-display text-sm font-bold text-slate-800 mb-1">{ticket.title}</div>
-                    <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-400">
-                      <span className="font-mono text-slate-500">#{ticket.code}</span>
-                      <span>·</span>
-                      <span>{SUPPORT_TOPIC_LABELS[ticket.topic]}</span>
-                      <span>·</span>
-                      <span>{new Date(ticket.createdAt).toLocaleDateString("vi-VN")}</span>
+            {loading ? (
+              <div className="p-4 flex flex-col gap-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="p-8 text-center text-sm text-slate-400">
+                Bạn chưa gửi yêu cầu hỗ trợ nào.
+              </div>
+            ) : (
+              <div className="p-1.5">
+                {tickets.map((ticket) => (
+                  <button
+                    key={ticket.id}
+                    type="button"
+                    onClick={() => void openTicket(ticket)}
+                    className="w-full grid grid-cols-[1fr_auto] gap-3.5 items-center p-3 rounded-xl border border-transparent hover:bg-slate-50 hover:border-slate-200 text-left transition-colors"
+                  >
+                    <div>
+                      <div className="font-display text-sm font-bold text-slate-800 mb-1">{ticket.title}</div>
+                      <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-400">
+                        <span className="font-mono text-slate-500">#{ticket.code}</span>
+                        <span>·</span>
+                        <span>{SUPPORT_TOPIC_LABELS[ticket.topic]}</span>
+                        <span>·</span>
+                        <span>{new Date(ticket.createdAt).toLocaleDateString("vi-VN")}</span>
+                      </div>
                     </div>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_BADGE[ticket.status]}`}>
+                      {SUPPORT_STATUS_LABELS[ticket.status]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3.5">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+              <div className="font-display text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
+                <HelpCircle className="w-3.5 h-3.5" />
+                Bạn cần hỗ trợ gì?
+              </div>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Tạo ticket khi bạn gặp sự cố hoặc cần đội ngũ kiểm tra chi tiết.
+              </p>
+              <div className="flex flex-col gap-2 mt-3">
+                {Object.entries(SUPPORT_TOPIC_LABELS).map(([key, label]) => (
+                  <div key={key} className="flex items-start gap-2 text-xs text-slate-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1.5 shrink-0" />
+                    <span>{label}</span>
                   </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_BADGE[ticket.status]}`}>
-                    {SUPPORT_STATUS_LABELS[ticket.status]}
-                  </span>
-                </button>
-              ))}
+                ))}
+              </div>
             </div>
-          )}
+
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+              <div className="font-display text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Trạng thái xử lý
+              </div>
+              <div className="flex flex-col gap-2.5 mt-3">
+                {STATUS_ORDER.map((status) => (
+                  <div key={status} className="flex items-start gap-2 text-[11px] text-slate-500 leading-relaxed">
+                    <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_BADGE[status]}`}>
+                      {SUPPORT_STATUS_LABELS[status]}
+                    </span>
+                    <span>{STATUS_LEGEND_HINT[status]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
@@ -293,6 +343,8 @@ export const SupportPage: React.FC = () => {
                 {SUPPORT_TOPIC_LABELS[activeTicket.topic]}
                 {" · Tạo lúc "}
                 {new Date(activeTicket.createdAt).toLocaleDateString("vi-VN")}
+                {" · Cập nhật "}
+                {new Date(activeTicket.updatedAt).toLocaleDateString("vi-VN")}
               </div>
             </div>
             <span className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_BADGE[activeTicket.status]}`}>
