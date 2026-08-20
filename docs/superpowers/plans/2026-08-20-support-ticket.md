@@ -80,7 +80,7 @@ Chỉ `supabase db push` sau khi lượt chạy thử đó xanh.
 | `src/lib/appTypes.ts` | (sửa) Thêm type và nhãn tiếng Việt cho ticket. Chỉ khai báo, không có lời gọi mạng. |
 | `supabase/tests/support_schema_test.sql` | (mới) 15 case pgTAP cho bảng và ràng buộc. |
 | `supabase/tests/support_rls_test.sql` | (mới) 14 case pgTAP cho phân quyền. |
-| `supabase/tests/support_triggers_test.sql` | (mới) 17 case pgTAP cho trigger và RPC. |
+| `supabase/tests/support_triggers_test.sql` | (mới) 18 case pgTAP cho trigger và RPC. |
 | `src/lib/supportMappers.ts` | (mới) Logic thuần, **không import gì ngoài type**: đổi snake_case → camelCase, tính ba thẻ số liệu, lọc danh sách. Tách riêng để chạy được dưới `node --test` mà không cần biến môi trường Vite. |
 | `src/lib/supportMappers.test.ts` | (mới) Test tự động cho ba hàm trên. |
 | `package.json` | (sửa) Thêm script `test`. |
@@ -101,7 +101,7 @@ Lý do tách `src/lib/support.ts`: hai màn cùng cần map dữ liệu và cùn
 
 **Files:**
 - Create: `supabase/migrations/20260820120000_support_tickets.sql`
-- Test (tạm, không commit): `<scratch>/probe_rls.sql`
+- Test: `supabase/tests/support_schema_test.sql`, `supabase/tests/support_rls_test.sql` (đã có sẵn trong repo)
 
 **Interfaces:**
 - Consumes: bảng `profiles` (có sẵn), trigger `on_auth_user_created` (có sẵn).
@@ -246,7 +246,7 @@ Bộ test pgTAP trong `supabase/tests/` **chưa chạy được sau Task 1**, v�
 Ở task này chỉ cần lượt chạy thử ở Step 3 không lỗi cú pháp. Toàn bộ 47 case sẽ
 chạy ở Task 2 Step 3.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add supabase/migrations/20260820120000_support_tickets.sql
@@ -263,7 +263,7 @@ vì trigger ở migration sau sẽ sinh và luôn ghi đè."
 
 **Files:**
 - Create: `supabase/migrations/20260820120100_support_ticket_triggers.sql`
-- Test (tạm, không commit): `<scratch>/probe_triggers.sql`
+- Test: `supabase/tests/support_triggers_test.sql` (đã có sẵn trong repo)
 
 **Interfaces:**
 - Consumes: hai bảng và sequence từ Task 1; bảng `notifications` (có sẵn).
@@ -469,13 +469,13 @@ Kỳ vọng: CLI liệt kê đúng hai migration mới rồi áp thành công.
 
 - [ ] **Step 3: Chạy bộ test pgTAP**
 
-Ba file đã có sẵn trong repo, tổng **46 case**:
+Ba file đã có sẵn trong repo, tổng **47 case**:
 
 | File | Case | Nội dung |
 |---|---|---|
 | `supabase/tests/support_schema_test.sql` | DB-01…DB-15 | Bảng, sequence, hàm RPC, RLS đã bật, `CHECK` cho `topic`/`status`, dạng mã, xoá ticket kéo theo tin nhắn |
 | `supabase/tests/support_rls_test.sql` | RLS-01…RLS-14 | Bộ policy đúng như thiết kế, học viên không đọc/sửa/xoá được của người khác, không giả mạo được tác giả, admin toàn quyền |
-| `supabase/tests/support_triggers_test.sql` | TRG-01…TRG-17 | Mã do server sinh, `is_staff` do server quyết, chuyển trạng thái hai chiều, ba loại thông báo, `updated_at`, trần 5 ticket, chặn ghi thẳng vào `notifications` |
+| `supabase/tests/support_triggers_test.sql` | TRG-01…TRG-18 | Mã do server sinh, `is_staff` do server quyết, chuyển trạng thái hai chiều, ba loại thông báo (kể cả việc **không** bắn thông báo trùng cho tin nhắn đầu), `updated_at`, trần 5 ticket, chặn ghi thẳng vào `notifications` |
 
 ```bash
 npm run test:db
@@ -488,7 +488,7 @@ thẳng ra bất biến nào vỡ.
 Nếu pgTAP báo thiếu extension, kiểm tra lại rằng Postgres local đang chạy —
 mỗi file đã tự `create extension if not exists pgtap`.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/20260820120100_support_ticket_triggers.sql
@@ -518,7 +518,7 @@ auth.uid() bên trong."
 npm run gen:types
 ```
 
-Kỳ vọng: `src/lib/database.types.ts` đổi, xuất hiện `support_tickets`, `support_ticket_messages`, `create_support_ticket`. Nếu lệnh lỗi vì Supabase local chưa chạy, quay lại mục "Điều kiện tiên quyết" — **không sửa tay file này**.
+Kỳ vọng: `src/lib/database.types.ts` đổi, xuất hiện `support_tickets`, `support_ticket_messages`, `create_support_ticket`. Nếu lệnh lỗi vì CLI chưa đăng nhập hoặc chưa link, quay lại mục "Điều kiện tiên quyết" — **không sửa tay file này**.
 
 - [ ] **Step 2: Thêm type vào `src/lib/appTypes.ts`**
 
@@ -1726,7 +1726,8 @@ Nên script `test` đã được thêm vào `package.json`, và tính năng này
 case nữa cho `src/lib/supportMappers.ts` — nâng tổng lên 184.
 
 Tầng SQL dùng **pgTAP** qua `supabase test db` (script `test:db`), là cơ chế
-test SQL chính thức của Supabase. Ba file trong `supabase/tests/` cho **46 case**.
+test SQL chính thức của Supabase. Ba file trong `supabase/tests/` cho **47 case**,
+đã chạy thật trên project Deutsch: **47 pass**.
 
 Hai lệnh chạy toàn bộ phần tự động:
 

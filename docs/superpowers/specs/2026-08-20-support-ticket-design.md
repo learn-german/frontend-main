@@ -363,5 +363,5 @@ Vì vậy logic thuần của tính năng này tách ra `src/lib/supportMappers.
    đọc được ticket của học viên B. Nếu chưa có tài khoản test thứ hai, phải báo
    rõ là chưa kiểm chứng được, không được coi là xong.
 
-Nếu Supabase local chưa chạy được `npm run gen:types` thì dừng ở đó và báo,
+Nếu chưa `supabase login` + `link` nên `npm run gen:types` chưa chạy được thì dừng lại và báo,
 không sửa tay `database.types.ts`.

@@ -9,8 +9,8 @@
 |---|---|---|---|
 | SQL — lược đồ, RLS, trigger, RPC | 47 | `npm run test:db` (pgTAP) | **Đã chạy: 47 pass** trên project Deutsch |
 | TypeScript — logic thuần | 20 | `npm test` | **Đã chạy: 20 pass** |
-| HTTP — bất biến qua PostgREST | 5 | `curl` thủ công | Cần Supabase local |
-| Giao diện — học viên, admin, thông báo | 26 | Thao tác tay trên browser | Cần Supabase local |
+| HTTP — bất biến qua PostgREST | 5 | `curl` vào project đã link | Cần app chạy để lấy token |
+| Giao diện — học viên, admin, thông báo | 26 | Thao tác tay trên browser | Cần `npm run dev` |
 | **Tổng** | **98** | | |
 
 Hai lệnh chạy toàn bộ phần tự động:
