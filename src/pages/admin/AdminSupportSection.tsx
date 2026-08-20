@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, ArrowLeft, CheckCircle2, Clock, Loader2, Search, Send } from "lucide-react";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
@@ -69,13 +69,22 @@ export const AdminSupportSection: React.FC = () => {
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  const openRequestId = useRef<string | null>(null);
+
   const openTicket = async (ticket: SupportTicket) => {
     setActive(ticket);
+    setReply("");
+    openRequestId.current = ticket.id;
     try {
-      setMessages(await listMessages(ticket.id));
+      const rows = await listMessages(ticket.id);
+      // Ticket có thể đã bị đổi (người dùng bấm quay lại rồi mở ticket khác)
+      // trong lúc request này còn đang chạy — bỏ qua phản hồi lạc nhịp.
+      if (openRequestId.current === ticket.id) setMessages(rows);
     } catch {
-      setMessages([]);
-      showToast("Không tải được nội dung trao đổi.", "warning");
+      if (openRequestId.current === ticket.id) {
+        setMessages([]);
+        showToast("Không tải được nội dung trao đổi.", "warning");
+      }
     }
   };
 
@@ -116,7 +125,7 @@ export const AdminSupportSection: React.FC = () => {
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => setActive(null)}
+          onClick={() => { setActive(null); setReply(""); }}
           className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-orange-600 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -319,13 +328,16 @@ export const AdminSupportSection: React.FC = () => {
               </tr>
             ) : (
               paginated.map((t) => (
-                <tr
-                  key={t.id}
-                  onClick={() => void openTicket(t)}
-                  className="hover:bg-slate-50/50 transition-colors cursor-pointer"
-                >
+                <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-slate-400">{t.code}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{t.title}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    <button
+                      onClick={() => void openTicket(t)}
+                      className="hover:text-orange-600 hover:underline cursor-pointer text-left"
+                    >
+                      {t.title}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{t.author?.fullName || t.author?.email || "—"}</td>
                   <td className="px-4 py-3 text-slate-500">{SUPPORT_TOPIC_LABELS[t.topic]}</td>
                   <td className="px-4 py-3 text-center">
