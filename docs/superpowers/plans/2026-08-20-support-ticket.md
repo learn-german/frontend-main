@@ -40,12 +40,10 @@ supabase status
 
 Nếu lệnh trên báo lỗi Docker: mở Docker Desktop (hoặc OrbStack) rồi chạy `supabase start`. Không có nó thì **không thể** chạy `supabase db reset` lẫn `npm run gen:types` (script này dùng `supabase gen types typescript --local`). Đừng lách bằng cách sửa tay `database.types.ts` — CLAUDE.md cấm.
 
-`psql` cũng không có trên PATH. Hai cách chạy file SQL kiểm chứng, chọn một:
+Không cần `psql`: bộ test SQL viết bằng **pgTAP** và chạy qua Supabase CLI
+(`supabase test db`), CLI tự lo phần kết nối.
 
-- **Cách A (không cài gì):** mở Supabase Studio ở http://127.0.0.1:54323, dán nội dung file `.sql` vào SQL Editor rồi chạy.
-- **Cách B (cài psql):** `brew install libpq && brew link --force libpq`, sau đó dùng lệnh đã ghi trong từng task.
-
-Các file kiểm chứng `.sql` viết trong kế hoạch này là **file tạm**, để trong thư mục scratch, **không commit**.
+Bộ test SQL đã nằm sẵn trong repo tại `supabase/tests/` — không phải file tạm.
 
 ## Cấu trúc file
 
@@ -54,6 +52,9 @@ Các file kiểm chứng `.sql` viết trong kế hoạch này là **file tạm*
 | `supabase/migrations/20260820120000_support_tickets.sql` | Tạo bảng, sequence, index, ràng buộc CHECK, bật RLS và toàn bộ policy. Không chứa logic. |
 | `supabase/migrations/20260820120100_support_ticket_triggers.sql` | Toàn bộ trigger giữ bất biến + hàm RPC `create_support_ticket`. Tách khỏi file trên để người review duyệt mô hình dữ liệu và logic riêng. |
 | `src/lib/appTypes.ts` | (sửa) Thêm type và nhãn tiếng Việt cho ticket. Chỉ khai báo, không có lời gọi mạng. |
+| `supabase/tests/support_schema_test.sql` | (mới) 15 case pgTAP cho bảng và ràng buộc. |
+| `supabase/tests/support_rls_test.sql` | (mới) 14 case pgTAP cho phân quyền. |
+| `supabase/tests/support_triggers_test.sql` | (mới) 17 case pgTAP cho trigger và RPC. |
 | `src/lib/supportMappers.ts` | (mới) Logic thuần, **không import gì ngoài type**: đổi snake_case → camelCase, tính ba thẻ số liệu, lọc danh sách. Tách riêng để chạy được dưới `node --test` mà không cần biến môi trường Vite. |
 | `src/lib/supportMappers.test.ts` | (mới) Test tự động cho ba hàm trên. |
 | `package.json` | (sửa) Thêm script `test`. |
@@ -209,97 +210,14 @@ supabase db reset
 
 Kỳ vọng: chạy hết migrations rồi tới `seed.sql`, không lỗi. Nếu báo lỗi cú pháp SQL, sửa file rồi chạy lại.
 
-- [ ] **Step 4: Viết file kiểm chứng RLS**
+- [ ] **Step 4: Hoãn phần test hành vi sang Task 2**
 
-Tạo `<scratch>/probe_rls.sql`. File này tự dựng hai học viên và một admin, rồi khẳng định bằng `RAISE EXCEPTION` — chạy im lặng là đạt, có dòng nào sai là văng lỗi ngay.
+Bộ test pgTAP trong `supabase/tests/` **chưa chạy được sau Task 1**, và đó là
+đúng dự kiến: cột `code` để `NOT NULL` mà không có `DEFAULT`, nên mọi lệnh
+`insert` không kèm `code` đều hỏng cho tới khi trigger sinh mã ở Task 2 tồn tại.
 
-```sql
-BEGIN;
-
--- Ba tài khoản. INSERT vào auth.users kích hoạt trigger on_auth_user_created,
--- trigger đó tự tạo row profiles + user_stats tương ứng.
-INSERT INTO auth.users
-  (instance_id, id, aud, role, email, encrypted_password,
-   email_confirmed_at, created_at, updated_at,
-   raw_app_meta_data, raw_user_meta_data)
-VALUES
-  ('00000000-0000-0000-0000-000000000000',
-   '11111111-1111-1111-1111-111111111111',
-   'authenticated', 'authenticated', 'probe-a@test.local', 'x',
-   now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Probe A"}'),
-  ('00000000-0000-0000-0000-000000000000',
-   '22222222-2222-2222-2222-222222222222',
-   'authenticated', 'authenticated', 'probe-b@test.local', 'x',
-   now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Probe B"}');
-
--- Ticket của A, tạo bằng quyền postgres nên bỏ qua RLS.
--- code phải điền tay vì trigger sinh code chưa tồn tại ở Task 1.
-INSERT INTO support_tickets (code, user_id, title, topic)
-VALUES ('SD-PROBE', '11111111-1111-1111-1111-111111111111',
-        'Ticket của A', 'lesson_content');
-
--- --- A đọc được ticket của mình ---
-SET LOCAL role authenticated;
-SET LOCAL "request.jwt.claims" =
-  '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"user"}}';
-
-DO $$
-BEGIN
-  IF (SELECT count(*) FROM support_tickets) <> 1 THEN
-    RAISE EXCEPTION 'FAIL: A phải đọc được đúng 1 ticket của mình';
-  END IF;
-END $$;
-
--- --- A không đổi được trạng thái (không có policy UPDATE) ---
-DO $$
-DECLARE
-  affected INT;
-BEGIN
-  UPDATE support_tickets SET status = 'resolved' WHERE code = 'SD-PROBE';
-  GET DIAGNOSTICS affected = ROW_COUNT;
-  IF affected <> 0 THEN
-    RAISE EXCEPTION 'FAIL: học viên không được phép đổi trạng thái ticket';
-  END IF;
-END $$;
-
--- --- B không đọc được ticket của A ---
-SET LOCAL "request.jwt.claims" =
-  '{"sub":"22222222-2222-2222-2222-222222222222","app_metadata":{"role":"user"}}';
-
-DO $$
-BEGIN
-  IF (SELECT count(*) FROM support_tickets) <> 0 THEN
-    RAISE EXCEPTION 'FAIL: B không được đọc ticket của A';
-  END IF;
-END $$;
-
--- --- admin đọc được tất cả ---
-SET LOCAL "request.jwt.claims" =
-  '{"sub":"22222222-2222-2222-2222-222222222222","app_metadata":{"role":"admin"}}';
-
-DO $$
-BEGIN
-  IF (SELECT count(*) FROM support_tickets) <> 1 THEN
-    RAISE EXCEPTION 'FAIL: admin phải đọc được mọi ticket';
-  END IF;
-END $$;
-
-ROLLBACK;
-```
-
-- [ ] **Step 5: Chạy kiểm chứng**
-
-Cách B (có psql):
-
-```bash
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f <scratch>/probe_rls.sql
-```
-
-Cách A: dán toàn bộ file vào SQL Editor của Studio (http://127.0.0.1:54323) rồi chạy.
-
-Kỳ vọng: **không có dòng `FAIL:` nào**, kết thúc bằng `ROLLBACK`. Nếu thấy `FAIL:` thì đọc thông điệp, sửa policy tương ứng trong migration, chạy lại `supabase db reset`, rồi chạy lại probe.
+Ở task này chỉ cần `supabase db reset` chạy sạch (Step 3). Toàn bộ 46 case sẽ
+chạy ở Task 2 Step 3.
 
 - [ ] **Step 6: Commit**
 
@@ -513,160 +431,26 @@ supabase db reset
 
 Kỳ vọng: chạy hết, không lỗi.
 
-- [ ] **Step 3: Viết file kiểm chứng trigger**
+- [ ] **Step 3: Chạy bộ test pgTAP**
 
-Tạo `<scratch>/probe_triggers.sql`:
+Ba file đã có sẵn trong repo, tổng **46 case**:
 
-```sql
-BEGIN;
-
-INSERT INTO auth.users
-  (instance_id, id, aud, role, email, encrypted_password,
-   email_confirmed_at, created_at, updated_at,
-   raw_app_meta_data, raw_user_meta_data)
-VALUES
-  ('00000000-0000-0000-0000-000000000000',
-   '11111111-1111-1111-1111-111111111111',
-   'authenticated', 'authenticated', 'probe-a@test.local', 'x',
-   now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Probe A"}'),
-  ('00000000-0000-0000-0000-000000000000',
-   '99999999-9999-9999-9999-999999999999',
-   'authenticated', 'authenticated', 'probe-admin@test.local', 'x',
-   now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Probe Admin"}');
-
-SET LOCAL role authenticated;
-SET LOCAL "request.jwt.claims" =
-  '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"user"}}';
-
--- --- RPC tạo cả ticket lẫn tin nhắn đầu, code do server sinh ---
-DO $$
-DECLARE
-  t support_tickets;
-BEGIN
-  t := create_support_ticket('Không mở được bài nghe', 'lesson_content',
-                             'Bài nghe Video 6 không phát được.');
-
-  IF t.code !~ '^SD-[0-9]+$' THEN
-    RAISE EXCEPTION 'FAIL: code phải do server sinh dạng SD-<số>, nhận được %', t.code;
-  END IF;
-  IF t.status <> 'pending' THEN
-    RAISE EXCEPTION 'FAIL: ticket mới phải ở pending, nhận được %', t.status;
-  END IF;
-  IF (SELECT count(*) FROM support_ticket_messages WHERE ticket_id = t.id) <> 1 THEN
-    RAISE EXCEPTION 'FAIL: RPC phải tạo đúng 1 tin nhắn đầu';
-  END IF;
-  IF (SELECT is_staff FROM support_ticket_messages WHERE ticket_id = t.id) THEN
-    RAISE EXCEPTION 'FAIL: tin nhắn của học viên phải có is_staff = false';
-  END IF;
-END $$;
-
--- --- Học viên khai is_staff = true vẫn bị ép về false ---
-DO $$
-DECLARE
-  v_ticket UUID;
-BEGIN
-  SELECT id INTO v_ticket FROM support_tickets LIMIT 1;
-
-  INSERT INTO support_ticket_messages (ticket_id, author_id, is_staff, body)
-  VALUES (v_ticket, '11111111-1111-1111-1111-111111111111', true, 'giả danh');
-
-  IF (SELECT bool_or(is_staff) FROM support_ticket_messages
-      WHERE ticket_id = v_ticket) THEN
-    RAISE EXCEPTION 'FAIL: is_staff do client khai phải bị ép về false';
-  END IF;
-END $$;
-
--- --- Học viên gửi code bịa vẫn bị ghi đè ---
-DO $$
-DECLARE
-  v_code TEXT;
-BEGIN
-  INSERT INTO support_tickets (code, user_id, title, topic)
-  VALUES ('SD-0001', '11111111-1111-1111-1111-111111111111',
-          'Ticket bịa code', 'other')
-  RETURNING code INTO v_code;
-
-  IF v_code = 'SD-0001' THEN
-    RAISE EXCEPTION 'FAIL: code client gửi phải bị ghi đè';
-  END IF;
-END $$;
-
--- --- Admin trả lời: ticket thành resolved, học viên nhận thông báo ---
-DO $$
-DECLARE
-  v_ticket UUID;
-  v_owner  UUID;
-BEGIN
-  SELECT id, user_id INTO v_ticket, v_owner
-    FROM support_tickets ORDER BY created_at LIMIT 1;
-
-  PERFORM set_config('request.jwt.claims',
-    '{"sub":"99999999-9999-9999-9999-999999999999","app_metadata":{"role":"admin"}}',
-    true);
-
-  INSERT INTO support_ticket_messages (ticket_id, author_id, body)
-  VALUES (v_ticket, '99999999-9999-9999-9999-999999999999', 'Đã sửa nhé.');
-
-  IF (SELECT status FROM support_tickets WHERE id = v_ticket) <> 'resolved' THEN
-    RAISE EXCEPTION 'FAIL: admin trả lời thì ticket phải thành resolved';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM notifications
-                 WHERE type = 'support_replied' AND user_id = v_owner) THEN
-    RAISE EXCEPTION 'FAIL: phải có notification support_replied cho học viên';
-  END IF;
-END $$;
-
--- --- Học viên nhắn tiếp: ticket mở lại processing ---
-DO $$
-DECLARE
-  v_ticket UUID;
-BEGIN
-  SELECT id INTO v_ticket FROM support_tickets ORDER BY created_at LIMIT 1;
-
-  PERFORM set_config('request.jwt.claims',
-    '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"user"}}',
-    true);
-
-  INSERT INTO support_ticket_messages (ticket_id, author_id, body)
-  VALUES (v_ticket, '11111111-1111-1111-1111-111111111111', 'Vẫn chưa được ạ.');
-
-  IF (SELECT status FROM support_tickets WHERE id = v_ticket) <> 'processing' THEN
-    RAISE EXCEPTION 'FAIL: học viên nhắn vào ticket resolved thì phải mở lại processing';
-  END IF;
-END $$;
-
--- --- Trần 5 ticket đang mở ---
-DO $$
-DECLARE
-  i INT;
-  blocked BOOLEAN := false;
-BEGIN
-  FOR i IN 1..10 LOOP
-    BEGIN
-      PERFORM create_support_ticket('Ticket ' || i, 'other', 'nội dung');
-    EXCEPTION WHEN check_violation THEN
-      blocked := true;
-      EXIT;
-    END;
-  END LOOP;
-
-  IF NOT blocked THEN
-    RAISE EXCEPTION 'FAIL: phải bị chặn khi vượt 5 ticket đang mở';
-  END IF;
-END $$;
-
-ROLLBACK;
-```
-
-- [ ] **Step 4: Chạy kiểm chứng**
+| File | Case | Nội dung |
+|---|---|---|
+| `supabase/tests/support_schema_test.sql` | DB-01…DB-15 | Bảng, sequence, hàm RPC, RLS đã bật, `CHECK` cho `topic`/`status`, dạng mã, xoá ticket kéo theo tin nhắn |
+| `supabase/tests/support_rls_test.sql` | RLS-01…RLS-14 | Bộ policy đúng như thiết kế, học viên không đọc/sửa/xoá được của người khác, không giả mạo được tác giả, admin toàn quyền |
+| `supabase/tests/support_triggers_test.sql` | TRG-01…TRG-17 | Mã do server sinh, `is_staff` do server quyết, chuyển trạng thái hai chiều, ba loại thông báo, `updated_at`, trần 5 ticket, chặn ghi thẳng vào `notifications` |
 
 ```bash
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f <scratch>/probe_triggers.sql
+npm run test:db
 ```
 
-Kỳ vọng: không có `FAIL:` nào. Mỗi thông điệp `FAIL:` nói thẳng bất biến nào vỡ — sửa đúng hàm đó trong migration, `supabase db reset`, chạy lại.
+Kỳ vọng: mọi dòng đều `ok`, không có `not ok`. Mỗi case có tên mang mã riêng
+(`TRG-08 admin trả lời thì ticket chuyển sang resolved`), nên dòng `not ok` chỉ
+thẳng ra bất biến nào vỡ.
+
+Nếu pgTAP báo thiếu extension, kiểm tra lại rằng Postgres local đang chạy —
+mỗi file đã tự `create extension if not exists pgtap`.
 
 - [ ] **Step 5: Commit**
 
@@ -854,12 +638,9 @@ export function filterTickets(
 
 Tạo `src/lib/supportMappers.test.ts`.
 
-**Phần mở rộng `.ts` trong đường dẫn import là bắt buộc**, không phải nhầm:
-`node --test` chạy dưới ESM thuần nên đòi đường dẫn tường minh, viết
-`from "./supportMappers"` sẽ hỏng với `ERR_MODULE_NOT_FOUND`. TypeScript chấp
-nhận cách viết này vì `tsconfig.json` đã bật sẵn `allowImportingTsExtensions`.
-Bên trong `supportMappers.ts` thì `import type` được xoá lúc chạy nên không cần
-phần mở rộng.
+Import để **không có phần mở rộng**, đúng lệ của 20 file test sẵn có trong
+`src/lib/` — `tsx` lo phần phân giải. Chạy bằng `node --test` trần (không có
+`--import tsx`) sẽ hỏng với `ERR_MODULE_NOT_FOUND`.
 
 ```ts
 import assert from "node:assert/strict";
@@ -867,80 +648,207 @@ import test from "node:test";
 import {
   computeTicketStats,
   filterTickets,
+  mapMessage,
   mapTicket,
+  type MessageRow,
   type TicketRow,
-} from "./supportMappers.ts";
+} from "./supportMappers";
 
-const base: TicketRow = {
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const NOW = new Date("2026-08-20T00:00:00Z").getTime();
+
+const ticketRow: TicketRow = {
   id: "t1",
   code: "SD-1000",
   user_id: "u1",
   title: "Không mở được bài nghe",
   topic: "lesson_content",
   status: "pending",
-  created_at: "2026-08-20T09:12:00Z",
-  updated_at: "2026-08-20T09:12:00Z",
+  created_at: "2026-08-18T09:12:00Z",
+  updated_at: "2026-08-18T09:12:00Z",
 };
 
-test("mapTicket đổi snake_case sang camelCase, author null khi không nhúng profiles", () => {
-  const t = mapTicket(base);
+const at = (ms: number) => new Date(ms).toISOString();
+
+// ---------------------------------------------------------------- mapTicket
+
+test("TS-01 mapTicket đổi snake_case sang camelCase", () => {
+  const t = mapTicket(ticketRow);
+  assert.equal(t.id, "t1");
+  assert.equal(t.code, "SD-1000");
   assert.equal(t.userId, "u1");
-  assert.equal(t.createdAt, "2026-08-20T09:12:00Z");
-  assert.equal(t.author, null);
+  assert.equal(t.title, "Không mở được bài nghe");
+  assert.equal(t.topic, "lesson_content");
+  assert.equal(t.status, "pending");
+  assert.equal(t.createdAt, "2026-08-18T09:12:00Z");
+  assert.equal(t.updatedAt, "2026-08-18T09:12:00Z");
 });
 
-test("mapTicket lấy tên học viên khi có nhúng profiles", () => {
-  const t = mapTicket({ ...base, profiles: { email: "a@b.c", full_name: "Minh Anh" } });
-  assert.equal(t.author?.fullName, "Minh Anh");
+test("TS-02 mapTicket trả author null khi không nhúng profiles", () => {
+  assert.equal(mapTicket(ticketRow).author, null);
 });
 
-test("mapTicket giữ author khác null khi có email nhưng chưa đặt tên", () => {
-  const t = mapTicket({ ...base, profiles: { email: "a@b.c", full_name: null } });
-  assert.equal(t.author?.email, "a@b.c");
+test("TS-03 mapTicket trả author null khi nhúng profiles nhưng không có row", () => {
+  assert.equal(mapTicket({ ...ticketRow, profiles: null }).author, null);
+});
+
+test("TS-04 mapTicket lấy email và tên khi có nhúng profiles", () => {
+  const t = mapTicket({
+    ...ticketRow,
+    profiles: { email: "minhanh@example.com", full_name: "Nguyễn Minh Anh" },
+  });
+  assert.deepEqual(t.author, {
+    email: "minhanh@example.com",
+    fullName: "Nguyễn Minh Anh",
+  });
+});
+
+test("TS-05 mapTicket giữ author khác null khi học viên chưa đặt tên", () => {
+  const t = mapTicket({
+    ...ticketRow,
+    profiles: { email: "a@b.c", full_name: null },
+  });
+  assert.notEqual(t.author, null, "có email thì author không được là null");
   assert.equal(t.author?.fullName, null);
+  assert.equal(t.author?.email, "a@b.c");
 });
 
-test("computeTicketStats chỉ đếm resolved trong 7 ngày gần nhất", () => {
-  const now = new Date("2026-08-20T00:00:00Z").getTime();
-  const tickets = [
-    mapTicket({ ...base, id: "a", status: "pending" }),
-    mapTicket({ ...base, id: "b", status: "processing" }),
-    mapTicket({ ...base, id: "c", status: "resolved", updated_at: "2026-08-19T00:00:00Z" }),
-    mapTicket({ ...base, id: "d", status: "resolved", updated_at: "2026-07-01T00:00:00Z" }),
-  ];
+// --------------------------------------------------------------- mapMessage
 
-  const stats = computeTicketStats(tickets, now);
-
-  assert.equal(stats.pending, 1);
-  assert.equal(stats.processing, 1);
-  assert.equal(stats.resolvedThisWeek, 1, "ticket resolved từ tháng trước không được tính");
+test("TS-06 mapMessage đổi snake_case sang camelCase", () => {
+  const row: MessageRow = {
+    id: "m1",
+    ticket_id: "t1",
+    author_id: "u1",
+    is_staff: false,
+    body: "Bài nghe không phát được.",
+    created_at: "2026-08-18T09:12:00Z",
+  };
+  assert.deepEqual(mapMessage(row), {
+    id: "m1",
+    ticketId: "t1",
+    authorId: "u1",
+    isStaff: false,
+    body: "Bài nghe không phát được.",
+    createdAt: "2026-08-18T09:12:00Z",
+  });
 });
 
-test("filterTickets khớp cả tiêu đề lẫn mã, không phân biệt hoa thường", () => {
-  const tickets = [
-    mapTicket(base),
-    mapTicket({ ...base, id: "x", code: "SD-2000", title: "Sai đáp án" }),
-  ];
+test("TS-07 mapMessage giữ nguyên is_staff true", () => {
+  const row: MessageRow = {
+    id: "m2", ticket_id: "t1", author_id: "admin1", is_staff: true,
+    body: "Đã sửa.", created_at: "2026-08-18T09:35:00Z",
+  };
+  assert.equal(mapMessage(row).isStaff, true);
+});
 
-  assert.equal(filterTickets(tickets, "sd-2000", "all").length, 1);
-  assert.equal(filterTickets(tickets, "đáp án", "all").length, 1);
-  assert.equal(filterTickets(tickets, "", "pending").length, 2);
-  assert.equal(filterTickets(tickets, "", "resolved").length, 0);
+// -------------------------------------------------------- computeTicketStats
+
+test("TS-08 computeTicketStats trả 0 cho danh sách rỗng", () => {
+  assert.deepEqual(computeTicketStats([], NOW), {
+    pending: 0, processing: 0, resolvedThisWeek: 0,
+  });
+});
+
+test("TS-09 computeTicketStats đếm đúng từng trạng thái", () => {
+  const tickets = [
+    mapTicket({ ...ticketRow, id: "a", status: "pending" }),
+    mapTicket({ ...ticketRow, id: "b", status: "pending" }),
+    mapTicket({ ...ticketRow, id: "c", status: "processing" }),
+    mapTicket({ ...ticketRow, id: "d", status: "resolved", updated_at: at(NOW) }),
+  ];
+  const s = computeTicketStats(tickets, NOW);
+  assert.equal(s.pending, 2);
+  assert.equal(s.processing, 1);
+  assert.equal(s.resolvedThisWeek, 1);
+});
+
+test("TS-10 computeTicketStats: resolved đúng mốc 7 ngày vẫn được tính", () => {
+  const tickets = [
+    mapTicket({ ...ticketRow, status: "resolved", updated_at: at(NOW - WEEK_MS) }),
+  ];
+  assert.equal(computeTicketStats(tickets, NOW).resolvedThisWeek, 1);
+});
+
+test("TS-11 computeTicketStats: resolved sớm hơn mốc 1ms thì không tính", () => {
+  const tickets = [
+    mapTicket({ ...ticketRow, status: "resolved", updated_at: at(NOW - WEEK_MS - 1) }),
+  ];
+  assert.equal(computeTicketStats(tickets, NOW).resolvedThisWeek, 0);
+});
+
+test("TS-12 computeTicketStats không tính pending/processing cũ vào thẻ tuần", () => {
+  const tickets = [
+    mapTicket({ ...ticketRow, status: "pending", updated_at: at(NOW - 90 * 86400000) }),
+    mapTicket({ ...ticketRow, status: "processing", updated_at: at(NOW - 90 * 86400000) }),
+  ];
+  const s = computeTicketStats(tickets, NOW);
+  assert.equal(s.resolvedThisWeek, 0);
+  assert.equal(s.pending, 1, "ticket cũ vẫn phải đếm vào thẻ đang chờ");
+});
+
+// ------------------------------------------------------------- filterTickets
+
+const list = [
+  mapTicket({ ...ticketRow, id: "a", code: "SD-1000", title: "Không mở được bài nghe", status: "pending" }),
+  mapTicket({ ...ticketRow, id: "b", code: "SD-2000", title: "Sai đáp án Grammatik", status: "processing" }),
+  mapTicket({ ...ticketRow, id: "c", code: "SD-3000", title: "Không đăng nhập được", status: "resolved" }),
+];
+
+test("TS-13 filterTickets không lọc gì khi search rỗng và status all", () => {
+  assert.equal(filterTickets(list, "", "all").length, 3);
+});
+
+test("TS-14 filterTickets khớp mã không phân biệt hoa thường", () => {
+  assert.equal(filterTickets(list, "sd-2000", "all")[0].id, "b");
+  assert.equal(filterTickets(list, "SD-2000", "all")[0].id, "b");
+});
+
+test("TS-15 filterTickets khớp tiêu đề có dấu, không phân biệt hoa thường", () => {
+  assert.equal(filterTickets(list, "ĐÁP ÁN", "all")[0].id, "b");
+  assert.equal(filterTickets(list, "đáp án", "all")[0].id, "b");
+});
+
+test("TS-16 filterTickets bỏ khoảng trắng thừa quanh từ khoá", () => {
+  assert.equal(filterTickets(list, "   sd-3000   ", "all")[0].id, "c");
+});
+
+test("TS-17 filterTickets trả rỗng khi không khớp gì", () => {
+  assert.deepEqual(filterTickets(list, "không tồn tại xyz", "all"), []);
+});
+
+test("TS-18 filterTickets lọc theo trạng thái", () => {
+  assert.equal(filterTickets(list, "", "pending").length, 1);
+  assert.equal(filterTickets(list, "", "processing").length, 1);
+  assert.equal(filterTickets(list, "", "resolved").length, 1);
+});
+
+test("TS-19 filterTickets áp đồng thời cả từ khoá lẫn trạng thái", () => {
+  assert.equal(filterTickets(list, "không", "pending").length, 1,
+    "hai ticket chứa chữ 'không' nhưng chỉ một ticket pending");
+  assert.equal(filterTickets(list, "không", "resolved").length, 1);
+  assert.equal(filterTickets(list, "sd-1000", "resolved").length, 0);
+});
+
+test("TS-20 filterTickets không sửa mảng gốc", () => {
+  const before = [...list];
+  filterTickets(list, "sd-1000", "pending");
+  assert.deepEqual(list, before);
 });
 ```
 
 - [ ] **Step 5: Thêm script `test` vào `package.json`**
 
-Trong khối `"scripts"`, thêm dòng:
+Hai script này **đã được thêm sẵn** khi soạn bộ test, kiểm tra lại là có:
 
 ```json
-    "test": "node --test \"src/**/*.test.ts\"",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
+    "test:db": "supabase test db"
 ```
 
-Glob phải **để trong ngoặc kép** để Node tự khai triển — shell của npm không xử
-lý `**`. Mẫu này cố ý chỉ bắt `.ts`: các file `.test.tsx` sẵn có trong repo
-không chạy được dưới `node --test` vì Node không xử lý JSX
-(`ERR_UNKNOWN_FILE_EXTENSION`). Sửa chúng nằm ngoài phạm vi kế hoạch này.
+Glob phải để trong ngoặc kép để Node tự khai triển — shell của npm không xử lý
+`**`. `--import tsx` là phần bắt buộc: `tsx` đã nằm sẵn trong `devDependencies`
+và là thứ phân giải được import không đuôi lẫn cú pháp JSX.
 
 - [ ] **Step 6: Chạy test**
 
@@ -948,10 +856,11 @@ không chạy được dưới `node --test` vì Node không xử lý JSX
 npm test
 ```
 
-Kỳ vọng: `pass 5`, `fail 0`.
+Kỳ vọng: **184 pass, 0 fail** — gồm 164 test sẵn có của repo cộng 20 case mới
+của `supportMappers`. Nếu con số tổng nhỏ hơn 164 thì glob đang bắt sót.
 
-Đã chạy thử đúng năm test này trước khi viết kế hoạch: `pass 5, fail 0`, và
-`tsc --noEmit --strict` trên hai file cũng sạch.
+Đã chạy thử trước khi viết: 20 case mới `pass 20, fail 0`,
+`tsc --noEmit --strict` sạch, và `npm test` trên repo hiện tại `164 pass`.
 
 - [ ] **Step 7: Viết `src/lib/support.ts`**
 
@@ -1752,30 +1661,35 @@ Nếu không sửa gì thì bỏ qua bước này.
 
 ## Ghi chú về kiểm thử tự động
 
-`package.json` ban đầu **không có** script `test`, nhưng điều đó không có nghĩa
-là repo không chạy test được. Các file `*.test.tsx` sẵn có viết cho `node:test`
-(runner built-in của Node), và Node ở đây là v26 nên tự bóc kiểu TypeScript.
-Đã kiểm chứng trực tiếp:
+Repo **đã có sẵn một bộ test đầy đủ mà không ai chạy được**, vì `package.json`
+thiếu script. Kiểm chứng bằng cách chạy thật:
 
-- `node --test "<glob>/**/*.test.ts"` với file `.ts` — **chạy được, pass**.
-- `node --test src/components/Navigation.test.tsx` — **hỏng**, `ERR_UNKNOWN_FILE_EXTENSION`.
-  Node bóc được kiểu TypeScript nhưng không xử lý JSX, nên mọi file `.test.tsx`
-  hiện có trong repo đang không chạy được. Đây là tình trạng có sẵn; sửa chúng
-  nằm ngoài phạm vi kế hoạch này.
+- `src/lib/` có **20 file `*.test.ts`**, cộng 5 file `*.test.tsx` ở
+  `src/components` và `src/pages`. Tổng **164 test**.
+- `node --test` trần làm hỏng toàn bộ: `ERR_MODULE_NOT_FOUND` với `.ts` (import
+  không có phần mở rộng) và `ERR_UNKNOWN_FILE_EXTENSION` với `.tsx` (JSX).
+- `node --import tsx --test "src/**/*.test.ts" "src/**/*.test.tsx"` →
+  **164 pass, 0 fail**. `tsx` đã nằm sẵn trong `devDependencies`.
 
-Vì vậy Task 3 thêm script `test` chỉ bắt `.ts`, và tách logic thuần ra
-`src/lib/supportMappers.ts` để có được một lớp kiểm thử tự động thật:
-phép tính mốc 7 ngày của thẻ "Đã xử lý trong tuần" và bộ lọc theo mã/tiêu đề —
-hai chỗ dễ sai âm thầm nhất trong toàn bộ phần TypeScript.
+Nên script `test` đã được thêm vào `package.json`, và tính năng này bổ sung 20
+case nữa cho `src/lib/supportMappers.ts` — nâng tổng lên 184.
 
-Không thêm dependency nào: `node --test` có sẵn, `vitest` và
-`@testing-library` đều không cần tới. Thêm chúng sẽ là thêm dependency mới,
-việc mà CLAUDE.md yêu cầu hỏi trước.
+Tầng SQL dùng **pgTAP** qua `supabase test db` (script `test:db`), là cơ chế
+test SQL chính thức của Supabase. Ba file trong `supabase/tests/` cho **46 case**.
 
-Phần còn lại vẫn phải kiểm chứng thủ công vì không có gì rẻ hơn:
+Hai lệnh chạy toàn bộ phần tự động:
 
-- **Tầng SQL** — file probe tự khẳng định bằng `RAISE EXCEPTION` (Task 1, 2).
-- **Bất biến chỉ chạm được qua API** — `curl` thẳng vào PostgREST (Task 8).
-  Giao diện không bao giờ gửi `code` hay `is_staff`, nên bấm chuột không bao
-  giờ chạm tới hai bất biến quan trọng nhất.
-- **Tầng giao diện** — danh sách thao tác cụ thể trên browser (Task 5, 6, 7).
+```bash
+npm test
+npm run test:db
+```
+
+Phần còn lại vẫn phải làm tay vì không có gì rẻ hơn:
+
+- **Bất biến chỉ chạm được qua HTTP** — `curl` thẳng vào PostgREST (Task 8).
+  pgTAP chạy trong Postgres nên không đi qua PostgREST; muốn biết client có
+  gửi được `code` hay `is_staff` qua API thật hay không thì phải gọi API thật.
+- **Tầng giao diện** — kịch bản thao tác cụ thể trên browser (Task 5, 6, 7),
+  liệt kê đầy đủ trong `docs/superpowers/plans/2026-08-20-support-ticket-test-cases.md`.
+
+Không thêm dependency nào: `node:test`, `tsx` và pgTAP đều đã có sẵn.
