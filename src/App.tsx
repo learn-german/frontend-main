@@ -23,6 +23,7 @@ import { GrammarSetListPage } from "./pages/GrammarSetListPage";
 import { ReadingSetListPage } from "./pages/ReadingSetListPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { SupportPage } from "./pages/SupportPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
@@ -424,9 +425,7 @@ export default function App() {
               {effectivePage === "packages" && user && (
                 <ComingSoonPage title="Gói học" />
               )}
-              {effectivePage === "help" && user && (
-                <ComingSoonPage title="Trợ giúp học tập" />
-              )}
+              {effectivePage === "help" && user && <SupportPage />}
             </motion.div>
           </AnimatePresence>
         </main>
