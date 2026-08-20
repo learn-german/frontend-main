@@ -127,10 +127,19 @@ create_support_ticket(p_title TEXT, p_topic TEXT, p_body TEXT) RETURNS support_t
 Insert cả ticket lẫn tin nhắn đầu trong cùng một transaction, client gọi một
 lượt qua `supabase.rpc()`.
 
+Hàm **không nhận user id làm tham số** — lấy `auth.uid()` bên trong cho cả
+`support_tickets.user_id` lẫn `support_ticket_messages.author_id`, để không có
+đường nào truyền vào id người khác.
+
 Hàm để **`SECURITY INVOKER`** (mặc định), không phải `SECURITY DEFINER`: nó chạy
 dưới quyền người gọi nên vẫn chịu đúng các policy RLS đã mô tả ở trên, không
 phát sinh đường phân quyền mới cần soát riêng. Đây vẫn là PostgREST, không phải
 Edge Function, nên không lệch hướng đã chốt.
+
+Trigger set `is_staff` vẫn chạy bình thường bên trong RPC: học viên gọi thì tin
+nhắn đầu là `is_staff = false`. Trường hợp một admin tự mở ticket cho chính mình
+sẽ ra `is_staff = true` ngay ở tin nhắn đầu — không có luồng UI nào làm việc đó,
+chấp nhận.
 
 Các lượt trao đổi tiếp theo (học viên nhắn thêm, admin trả lời) vẫn insert thẳng
 vào `support_ticket_messages` qua PostgREST bình thường, không cần RPC.
@@ -249,14 +258,58 @@ biến nó thành đích thật, và `handleNotificationNavigate` cũng phải �
 rồi bỏ ép kiểu. Đây là sửa đúng đường mà feature đi qua, không phải refactor
 lạc đề.
 
+### Hình dạng dữ liệu mỗi màn query
+
+**Danh sách admin** — một query, nhúng profiles theo FK:
+
+```
+.from("support_tickets")
+.select("id, code, title, topic, status, created_at, updated_at, profiles(email, full_name)")
+.order("created_at", { ascending: false })
+```
+
+Nhúng thường, **không dùng `!inner`**, và khai kiểu `profiles` là **nullable**
+phía client — đúng như `AdminWritingSection` đang làm với
+`profiles(email, full_name)`. Đã kiểm chứng admin đọc được mọi row `profiles`
+nhờ policy `profiles: own read` được nới cho admin ở
+`20260629000004_admin_role.sql`, nên tên/email không bị rỗng.
+
+**Danh sách học viên** — không nhúng `profiles` (chỉ ticket của chính mình):
+`select("id, code, title, topic, status, created_at")`.
+
+**Thread** — `support_ticket_messages` lọc theo `ticket_id`, `order("created_at")`
+tăng dần.
+
+### Sau mỗi thao tác ghi phải tải lại, không vá tại chỗ
+
+Trạng thái ticket do **trigger phía server** quyết định, client không suy ra
+được: admin gửi phản hồi thì ticket thành `resolved`, học viên nhắn vào ticket
+`resolved` thì nó bật lại `processing`. Nếu chỉ nối thêm tin nhắn vào mảng
+trong bộ nhớ, badge trạng thái trên màn hình sẽ nói sai.
+
+Vì vậy mọi thao tác ghi (tạo ticket, gửi tin nhắn, đổi trạng thái) đều tải lại
+ticket + thread sau khi ghi xong, theo đúng khuôn `fetchRows()` mà
+`AdminWritingSection` dùng sau khi chấm điểm.
+
+Không dùng Supabase Realtime. Người dùng tự tải lại hoặc mở lại ticket là đủ cho
+luồng hỗ trợ này.
+
+### Ba thẻ số liệu bên admin
+
+Suy ra từ chính danh sách đã tải, **không query đếm riêng**: đang chờ =
+`status === 'pending'`, đang xử lý = `status === 'processing'`, đã xử lý trong
+tuần = `status === 'resolved'` và `updated_at` trong 7 ngày gần nhất.
+
 ### Danh sách, lọc và phân trang bên admin
 
 Làm client-side y như `AdminUsersSection`: tải danh sách rồi lọc/phân trang
 trong bộ nhớ, `PAGE_SIZE = 15`.
 
-`ponytail:` cách này chỉ ổn khi số ticket còn nhỏ; khi inbox phình lên thì
-chuyển sang `.range()` phía server. Chấp nhận trần này để bám đúng pattern đang
-có thay vì dựng sẵn phân trang server-side chưa ai cần.
+`ponytail:` cách này — và cả ba thẻ số liệu ở trên — chỉ ổn khi số ticket còn
+nhỏ, vì đều dựa trên việc tải hết danh sách về máy. Khi inbox phình lên thì
+chuyển sang `.range()` cộng ba query `count` riêng. Chấp nhận trần này để bám
+đúng pattern `AdminUsersSection`/`AdminWritingSection` đang có thay vì dựng sẵn
+thứ chưa ai cần.
 
 ### Dùng lại component sẵn có
 
@@ -295,7 +348,11 @@ Repo **không có test runner nào được cấu hình**: `package.json` chỉ 
    hiện toast chứ không văng lỗi thô.
 5. Bấm thông báo ở **cả hai phía**: chuông admin mở section Hỗ trợ, chuông học
    viên mở màn `/help`.
-6. RLS: cần hai tài khoản (một thường, một admin) để xác nhận học viên A không
+6. Badge trạng thái sau khi ghi: admin gửi phản hồi xong, badge trên **màn học
+   viên** (tải lại) phải là "Đã xử lý"; học viên nhắn tiếp xong, badge trên màn
+   admin phải quay về "Đang xử lý". Đây là phép thử cho quy tắc "tải lại, không
+   vá tại chỗ".
+7. RLS: cần hai tài khoản (một thường, một admin) để xác nhận học viên A không
    đọc được ticket của học viên B. Nếu chưa có tài khoản test thứ hai, phải báo
    rõ là chưa kiểm chứng được, không được coi là xong.
 
