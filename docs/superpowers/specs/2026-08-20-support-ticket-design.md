@@ -48,10 +48,10 @@ RLS là đủ để phân quyền. Đây cũng đúng khuôn `writing_submission
 | Cột | Kiểu | Ghi chú |
 |---|---|---|
 | `id` | UUID PK | `gen_random_uuid()` |
-| `code` | TEXT UNIQUE NOT NULL | `SD-1024`, mặc định `'SD-' \|\| nextval('support_ticket_code_seq')` |
+| `code` | TEXT UNIQUE NOT NULL | `SD-1024`, do trigger `BEFORE INSERT` sinh (xem mục Trigger) |
 | `user_id` | UUID NOT NULL → `profiles(id)` ON DELETE CASCADE | |
 | `title` | TEXT NOT NULL | |
-| `topic` | TEXT NOT NULL | |
+| `topic` | TEXT NOT NULL | CHECK in 5 chủ đề cố định (xem dưới) |
 | `status` | TEXT NOT NULL DEFAULT `'pending'` | CHECK in (`pending`, `processing`, `resolved`) |
 | `created_at` | TIMESTAMPTZ NOT NULL DEFAULT `now()` | |
 | `updated_at` | TIMESTAMPTZ NOT NULL DEFAULT `now()` | |
@@ -62,6 +62,17 @@ ghi trong migration `writing_submissions`.
 
 `code` dùng sequence riêng (`CREATE SEQUENCE support_ticket_code_seq START 1000`)
 thay vì hiển thị UUID cho người dùng.
+
+`topic` có `CHECK` giới hạn đúng 5 giá trị: `website_issue`, `lesson_content`,
+`exercise_feedback`, `account_access`, `other`. Lưu khoá tiếng Anh trong DB,
+nhãn tiếng Việt để ở `appTypes.ts` — đổi chữ hiển thị không phải viết migration,
+nhưng thêm chủ đề mới thì phải. Đánh đổi này chấp nhận để bộ lọc chủ đề bên
+admin không bao giờ có giá trị rác.
+
+**Không dùng `DEFAULT` cho `code`.** `DEFAULT` chỉ áp dụng khi client bỏ trống
+cột, mà PostgREST cho client gửi thẳng `code` tuỳ ý — `UNIQUE` chặn được trùng
+nhưng không chặn được bịa số. Sinh `code` trong trigger `BEFORE INSERT` để
+server luôn ghi đè.
 
 ### `support_ticket_messages`
 
@@ -106,20 +117,41 @@ policy** — mọi thông báo do trigger `SECURITY DEFINER` tạo.
 Tất cả đều `SECURITY DEFINER SET search_path = public`, theo khuôn
 `notify_writing_*`.
 
-1. **`BEFORE INSERT` trên `support_ticket_messages`** — set
-   `NEW.is_staff := (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'`.
-   Bắt buộc phải ở server: nếu để client khai, học viên gửi được tin nhắn giả
-   danh support.
+Khi đọc role trong trigger, dùng đúng dạng repo đang dùng ở
+`restrict_unlocked_levels_to_admin`:
+`((SELECT auth.jwt()) -> 'app_metadata' ->> 'role') = 'admin'`.
 
-2. **`AFTER INSERT` trên `support_ticket_messages`** —
+**Trên `support_tickets`**
+
+1. **`BEFORE INSERT`** — luôn ghi đè `NEW.code := 'SD-' || nextval('support_ticket_code_seq')`,
+   không tin giá trị client gửi. Cùng khuôn "ghi đè im lặng" của
+   `restrict_unlocked_levels_to_admin`.
+
+2. **`BEFORE INSERT`** — chặn nếu người dùng đã có `>= 5` ticket ở trạng thái
+   `pending` hoặc `processing`, bằng `RAISE EXCEPTION ... USING ERRCODE =
+   'check_violation'`. Cùng khuôn `enforce_writing_attempt_limit` (cap 6 lần nộp
+   bài viết) đã có trong repo. Ticket đã `resolved` không tính, nên người dùng
+   thật không bao giờ chạm trần. Màn học viên bắt lỗi này và hiện thông báo qua
+   `showToast()` thay vì để văng lỗi thô.
+
+3. **`BEFORE UPDATE`** — `NEW.updated_at := now()`. Không có trigger này thì
+   admin bấm "Bắt đầu xử lý" (UPDATE `status`) sẽ không đổi `updated_at`, trong
+   khi cả hai màn đều hiển thị hàng "Cập nhật".
+
+4. **`AFTER INSERT`** — notification broadcast `support_ticket_created` cho admin.
+
+**Trên `support_ticket_messages`**
+
+5. **`BEFORE INSERT`** — set `NEW.is_staff` từ role trong JWT. Bắt buộc phải ở
+   server: nếu để client khai, học viên gửi được tin nhắn giả danh support.
+
+6. **`AFTER INSERT`** —
    - `is_staff = true`: đặt ticket `status = 'resolved'`, tạo notification
      `support_replied` cho `ticket.user_id`.
    - `is_staff = false`: nếu ticket đang `resolved` thì chuyển về `'processing'`
      (mở lại), tạo notification broadcast `support_message` cho admin.
-   - Cả hai nhánh: cập nhật `updated_at = now()`.
-
-3. **`AFTER INSERT` trên `support_tickets`** — notification broadcast
-   `support_ticket_created` cho admin.
+   - Cả hai nhánh: `UPDATE support_tickets SET updated_at = now()`, việc này
+     kích hoạt luôn trigger 3.
 
 Admin bấm "Bắt đầu xử lý" hoặc đổi ô select là UPDATE trực tiếp, `admin all`
 policy cho phép.
@@ -127,6 +159,14 @@ policy cho phép.
 **Đã chốt:** admin nhắn là ticket thành `resolved` (đúng nút "Gửi phản hồi &
 hoàn tất" trong mockup). Hệ quả đã biết và chấp nhận: admin nhắn để hỏi thêm
 thông tin cũng đánh dấu xong, phải đổi tay lại bằng ô select bên phải.
+
+**Đã kiểm chứng:** mọi tài khoản (kể cả admin tạo qua `admin-create-user`) đều
+có sẵn row `profiles` nhờ trigger `on_auth_user_created` trong
+`20260624000001_initial_schema.sql`, nên khoá ngoại `author_id → profiles(id)`
+không vỡ khi admin trả lời.
+
+**Đã cân nhắc và chấp nhận:** học viên nhắn n lần thì admin nhận n thông báo
+broadcast — đúng như hành vi `writing_submitted` hiện tại, không gom nhóm.
 
 ## Thông báo
 
@@ -194,7 +234,12 @@ Repo **không có test runner nào được cấu hình**: `package.json` chỉ 
 2. `npm run dev`, test tay đủ vòng: tạo ticket → hiện ở màn admin → admin trả
    lời → học viên thấy phản hồi và trạng thái đổi → học viên nhắn tiếp → ticket
    mở lại `processing`.
-3. RLS: cần hai tài khoản (một thường, một admin) để xác nhận học viên A không
+3. Hai bất biến do server giữ, phải thử bằng cách gọi thẳng PostgREST chứ
+   không qua UI: gửi ticket kèm `code` bịa (phải bị ghi đè) và gửi tin nhắn kèm
+   `is_staff: true` từ tài khoản học viên (phải bị ép về `false`).
+4. Trần 5 ticket đang mở: tạo liên tiếp tới khi bị chặn, xác nhận màn học viên
+   hiện toast chứ không văng lỗi thô.
+5. RLS: cần hai tài khoản (một thường, một admin) để xác nhận học viên A không
    đọc được ticket của học viên B. Nếu chưa có tài khoản test thứ hai, phải báo
    rõ là chưa kiểm chứng được, không được coi là xong.
 
