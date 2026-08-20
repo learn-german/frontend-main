@@ -54,6 +54,9 @@ Các file kiểm chứng `.sql` viết trong kế hoạch này là **file tạm*
 | `supabase/migrations/20260820120000_support_tickets.sql` | Tạo bảng, sequence, index, ràng buộc CHECK, bật RLS và toàn bộ policy. Không chứa logic. |
 | `supabase/migrations/20260820120100_support_ticket_triggers.sql` | Toàn bộ trigger giữ bất biến + hàm RPC `create_support_ticket`. Tách khỏi file trên để người review duyệt mô hình dữ liệu và logic riêng. |
 | `src/lib/appTypes.ts` | (sửa) Thêm type và nhãn tiếng Việt cho ticket. Chỉ khai báo, không có lời gọi mạng. |
+| `src/lib/supportMappers.ts` | (mới) Logic thuần, **không import gì ngoài type**: đổi snake_case → camelCase, tính ba thẻ số liệu, lọc danh sách. Tách riêng để chạy được dưới `node --test` mà không cần biến môi trường Vite. |
+| `src/lib/supportMappers.test.ts` | (mới) Test tự động cho ba hàm trên. |
+| `package.json` | (sửa) Thêm script `test`. |
 | `src/lib/support.ts` | (mới) Lớp truy cập dữ liệu duy nhất cho support: cột select, hàm map snake_case → camelCase, và sáu hàm query/mutation. Cả hai màn dùng chung, không màn nào tự gọi `supabase.from("support_tickets")`. |
 | `src/pages/SupportPage.tsx` | (mới) Màn học viên. Chỉ UI + state, mọi truy cập dữ liệu qua `src/lib/support.ts`. |
 | `src/pages/admin/AdminSupportSection.tsx` | (mới) Màn admin. Tương tự, chỉ UI + state. |
@@ -130,7 +133,10 @@ CREATE INDEX support_tickets_user_created_idx
 CREATE TABLE support_ticket_messages (
   id         UUID        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   ticket_id  UUID        NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
-  author_id  UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  -- DEFAULT auth.uid(): client không cần gửi author_id, nên không có đường nào
+  -- gửi sai. Policy WITH CHECK bên dưới vẫn chặn nếu ai đó cố gửi id người khác.
+  author_id  UUID        NOT NULL DEFAULT auth.uid()
+                         REFERENCES profiles(id) ON DELETE CASCADE,
   is_staff   BOOLEAN     NOT NULL DEFAULT false,
   body       TEXT        NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -684,7 +690,7 @@ auth.uid() bên trong."
 
 **Interfaces:**
 - Consumes: RPC `create_support_ticket` và hai bảng từ Task 1–2.
-- Produces: type `SupportTicket`, `SupportTicketMessage`, `SupportTicketStatus`, `SupportTicketTopic`; hằng `SUPPORT_TOPIC_LABELS`, `SUPPORT_STATUS_LABELS`; sáu hàm trong `src/lib/support.ts`: `listMyTickets()`, `listAllTickets()`, `listMessages(ticketId)`, `createTicket(title, topic, body)`, `sendMessage(ticketId, body)`, `updateTicketStatus(ticketId, status)`. Task 5 và 6 chỉ dùng đúng các tên này.
+- Produces: type `SupportTicket`, `SupportTicketMessage`, `SupportTicketStatus`, `SupportTicketTopic`; hằng `SUPPORT_TOPIC_LABELS`, `SUPPORT_STATUS_LABELS`; từ `src/lib/supportMappers.ts`: `mapTicket(row)`, `mapMessage(row)`, `computeTicketStats(tickets, nowMs)`, `filterTickets(tickets, search, status)`; từ `src/lib/support.ts`: `listMyTickets()`, `listAllTickets()`, `listMessages(ticketId)`, `createTicket(title, topic, body)`, `sendMessage(ticketId, body)`, `updateTicketStatus(ticketId, status)`. Task 5 và 6 chỉ dùng đúng các tên này.
 
 - [ ] **Step 1: Sinh lại database types**
 
@@ -746,10 +752,13 @@ export interface SupportTicketMessage {
 }
 ```
 
-- [ ] **Step 3: Viết `src/lib/support.ts`**
+- [ ] **Step 3: Viết `src/lib/supportMappers.ts` (logic thuần)**
+
+File này **chỉ được `import type`**, tuyệt đối không import `./supabase`. Đó là
+điều kiện để `node --test` chạy được nó mà không cần biến môi trường Vite —
+`src/lib/appTypes.ts` không có import runtime nào nên nhập type từ đó là an toàn.
 
 ```ts
-import { supabase } from "./supabase";
 import type {
   SupportTicket,
   SupportTicketMessage,
@@ -757,16 +766,7 @@ import type {
   SupportTicketTopic,
 } from "./appTypes";
 
-const TICKET_COLUMNS = "id, code, user_id, title, topic, status, created_at, updated_at";
-const MESSAGE_COLUMNS = "id, ticket_id, author_id, is_staff, body, created_at";
-
-/**
- * Nhúng thường (không !inner) và kiểu nullable, đúng như AdminWritingSection
- * đang làm: một ticket thiếu profile vẫn phải hiện ra thay vì biến mất.
- */
-const ADMIN_TICKET_COLUMNS = `${TICKET_COLUMNS}, profiles(email, full_name)`;
-
-interface TicketRow {
+export interface TicketRow {
   id: string;
   code: string;
   user_id: string;
@@ -778,7 +778,7 @@ interface TicketRow {
   profiles?: { email: string; full_name: string | null } | null;
 }
 
-interface MessageRow {
+export interface MessageRow {
   id: string;
   ticket_id: string;
   author_id: string;
@@ -787,7 +787,7 @@ interface MessageRow {
   created_at: string;
 }
 
-function mapTicket(row: TicketRow): SupportTicket {
+export function mapTicket(row: TicketRow): SupportTicket {
   return {
     id: row.id,
     code: row.code,
@@ -803,7 +803,7 @@ function mapTicket(row: TicketRow): SupportTicket {
   };
 }
 
-function mapMessage(row: MessageRow): SupportTicketMessage {
+export function mapMessage(row: MessageRow): SupportTicketMessage {
   return {
     id: row.id,
     ticketId: row.ticket_id,
@@ -813,6 +813,171 @@ function mapMessage(row: MessageRow): SupportTicketMessage {
     createdAt: row.created_at,
   };
 }
+
+export interface TicketStats {
+  pending: number;
+  processing: number;
+  resolvedThisWeek: number;
+}
+
+/** nowMs truyền vào thay vì gọi Date.now() bên trong để test cố định được mốc. */
+export function computeTicketStats(
+  tickets: SupportTicket[],
+  nowMs: number,
+): TicketStats {
+  const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
+  return {
+    pending: tickets.filter((t) => t.status === "pending").length,
+    processing: tickets.filter((t) => t.status === "processing").length,
+    resolvedThisWeek: tickets.filter(
+      (t) => t.status === "resolved" && new Date(t.updatedAt).getTime() >= weekAgo,
+    ).length,
+  };
+}
+
+export function filterTickets(
+  tickets: SupportTicket[],
+  search: string,
+  status: SupportTicketStatus | "all",
+): SupportTicket[] {
+  const q = search.trim().toLowerCase();
+  return tickets.filter((t) => {
+    const matchStatus = status === "all" || t.status === status;
+    const matchSearch =
+      !q || t.title.toLowerCase().includes(q) || t.code.toLowerCase().includes(q);
+    return matchStatus && matchSearch;
+  });
+}
+```
+
+- [ ] **Step 4: Viết test cho logic thuần**
+
+Tạo `src/lib/supportMappers.test.ts`.
+
+**Phần mở rộng `.ts` trong đường dẫn import là bắt buộc**, không phải nhầm:
+`node --test` chạy dưới ESM thuần nên đòi đường dẫn tường minh, viết
+`from "./supportMappers"` sẽ hỏng với `ERR_MODULE_NOT_FOUND`. TypeScript chấp
+nhận cách viết này vì `tsconfig.json` đã bật sẵn `allowImportingTsExtensions`.
+Bên trong `supportMappers.ts` thì `import type` được xoá lúc chạy nên không cần
+phần mở rộng.
+
+```ts
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  computeTicketStats,
+  filterTickets,
+  mapTicket,
+  type TicketRow,
+} from "./supportMappers.ts";
+
+const base: TicketRow = {
+  id: "t1",
+  code: "SD-1000",
+  user_id: "u1",
+  title: "Không mở được bài nghe",
+  topic: "lesson_content",
+  status: "pending",
+  created_at: "2026-08-20T09:12:00Z",
+  updated_at: "2026-08-20T09:12:00Z",
+};
+
+test("mapTicket đổi snake_case sang camelCase, author null khi không nhúng profiles", () => {
+  const t = mapTicket(base);
+  assert.equal(t.userId, "u1");
+  assert.equal(t.createdAt, "2026-08-20T09:12:00Z");
+  assert.equal(t.author, null);
+});
+
+test("mapTicket lấy tên học viên khi có nhúng profiles", () => {
+  const t = mapTicket({ ...base, profiles: { email: "a@b.c", full_name: "Minh Anh" } });
+  assert.equal(t.author?.fullName, "Minh Anh");
+});
+
+test("mapTicket giữ author khác null khi có email nhưng chưa đặt tên", () => {
+  const t = mapTicket({ ...base, profiles: { email: "a@b.c", full_name: null } });
+  assert.equal(t.author?.email, "a@b.c");
+  assert.equal(t.author?.fullName, null);
+});
+
+test("computeTicketStats chỉ đếm resolved trong 7 ngày gần nhất", () => {
+  const now = new Date("2026-08-20T00:00:00Z").getTime();
+  const tickets = [
+    mapTicket({ ...base, id: "a", status: "pending" }),
+    mapTicket({ ...base, id: "b", status: "processing" }),
+    mapTicket({ ...base, id: "c", status: "resolved", updated_at: "2026-08-19T00:00:00Z" }),
+    mapTicket({ ...base, id: "d", status: "resolved", updated_at: "2026-07-01T00:00:00Z" }),
+  ];
+
+  const stats = computeTicketStats(tickets, now);
+
+  assert.equal(stats.pending, 1);
+  assert.equal(stats.processing, 1);
+  assert.equal(stats.resolvedThisWeek, 1, "ticket resolved từ tháng trước không được tính");
+});
+
+test("filterTickets khớp cả tiêu đề lẫn mã, không phân biệt hoa thường", () => {
+  const tickets = [
+    mapTicket(base),
+    mapTicket({ ...base, id: "x", code: "SD-2000", title: "Sai đáp án" }),
+  ];
+
+  assert.equal(filterTickets(tickets, "sd-2000", "all").length, 1);
+  assert.equal(filterTickets(tickets, "đáp án", "all").length, 1);
+  assert.equal(filterTickets(tickets, "", "pending").length, 2);
+  assert.equal(filterTickets(tickets, "", "resolved").length, 0);
+});
+```
+
+- [ ] **Step 5: Thêm script `test` vào `package.json`**
+
+Trong khối `"scripts"`, thêm dòng:
+
+```json
+    "test": "node --test \"src/**/*.test.ts\"",
+```
+
+Glob phải **để trong ngoặc kép** để Node tự khai triển — shell của npm không xử
+lý `**`. Mẫu này cố ý chỉ bắt `.ts`: các file `.test.tsx` sẵn có trong repo
+không chạy được dưới `node --test` vì Node không xử lý JSX
+(`ERR_UNKNOWN_FILE_EXTENSION`). Sửa chúng nằm ngoài phạm vi kế hoạch này.
+
+- [ ] **Step 6: Chạy test**
+
+```bash
+npm test
+```
+
+Kỳ vọng: `pass 5`, `fail 0`.
+
+Đã chạy thử đúng năm test này trước khi viết kế hoạch: `pass 5, fail 0`, và
+`tsc --noEmit --strict` trên hai file cũng sạch.
+
+- [ ] **Step 7: Viết `src/lib/support.ts`**
+
+```ts
+import { supabase } from "./supabase";
+import type {
+  SupportTicket,
+  SupportTicketMessage,
+  SupportTicketStatus,
+  SupportTicketTopic,
+} from "./appTypes";
+import {
+  mapMessage,
+  mapTicket,
+  type MessageRow,
+  type TicketRow,
+} from "./supportMappers";
+
+const TICKET_COLUMNS = "id, code, user_id, title, topic, status, created_at, updated_at";
+const MESSAGE_COLUMNS = "id, ticket_id, author_id, is_staff, body, created_at";
+
+/**
+ * Nhúng thường (không !inner) và kiểu nullable, đúng như AdminWritingSection
+ * đang làm: một ticket thiếu profile vẫn phải hiện ra thay vì biến mất.
+ */
+const ADMIN_TICKET_COLUMNS = `${TICKET_COLUMNS}, profiles(email, full_name)`;
 
 /** Ticket của chính người đang đăng nhập — RLS lo phần lọc. */
 export async function listMyTickets(): Promise<SupportTicket[]> {
@@ -862,15 +1027,11 @@ export async function createTicket(
   return mapTicket(data as unknown as TicketRow);
 }
 
+/** author_id và is_staff đều do server điền — client không gửi hai cột đó. */
 export async function sendMessage(ticketId: string, body: string): Promise<void> {
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("Chưa đăng nhập");
-
-  const { error } = await supabase.from("support_ticket_messages").insert({
-    ticket_id: ticketId,
-    author_id: auth.user.id,
-    body,
-  });
+  const { error } = await supabase
+    .from("support_ticket_messages")
+    .insert({ ticket_id: ticketId, body });
   if (error) throw error;
 }
 
@@ -887,7 +1048,7 @@ export async function updateTicketStatus(
 }
 ```
 
-- [ ] **Step 4: Kiểm tra type**
+- [ ] **Step 8: Kiểm tra type**
 
 ```bash
 npm run lint
@@ -895,14 +1056,16 @@ npm run lint
 
 Kỳ vọng: không lỗi. Lỗi hay gặp: `database.types.ts` chưa sinh lại nên `supabase.from("support_tickets")` không có trong union tên bảng — quay lại Step 1.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/lib/appTypes.ts src/lib/support.ts src/lib/database.types.ts
-git commit -m "feat(support): type và lớp truy cập dữ liệu
+git add src/lib/appTypes.ts src/lib/supportMappers.ts src/lib/supportMappers.test.ts \
+        src/lib/support.ts src/lib/database.types.ts package.json
+git commit -m "feat(support): type, logic thuần có test, và lớp truy cập dữ liệu
 
-Gom mọi truy cập PostgREST cho support vào src/lib/support.ts để hai màn
-dùng chung mapper và cùng tuân quy tắc ghi xong phải tải lại."
+Tách logic thuần ra supportMappers.ts (chỉ import type) để chạy được dưới
+node --test mà không cần env của Vite. Mọi truy cập PostgREST gom vào
+support.ts để hai màn dùng chung mapper."
 ```
 
 ---
@@ -1089,7 +1252,12 @@ export const SupportPage: React.FC = () => {
 
   const openTicket = async (ticket: SupportTicket) => {
     setActiveTicket(ticket);
-    setMessages(await listMessages(ticket.id));
+    try {
+      setMessages(await listMessages(ticket.id));
+    } catch {
+      setMessages([]);
+      showToast("Không tải được nội dung trao đổi.", "warning");
+    }
   };
 
   return null; // thay bằng JSX ở Step 3
@@ -1261,6 +1429,7 @@ import {
   sendMessage,
   updateTicketStatus,
 } from "../../lib/support";
+import { computeTicketStats, filterTickets } from "../../lib/supportMappers";
 
 const PAGE_SIZE = 15;
 
@@ -1296,29 +1465,13 @@ export const AdminSupportSection: React.FC = () => {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return tickets.filter((t) => {
-      const matchStatus = statusFilter === "all" || t.status === statusFilter;
-      const matchSearch =
-        !q ||
-        t.title.toLowerCase().includes(q) ||
-        t.code.toLowerCase().includes(q);
-      return matchStatus && matchSearch;
-    });
-  }, [tickets, search, statusFilter]);
+  const filtered = useMemo(
+    () => filterTickets(tickets, search, statusFilter),
+    [tickets, search, statusFilter],
+  );
 
   // Ba thẻ số liệu suy từ chính danh sách đã tải, không query đếm riêng.
-  const stats = useMemo(() => {
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return {
-      pending: tickets.filter((t) => t.status === "pending").length,
-      processing: tickets.filter((t) => t.status === "processing").length,
-      resolvedThisWeek: tickets.filter(
-        (t) => t.status === "resolved" && new Date(t.updatedAt).getTime() >= weekAgo,
-      ).length,
-    };
-  }, [tickets]);
+  const stats = useMemo(() => computeTicketStats(tickets, Date.now()), [tickets]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -1333,7 +1486,12 @@ export const AdminSupportSection: React.FC = () => {
 ```tsx
   const openTicket = async (ticket: SupportTicket) => {
     setActive(ticket);
-    setMessages(await listMessages(ticket.id));
+    try {
+      setMessages(await listMessages(ticket.id));
+    } catch {
+      setMessages([]);
+      showToast("Không tải được nội dung trao đổi.", "warning");
+    }
   };
 
   const handleStatus = async (status: SupportTicketStatus) => {
@@ -1511,11 +1669,11 @@ Hai bất biến quan trọng nhất **không thể chạm tới qua giao diện
 Chạy `npm run dev`, đăng nhập học viên, mở DevTools Console:
 
 ```js
-const { data } = await window.supabase.auth.getSession();
-copy(data.session.access_token);
+const key = Object.keys(localStorage).find((k) => k.startsWith("sb-") && k.endsWith("-auth-token"));
+copy(JSON.parse(localStorage.getItem(key)).access_token);
 ```
 
-Nếu `window.supabase` không tồn tại, lấy từ Application → Local Storage, khoá bắt đầu bằng `sb-` — token nằm ở trường `access_token`.
+App **không** gắn client Supabase lên `window`, nên phải đọc từ localStorage như trên. Khoá có dạng `sb-<project-ref>-auth-token`.
 
 - [ ] **Step 2: Thử gửi `code` bịa**
 
@@ -1534,7 +1692,7 @@ Kỳ vọng: trả về ticket có `"code"` dạng `SD-<số lớn>`, **không p
 
 - [ ] **Step 3: Thử giả danh support**
 
-Lấy `id` của ticket vừa tạo ở Step 2, thay vào `<TICKET_ID>`, và `<USER_ID>` là `sub` trong token:
+Lấy `id` của ticket vừa tạo ở Step 2, thay vào `<TICKET_ID>`. Không cần gửi `author_id` — cột đó có `DEFAULT auth.uid()`:
 
 ```bash
 curl -s -X POST 'http://127.0.0.1:54321/rest/v1/support_ticket_messages' \
@@ -1542,7 +1700,7 @@ curl -s -X POST 'http://127.0.0.1:54321/rest/v1/support_ticket_messages' \
   -H 'Authorization: Bearer <TOKEN>' \
   -H 'Content-Type: application/json' \
   -H 'Prefer: return=representation' \
-  -d '{"ticket_id":"<TICKET_ID>","author_id":"<USER_ID>","is_staff":true,"body":"giả danh"}'
+  -d '{"ticket_id":"<TICKET_ID>","is_staff":true,"body":"giả danh"}'
 ```
 
 Kỳ vọng: trả về tin nhắn có `"is_staff": false`. Nếu là `true` thì trigger `support_message_set_is_staff` không chạy — quay lại Task 2. Đây là lỗ hổng nghiêm trọng: học viên gửi được tin nhắn hiện ra như phản hồi chính thức.
@@ -1594,8 +1752,30 @@ Nếu không sửa gì thì bỏ qua bước này.
 
 ## Ghi chú về kiểm thử tự động
 
-Repo **không có test runner nào được cấu hình**: `package.json` chỉ có script `lint` (`tsc --noEmit`). Các file `src/**/*.test.tsx` hiện không có runner chạy; `playwright` nằm trong `devDependencies` nhưng không có script gọi tới.
+`package.json` ban đầu **không có** script `test`, nhưng điều đó không có nghĩa
+là repo không chạy test được. Các file `*.test.tsx` sẵn có viết cho `node:test`
+(runner built-in của Node), và Node ở đây là v26 nên tự bóc kiểu TypeScript.
+Đã kiểm chứng trực tiếp:
 
-Vì vậy kế hoạch này không có bước "chạy unit test" — thay vào đó mỗi task ở tầng SQL có một file probe tự khẳng định bằng `RAISE EXCEPTION`, và mỗi task ở tầng giao diện có danh sách thao tác cụ thể trên browser. Đó là mức kiểm chứng cao nhất mà bộ công cụ hiện tại của repo cho phép.
+- `node --test "<glob>/**/*.test.ts"` với file `.ts` — **chạy được, pass**.
+- `node --test src/components/Navigation.test.tsx` — **hỏng**, `ERR_UNKNOWN_FILE_EXTENSION`.
+  Node bóc được kiểu TypeScript nhưng không xử lý JSX, nên mọi file `.test.tsx`
+  hiện có trong repo đang không chạy được. Đây là tình trạng có sẵn; sửa chúng
+  nằm ngoài phạm vi kế hoạch này.
 
-Nếu muốn có test tự động thật, việc đó là **thêm dependency mới** (vitest + testing-library, hoặc script cho playwright) — CLAUDE.md yêu cầu hỏi trước, nên nó nằm ngoài kế hoạch này.
+Vì vậy Task 3 thêm script `test` chỉ bắt `.ts`, và tách logic thuần ra
+`src/lib/supportMappers.ts` để có được một lớp kiểm thử tự động thật:
+phép tính mốc 7 ngày của thẻ "Đã xử lý trong tuần" và bộ lọc theo mã/tiêu đề —
+hai chỗ dễ sai âm thầm nhất trong toàn bộ phần TypeScript.
+
+Không thêm dependency nào: `node --test` có sẵn, `vitest` và
+`@testing-library` đều không cần tới. Thêm chúng sẽ là thêm dependency mới,
+việc mà CLAUDE.md yêu cầu hỏi trước.
+
+Phần còn lại vẫn phải kiểm chứng thủ công vì không có gì rẻ hơn:
+
+- **Tầng SQL** — file probe tự khẳng định bằng `RAISE EXCEPTION` (Task 1, 2).
+- **Bất biến chỉ chạm được qua API** — `curl` thẳng vào PostgREST (Task 8).
+  Giao diện không bao giờ gửi `code` hay `is_staff`, nên bấm chuột không bao
+  giờ chạm tới hai bất biến quan trọng nhất.
+- **Tầng giao diện** — danh sách thao tác cụ thể trên browser (Task 5, 6, 7).

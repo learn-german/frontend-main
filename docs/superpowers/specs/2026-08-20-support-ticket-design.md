@@ -333,9 +333,14 @@ Không dùng `window.alert()`/`window.confirm()`.
 
 ## Kiểm chứng
 
-Repo **không có test runner nào được cấu hình**: `package.json` chỉ có
-`lint` (`tsc --noEmit`); các file `*.test.tsx` hiện không có runner chạy,
-`playwright` là dependency nhưng không có script. Vì vậy kiểm chứng gồm:
+`package.json` chưa có script `test`, nhưng repo **chạy test được**: các file
+test sẵn có viết cho `node:test` và Node v26 tự bóc kiểu TypeScript. Đã kiểm
+chứng: `node --test` chạy được file `.ts`, nhưng **hỏng với `.tsx`**
+(`ERR_UNKNOWN_FILE_EXTENSION` — Node không xử lý JSX), nên các file
+`*.test.tsx` hiện có đang không chạy được.
+
+Vì vậy logic thuần của tính năng này tách ra `src/lib/supportMappers.ts` (chỉ
+`import type`) để có test tự động thật, còn phần còn lại kiểm chứng thủ công:
 
 1. `npm run lint` — không lỗi type.
 2. `npm run dev`, test tay đủ vòng: tạo ticket → hiện ở màn admin → admin trả
