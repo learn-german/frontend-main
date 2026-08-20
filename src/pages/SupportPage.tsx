@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { PostgrestError } from "@supabase/supabase-js";
 import { Button } from "../components/DesignSystem";
 import { Skeleton } from "../components/Skeleton";
 import { showToast } from "../lib/toast";
@@ -127,6 +128,8 @@ export const SupportPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [sending, setSending] = useState(false);
   const [reply, setReply] = useState("");
+  // Ticket đang được hiển thị — dùng để bỏ kết quả async trả về trễ cho ticket đã rời đi.
+  const activeTicketIdRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -146,14 +149,27 @@ export const SupportPage: React.FC = () => {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Xoá nháp trả lời mỗi khi đổi ticket đang xem (mở ticket khác, hoặc quay lại danh sách).
+  useEffect(() => { setReply(""); }, [activeTicket?.id]);
+
   const openTicket = async (ticket: SupportTicket) => {
     setActiveTicket(ticket);
+    activeTicketIdRef.current = ticket.id;
     try {
-      setMessages(await listMessages(ticket.id));
+      const rows = await listMessages(ticket.id);
+      // Người dùng có thể đã mở ticket khác trước khi request này về — bỏ nếu vậy.
+      if (activeTicketIdRef.current === ticket.id) setMessages(rows);
     } catch {
-      setMessages([]);
-      showToast("Không tải được nội dung trao đổi.", "warning");
+      if (activeTicketIdRef.current === ticket.id) {
+        setMessages([]);
+        showToast("Không tải được nội dung trao đổi.", "warning");
+      }
     }
+  };
+
+  const backToList = () => {
+    activeTicketIdRef.current = null;
+    setActiveTicket(null);
   };
 
   const handleCreate = async (
@@ -168,9 +184,11 @@ export const SupportPage: React.FC = () => {
       showToast("Đã gửi yêu cầu hỗ trợ.", "success");
       await refresh();
     } catch (err) {
-      // Trần 5 ticket đang mở do trigger dựng lên, ném về dạng check_violation.
+      // Trần 5 ticket đang mở do trigger dựng lên, ném ERRCODE = check_violation (23514).
+      // Match theo code trước — message là dạng text tự do, PostgREST không cam kết giữ nguyên.
       const message =
-        err instanceof Error && err.message.includes("open limit")
+        err instanceof PostgrestError &&
+        (err.code === "23514" || err.message.includes("open limit"))
           ? "Bạn đang có quá nhiều yêu cầu chưa xử lý xong. Vui lòng chờ phản hồi."
           : "Không gửi được yêu cầu. Vui lòng thử lại.";
       showToast(message, "warning");
@@ -182,12 +200,15 @@ export const SupportPage: React.FC = () => {
   const handleReply = async () => {
     const body = reply.trim();
     if (!body || !activeTicket) return;
+    const ticketId = activeTicket.id;
     setSending(true);
     try {
-      await sendMessage(activeTicket.id, body);
+      await sendMessage(ticketId, body);
       setReply("");
       // Bắt buộc tải lại: trigger có thể vừa mở lại ticket sang processing.
-      setMessages(await listMessages(activeTicket.id));
+      const rows = await listMessages(ticketId);
+      // Người dùng có thể đã chuyển sang ticket khác trong lúc chờ — bỏ nếu vậy.
+      if (activeTicketIdRef.current === ticketId) setMessages(rows);
       await refresh();
     } catch {
       showToast("Không gửi được tin nhắn. Vui lòng thử lại.", "warning");
@@ -260,7 +281,7 @@ export const SupportPage: React.FC = () => {
             <div>
               <button
                 type="button"
-                onClick={() => setActiveTicket(null)}
+                onClick={backToList}
                 className="font-display text-xs font-bold text-red-600 mb-2 inline-flex items-center gap-1"
               >
                 ← Quay lại danh sách
@@ -299,7 +320,11 @@ export const SupportPage: React.FC = () => {
             ))}
 
             <div className="border-t border-slate-100 pt-3.5 mt-4">
+              <label htmlFor="support-reply" className="block text-xs font-display font-bold text-slate-700 mb-1.5">
+                Nhắn tiếp
+              </label>
               <textarea
+                id="support-reply"
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
                 placeholder="Nhập nội dung nhắn tiếp..."
