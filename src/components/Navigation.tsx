@@ -118,13 +118,14 @@ export const Navbar: React.FC<NavigationProps> = ({
           <nav className="hidden md:flex items-center gap-6">
             <NotificationBell onNavigate={onNotificationNavigate} />
 
-            <div className="h-4 w-[1px] bg-slate-200" />
-
-            {/* User profile dropdown snippet — tên là phần tử cuối cùng, sát góc phải nhất */}
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full pl-2 pr-3.5 py-1">
+            {/* User profile snippet — avatar → tên → nút đăng xuất ngoài cùng phải */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full pl-1 pr-2.5 py-1">
               <div className="w-7 h-7 bg-slate-800 text-white rounded-full flex items-center justify-center font-display font-bold text-xs">
                 {user.fullName.charAt(0).toUpperCase()}
               </div>
+              <span className="text-xs font-display font-semibold text-slate-700 max-w-[100px] truncate">
+                {user.fullName}
+              </span>
               <button
                 id="btn-nav-logout"
                 onClick={onLogout}
@@ -133,9 +134,6 @@ export const Navbar: React.FC<NavigationProps> = ({
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-display font-semibold text-slate-700 max-w-[100px] truncate">
-                {user.fullName}
-              </span>
             </div>
           </nav>
         )}

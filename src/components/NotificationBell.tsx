@@ -28,7 +28,7 @@ export const NotificationBell: React.FC<{ dark?: boolean; forAdmin?: boolean; on
       <button
         id="btn-notification-bell"
         onClick={toggle}
-        className={`relative p-2 rounded-xl transition ${dark ? "text-slate-400 hover:text-white hover:bg-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"}`}
+        className={`relative p-2 rounded-full border transition ${dark ? "border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800" : "border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100"}`}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
