@@ -30,20 +30,46 @@ Copy nguyên văn từ spec và CLAUDE.md — mọi task đều chịu các ràn
 
 ## Điều kiện tiên quyết — đọc trước khi bắt đầu
 
-**Task 1, 2, 3 cần Supabase local chạy được, tức là cần Docker daemon.** Tại thời điểm viết kế hoạch này, máy chưa chạy được: `docker` không có trên PATH và `supabase status` báo `Cannot connect to the Docker daemon`.
+**Không dùng Docker.** Toàn bộ phần cơ sở dữ liệu chạy trên project Supabase
+đã có sẵn: **Deutsch**, ref `awdhqlgxnjwymwgxltlw`. Vì vậy `supabase start`,
+`supabase db reset` và `gen types --local` đều **không** dùng tới.
 
-Kiểm tra trước khi vào Task 1:
+Supabase CLI hiện **chưa đăng nhập** (đã kiểm tra: `supabase projects list` báo
+`Access token not provided`). Làm một lần trước khi bắt đầu:
 
 ```bash
-supabase status
+supabase login
 ```
 
-Nếu lệnh trên báo lỗi Docker: mở Docker Desktop (hoặc OrbStack) rồi chạy `supabase start`. Không có nó thì **không thể** chạy `supabase db reset` lẫn `npm run gen:types` (script này dùng `supabase gen types typescript --local`). Đừng lách bằng cách sửa tay `database.types.ts` — CLAUDE.md cấm.
+```bash
+supabase link --project-ref awdhqlgxnjwymwgxltlw
+```
 
-Không cần `psql`: bộ test SQL viết bằng **pgTAP** và chạy qua Supabase CLI
-(`supabase test db`), CLI tự lo phần kết nối.
+Sau khi link, ba lệnh này hoạt động:
 
-Bộ test SQL đã nằm sẵn trong repo tại `supabase/tests/` — không phải file tạm.
+| Lệnh | Việc |
+|---|---|
+| `supabase db push` | Áp migration lên project thật |
+| `npm run test:db` | Chạy pgTAP (`supabase test db --linked`) |
+| `npm run gen:types` | Sinh `database.types.ts` từ schema thật |
+
+### Chạy thử trước khi áp thật
+
+`supabase db push` sửa cơ sở dữ liệu thật và không có nút hoàn tác. Trước khi
+push, chạy thử **toàn bộ migration cộng toàn bộ test trong một transaction rồi
+`rollback`** — cách này chứng minh migration chạy được và test xanh mà không để
+lại gì trong DB.
+
+Người viết kế hoạch này đã làm đúng vậy: ghép DDL của cả hai migration với 47
+case pgTAP thành một transaction, chạy trên project Deutsch, kết thúc bằng
+`rollback`. Kết quả: **47/47 pass**, cơ sở dữ liệu không đổi một dòng nào.
+
+Cách chạy lại: dán khối `begin; <DDL hai migration> <nội dung ba file test, đổi
+mỗi `select <assert>` thành `insert into tap(line) select <assert>`> select line
+from tap order by seq; rollback;` vào SQL Editor của Supabase Studio, hoặc gửi
+qua Supabase MCP.
+
+Chỉ `supabase db push` sau khi lượt chạy thử đó xanh.
 
 ## Cấu trúc file
 
@@ -81,13 +107,14 @@ Lý do tách `src/lib/support.ts`: hai màn cùng cần map dữ liệu và cùn
 - Consumes: bảng `profiles` (có sẵn), trigger `on_auth_user_created` (có sẵn).
 - Produces: bảng `support_tickets(id, code, user_id, title, topic, status, created_at, updated_at)`, bảng `support_ticket_messages(id, ticket_id, author_id, is_staff, body, created_at)`, sequence `support_ticket_code_seq`. Task 2 gắn trigger lên đúng hai bảng này.
 
-- [ ] **Step 1: Xác nhận Supabase local chạy được**
+- [ ] **Step 1: Xác nhận CLI đã link đúng project**
 
 ```bash
-supabase status
+supabase projects list
 ```
 
-Kỳ vọng: in ra danh sách service kèm URL. Nếu báo lỗi Docker, dừng lại và xử lý theo mục "Điều kiện tiên quyết" ở trên.
+Kỳ vọng: có dòng `Deutsch` với ref `awdhqlgxnjwymwgxltlw` được đánh dấu là đang
+link. Nếu báo `Access token not provided`, quay lại mục "Điều kiện tiên quyết".
 
 - [ ] **Step 2: Viết migration**
 
@@ -202,13 +229,13 @@ CREATE POLICY "support_ticket_messages: admin all"
   WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 ```
 
-- [ ] **Step 3: Áp migration**
+- [ ] **Step 3: Kiểm tra cú pháp bằng lượt chạy thử rollback**
 
-```bash
-supabase db reset
-```
+Chưa push. Dán DDL của migration này vào một transaction kết thúc bằng
+`rollback` (xem mục "Chạy thử trước khi áp thật") và chạy trên project đã link.
 
-Kỳ vọng: chạy hết migrations rồi tới `seed.sql`, không lỗi. Nếu báo lỗi cú pháp SQL, sửa file rồi chạy lại.
+Kỳ vọng: không lỗi cú pháp, và **không dòng nào còn lại trong DB** sau khi
+transaction kết thúc.
 
 - [ ] **Step 4: Hoãn phần test hành vi sang Task 2**
 
@@ -216,7 +243,7 @@ Bộ test pgTAP trong `supabase/tests/` **chưa chạy được sau Task 1**, v�
 đúng dự kiến: cột `code` để `NOT NULL` mà không có `DEFAULT`, nên mọi lệnh
 `insert` không kèm `code` đều hỏng cho tới khi trigger sinh mã ở Task 2 tồn tại.
 
-Ở task này chỉ cần `supabase db reset` chạy sạch (Step 3). Toàn bộ 46 case sẽ
+Ở task này chỉ cần lượt chạy thử ở Step 3 không lỗi cú pháp. Toàn bộ 47 case sẽ
 chạy ở Task 2 Step 3.
 
 - [ ] **Step 6: Commit**
@@ -375,9 +402,15 @@ BEGIN
        SET status = CASE WHEN status = 'resolved' THEN 'processing' ELSE status END
      WHERE id = NEW.ticket_id;
 
-    INSERT INTO notifications (for_admin, type, message)
-    VALUES (true, 'support_message',
-            'Học viên vừa nhắn thêm vào ticket ' || t.code);
+    -- Tin nhắn đầu tiên đã có thông báo support_ticket_created rồi. Không
+    -- chặn ở đây thì tạo một ticket sinh ra hai thông báo cho admin về cùng
+    -- một việc. Trigger là AFTER INSERT nên dòng mới đã được đếm.
+    IF (SELECT count(*) FROM support_ticket_messages
+         WHERE ticket_id = NEW.ticket_id) > 1 THEN
+      INSERT INTO notifications (for_admin, type, message)
+      VALUES (true, 'support_message',
+              'Học viên vừa nhắn thêm vào ticket ' || t.code);
+    END IF;
   END IF;
 
   RETURN NEW;
@@ -423,13 +456,16 @@ REVOKE EXECUTE ON FUNCTION create_support_ticket(TEXT, TEXT, TEXT) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION create_support_ticket(TEXT, TEXT, TEXT) TO authenticated;
 ```
 
-- [ ] **Step 2: Áp migration**
+- [ ] **Step 2: Áp cả hai migration lên project đã link**
+
+Chỉ làm bước này **sau khi** lượt chạy thử rollback (gồm DDL của cả hai
+migration cộng 47 case) đã xanh.
 
 ```bash
-supabase db reset
+supabase db push
 ```
 
-Kỳ vọng: chạy hết, không lỗi.
+Kỳ vọng: CLI liệt kê đúng hai migration mới rồi áp thành công.
 
 - [ ] **Step 3: Chạy bộ test pgTAP**
 
@@ -1641,12 +1677,27 @@ Bước 4 là phép thử cho quy tắc "ghi xong phải tải lại". Nếu bad
 
 - [ ] **Step 6: Dọn dữ liệu thử và kiểm tra lần cuối**
 
+**Tuyệt đối không chạy `supabase db reset`.** CLI đang link vào project thật,
+lệnh đó sẽ xoá sạch cơ sở dữ liệu đang chạy. Dọn có chọn lọc bằng SQL Editor:
+
+```sql
+delete from support_tickets where user_id in (
+  select id from profiles where email like '%@test.local'
+);
+delete from notifications where type like 'support_%' and created_at > now() - interval '1 day';
+```
+
+Sau đó:
+
 ```bash
-supabase db reset
 npm run lint
 ```
 
-Kỳ vọng: reset sạch, lint không lỗi.
+```bash
+npm test
+```
+
+Kỳ vọng: lint không lỗi, test **184 pass**.
 
 - [ ] **Step 7: Commit (nếu có sửa gì trong lúc kiểm chứng)**
 

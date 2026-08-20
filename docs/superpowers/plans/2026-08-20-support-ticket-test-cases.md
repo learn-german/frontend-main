@@ -7,11 +7,11 @@
 
 | Tầng | Số case | Chạy bằng | Trạng thái |
 |---|---|---|---|
-| SQL — lược đồ, RLS, trigger, RPC | 46 | `npm run test:db` (pgTAP) | Đã viết, **chưa chạy được** vì Docker chưa bật |
+| SQL — lược đồ, RLS, trigger, RPC | 47 | `npm run test:db` (pgTAP) | **Đã chạy: 47 pass** trên project Deutsch |
 | TypeScript — logic thuần | 20 | `npm test` | **Đã chạy: 20 pass** |
 | HTTP — bất biến qua PostgREST | 5 | `curl` thủ công | Cần Supabase local |
 | Giao diện — học viên, admin, thông báo | 26 | Thao tác tay trên browser | Cần Supabase local |
-| **Tổng** | **97** | | |
+| **Tổng** | **98** | | |
 
 Hai lệnh chạy toàn bộ phần tự động:
 
@@ -24,6 +24,9 @@ npm run test:db
 ```
 
 `npm test` hiện chạy **164 test sẵn có của repo**; sau khi làm Task 3 sẽ là 184.
+
+Không cần Docker: `test:db` chạy pgTAP trên project Supabase đã link
+(`supabase test db --linked`).
 
 ---
 
@@ -67,7 +70,7 @@ dữ liệu nền rồi `rollback`, không để lại gì.
 | RLS-13 | A không gán được tin nhắn đứng tên B |
 | RLS-14 | Admin đọc và đổi được trạng thái mọi ticket |
 
-### 1.3 `support_triggers_test.sql` — 17 case
+### 1.3 `support_triggers_test.sql` — 18 case
 
 | ID | Khẳng định |
 |---|---|
@@ -81,13 +84,14 @@ dữ liệu nền rồi `rollback`, không để lại gì.
 | TRG-08 | Admin trả lời → ticket chuyển `resolved` |
 | TRG-09 | Admin trả lời → học viên nhận đúng một thông báo `support_replied` |
 | TRG-10 | Học viên nhắn vào ticket `resolved` → mở lại `processing` |
-| TRG-11 | Học viên nhắn tiếp → admin nhận thông báo `support_message` |
+| TRG-11 | Mỗi tin nhắn tiếp theo của học viên sinh một thông báo `support_message` |
 | TRG-12 | Nhắn vào ticket `pending` → trạng thái giữ nguyên |
 | TRG-13 | Đổi trạng thái → `updated_at` được làm mới |
 | TRG-14 | Có tin nhắn mới → `updated_at` được làm mới |
 | TRG-15 | Ticket thứ 6 đang mở bị chặn |
 | TRG-16 | Ticket đã `resolved` không tính vào trần |
 | TRG-17 | Không role nào insert trực tiếp vào `notifications` được |
+| TRG-18 | Tạo ticket mới **không** sinh thêm `support_message` — chống thông báo trùng |
 
 **Về TRG-13 và TRG-14:** `now()` cố định trong suốt một transaction, nên không
 thể so `updated_at` trước/sau một cách bình thường. Hai case này tắt tạm trigger
@@ -246,20 +250,23 @@ Mỗi yêu cầu trong spec ứng với ít nhất một case.
 
 ---
 
-## 6. Điều chưa kiểm chứng được
+## 6. Đã kiểm chứng tới đâu
 
-Nói rõ để không ai hiểu nhầm mức độ đảm bảo hiện tại:
+- **47 case pgTAP: đã chạy thật, 47 pass.** Cách chạy: ghép DDL của cả hai
+  migration với toàn bộ test thành một transaction kết thúc bằng `rollback`, gửi
+  tới project Deutsch. Cơ sở dữ liệu không đổi một dòng nào.
 
-- **46 case pgTAP đã viết nhưng chưa chạy lần nào.** Docker daemon trên máy hiện
-  không chạy (`docker` không có trên PATH, `supabase status` báo không kết nối
-  được), nên `supabase test db` chưa gọi được. Chúng mới chỉ được soát bằng mắt.
-  Lần chạy đầu rất có thể lộ ra sai vặt — số trong `plan(N)` lệch, tên policy gõ
-  sai, mã lỗi không khớp. Đó là chuyện bình thường và dễ sửa, nhưng **chưa được
-  coi là đã đạt** cho tới khi thấy toàn `ok`.
-- **20 case TypeScript đã chạy thật và pass**, nhưng chạy trên bản trích ra thư
-  mục tạm, vì `src/lib/supportMappers.ts` chưa tồn tại trong repo — file đó được
+  Lượt chạy đầu ra **45/46**: case TRG-11 fail vì tin nhắn đầu do RPC tạo cũng
+  kích hoạt thông báo `support_message`, nghĩa là tạo một ticket thì admin nhận
+  hai thông báo cho cùng một việc. Đó là lỗi thiết kế thật, đã sửa trigger và
+  thêm TRG-18 để chốt lại. Đọc bằng mắt bốn vòng review không ra lỗi này.
+
+- **20 case TypeScript: đã chạy thật, 20 pass**, cộng `tsc --noEmit --strict`
+  sạch. Chạy trên bản trích ra thư mục tạm vì `src/lib/supportMappers.ts` được
   tạo ở Task 3.
-- **5 case HTTP và 26 case giao diện** đều cần Supabase local, nên cũng chưa
-  chạy.
 
-Nói ngắn gọn: mới có 20 trong 97 case thực sự được chứng minh là chạy đúng.
+- **5 case HTTP và 26 case giao diện: chưa chạy.** Chúng cần app chạy thật cùng
+  tài khoản đăng nhập, nên chỉ làm được trong lúc triển khai Task 5–8.
+
+Tóm lại: **67 trong 98 case đã được chứng minh chạy đúng**; phần còn lại là
+những case buộc phải thao tác qua giao diện hoặc HTTP.

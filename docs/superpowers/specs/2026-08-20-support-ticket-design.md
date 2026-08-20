@@ -181,7 +181,9 @@ Khi đọc role trong trigger, dùng đúng dạng repo đang dùng ở
    - `is_staff = true`: đặt ticket `status = 'resolved'`, tạo notification
      `support_replied` cho `ticket.user_id`.
    - `is_staff = false`: nếu ticket đang `resolved` thì chuyển về `'processing'`
-     (mở lại), tạo notification broadcast `support_message` cho admin.
+     (mở lại), tạo notification broadcast `support_message` cho admin — **trừ
+     tin nhắn đầu tiên của ticket**, vì tin đó đã có `support_ticket_created`.
+     Không loại trừ thì tạo một ticket sinh hai thông báo cho cùng một việc.
    - Cả hai nhánh: `UPDATE support_tickets SET updated_at = now()`, việc này
      kích hoạt luôn trigger 3.
 

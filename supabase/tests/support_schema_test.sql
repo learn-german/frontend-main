@@ -79,6 +79,10 @@ select matches(
   'DB-14 code có dạng SD-<số>');
 
 -- --- Xoá ticket kéo theo tin nhắn --------------------------------------------
+-- Năm lệnh insert ở trên đã chạm đúng trần 5 ticket đang mở, nên phải đóng
+-- chúng lại trước khi tạo thêm ticket cho case dưới.
+update support_tickets set status = 'resolved';
+
 with t as (
   insert into support_tickets (user_id, title, topic)
   values ('11111111-1111-1111-1111-111111111111', 'ticket sẽ xoá', 'other')

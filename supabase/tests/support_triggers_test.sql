@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(17);
+select plan(18);
 
 -- --- Dữ liệu nền -------------------------------------------------------------
 insert into auth.users
@@ -59,6 +59,11 @@ select is(
   (select status from support_tickets where title = 'Không mở được bài nghe'),
   'pending',
   'TRG-04 ticket mới ở trạng thái pending');
+
+select is(
+  (select count(*) from notifications where type = 'support_message'),
+  0::bigint,
+  'TRG-18 tạo ticket mới không sinh thêm thông báo support_message');
 
 -- Client gửi code bịa
 insert into support_tickets (code, user_id, title, topic)
@@ -125,11 +130,13 @@ select is(
   'TRG-10 học viên nhắn vào ticket resolved thì ticket mở lại processing');
 
 set local role postgres;
+-- Hai tin của học viên sau tin đầu: 'giả danh support' và 'Vẫn chưa được ạ.'.
+-- Tin đầu do RPC tạo cố ý không sinh thông báo này (xem TRG-18).
 select is(
   (select count(*) from notifications
     where type = 'support_message' and for_admin = true),
-  1::bigint,
-  'TRG-11 học viên nhắn tiếp thì admin nhận thông báo');
+  2::bigint,
+  'TRG-11 mỗi tin nhắn tiếp theo của học viên sinh một thông báo cho admin');
 
 -- --- Nhắn vào ticket đang pending thì giữ nguyên ------------------------------
 set local role authenticated;
