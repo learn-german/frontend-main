@@ -112,6 +112,29 @@ Không có UPDATE/DELETE cho học viên: tin nhắn đã gửi không sửa/xó
 `notifications` giữ nguyên schema và giữ nguyên nguyên tắc **không có INSERT
 policy** — mọi thông báo do trigger `SECURITY DEFINER` tạo.
 
+## Tạo ticket: hàm RPC `create_support_ticket`
+
+Modal tạo ticket có ba trường (tiêu đề, chủ đề, mô tả chi tiết), trong đó phần
+mô tả chính là **tin nhắn đầu tiên** của thread. PostgREST không cho client chạy
+nhiều lệnh trong một transaction, nên nếu client insert ticket rồi insert tin
+nhắn thành hai lượt, mạng rớt giữa chừng sẽ sinh ra ticket không có nội dung —
+admin thấy tiêu đề mà không biết học viên gặp chuyện gì.
+
+```
+create_support_ticket(p_title TEXT, p_topic TEXT, p_body TEXT) RETURNS support_tickets
+```
+
+Insert cả ticket lẫn tin nhắn đầu trong cùng một transaction, client gọi một
+lượt qua `supabase.rpc()`.
+
+Hàm để **`SECURITY INVOKER`** (mặc định), không phải `SECURITY DEFINER`: nó chạy
+dưới quyền người gọi nên vẫn chịu đúng các policy RLS đã mô tả ở trên, không
+phát sinh đường phân quyền mới cần soát riêng. Đây vẫn là PostgREST, không phải
+Edge Function, nên không lệch hướng đã chốt.
+
+Các lượt trao đổi tiếp theo (học viên nhắn thêm, admin trả lời) vẫn insert thẳng
+vào `support_ticket_messages` qua PostgREST bình thường, không cần RPC.
+
 ## Trigger
 
 Tất cả đều `SECURITY DEFINER SET search_path = public`, theo khuôn
@@ -173,6 +196,15 @@ broadcast — đúng như hành vi `writing_submitted` hiện tại, không gom 
 Thêm ba giá trị `type`: `support_ticket_created`, `support_message`,
 `support_replied`. Không thêm cột vào `notifications`.
 
+Phải nối **cả hai phía**, không chỉ admin:
+
+- `handleNotificationNavigate` trong `src/pages/admin/AdminApp.tsx` — hiện chỉ
+  xử lý `writing_submitted`; thêm nhánh `support_*` → `setSection("support")`.
+- `handleNotificationNavigate` trong `src/App.tsx` — hiện chỉ xử lý
+  `writing_graded`; thêm nhánh `support_replied` → `setCurrentPage("help")`.
+  Chuông phía học viên có thật (`NotificationBell` nằm trong `Navbar`), nếu bỏ
+  qua thì học viên bấm vào thông báo "đã có phản hồi" sẽ không có gì xảy ra.
+
 Hệ quả: bấm vào thông báo mở **màn Hỗ trợ**, chưa nhảy thẳng vào đúng ticket —
 giống `writing_submitted` hiện chỉ mở section Chấm bài viết. Thêm `ticket_id`
 vào `notifications` sẽ làm được, nhưng đó là sửa bảng đang chạy cho một tiện
@@ -205,6 +237,27 @@ Thêm `"support"` vào type `AdminSection` và `NAV_ITEMS` trong
 `src/pages/admin/AdminPage.tsx`; thêm nhánh `support_*` vào
 `handleNotificationNavigate` trong `src/pages/admin/AdminApp.tsx`.
 
+### Sửa kèm: bỏ `as any` trên đường điều hướng tới `help`
+
+`src/components/Navigation.tsx` gọi `onNavigate(link.id as any)` vì union type
+của `Sidebar.onNavigate` (và `Navbar.onNavigate`) không có `"help"`/`"packages"`
+trong khi mảng `links` lại có. CLAUDE.md cấm dùng `any`.
+
+Trước đây `help` chỉ dẫn tới `ComingSoonPage` nên không ai để ý. Feature này
+biến nó thành đích thật, và `handleNotificationNavigate` cũng phải điều hướng
+được tới đó — nên nới union về `AppPage` (đã export sẵn từ `src/lib/router.ts`)
+rồi bỏ ép kiểu. Đây là sửa đúng đường mà feature đi qua, không phải refactor
+lạc đề.
+
+### Danh sách, lọc và phân trang bên admin
+
+Làm client-side y như `AdminUsersSection`: tải danh sách rồi lọc/phân trang
+trong bộ nhớ, `PAGE_SIZE = 15`.
+
+`ponytail:` cách này chỉ ổn khi số ticket còn nhỏ; khi inbox phình lên thì
+chuyển sang `.range()` phía server. Chấp nhận trần này để bám đúng pattern đang
+có thay vì dựng sẵn phân trang server-side chưa ai cần.
+
 ### Dùng lại component sẵn có
 
 Cả hai màn dùng `Button` từ `src/components/DesignSystem.tsx` và `showToast()`
@@ -215,13 +268,14 @@ Không dùng `window.alert()`/`window.confirm()`.
 
 | File | Việc |
 |---|---|
-| `supabase/migrations/2026…_support_tickets.sql` | mới — 2 bảng, sequence, RLS, 3 trigger |
+| `supabase/migrations/2026…_support_tickets.sql` | mới — 2 bảng, sequence, RLS, 6 trigger, hàm `create_support_ticket` |
 | `src/lib/appTypes.ts` | thêm `SupportTicket`, `SupportTicketMessage`, `SupportTicketStatus`, danh sách chủ đề |
 | `src/pages/SupportPage.tsx` | mới |
 | `src/pages/admin/AdminSupportSection.tsx` | mới |
-| `src/App.tsx` | thay `ComingSoonPage` ở nhánh `help` |
+| `src/App.tsx` | thay `ComingSoonPage` ở nhánh `help`; thêm `support_replied` vào `handleNotificationNavigate` |
 | `src/pages/admin/AdminPage.tsx` | thêm section + nav item |
 | `src/pages/admin/AdminApp.tsx` | điều hướng notification |
+| `src/components/Navigation.tsx` | nới union `onNavigate` về `AppPage`, bỏ `as any` |
 | `src/lib/database.types.ts` | `npm run gen:types` (không sửa tay) |
 
 ## Kiểm chứng
@@ -239,7 +293,9 @@ Repo **không có test runner nào được cấu hình**: `package.json` chỉ 
    `is_staff: true` từ tài khoản học viên (phải bị ép về `false`).
 4. Trần 5 ticket đang mở: tạo liên tiếp tới khi bị chặn, xác nhận màn học viên
    hiện toast chứ không văng lỗi thô.
-5. RLS: cần hai tài khoản (một thường, một admin) để xác nhận học viên A không
+5. Bấm thông báo ở **cả hai phía**: chuông admin mở section Hỗ trợ, chuông học
+   viên mở màn `/help`.
+6. RLS: cần hai tài khoản (một thường, một admin) để xác nhận học viên A không
    đọc được ticket của học viên B. Nếu chưa có tài khoản test thứ hai, phải báo
    rõ là chưa kiểm chứng được, không được coi là xong.
 
