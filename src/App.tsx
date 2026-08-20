@@ -220,6 +220,10 @@ export default function App() {
   const handleNotificationNavigate = (n: AppNotification) => {
     if (n.type === "writing_graded" && n.lessonId) {
       handleSelectLesson(n.lessonId, "viet");
+      return;
+    }
+    if (n.type === "support_replied") {
+      setCurrentPage("help");
     }
   };
 
