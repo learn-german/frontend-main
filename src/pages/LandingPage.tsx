@@ -250,10 +250,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         >
           <div className="mx-auto max-w-[980px] text-center">
             <div className={KICKER}>
-              Khóa tiếng Đức A1 online cho người Việt
+              Khóa tiếng Đức online cho người Việt
             </div>
             <h1 className="mx-auto mt-[17px] max-w-[940px] text-[36px] font-extrabold leading-[1.15] text-balance min-[720px]:text-[48px] min-[720px]:leading-[1.12]">
-              Học tiếng Đức A1 online, đầy đủ kỹ năng.{" "}
+              Học tiếng Đức online, đầy đủ kỹ năng.{" "}
               <span className="mt-1 block text-[#e4003b]">
                 Chủ động theo lịch của bạn.
               </span>
