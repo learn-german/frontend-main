@@ -134,7 +134,7 @@ export const AdminApp: React.FC = () => {
           <div className="flex items-center gap-3">
             <BrandLogo size="sm" />
             <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-white text-sm">SelbstDeutsch</span>
+              <span className="font-display font-bold text-white text-sm">DeutschSelbst</span>
               <span className="text-slate-600 text-xs">/</span>
               <span className="text-orange-400 text-xs font-bold uppercase tracking-widest">Admin</span>
             </div>
@@ -190,7 +190,7 @@ export const AdminApp: React.FC = () => {
         <div className="flex flex-col items-center gap-3 mb-8">
           <BrandLogo size="lg" className="shadow-lg shadow-orange-900/40" />
           <div className="text-center">
-            <h1 className="font-display font-extrabold text-white text-xl">SelbstDeutsch</h1>
+            <h1 className="font-display font-extrabold text-white text-xl">DeutschSelbst</h1>
             <p className="text-slate-400 text-xs mt-0.5 font-bold uppercase tracking-widest">Admin Portal</p>
           </div>
         </div>

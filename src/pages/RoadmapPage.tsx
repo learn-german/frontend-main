@@ -69,7 +69,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
             Lộ trình Chinh phục Tiếng Đức
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm font-sans max-w-xl leading-relaxed">
-            Học theo cấu trúc hình búp măng của SelbstDeutsch. Mỗi mốc nối tiếp nhau logic, mở khóa bài học tiếp theo sau khi vượt qua bài kiểm tra mini!
+            Học theo cấu trúc hình búp măng của DeutschSelbst. Mỗi mốc nối tiếp nhau logic, mở khóa bài học tiếp theo sau khi vượt qua bài kiểm tra mini!
           </p>
         </div>
 

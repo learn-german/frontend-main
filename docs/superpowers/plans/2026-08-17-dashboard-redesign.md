@@ -1,8 +1,8 @@
-# Dashboard Redesign (Rebrand SelbstDeutsch + Daily Progress Report) Implementation Plan
+# Dashboard Redesign (Rebrand DeutschSelbst + Daily Progress Report) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Redesign the Dashboard page and app shell (Header/Sidebar) to match the new mockup — rebrand to "SelbstDeutsch", simplify the Header, add the 3 missing Sidebar links, and wire the Dashboard's "Tổng quan" and "Kế hoạch học tập" cards to real data instead of hardcoded content.
+**Goal:** Redesign the Dashboard page and app shell (Header/Sidebar) to match the new mockup — rebrand to "DeutschSelbst", simplify the Header, add the 3 missing Sidebar links, and wire the Dashboard's "Tổng quan" and "Kế hoạch học tập" cards to real data instead of hardcoded content.
 
 **Architecture:** Pure frontend change. No new database migration — the backend edge function `daily-progress-report` (already deployed) supplies all progress/pace numbers; the frontend just needs to call it for the first time. Two new small pure-logic helpers in `src/lib/dashboardProgress.ts` carry the only genuinely new logic (derived "lessons needed to catch up" and "next 4 planned lessons"), each unit tested. Everything else is JSX/text restructuring in existing files, following existing patterns (`supabase.functions.invoke`, `computeLessonStatuses`, `ProgressBar`/`LevelBadge` from `DesignSystem.tsx`).
 
@@ -21,7 +21,7 @@
 
 ---
 
-### Task 1: Rebrand "DeutschPath" → "SelbstDeutsch"
+### Task 1: Rebrand "DeutschPath" → "DeutschSelbst"
 
 **Files:**
 - Modify: `src/App.tsx:265`
@@ -47,7 +47,7 @@ Expected: exactly the 14 occurrences across the 8 files listed above (App.tsx, N
 
 Run:
 ```bash
-sed -i '' 's/DeutschPath/SelbstDeutsch/g' \
+sed -i '' 's/DeutschPath/DeutschSelbst/g' \
   src/App.tsx \
   src/components/Navigation.tsx \
   src/data/mockData.ts \
@@ -75,7 +75,7 @@ Expected: no errors (pure string literal changes, cannot break types).
 
 ```bash
 git add src/App.tsx src/components/Navigation.tsx src/data/mockData.ts src/pages/LoginPage.tsx src/pages/LeaderboardPage.tsx src/pages/LandingPage.tsx src/pages/RoadmapPage.tsx src/pages/admin/AdminApp.tsx
-git commit -m "rebrand: DeutschPath -> SelbstDeutsch"
+git commit -m "rebrand: DeutschPath -> DeutschSelbst"
 ```
 
 ---
@@ -632,7 +632,7 @@ Expected: no errors.
 
 - [ ] **Step 6: Manual verification**
 
-In the browser, log in, check the desktop Header on `/dashboard`: only the "SelbstDeutsch" logo on the left, and on the right only the notification bell + user avatar/name + logout button — no streak pill, no XP pill, no nav links, no DE|VI box. Log out and check the landing page Header still shows the DE|VI box as before (unaffected). Resize to mobile width and confirm the hamburger menu still opens the drawer with streak/XP/nav links intact (unchanged).
+In the browser, log in, check the desktop Header on `/dashboard`: only the "DeutschSelbst" logo on the left, and on the right only the notification bell + user avatar/name + logout button — no streak pill, no XP pill, no nav links, no DE|VI box. Log out and check the landing page Header still shows the DE|VI box as before (unaffected). Resize to mobile width and confirm the hamburger menu still opens the drawer with streak/XP/nav links intact (unchanged).
 
 - [ ] **Step 7: Commit**
 

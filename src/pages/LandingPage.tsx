@@ -148,7 +148,7 @@ const REGISTER_STEPS = [
   {
     index: "02",
     title: "Trao đổi lộ trình",
-    body: "Liên hệ SelbstDeutsch để trao đổi mục tiêu học và hình thức hỗ trợ phù hợp.",
+    body: "Liên hệ DeutschSelbst để trao đổi mục tiêu học và hình thức hỗ trợ phù hợp.",
   },
   {
     index: "03",
@@ -209,19 +209,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <a
             href="#home"
             onClick={scrollToSection("home")}
-            aria-label="SelbstDeutsch - Trang chủ"
+            aria-label="DeutschSelbst - Trang chủ"
             className="inline-flex items-center gap-2 whitespace-nowrap text-[17px] font-extrabold min-[720px]:gap-3 min-[720px]:text-[20px]"
           >
             <span className="block h-[34px] w-[34px] shrink-0 shadow-[0_7px_16px_rgba(228,0,59,.25)] min-[720px]:h-[38px] min-[720px]:w-[38px]">
               <img
-                src="/assets/selbstdeutsch-mark.svg"
+                src="/assets/deutschselbst-mark.svg"
                 alt=""
                 width={40}
                 height={40}
                 className="block h-full w-full"
               />
             </span>
-            <span className="max-[360px]:hidden">SelbstDeutsch</span>
+            <span className="max-[360px]:hidden">DeutschSelbst</span>
           </a>
           <div className="flex items-center gap-1.5 min-[720px]:gap-2.5">
             <a
@@ -287,7 +287,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <figure className="mx-auto my-0 max-w-[980px] overflow-hidden rounded-lg border border-[#e5e9f0] bg-[#f6f8fb] shadow-[0_18px_45px_rgba(17,24,39,.09)]">
             <img
               src="/assets/dashboard-product-preview.jpg"
-              alt="Giao diện khóa học tiếng Đức A1 online và theo dõi tiến độ tại SelbstDeutsch"
+              alt="Giao diện khóa học tiếng Đức A1 online và theo dõi tiến độ tại DeutschSelbst"
               width={1672}
               height={941}
               decoding="async"
@@ -313,7 +313,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="mx-auto max-w-[1180px]">
             <div className="mb-10 max-w-[760px]">
               <h2 className={SECTION_TITLE}>
-                Điều gì đặc biệt ở SelbstDeutsch?
+                Điều gì đặc biệt ở DeutschSelbst?
               </h2>
             </div>
 
@@ -514,7 +514,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </h2>
                 <p className="mt-4 max-w-[570px] text-[16px] font-normal leading-[1.62] text-[#667085] text-pretty min-[720px]:mx-auto min-[1080px]:mx-0">
                   Trải nghiệm bài đầu tiên để xem cách học có phù hợp. Khi muốn
-                  học tiếp, liên hệ SelbstDeutsch để mở khóa toàn bộ A1.
+                  học tiếp, liên hệ DeutschSelbst để mở khóa toàn bộ A1.
                 </p>
                 <div className="mt-[26px] grid gap-3 min-[720px]:flex min-[720px]:flex-wrap min-[720px]:items-center min-[720px]:justify-center min-[1080px]:justify-start">
                   <button
@@ -568,17 +568,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <a
                 href="#home"
                 onClick={scrollToSection("home")}
-                aria-label="SelbstDeutsch - về đầu trang"
+                aria-label="DeutschSelbst - về đầu trang"
                 className="inline-flex items-center gap-[11px] text-[19px] font-extrabold text-white"
               >
                 <img
-                  src="/assets/selbstdeutsch-mark.svg"
+                  src="/assets/deutschselbst-mark.svg"
                   alt=""
                   width={34}
                   height={34}
                   className="block h-[34px] w-[34px]"
                 />
-                <span>SelbstDeutsch</span>
+                <span>DeutschSelbst</span>
               </a>
               <p className="text-sm leading-[1.65] text-[#aeb8c7]">
                 Khóa học tiếng Đức online cho người Việt với lộ trình rõ ràng,
@@ -635,7 +635,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           <div className="mt-9 flex flex-col items-start justify-between gap-[18px] border-t border-white/10 pt-[22px] text-xs min-[720px]:flex-row min-[720px]:items-center">
-            <span>© 2026 SelbstDeutsch</span>
+            <span>© 2026 DeutschSelbst</span>
             <span>
               Tiếng Đức online cho người Việt · A1 đang mở đăng ký
             </span>

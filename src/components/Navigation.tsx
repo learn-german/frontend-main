@@ -63,7 +63,7 @@ export const Navbar: React.FC<NavigationProps> = ({
         >
           <BrandLogo size="md" />
           <span className="font-display font-extrabold text-xl tracking-tight text-slate-900 font-sans">
-            SelbstDeutsch
+            DeutschSelbst
           </span>
         </div>
 

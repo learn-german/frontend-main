@@ -37,7 +37,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserId 
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-display font-black text-slate-900">Bảng xếp hạng</h1>
-        <p className="text-sm text-slate-500 mt-1">Top học viên SelbstDeutsch theo điểm XP</p>
+        <p className="text-sm text-slate-500 mt-1">Top học viên DeutschSelbst theo điểm XP</p>
       </div>
 
       {/* Tab switcher */}

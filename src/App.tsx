@@ -263,7 +263,7 @@ export default function App() {
       setInitialLessonTab(undefined);
       setCurrentPage("lesson-detail");
     } else {
-      showToast("Đỉnh quá! Bạn đã hoàn thành toàn bộ kho bài học của SelbstDeutsch.", "success");
+      showToast("Đỉnh quá! Bạn đã hoàn thành toàn bộ kho bài học của DeutschSelbst.", "success");
       setCurrentPage("dashboard");
     }
   };
