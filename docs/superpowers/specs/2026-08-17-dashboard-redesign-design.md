@@ -1,10 +1,10 @@
-# Dashboard Redesign — Rebrand SelbstDeutsch + Daily Progress Report (Phase B)
+# Dashboard Redesign — Rebrand DeutschSelbst + Daily Progress Report (Phase B)
 
 ## Bối cảnh
 
 Yêu cầu redesign Dashboard theo 1 mockup mới (ảnh chụp), gồm 3 mảng gộp chung:
 
-1. Đổi brand hiển thị từ "DeutschPath" sang "SelbstDeutsch".
+1. Đổi brand hiển thị từ "DeutschPath" sang "DeutschSelbst".
 2. Thu gọn Header, mở rộng Sidebar đủ 6 mục điều hướng.
 3. Viết lại nội dung Dashboard: card Tổng quan mới hiển thị tiến độ thực tế
    so với kỳ vọng, card Bài học hiện tại rút gọn, card XP, Kết quả kiểm tra
@@ -41,7 +41,7 @@ cộng thêm phần rebrand/shell không nằm trong phạm vi Phase A.
 
 ### 1. Rebrand toàn app
 
-Thay chuỗi `"DeutschPath"` → `"SelbstDeutsch"` (text thuần, không có logic):
+Thay chuỗi `"DeutschPath"` → `"DeutschSelbst"` (text thuần, không có logic):
 
 - `src/components/Navigation.tsx:67` (brand logo Header)
 - `src/App.tsx:265` (toast "hoàn thành toàn bộ kho bài học của...")

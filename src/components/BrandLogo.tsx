@@ -22,7 +22,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 }) => (
   <img
     src="/logo.png"
-    alt="SelbstDeutsch"
+    alt="DeutschSelbst"
     className={`${sizeClasses[size]} rounded-xl object-cover shrink-0 ${className}`}
   />
 );

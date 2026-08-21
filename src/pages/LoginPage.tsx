@@ -106,7 +106,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             >
               <BrandLogo size="sm" />
               <span className="font-display font-extrabold text-lg tracking-tight text-slate-900">
-                SelbstDeutsch
+                DeutschSelbst
               </span>
             </div>
 
@@ -117,7 +117,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <p className="text-sm text-slate-500 leading-normal">
                 {isRegister 
                   ? "Bắt đầu học tiếng Đức miễn phí ngay hôm nay" 
-                  : "Đồng hành cùng SelbstDeutsch trên con đường chinh phục ngoại ngữ"
+                  : "Đồng hành cùng DeutschSelbst trên con đường chinh phục ngoại ngữ"
                 }
               </p>
             </div>
@@ -243,7 +243,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </p>
             ) : (
               <p>
-                Bạn mới sử dụng SelbstDeutsch?{" "}
+                Bạn mới sử dụng DeutschSelbst?{" "}
                 <button
                   id="btn-toggle-register"
                   type="button"
