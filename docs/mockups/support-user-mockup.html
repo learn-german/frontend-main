@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SelbstDeutsch — Support (Học viên)</title>
+  <!-- Màn hình Hỗ trợ — phía học viên. Fonts/tokens giống src/index.css -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* @theme from src/index.css — giống dashboard-mockup.html */
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+      --red: #dc2626;
+      --red-dark: #b91c1c;
+      --red-light: #fef2f2;
+      --maroon: #991b1b;
+      --orange: #ea580c;
+      --navy: #0f172a;
+      --navy-mid: #1e293b;
+      --bg: #f8f9fa;
+      --white: #ffffff;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --amber: #f59e0b;
+      --amber-dark: #b45309;
+      --amber-light: #fef3c7;
+      --yellow: #facc15;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --radius: 16px;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--slate-800);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+
+    /* Flag stripe */
+    .flag-stripe { display: flex; height: 4px; }
+    .flag-stripe span:nth-child(1) { width: 40px; background: var(--slate-900); }
+    .flag-stripe span:nth-child(2) { width: 56px; background: var(--red); }
+    .flag-stripe span:nth-child(3) { width: 24px; background: var(--yellow); }
+    .flag-stripe span:nth-child(4) { flex: 1; background: var(--slate-100); }
+
+    /* Header */
+    header {
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--slate-200);
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .brand-logo { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; background: var(--red); }
+    .brand-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--slate-900);
+      letter-spacing: -0.025em;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .icon-btn {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--slate-200);
+      background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--slate-500);
+    }
+
+    .user-block {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px 5px 5px;
+      border-radius: 999px;
+      border: 1px solid var(--slate-200);
+      background: var(--white);
+      cursor: pointer;
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--slate-800); color: white;
+      font-family: var(--font-display);
+      font-weight: 700; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .user-name { font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--slate-800); }
+
+    /* Shell */
+    .app-shell { display: flex; min-height: calc(100vh - 69px); }
+
+    aside {
+      width: 248px; flex-shrink: 0;
+      background: var(--white);
+      border-right: 1px solid var(--slate-200);
+      padding: 16px 0 16px 16px;
+      display: flex; flex-direction: column;
+      position: sticky; top: 69px;
+      height: calc(100vh - 69px);
+    }
+
+    .nav-links { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+    .nav-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px;
+      border: none; background: transparent;
+      text-align: left; width: 100%;
+      border-radius: 10px 0 0 10px;
+      transition: background 0.15s;
+    }
+    .nav-link svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--slate-400); stroke-width: 2; }
+    .nav-link .label { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--slate-600); line-height: 1.2; }
+    .nav-link .desc { font-size: 10px; color: var(--slate-400); margin-top: 1px; }
+    .nav-link:hover { background: var(--slate-50); }
+    .nav-link.active { background: var(--red-light); border-right: 3px solid var(--red); padding-right: 17px; }
+    .nav-link.active svg { color: var(--red); }
+    .nav-link.active .label { color: var(--red); }
+    .nav-link.active .desc { color: #ef4444; }
+
+    .streak-card {
+      margin: 12px 16px 0 0;
+      background: #fffbeb; border: 1px solid #fde68a;
+      border-radius: 12px; padding: 14px;
+      position: relative; overflow: hidden;
+    }
+    .streak-card .bg-flame { position: absolute; right: -8px; bottom: -8px; font-size: 44px; opacity: 0.12; transform: rotate(12deg); user-select: none; }
+    .streak-card h4 { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: #92400e; }
+    .streak-card p { font-size: 10px; color: var(--slate-500); margin-top: 4px; line-height: 1.45; }
+    .streak-count { margin-top: 10px; display: flex; align-items: center; gap: 4px; font-family: var(--font-display); font-size: 11px; font-weight: 700; color: #92400e; }
+
+    /* Main */
+    main { flex: 1; padding: 14px 20px 28px; overflow-y: auto; min-width: 0; }
+    .content-stack { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Page head — dùng lại banner navy của dashboard */
+    .page-banner {
+      background: linear-gradient(120deg, #0f172a 0%, #1a2744 45%, #2a1f4e 100%);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      color: white;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      position: relative; overflow: hidden;
+    }
+    .page-banner::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .banner-text { position: relative; z-index: 1; }
+    .banner-tag { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--yellow); text-transform: uppercase; letter-spacing: 0.05em; }
+    .banner-title { font-family: var(--font-display); font-size: 24px; font-weight: 900; margin-top: 4px; line-height: 1.25; letter-spacing: -0.025em; }
+    .banner-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; max-width: 440px; }
+
+    .btn-primary {
+      position: relative; z-index: 1;
+      font-family: var(--font-display);
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--red); color: white;
+      border: none; border-radius: 10px;
+      padding: 11px 16px;
+      font-size: 13px; font-weight: 700;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.28);
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--red-dark); }
+    .btn-primary svg { width: 16px; height: 16px; stroke-width: 2.5; }
+
+    .btn-secondary {
+      font-family: var(--font-display);
+      background: var(--white); color: var(--slate-700);
+      border: 1px solid var(--slate-200); border-radius: 10px;
+      padding: 10px 14px; font-size: 13px; font-weight: 700;
+    }
+    .btn-secondary:hover { background: var(--slate-50); }
+
+    /* Grid */
+    .support-grid { display: grid; grid-template-columns: 1fr 290px; gap: 14px; align-items: start; }
+    .right-col { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Card base */
+    .card { background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .card.pad { padding: 16px; }
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 12px; font-weight: 700; color: var(--slate-400);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .card-title svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .card-title.red { color: var(--red); }
+
+    .card-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--slate-100);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .count-note { font-size: 11px; color: var(--slate-400); }
+
+    /* Filters */
+    .filter-row { padding: 12px 16px; border-bottom: 1px solid var(--slate-100); display: flex; gap: 8px; flex-wrap: wrap; }
+    .search {
+      flex: 1; min-width: 220px;
+      display: flex; align-items: center; gap: 8px;
+      border: 1px solid var(--slate-200); border-radius: 10px;
+      background: var(--slate-50); padding: 9px 12px; color: var(--slate-400);
+    }
+    .search svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .search input { border: 0; outline: 0; background: transparent; width: 100%; font-size: 13px; color: var(--slate-800); }
+    .filter-row select {
+      border: 1px solid var(--slate-200); border-radius: 10px;
+      background: var(--white); color: var(--slate-600);
+      padding: 9px 10px; font-size: 13px; outline: 0;
+    }
+
+    /* Ticket list */
+    .ticket-list { padding: 6px; }
+    .ticket {
+      display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center;
+      padding: 12px 10px; border-radius: 12px;
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+      cursor: pointer;
+    }
+    .ticket:hover { background: var(--slate-50); border-color: var(--slate-200); }
+    .ticket + .ticket { border-top: 1px solid var(--slate-100); border-radius: 12px; }
+    .ticket-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--slate-800); margin-bottom: 5px; }
+    .ticket-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--slate-400); }
+    .ticket-code { font-family: var(--font-mono); font-weight: 500; color: var(--slate-500); }
+
+    /* Status badge */
+    .badge {
+      font-family: var(--font-display);
+      display: inline-flex; align-items: center;
+      padding: 4px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .badge-pending { background: var(--slate-100); color: var(--slate-600); }
+    .badge-processing { background: var(--amber-light); color: var(--amber-dark); }
+    .badge-resolved { background: var(--green-light); color: var(--green); }
+
+    /* KPI (admin) */
+    .kpi { padding: 16px; }
+    .kpi-value { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--slate-900); margin-top: 8px; letter-spacing: -0.025em; }
+    .kpi-sub { font-size: 11px; color: var(--slate-400); margin-top: 2px; }
+
+    /* Help card */
+    .help-card p { font-size: 12px; color: var(--slate-500); line-height: 1.5; margin-top: 8px; }
+    .help-list { display: flex; flex-direction: column; gap: 9px; margin-top: 12px; }
+    .help-item { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; color: var(--slate-600); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); margin-top: 6px; flex-shrink: 0; }
+    .legend-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .legend-item { display: flex; gap: 9px; align-items: flex-start; font-size: 11px; color: var(--slate-500); line-height: 1.45; }
+    .legend-item .badge { flex-shrink: 0; }
+
+    /* Detail */
+    .detail { display: none; }
+    .detail.active { display: block; }
+    .detail-top { padding: 16px; border-bottom: 1px solid var(--slate-100); display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .back-btn { font-family: var(--font-display); border: 0; background: none; color: var(--red); font-size: 12px; font-weight: 700; padding: 0 0 8px; display: inline-flex; align-items: center; gap: 5px; }
+    .detail-top h2 { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.025em; }
+    .detail-meta { font-size: 11px; color: var(--slate-400); margin-top: 5px; }
+    .detail-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; }
+    .thread { padding: 18px; border-right: 1px solid var(--slate-100); min-height: 420px; }
+    .message { margin-bottom: 16px; }
+    .message .who { font-size: 11px; color: var(--slate-400); margin-bottom: 5px; }
+    .bubble {
+      display: inline-block; max-width: 84%;
+      padding: 11px 14px; border-radius: 12px;
+      background: var(--slate-50); border: 1px solid var(--slate-100);
+      font-size: 13px; line-height: 1.55; color: var(--slate-700);
+    }
+    .message.staff { text-align: right; }
+    .message.staff .bubble { background: var(--red-light); border-color: #fecaca; color: var(--maroon); text-align: left; }
+
+    .reply { border-top: 1px solid var(--slate-100); padding-top: 14px; margin-top: 18px; }
+    .reply textarea {
+      width: 100%; min-height: 96px;
+      border: 1px solid var(--slate-200); border-radius: 10px;
+      padding: 11px 12px; resize: vertical; outline: 0;
+      font-size: 13px; background: var(--slate-50);
+    }
+    .reply textarea:focus { background: var(--white); border-color: #fca5a5; box-shadow: 0 0 0 3px var(--red-light); }
+    .reply-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 9px; }
+
+    .side-info { padding: 18px; }
+    .info-block + .info-block { margin-top: 18px; }
+    .info-block h4 { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .info-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 12px; }
+    .info-row span { color: var(--slate-400); }
+    .info-row b { font-family: var(--font-display); font-weight: 600; color: var(--slate-700); text-align: right; }
+    .side-info select { width: 100%; border: 1px solid var(--slate-200); border-radius: 10px; padding: 9px 10px; font-size: 13px; background: var(--white); color: var(--slate-700); outline: 0; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px; z-index: 80;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(600px, 100%);
+      background: var(--white); border-radius: var(--radius);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+      overflow: hidden;
+    }
+    .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--slate-100); display: flex; align-items: center; justify-content: space-between; }
+    .modal-head h2 { font-family: var(--font-display); font-size: 17px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.025em; }
+    .close-btn { border: 0; background: var(--slate-100); color: var(--slate-500); width: 32px; height: 32px; border-radius: 9px; }
+    .form { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .field label { font-family: var(--font-display); display: block; font-size: 12px; font-weight: 700; color: var(--slate-700); margin-bottom: 6px; }
+    .req { color: var(--red); }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--slate-200); border-radius: 10px;
+      padding: 10px 12px; font-size: 13px; outline: 0;
+      background: var(--slate-50); color: var(--slate-800);
+    }
+    .field textarea { min-height: 120px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { background: var(--white); border-color: #fca5a5; box-shadow: 0 0 0 3px var(--red-light); }
+    .error { display: none; color: var(--red); font-size: 11px; margin-top: 5px; }
+    .modal-foot { padding: 14px 20px; border-top: 1px solid var(--slate-100); background: var(--slate-50); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* Toast — mirrors src/lib/toast.ts */
+    .toast {
+      position: fixed; right: 24px; bottom: 24px;
+      background: var(--slate-900); color: white;
+      padding: 12px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 500;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+      display: none; z-index: 90;
+    }
+    .toast.show { display: block; }
+
+    @media (max-width: 1024px) {
+      .support-grid { grid-template-columns: 1fr; }
+      .detail-body { grid-template-columns: 1fr; }
+      .thread { border-right: 0; border-bottom: 1px solid var(--slate-100); min-height: 0; }
+    }
+    @media (max-width: 768px) {
+      aside { display: none; }
+      header { padding: 12px 16px; }
+      main { padding: 14px 16px 28px; }
+      .page-banner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body class="font-sans">
+
+  <div class="flag-stripe"><span></span><span></span><span></span><span></span></div>
+
+  <header>
+    <div class="brand">
+      <img class="brand-logo" src="../../public/logo.png" alt="SelbstDeutsch" onerror="this.style.background='#dc2626'" />
+      <span class="brand-name">SelbstDeutsch</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" aria-label="Thông báo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      </button>
+      <div class="user-block">
+        <div class="avatar">N</div>
+        <span class="user-name">Nguyen Thang</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside>
+      <nav class="nav-links">
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          <div><div class="label">Dashboard</div><div class="desc">Bảng tổng quan</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+          <div><div class="label">Lộ trình</div><div class="desc">Sơ đồ khóa học</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          <div><div class="label">Bài học hiện tại</div><div class="desc">Đang học: Video 7</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>
+          <div><div class="label">Gói học</div><div class="desc">Xem gói &amp; quyền lợi</div></div>
+        </button>
+        <button class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          <div><div class="label">Bảng xếp hạng</div><div class="desc">Thành tích học tập</div></div>
+        </button>
+        <button class="nav-link active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          <div><div class="label">Trợ giúp học tập</div><div class="desc">Giải đáp thắc mắc</div></div>
+        </button>
+      </nav>
+
+      <div class="streak-card">
+        <div class="bg-flame">🔥</div>
+        <h4>Streak hằng ngày!</h4>
+        <p>Học tối thiểu 1 bài học mỗi ngày để duy trì chuỗi đỏ lấp lánh của bạn. Tích cực lên nhé!</p>
+        <div class="streak-count"><span>🔥</span><span>0 ngày liên tiếp</span></div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="content-stack">
+
+        <div class="page-banner">
+          <div class="banner-text">
+            <div class="banner-tag">Hilfe</div>
+            <div class="banner-title">Trợ giúp học tập</div>
+            <p class="banner-sub">Gửi yêu cầu khi bạn gặp sự cố và theo dõi phản hồi từ đội ngũ SelbstDeutsch.</p>
+          </div>
+          <button class="btn-primary" id="newTicketBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Tạo ticket mới
+          </button>
+        </div>
+
+        <!-- LIST VIEW -->
+        <div id="listView">
+          <div class="support-grid">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title red">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Yêu cầu của bạn
+                </div>
+                <span class="count-note">3 ticket</span>
+              </div>
+
+              <div class="filter-row">
+                <div class="search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg>
+                  <input placeholder="Tìm theo tiêu đề hoặc mã ticket..." />
+                </div>
+                <select>
+                  <option>Tất cả trạng thái</option>
+                  <option>Đang chờ xử lý</option>
+                  <option>Đang xử lý</option>
+                  <option>Đã xử lý</option>
+                </select>
+              </div>
+
+              <div class="ticket-list">
+                <div class="ticket">
+                  <div>
+                    <div class="ticket-title">Không mở được bài nghe Video 6</div>
+                    <div class="ticket-meta">
+                      <span class="ticket-code">#SD-1024</span><span>·</span>
+                      <span>Nội dung bài học / bài tập</span><span>·</span>
+                      <span>18/08/2026</span>
+                    </div>
+                  </div>
+                  <span class="badge badge-pending">Đang chờ xử lý</span>
+                </div>
+
+                <div class="ticket">
+                  <div>
+                    <div class="ticket-title">Bài tập Grammatik Video 4 hiển thị sai đáp án</div>
+                    <div class="ticket-meta">
+                      <span class="ticket-code">#SD-1017</span><span>·</span>
+                      <span>Đóng góp ý kiến bài tập</span><span>·</span>
+                      <span>17/08/2026</span>
+                    </div>
+                  </div>
+                  <span class="badge badge-processing">Đang xử lý</span>
+                </div>
+
+                <div class="ticket">
+                  <div>
+                    <div class="ticket-title">Không truy cập được khóa A1 sau khi đăng nhập</div>
+                    <div class="ticket-meta">
+                      <span class="ticket-code">#SD-0998</span><span>·</span>
+                      <span>Tài khoản / quyền truy cập</span><span>·</span>
+                      <span>14/08/2026</span>
+                    </div>
+                  </div>
+                  <span class="badge badge-resolved">Đã xử lý</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="right-col">
+
+              <div class="card pad help-card">
+                <div class="card-title red">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                  Bạn cần hỗ trợ gì?
+                </div>
+                <p>Tạo ticket khi bạn gặp sự cố hoặc cần đội ngũ kiểm tra chi tiết.</p>
+                <div class="help-list">
+                  <div class="help-item"><span class="dot"></span><span>Lỗi hoặc sự cố trên website</span></div>
+                  <div class="help-item"><span class="dot"></span><span>Nội dung bài học / bài tập</span></div>
+                  <div class="help-item"><span class="dot"></span><span>Đóng góp ý kiến cho bài tập</span></div>
+                  <div class="help-item"><span class="dot"></span><span>Tài khoản hoặc quyền truy cập</span></div>
+                </div>
+              </div>
+
+              <div class="card pad">
+                <div class="card-title">Trạng thái xử lý</div>
+                <div class="legend-list">
+                  <div class="legend-item"><span class="badge badge-pending">Đang chờ</span><span>Ticket đã gửi, chờ đội ngũ tiếp nhận.</span></div>
+                  <div class="legend-item"><span class="badge badge-processing">Đang xử lý</span><span>Đội ngũ đang kiểm tra yêu cầu của bạn.</span></div>
+                  <div class="legend-item"><span class="badge badge-resolved">Đã xử lý</span><span>Đã gửi phản hồi hoàn tất.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DETAIL VIEW -->
+        <div class="card detail" id="detailView">
+          <div class="detail-top">
+            <div>
+              <button class="back-btn" id="backBtn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Quay lại danh sách
+              </button>
+              <h2>Không mở được bài nghe Video 6</h2>
+              <div class="detail-meta"><span class="ticket-code">#SD-1024</span> · Nội dung bài học / bài tập · Tạo lúc 09:12, 18/08/2026</div>
+            </div>
+            <span class="badge badge-pending" id="detailStatus">Đang chờ xử lý</span>
+          </div>
+
+          <div class="detail-body">
+            <div class="thread">
+              <div class="message">
+                <div class="who">Nguyễn Minh Anh · 09:12</div>
+                <div class="bubble">Mình đang học Video 6 nhưng phần bài nghe không phát được. Mình đã thử tải lại trang nhưng vẫn không nghe thấy audio. Nhờ đội ngũ kiểm tra giúp mình.</div>
+              </div>
+
+              <div class="message staff" id="staffMessage" style="display:none">
+                <div class="who">SelbstDeutsch Support · 09:35</div>
+                <div class="bubble" id="staffText">Bên mình đã kiểm tra và cập nhật lại audio của bài học. Bạn tải lại trang và thử mở bài nghe giúp mình nhé.</div>
+              </div>
+
+            </div>
+
+            <div class="side-info">
+              <div class="info-block">
+                <h4>Thông tin ticket</h4>
+                <div class="info-row"><span>Chủ đề</span><b>Nội dung bài học</b></div>
+                <div class="info-row"><span>Ngày tạo</span><b>18/08/2026</b></div>
+                <div class="info-row"><span>Cập nhật</span><b>18/08/2026</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Tạo ticket hỗ trợ</h2>
+        <button class="close-btn" id="closeModal" aria-label="Đóng">✕</button>
+      </div>
+      <div class="form">
+        <div class="field">
+          <label>Tiêu đề <span class="req">*</span></label>
+          <input id="titleInput" placeholder="Ví dụ: Không mở được bài nghe Video 6" />
+          <div class="error" id="titleError">Vui lòng nhập tiêu đề.</div>
+        </div>
+        <div class="field">
+          <label>Chủ đề cần hỗ trợ <span class="req">*</span></label>
+          <select id="topicInput">
+            <option value="">Chọn chủ đề</option>
+            <option>Lỗi hoặc sự cố trên website</option>
+            <option>Nội dung bài học / bài tập</option>
+            <option>Đóng góp ý kiến cho phần bài tập</option>
+            <option>Tài khoản hoặc quyền truy cập</option>
+            <option>Khác</option>
+          </select>
+          <div class="error" id="topicError">Vui lòng chọn chủ đề cần hỗ trợ.</div>
+        </div>
+        <div class="field">
+          <label>Mô tả chi tiết <span class="req">*</span></label>
+          <textarea id="descInput" placeholder="Mô tả vấn đề bạn đang gặp, bài học liên quan và thao tác đã thử..."></textarea>
+          <div class="error" id="descError">Vui lòng mô tả chi tiết vấn đề.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-secondary" id="cancelBtn">Hủy</button>
+        <button class="btn-primary" id="submitTicket">Gửi yêu cầu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Ticket đã được gửi thành công.</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // Toast — mirrors src/lib/toast.ts
+    let toastTimer;
+    function showToast(msg) {
+      const toast = $('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // List <-> detail
+    document.querySelectorAll('.ticket').forEach((ticket) => {
+      ticket.onclick = () => {
+        $('listView').style.display = 'none';
+        $('detailView').classList.add('active');
+      };
+    });
+    $('backBtn').onclick = () => {
+      $('listView').style.display = 'block';
+      $('detailView').classList.remove('active');
+    };
+
+    // Create-ticket modal
+    const modal = $('modal');
+    $('newTicketBtn').onclick = () => modal.classList.add('open');
+    ['closeModal', 'cancelBtn'].forEach((id) => ($(id).onclick = () => modal.classList.remove('open')));
+
+    const FIELDS = [['titleInput', 'titleError'], ['topicInput', 'topicError'], ['descInput', 'descError']];
+    function validate() {
+      return FIELDS.reduce((ok, [inputId, errorId]) => {
+        const invalid = !$(inputId).value.trim();
+        $(errorId).style.display = invalid ? 'block' : 'none';
+        return ok && !invalid;
+      }, true);
+    }
+    $('submitTicket').onclick = () => {
+      if (!validate()) return;
+      modal.classList.remove('open');
+      FIELDS.forEach(([inputId]) => ($(inputId).value = ''));
+      showToast('Ticket đã được gửi thành công.');
+    };
+  </script>
+</body>
+</html>

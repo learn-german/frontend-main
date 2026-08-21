@@ -8,6 +8,7 @@ import {
   ChevronRight,
   AlertTriangle,
   PenLine,
+  MessageSquare,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
@@ -16,8 +17,9 @@ import { AdminUsersSection } from "./AdminUsersSection";
 import { AdminContentSection } from "./AdminContentSection";
 import { AdminQuizSection } from "./AdminQuizSection";
 import { AdminWritingSection } from "./AdminWritingSection";
+import { AdminSupportSection } from "./AdminSupportSection";
 
-export type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing";
+export type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing" | "support";
 
 interface AdminPageProps {
   userRole: string;
@@ -32,6 +34,7 @@ const NAV_ITEMS: { id: AdminSection; label: string; Icon: React.FC<{ className?:
   { id: "content", label: "Nội dung", Icon: BookOpen },
   { id: "quiz", label: "Bài tập", Icon: HelpCircle },
   { id: "writing", label: "Chấm bài viết", Icon: PenLine },
+  { id: "support", label: "Hỗ trợ", Icon: MessageSquare },
 ];
 
 export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, section, onSectionChange }) => {
@@ -89,6 +92,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, 
         {section === "content" && <AdminContentSection />}
         {section === "quiz" && <AdminQuizSection />}
         {section === "writing" && <AdminWritingSection />}
+        {section === "support" && <AdminSupportSection />}
       </main>
     </div>
   );

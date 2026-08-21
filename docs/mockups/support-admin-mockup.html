@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SelbstDeutsch — Support (Admin)</title>
+  <!-- Màn Hỗ trợ phía admin. Layout mirror src/pages/admin/AdminApp.tsx + AdminPage.tsx + AdminUsersSection.tsx -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+      --slate-950: #020617;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-400: #94a3b8;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50:  #f8fafc;
+      --white: #ffffff;
+
+      --orange-700: #c2410c;
+      --orange-600: #ea580c;
+      --orange-500: #f97316;
+      --orange-400: #fb923c;
+      --orange-200: #fed7aa;
+      --orange-50:  #fff7ed;
+
+      --blue-600: #2563eb; --blue-200: #bfdbfe; --blue-50: #eff6ff;
+      --green-600: #16a34a; --green-200: #bbf7d0; --green-50: #f0fdf4;
+      --amber-600: #d97706; --amber-200: #fde68a; --amber-50: #fffbeb;
+
+      --border-card: rgba(226, 232, 240, 0.6);   /* border-slate-200/60 */
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(15,23,42,.1), 0 8px 10px -6px rgba(15,23,42,.1);
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--slate-50);
+      color: var(--slate-800);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    svg { flex-shrink: 0; }
+
+    /* ---- Admin topbar (AdminApp.tsx) ---- */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: var(--slate-950);
+      border-bottom: 1px solid var(--slate-800);
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { width: 32px; height: 32px; border-radius: 12px; object-fit: cover; background: var(--orange-600); }
+    .brand-row { display: flex; align-items: center; gap: 8px; }
+    .brand-name { font-family: var(--font-display); font-weight: 700; color: var(--white); font-size: 14px; }
+    .brand-sep { color: var(--slate-600); font-size: 12px; }
+    .brand-tag { color: var(--orange-400); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .bell-btn { background: transparent; border: 0; color: var(--slate-400); padding: 6px; border-radius: 8px; display: flex; position: relative; }
+    .bell-btn:hover { background: var(--slate-800); color: var(--white); }
+    .bell-dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--orange-500); border: 2px solid var(--slate-950); }
+    .admin-id { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--slate-400); }
+    .admin-id svg { width: 14px; height: 14px; color: var(--orange-400); }
+    .logout-btn {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 700; color: var(--slate-400);
+      background: transparent; border: 0;
+      padding: 6px 12px; border-radius: 8px;
+      transition: color .15s, background .15s;
+    }
+    .logout-btn:hover { color: var(--white); background: var(--slate-800); }
+    .logout-btn svg { width: 14px; height: 14px; }
+
+    /* ---- Shell (max-w-7xl mx-auto px-8 py-8) ---- */
+    .shell { max-width: 1280px; margin: 0 auto; padding: 32px; display: flex; gap: 24px; align-items: flex-start; }
+
+    /* ---- Admin sidebar (AdminPage.tsx) ---- */
+    .admin-nav { width: 208px; flex-shrink: 0; position: sticky; top: 88px; }
+    .admin-nav-title {
+      font-family: var(--font-display);
+      font-size: 10px; font-weight: 700; color: var(--slate-400);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      padding: 0 12px; margin-bottom: 12px;
+    }
+    .admin-nav button {
+      width: 100%; display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 12px; border: 1px solid transparent;
+      background: transparent; text-align: left;
+      font-family: var(--font-display); font-size: 14px; font-weight: 600;
+      color: var(--slate-600);
+      transition: background .15s, color .15s;
+      margin-bottom: 4px;
+    }
+    .admin-nav button svg { width: 16px; height: 16px; }
+    .admin-nav button:hover { background: var(--slate-50); color: var(--slate-800); }
+    .admin-nav button.active { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-200); }
+    .admin-nav button.active .chev { margin-left: auto; width: 12px; height: 12px; color: var(--orange-400); }
+    .admin-nav .nav-foot { padding-top: 16px; border-top: 1px solid var(--slate-100); margin-top: 16px; }
+    .admin-nav .nav-foot button { color: var(--slate-500); }
+
+    /* ---- Main ---- */
+    .admin-main { flex: 1; min-width: 0; }
+    .stack { display: flex; flex-direction: column; gap: 20px; }
+
+    .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    h1 { font-family: var(--font-display); font-size: 20px; font-weight: 900; color: var(--slate-900); }
+    .head-actions { display: flex; align-items: center; gap: 8px; }
+
+    .search { position: relative; width: 208px; }
+    .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--slate-400); }
+    .search input {
+      width: 100%; padding: 8px 12px 8px 36px;
+      font-size: 14px; border: 1px solid var(--slate-200); border-radius: 12px;
+      background: var(--white); outline: 0;
+    }
+    .search input:focus, select:focus, textarea:focus { border-color: var(--orange-500); box-shadow: 0 0 0 2px rgba(249, 115, 22, .2); }
+
+    /* ---- Stat cards (AdminDashboardSection) ---- */
+    .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .card { background: var(--white); border: 1px solid var(--border-card); border-radius: 16px; box-shadow: var(--shadow-sm); }
+    .stat-card { padding: 20px; }
+    .stat-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid; margin-bottom: 12px; }
+    .stat-icon svg { width: 20px; height: 20px; }
+    .stat-icon.amber { color: var(--amber-600); background: var(--amber-50); border-color: var(--amber-200); }
+    .stat-icon.blue { color: var(--blue-600); background: var(--blue-50); border-color: var(--blue-200); }
+    .stat-icon.green { color: var(--green-600); background: var(--green-50); border-color: var(--green-200); }
+    .stat-value { font-family: var(--font-display); font-size: 24px; font-weight: 900; color: var(--slate-900); }
+    .stat-label { font-size: 12px; color: var(--slate-500); margin-top: 2px; }
+
+    /* ---- Filter bar ---- */
+    .filter-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px; }
+    .filter-bar select {
+      padding: 8px 12px; font-size: 14px;
+      border: 1px solid var(--slate-200); border-radius: 12px;
+      background: var(--white); color: var(--slate-700); outline: 0;
+    }
+    .filter-note { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--slate-500); margin-left: auto; }
+    .reset-link { font-size: 12px; font-weight: 700; color: var(--slate-400); background: none; border: 0; text-decoration: underline; }
+    .reset-link:hover { color: var(--slate-600); }
+
+    /* ---- Table (AdminUsersSection) ---- */
+    .table-card { overflow: hidden; }
+    table { width: 100%; font-size: 14px; border-collapse: collapse; }
+    thead tr { border-bottom: 1px solid var(--slate-100); background: var(--slate-50); }
+    th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 700; color: var(--slate-500); text-transform: uppercase; white-space: nowrap; }
+    th.center { text-align: center; } th.right { text-align: right; }
+    tbody tr { border-top: 1px solid var(--slate-50); cursor: pointer; transition: background .15s; }
+    tbody tr:hover { background: rgba(248, 250, 252, .6); }
+    td { padding: 12px 16px; vertical-align: middle; }
+    td.code { font-family: var(--font-mono); font-size: 12px; color: var(--slate-400); }
+    td.title { font-weight: 500; color: var(--slate-800); }
+    td.title:hover { color: var(--orange-600); text-decoration: underline; }
+    td.muted { color: var(--slate-500); }
+    td.center { text-align: center; } td.right { text-align: right; color: var(--slate-400); font-size: 12px; }
+    .empty-row td { padding: 32px 16px; text-align: center; color: var(--slate-400); }
+
+    /* ---- Pills ---- */
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 999px; border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .pill-pending { background: var(--slate-100); color: var(--slate-500); }
+    .pill-processing { background: var(--amber-50); color: var(--amber-600); border-color: var(--amber-200); }
+    .pill-resolved { background: var(--green-50); color: var(--green-600); border-color: var(--green-200); }
+
+    /* ---- Pagination ---- */
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .pagination button { padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 8px; border: 1px solid var(--slate-200); background: var(--white); color: var(--slate-600); }
+    .pagination button:hover:not(:disabled) { background: var(--slate-50); }
+    .pagination button:disabled { opacity: .4; cursor: not-allowed; }
+    .pagination span { font-size: 12px; color: var(--slate-500); }
+
+    /* ---- Buttons (DesignSystem.tsx) ---- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font-family: var(--font-display); font-weight: 600;
+      border-radius: 12px; padding: 10px 20px; font-size: 14px;
+      border: 1px solid transparent; transition: all .15s;
+    }
+    .btn:active { transform: scale(.95); }
+    .btn-primary { background: var(--orange-600); color: var(--white); box-shadow: var(--shadow-sm); }
+    .btn-primary:hover { background: var(--orange-700); }
+    .btn-secondary { background: var(--white); color: var(--slate-700); border-color: var(--slate-200); box-shadow: var(--shadow-sm); }
+    .btn-secondary:hover { background: var(--slate-50); border-color: #cbd5e1; }
+    .btn svg { width: 16px; height: 16px; }
+
+    /* ---- Detail ---- */
+    .detail { display: none; }
+    .detail.active { display: flex; flex-direction: column; gap: 20px; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: 0; padding: 0;
+      font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--slate-500);
+    }
+    .back-btn:hover { color: var(--orange-600); }
+    .back-btn svg { width: 14px; height: 14px; }
+
+    .detail-head { padding: 20px; border-bottom: 1px solid var(--slate-100); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .detail-head h2 { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--slate-900); }
+    .detail-meta { font-size: 12px; color: var(--slate-400); margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .detail-meta .code { font-family: var(--font-mono); color: var(--slate-500); }
+
+    .detail-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; }
+    .thread { padding: 20px; border-right: 1px solid var(--slate-100); min-height: 380px; }
+    .message { margin-bottom: 18px; }
+    .message .who { font-size: 12px; color: var(--slate-400); margin-bottom: 6px; }
+    .bubble {
+      display: inline-block; max-width: 85%;
+      padding: 12px 14px; border-radius: 12px;
+      background: var(--slate-50); border: 1px solid var(--slate-100);
+      font-size: 13px; line-height: 1.55; color: var(--slate-700);
+    }
+    .message.staff { text-align: right; }
+    .message.staff .bubble { background: var(--orange-50); border-color: var(--orange-200); color: var(--orange-700); text-align: left; }
+
+    .reply { border-top: 1px solid var(--slate-100); padding-top: 16px; margin-top: 20px; }
+    .reply textarea {
+      width: 100%; min-height: 100px; resize: vertical;
+      padding: 12px; font-size: 14px;
+      border: 1px solid var(--slate-200); border-radius: 12px;
+      background: var(--white); outline: 0;
+    }
+    .reply-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+    .side-info { padding: 20px; }
+    .info-block + .info-block { margin-top: 20px; }
+    .info-block h4 { font-family: var(--font-display); font-size: 10px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+    .info-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 12px; }
+    .info-row span { color: var(--slate-400); }
+    .info-row b { font-weight: 600; color: var(--slate-700); text-align: right; }
+    .info-row b.mono { font-family: var(--font-mono); font-weight: 500; }
+    .side-info select {
+      width: 100%; padding: 8px 12px; font-size: 14px;
+      border: 1px solid var(--slate-200); border-radius: 12px;
+      background: var(--white); color: var(--slate-700); outline: 0;
+    }
+
+    /* ---- Toast (AdminApp.tsx) ---- */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      max-width: 384px;
+      background: var(--white); border: 1px solid var(--slate-100);
+      border-radius: 16px; box-shadow: var(--shadow-xl);
+      padding: 16px; display: none; align-items: flex-start; gap: 12px;
+    }
+    .toast.show { display: flex; }
+    .toast svg.icon { width: 20px; height: 20px; color: #22c55e; margin-top: 2px; }
+    .toast p { font-size: 12px; font-weight: 500; color: var(--slate-700); line-height: 1.5; flex: 1; }
+    .toast .close { background: none; border: 0; padding: 4px; border-radius: 8px; color: var(--slate-400); display: flex; }
+    .toast .close:hover { background: var(--slate-50); color: var(--slate-600); }
+    .toast .close svg { width: 16px; height: 16px; }
+
+    @media (max-width: 1024px) {
+      .shell { padding: 20px 16px; flex-direction: column; }
+      .admin-nav { width: 100%; position: static; display: flex; gap: 6px; overflow-x: auto; }
+      .admin-nav-title, .admin-nav .nav-foot { display: none; }
+      .admin-nav button { width: auto; white-space: nowrap; margin-bottom: 0; }
+      .admin-main { width: 100%; }
+      .stat-grid { grid-template-columns: 1fr; }
+      .detail-body { grid-template-columns: 1fr; }
+      .thread { border-right: 0; border-bottom: 1px solid var(--slate-100); min-height: 0; }
+      .table-card { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <img class="brand-logo" src="../../public/logo.png" alt="SelbstDeutsch" onerror="this.style.background='#ea580c'" />
+      <div class="brand-row">
+        <span class="brand-name">SelbstDeutsch</span>
+        <span class="brand-sep">/</span>
+        <span class="brand-tag">Admin</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="bell-btn" aria-label="Thông báo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="bell-dot"></span>
+      </button>
+      <div class="admin-id">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>admin@selbstdeutsch.com</span>
+      </div>
+      <button class="logout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Đăng xuất
+      </button>
+    </div>
+  </header>
+
+  <div class="shell">
+
+    <!-- ADMIN PANEL NAV -->
+    <aside class="admin-nav">
+      <p class="admin-nav-title">Admin Panel</p>
+      <button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Tổng quan
+      </button>
+      <button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Người dùng
+      </button>
+      <button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Nội dung
+      </button>
+      <button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        Bài tập
+      </button>
+      <button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Chấm bài viết
+      </button>
+      <button class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Hỗ trợ
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div class="nav-foot">
+        <button>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Thoát Admin
+        </button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+
+      <!-- LIST -->
+      <div id="listView" class="stack">
+        <div class="page-head">
+          <h1>Hỗ trợ (3)</h1>
+          <div class="head-actions">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input placeholder="Tìm ticket..." />
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="card stat-card">
+            <div class="stat-icon amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <p class="stat-value">8</p>
+            <p class="stat-label">Ticket đang chờ</p>
+          </div>
+          <div class="card stat-card">
+            <div class="stat-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <p class="stat-value">5</p>
+            <p class="stat-label">Đang xử lý</p>
+          </div>
+          <div class="card stat-card">
+            <div class="stat-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <p class="stat-value">12</p>
+            <p class="stat-label">Đã xử lý trong tuần</p>
+          </div>
+        </div>
+
+        <div class="card filter-bar">
+          <select>
+            <option>Tất cả trạng thái</option>
+            <option>Đang chờ xử lý</option>
+            <option>Đang xử lý</option>
+            <option>Đã xử lý</option>
+          </select>
+          <select>
+            <option>Tất cả chủ đề</option>
+            <option>Lỗi hoặc sự cố trên website</option>
+            <option>Nội dung bài học / bài tập</option>
+            <option>Đóng góp ý kiến cho bài tập</option>
+            <option>Tài khoản hoặc quyền truy cập</option>
+          </select>
+          <select>
+            <option>Mới nhất trước</option>
+            <option>Cũ nhất trước</option>
+          </select>
+          <div class="filter-note">
+            <span>Hiển thị 3 / 3 ticket</span>
+            <button class="reset-link">Đặt lại</button>
+          </div>
+        </div>
+
+        <div class="card table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Mã</th>
+                <th>Tiêu đề</th>
+                <th>Học viên</th>
+                <th>Chủ đề</th>
+                <th class="center">Trạng thái</th>
+                <th class="right">Ngày tạo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="ticket">
+                <td class="code">SD-1024</td>
+                <td class="title">Không mở được bài nghe Video 6</td>
+                <td class="muted">Nguyễn Minh Anh</td>
+                <td class="muted">Nội dung bài học</td>
+                <td class="center"><span class="pill pill-pending">Đang chờ xử lý</span></td>
+                <td class="right">18/08/2026</td>
+              </tr>
+              <tr class="ticket">
+                <td class="code">SD-1017</td>
+                <td class="title">Bài tập Grammatik Video 4 hiển thị sai đáp án</td>
+                <td class="muted">Trần Thu Hà</td>
+                <td class="muted">Đóng góp ý kiến</td>
+                <td class="center"><span class="pill pill-processing">Đang xử lý</span></td>
+                <td class="right">17/08/2026</td>
+              </tr>
+              <tr class="ticket">
+                <td class="code">SD-0998</td>
+                <td class="title">Không truy cập được khóa A1 sau khi đăng nhập</td>
+                <td class="muted">Phạm Hoàng Nam</td>
+                <td class="muted">Tài khoản / truy cập</td>
+                <td class="center"><span class="pill pill-resolved">Đã xử lý</span></td>
+                <td class="right">14/08/2026</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <button disabled>Trước</button>
+          <span>Trang 1/1</span>
+          <button disabled>Sau</button>
+        </div>
+      </div>
+
+      <!-- DETAIL -->
+      <div class="detail" id="detailView">
+        <button class="back-btn" id="backBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Quay lại danh sách ticket
+        </button>
+
+        <div class="card">
+          <div class="detail-head">
+            <div>
+              <h2>Không mở được bài nghe Video 6</h2>
+              <div class="detail-meta">
+                <span class="code">SD-1024</span>
+                <span>·</span><span>Nội dung bài học / bài tập</span>
+                <span>·</span><span>Tạo lúc 09:12, 18/08/2026</span>
+              </div>
+            </div>
+            <span class="pill pill-pending" id="detailStatus">Đang chờ xử lý</span>
+          </div>
+
+          <div class="detail-body">
+            <div class="thread">
+              <div class="message">
+                <div class="who">Nguyễn Minh Anh · 09:12</div>
+                <div class="bubble">Mình đang học Video 6 nhưng phần bài nghe không phát được. Mình đã thử tải lại trang nhưng vẫn không nghe thấy audio. Nhờ đội ngũ kiểm tra giúp mình.</div>
+              </div>
+
+              <div class="message staff" id="staffMessage" style="display:none">
+                <div class="who">SelbstDeutsch Support · 09:35</div>
+                <div class="bubble" id="staffText">Bên mình đã kiểm tra và cập nhật lại audio của bài học. Bạn tải lại trang và thử mở bài nghe giúp mình nhé.</div>
+              </div>
+
+              <div class="reply">
+                <textarea id="replyText" placeholder="Nhập phản hồi gửi cho học viên..."></textarea>
+                <div class="reply-actions">
+                  <button class="btn btn-secondary" id="startBtn">Bắt đầu xử lý</button>
+                  <button class="btn btn-primary" id="replyBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Gửi phản hồi &amp; hoàn tất
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="side-info">
+              <div class="info-block">
+                <h4>Thông tin học viên</h4>
+                <div class="info-row"><span>Họ tên</span><b>Nguyễn Minh Anh</b></div>
+                <div class="info-row"><span>Email</span><b>minhanh@example.com</b></div>
+                <div class="info-row"><span>Level</span><b>A1</b></div>
+                <div class="info-row"><span>User ID</span><b class="mono">2841a9f3</b></div>
+              </div>
+              <div class="info-block">
+                <h4>Thông tin ticket</h4>
+                <div class="info-row"><span>Chủ đề</span><b>Nội dung bài học</b></div>
+                <div class="info-row"><span>Ngày tạo</span><b>18/08/2026</b></div>
+                <div class="info-row"><span>Cập nhật</span><b>18/08/2026</b></div>
+              </div>
+              <div class="info-block">
+                <h4>Cập nhật trạng thái</h4>
+                <select id="statusSelect">
+                  <option>Đang chờ xử lý</option>
+                  <option>Đang xử lý</option>
+                  <option>Đã xử lý</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <p id="toastText">Đã gửi phản hồi.</p>
+    <button class="close" id="toastClose" aria-label="Đóng">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // Toast — mirrors AdminApp.tsx (4.5s auto-dismiss + nút đóng)
+    let toastTimer;
+    function showToast(msg) {
+      $('toastText').textContent = msg;
+      $('toast').classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4500);
+    }
+    $('toastClose').onclick = () => $('toast').classList.remove('show');
+
+    // List <-> detail
+    document.querySelectorAll('.ticket').forEach((row) => {
+      row.onclick = () => {
+        $('listView').style.display = 'none';
+        $('detailView').classList.add('active');
+      };
+    });
+    $('backBtn').onclick = () => {
+      $('listView').style.display = 'flex';
+      $('detailView').classList.remove('active');
+    };
+
+    // Status
+    const PILL_CLASS = {
+      'Đang chờ xử lý': 'pill pill-pending',
+      'Đang xử lý': 'pill pill-processing',
+      'Đã xử lý': 'pill pill-resolved',
+    };
+    const detailStatus = $('detailStatus');
+    const statusSelect = $('statusSelect');
+    function setStatus(value) {
+      detailStatus.textContent = value;
+      detailStatus.className = PILL_CLASS[value];
+      statusSelect.value = value;
+    }
+    statusSelect.onchange = () => setStatus(statusSelect.value);
+    $('startBtn').onclick = () => {
+      setStatus('Đang xử lý');
+      showToast('Ticket SD-1024 đã chuyển sang Đang xử lý.');
+    };
+    $('replyBtn').onclick = () => {
+      const text = $('replyText').value.trim();
+      if (text) $('staffText').textContent = text;
+      $('staffMessage').style.display = 'block';
+      $('replyText').value = '';
+      setStatus('Đã xử lý');
+      showToast('Đã gửi phản hồi cho học viên. Ticket chuyển sang Đã xử lý.');
+    };
+  </script>
+</body>
+</html>
