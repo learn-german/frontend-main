@@ -23,6 +23,7 @@ export interface MessageRow {
   author_id: string;
   is_staff: boolean;
   body: string;
+  image_keys?: string[] | null;
   created_at: string;
 }
 
@@ -49,8 +50,25 @@ export function mapMessage(row: MessageRow): SupportTicketMessage {
     authorId: row.author_id,
     isStaff: row.is_staff,
     body: row.body,
+    imageKeys: row.image_keys ?? [],
     createdAt: row.created_at,
   };
+}
+
+const TICKET_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_TICKET_IMAGE_BYTES = 5 * 1024 * 1024;
+
+export function validateTicketImages(
+  files: { type: string; size: number }[],
+): string | null {
+  if (files.length > 3) return "Mỗi lần gửi chỉ được đính kèm tối đa 3 ảnh.";
+  if (files.some((file) => !TICKET_IMAGE_TYPES.has(file.type))) {
+    return "Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.";
+  }
+  if (files.some((file) => file.size > MAX_TICKET_IMAGE_BYTES)) {
+    return "Mỗi ảnh phải nhỏ hơn hoặc bằng 5 MB.";
+  }
+  return null;
 }
 
 export interface TicketStats {

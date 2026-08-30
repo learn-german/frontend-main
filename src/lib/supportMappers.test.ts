@@ -8,6 +8,7 @@ import {
   type MessageRow,
   type TicketRow,
 } from "./supportMappers";
+import * as supportMappers from "./supportMappers";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-08-20T00:00:00Z").getTime();
@@ -85,6 +86,7 @@ test("TS-06 mapMessage đổi snake_case sang camelCase", () => {
     authorId: "u1",
     isStaff: false,
     body: "Bài nghe không phát được.",
+    imageKeys: [],
     createdAt: "2026-08-18T09:12:00Z",
   });
 });
@@ -95,6 +97,33 @@ test("TS-07 mapMessage giữ nguyên is_staff true", () => {
     body: "Đã sửa.", created_at: "2026-08-18T09:35:00Z",
   };
   assert.equal(mapMessage(row).isStaff, true);
+});
+
+test("TS-07a mapMessage đổi image_keys sang imageKeys", () => {
+  const row: MessageRow = {
+    id: "m3", ticket_id: "t1", author_id: "u1", is_staff: false,
+    body: "Ảnh lỗi.", image_keys: ["ticket-images/u1/a.jpg"],
+    created_at: "2026-08-18T09:35:00Z",
+  };
+  assert.deepEqual(mapMessage(row).imageKeys, ["ticket-images/u1/a.jpg"]);
+});
+
+test("TS-07b validateTicketImages chặn quá 3 ảnh", () => {
+  const validate = (supportMappers as Record<string, unknown>).validateTicketImages;
+  assert.equal(typeof validate, "function");
+  assert.equal((validate as (files: { name: string; type: string; size: number }[]) => string | null)(
+    Array.from({ length: 4 }, (_, i) => ({ name: `${i}.jpg`, type: "image/jpeg", size: 100 })),
+  ), "Mỗi lần gửi chỉ được đính kèm tối đa 3 ảnh.");
+});
+
+test("TS-07c validateTicketImages chỉ nhận JPG, PNG, WebP tối đa 5 MB", () => {
+  const validate = (supportMappers as Record<string, unknown>).validateTicketImages as
+    (files: { name: string; type: string; size: number }[]) => string | null;
+  assert.equal(validate([{ name: "a.gif", type: "image/gif", size: 100 }]),
+    "Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.");
+  assert.equal(validate([{ name: "a.jpg", type: "image/jpeg", size: 5 * 1024 * 1024 + 1 }]),
+    "Mỗi ảnh phải nhỏ hơn hoặc bằng 5 MB.");
+  assert.equal(validate([{ name: "a.webp", type: "image/webp", size: 5 * 1024 * 1024 }]), null);
 });
 
 // -------------------------------------------------------- computeTicketStats

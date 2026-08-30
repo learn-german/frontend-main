@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(18);
+select plan(19);
 
 -- --- Dữ liệu nền -------------------------------------------------------------
 insert into auth.users
@@ -34,7 +34,8 @@ set local "request.jwt.claims" =
 
 -- RPC tạo ticket kèm tin nhắn đầu trong một transaction
 select create_support_ticket(
-  'Không mở được bài nghe', 'lesson_content', 'Bài nghe Video 6 không phát được.');
+  'Không mở được bài nghe', 'lesson_content', 'Bài nghe Video 6 không phát được.',
+  array['ticket-images/11111111-1111-1111-1111-111111111111/a.jpg']);
 
 select matches(
   (select code from support_tickets where title = 'Không mở được bài nghe'),
@@ -54,6 +55,13 @@ select is(
     where t.title = 'Không mở được bài nghe'),
   false,
   'TRG-03 tin nhắn của học viên có is_staff = false');
+
+select is(
+  (select m.image_keys[1] from support_ticket_messages m
+     join support_tickets t on t.id = m.ticket_id
+    where t.title = 'Không mở được bài nghe'),
+  'ticket-images/11111111-1111-1111-1111-111111111111/a.jpg',
+  'TRG-03a RPC lưu ảnh của tin nhắn đầu');
 
 select is(
   (select status from support_tickets where title = 'Không mở được bài nghe'),

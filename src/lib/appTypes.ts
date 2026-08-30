@@ -155,5 +155,6 @@ export interface SupportTicketMessage {
   authorId: string;
   isStaff: boolean;
   body: string;
+  imageKeys: string[];
   createdAt: string;
 }

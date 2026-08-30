@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(15);
+select plan(17);
 
 -- --- Cấu trúc ---------------------------------------------------------------
 select has_table('public', 'support_tickets',
@@ -15,8 +15,15 @@ select has_table('public', 'support_ticket_messages',
 select has_sequence('public', 'support_ticket_code_seq',
   'DB-03 sequence sinh mã ticket tồn tại');
 select has_function('public', 'create_support_ticket',
-  array['text', 'text', 'text'],
+  array['text', 'text', 'text', 'text[]'],
   'DB-04 hàm RPC create_support_ticket tồn tại');
+select has_column('public', 'support_ticket_messages', 'image_keys',
+  'DB-04a tin nhắn có danh sách ảnh đính kèm');
+select throws_ok(
+  $$insert into support_ticket_messages (ticket_id, author_id, body, image_keys)
+    values (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', 'x',
+      array['a','b','c','d'])$$,
+  '23514', null, 'DB-04b không cho lưu quá 3 ảnh trong một tin nhắn');
 
 select is(
   (select relrowsecurity from pg_class where oid = 'public.support_tickets'::regclass),

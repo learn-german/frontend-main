@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, ArrowLeft, CheckCircle2, Clock, Loader2, Search, Send } from "lucide-react";
 import { Button } from "../../components/DesignSystem";
+import { TicketImagePicker, TicketMessageImages } from "../../components/TicketImages";
 import { showToast } from "../../lib/toast";
 import {
   SUPPORT_STATUS_LABELS,
@@ -17,6 +18,7 @@ import {
   updateTicketStatus,
 } from "../../lib/support";
 import { computeTicketStats, filterTickets } from "../../lib/supportMappers";
+import { uploadTicketImages } from "../../lib/ticketImages";
 
 const PAGE_SIZE = 15;
 
@@ -43,6 +45,7 @@ export const AdminSupportSection: React.FC = () => {
   const [active, setActive] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportTicketMessage[]>([]);
   const [reply, setReply] = useState("");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -77,6 +80,7 @@ export const AdminSupportSection: React.FC = () => {
   const openTicket = async (ticket: SupportTicket) => {
     setActive(ticket);
     setReply("");
+    setReplyFiles([]);
     setMessages([]);
     openRequestId.current = ticket.id;
     try {
@@ -112,8 +116,10 @@ export const AdminSupportSection: React.FC = () => {
     const ticketId = active.id;
     setBusy(true);
     try {
-      await sendMessage(ticketId, body);
+      const imageKeys = await uploadTicketImages(replyFiles);
+      await sendMessage(ticketId, body, imageKeys);
       setReply("");
+      setReplyFiles([]);
       // Trigger vừa đặt ticket sang resolved — phải tải lại mới thấy đúng.
       const rows = await listMessages(ticketId);
       // Admin có thể đã quay lại danh sách rồi mở ticket khác trong lúc chờ — bỏ nếu vậy.
@@ -132,7 +138,7 @@ export const AdminSupportSection: React.FC = () => {
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => { setActive(null); setReply(""); }}
+          onClick={() => { setActive(null); setReply(""); setReplyFiles([]); }}
           className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-orange-600 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -166,7 +172,7 @@ export const AdminSupportSection: React.FC = () => {
                       {" · "}
                       {formatTime(m.createdAt)}
                     </p>
-                    <p
+                    <div
                       className={`inline-block text-left max-w-[80%] rounded-2xl px-4 py-2.5 text-sm border ${
                         m.isStaff
                           ? "bg-orange-50 border-orange-200 text-orange-700"
@@ -174,7 +180,8 @@ export const AdminSupportSection: React.FC = () => {
                       }`}
                     >
                       {m.body}
-                    </p>
+                      <TicketMessageImages imageKeys={m.imageKeys} />
+                    </div>
                   </div>
                 ))}
                 {messages.length === 0 && <p className="text-sm text-slate-400">Chưa có tin nhắn.</p>}
@@ -188,6 +195,7 @@ export const AdminSupportSection: React.FC = () => {
                   rows={3}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
                 />
+                <TicketImagePicker files={replyFiles} onChange={setReplyFiles} disabled={busy} />
                 <div className="flex justify-end gap-2 mt-3">
                   <Button variant="secondary" onClick={() => handleStatus("processing")} disabled={busy}>
                     Bắt đầu xử lý

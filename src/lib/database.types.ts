@@ -779,6 +779,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          image_keys: string[]
           is_staff: boolean
           ticket_id: string
         }
@@ -787,6 +788,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          image_keys?: string[]
           is_staff?: boolean
           ticket_id: string
         }
@@ -795,6 +797,7 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          image_keys?: string[]
           is_staff?: boolean
           ticket_id?: string
         }
@@ -1083,7 +1086,7 @@ export type Database = {
     }
     Functions: {
       create_support_ticket: {
-        Args: { p_body: string; p_title: string; p_topic: string }
+        Args: { p_body: string; p_image_keys?: string[]; p_title: string; p_topic: string }
         Returns: {
           code: string
           created_at: string

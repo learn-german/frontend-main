@@ -3,6 +3,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 import { HelpCircle } from "lucide-react";
 import { Button } from "../components/DesignSystem";
 import { Skeleton } from "../components/Skeleton";
+import { TicketImagePicker, TicketMessageImages } from "../components/TicketImages";
 import { showToast } from "../lib/toast";
 import {
   SUPPORT_STATUS_LABELS,
@@ -18,6 +19,7 @@ import {
   listMyTickets,
   sendMessage,
 } from "../lib/support";
+import { uploadTicketImages } from "../lib/ticketImages";
 
 const STATUS_BADGE: Record<SupportTicketStatus, string> = {
   pending: "bg-slate-100 text-slate-600",
@@ -38,13 +40,14 @@ const STATUS_ORDER: SupportTicketStatus[] = ["pending", "processing", "resolved"
 interface CreateTicketModalProps {
   sending: boolean;
   onClose: () => void;
-  onSubmit: (title: string, topic: SupportTicketTopic, body: string) => Promise<void>;
+  onSubmit: (title: string, topic: SupportTicketTopic, body: string, files: File[]) => Promise<void>;
 }
 
 const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ sending, onClose, onSubmit }) => {
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState<SupportTicketTopic | "">("");
   const [body, setBody] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<{ title?: string; topic?: string; body?: string }>({});
 
   const handleSubmit = () => {
@@ -54,7 +57,7 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ sending, onClose,
     if (!body.trim()) nextErrors.body = "Vui lòng mô tả chi tiết vấn đề.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
-    void onSubmit(title.trim(), topic as SupportTicketTopic, body.trim());
+    void onSubmit(title.trim(), topic as SupportTicketTopic, body.trim(), files);
   };
 
   return (
@@ -116,6 +119,7 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ sending, onClose,
               className="w-full min-h-[120px] border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-slate-50 focus:bg-white focus:border-red-300 focus:ring-2 focus:ring-red-50 resize-y"
             />
             {errors.body && <div className="text-red-600 text-xs mt-1">{errors.body}</div>}
+            <TicketImagePicker files={files} onChange={setFiles} disabled={sending} />
           </div>
         </div>
         <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
@@ -139,6 +143,7 @@ export const SupportPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [sending, setSending] = useState(false);
   const [reply, setReply] = useState("");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
   // Ticket đang được hiển thị — dùng để bỏ kết quả async trả về trễ cho ticket đã rời đi.
   const activeTicketIdRef = useRef<string | null>(null);
 
@@ -161,7 +166,7 @@ export const SupportPage: React.FC = () => {
   useEffect(() => { void refresh(); }, [refresh]);
 
   // Xoá nháp trả lời mỗi khi đổi ticket đang xem (mở ticket khác, hoặc quay lại danh sách).
-  useEffect(() => { setReply(""); }, [activeTicket?.id]);
+  useEffect(() => { setReply(""); setReplyFiles([]); }, [activeTicket?.id]);
 
   const openTicket = async (ticket: SupportTicket) => {
     setActiveTicket(ticket);
@@ -188,10 +193,12 @@ export const SupportPage: React.FC = () => {
     title: string,
     topic: SupportTicketTopic,
     body: string,
+    files: File[],
   ) => {
     setSending(true);
     try {
-      await createTicket(title, topic, body);
+      const imageKeys = await uploadTicketImages(files);
+      await createTicket(title, topic, body, imageKeys);
       setShowModal(false);
       showToast("Đã gửi yêu cầu hỗ trợ.", "success");
       await refresh();
@@ -215,8 +222,10 @@ export const SupportPage: React.FC = () => {
     const ticketId = activeTicket.id;
     setSending(true);
     try {
-      await sendMessage(ticketId, body);
+      const imageKeys = await uploadTicketImages(replyFiles);
+      await sendMessage(ticketId, body, imageKeys);
       setReply("");
+      setReplyFiles([]);
       // Bắt buộc tải lại: trigger có thể vừa mở lại ticket sang processing.
       const rows = await listMessages(ticketId);
       // Người dùng có thể đã chuyển sang ticket khác trong lúc chờ — bỏ nếu vậy.
@@ -367,6 +376,7 @@ export const SupportPage: React.FC = () => {
                   }`}
                 >
                   {message.body}
+                  <TicketMessageImages imageKeys={message.imageKeys} />
                 </div>
               </div>
             ))}
@@ -382,6 +392,7 @@ export const SupportPage: React.FC = () => {
                 placeholder="Nhập nội dung nhắn tiếp..."
                 className="w-full min-h-[96px] border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-slate-50 focus:bg-white focus:border-red-300 focus:ring-2 focus:ring-red-50 resize-y"
               />
+              <TicketImagePicker files={replyFiles} onChange={setReplyFiles} disabled={sending} />
               <div className="flex justify-end gap-2 mt-2">
                 <Button onClick={() => void handleReply()} disabled={sending || !reply.trim()}>
                   Gửi

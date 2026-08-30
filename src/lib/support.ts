@@ -13,7 +13,7 @@ import {
 } from "./supportMappers";
 
 const TICKET_COLUMNS = "id, code, user_id, title, topic, status, created_at, updated_at";
-const MESSAGE_COLUMNS = "id, ticket_id, author_id, is_staff, body, created_at";
+const MESSAGE_COLUMNS = "id, ticket_id, author_id, is_staff, body, image_keys, created_at";
 
 /**
  * Nhúng thường (không !inner) và kiểu nullable, đúng như AdminWritingSection
@@ -59,21 +59,23 @@ export async function createTicket(
   title: string,
   topic: SupportTicketTopic,
   body: string,
+  imageKeys: string[] = [],
 ): Promise<SupportTicket> {
   const { data, error } = await supabase.rpc("create_support_ticket", {
     p_title: title,
     p_topic: topic,
     p_body: body,
+    p_image_keys: imageKeys,
   });
   if (error) throw error;
   return mapTicket(data as unknown as TicketRow);
 }
 
 /** author_id và is_staff đều do server điền — client không gửi hai cột đó. */
-export async function sendMessage(ticketId: string, body: string): Promise<void> {
+export async function sendMessage(ticketId: string, body: string, imageKeys: string[] = []): Promise<void> {
   const { error } = await supabase
     .from("support_ticket_messages")
-    .insert({ ticket_id: ticketId, body });
+    .insert({ ticket_id: ticketId, body, image_keys: imageKeys });
   if (error) throw error;
 }
 
