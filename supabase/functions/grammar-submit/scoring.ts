@@ -151,6 +151,19 @@ export function computeGrammarScore(
       continue;
     }
 
+    if (ex.type === "richtig_falsch") {
+      total += 1;
+      const answer = (answers[ex.id] ?? "").trim().toLowerCase();
+      const expected = (ex.correct_answer ?? "").trim().toLowerCase();
+      const isCorrect = answer === "richtig" || answer === "falsch"
+        ? answer === expected
+        : false;
+      choiceResults[ex.id] = isCorrect;
+      exerciseResults[ex.id] = isCorrect;
+      if (isCorrect) correct++;
+      continue;
+    }
+
     total += 1;
     const userAnswer = normalizeWord(answers[ex.id] ?? "");
     let isCorrect: boolean;
