@@ -6,8 +6,8 @@ import {
   parseAnswersIntoFormState,
   reconstructWordReorderTokens,
   serializeAnswer,
-} from "./grammarAnswerCodec";
-import type { GrammarExercise } from "./appTypes";
+} from "./grammarAnswerCodec.ts";
+import type { GrammarExercise } from "./appTypes.ts";
 
 const base = (over: Partial<GrammarExercise>): GrammarExercise => ({
   id: "e1",
@@ -16,6 +16,14 @@ const base = (over: Partial<GrammarExercise>): GrammarExercise => ({
   type: "translation",
   explanation: "",
   ...over,
+});
+
+test("richtig_falsch: round-trip richtig/falsch qua text wire format", () => {
+  const ex = base({ type: "richtig_falsch", promptText: "Test" });
+  assert.equal(serializeAnswer(ex, { kind: "text", value: "richtig" }), "richtig");
+  assert.equal(serializeAnswer(ex, { kind: "text", value: "falsch" }), "falsch");
+  assert.deepEqual(parseAnswer(ex, "falsch"), { kind: "text", value: "falsch" });
+  assert.equal(serializeAnswer(ex, parseAnswer(ex, "richtig")), "richtig");
 });
 
 test("translation: round-trip giữ nguyên chuỗi đã trim", () => {
@@ -167,6 +175,10 @@ test("emptyAnswer trả đúng kind cho từng loại", () => {
     emptyAnswer(base({ type: "classification", classificationItems: ["x"] })),
     { kind: "groups", values: {} },
   );
+  assert.deepEqual(emptyAnswer(base({ type: "richtig_falsch", promptText: "Test" })), {
+    kind: "text",
+    value: "",
+  });
 });
 
 test("mọi loại: serialize(emptyAnswer) là chuỗi rỗng", () => {
@@ -179,6 +191,7 @@ test("mọi loại: serialize(emptyAnswer) là chuỗi rỗng", () => {
     "classification",
     "fill_in_the_blank",
     "multiple_choice",
+    "richtig_falsch",
   ];
   for (const type of types) {
     const ex = base({

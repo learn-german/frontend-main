@@ -1,6 +1,6 @@
-import { GrammarExercise } from "./appTypes";
-import { countBlankMarkers } from "./grammarFillInBlank";
-import { serializeMatching, parseMatching } from "./quizAnswerCodec";
+import type { GrammarExercise } from "./appTypes.ts";
+import { countBlankMarkers } from "./grammarFillInBlank.ts";
+import { serializeMatching, parseMatching } from "./quizAnswerCodec.ts";
 
 /**
  * The wire format for one exercise answer, shared by the submit path and the
@@ -21,6 +21,7 @@ export function emptyAnswer(exercise: GrammarExercise): ParsedAnswer {
   if (exercise.type === "multiple_choice") return { kind: "choice", index: undefined };
   if (exercise.type === "classification") return { kind: "groups", values: {} };
   if (exercise.type === "matching") return { kind: "matching", values: {} };
+  if (exercise.type === "richtig_falsch") return { kind: "text", value: "" };
   return { kind: "text", value: "" };
 }
 
