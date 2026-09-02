@@ -13,7 +13,7 @@ interface RegistrationPageProps {
   onLogout: () => void;
 }
 
-const RegistrationPageContent: React.FC<RegistrationPageProps> = ({
+export const RegistrationPage: React.FC<RegistrationPageProps> = ({
   email,
   onSubmit,
   onLogout,
@@ -96,7 +96,3 @@ const RegistrationPageContent: React.FC<RegistrationPageProps> = ({
     </main>
   );
 };
-
-export const RegistrationPage = (props: RegistrationPageProps) => (
-  <RegistrationPageContent {...props} />
-);
