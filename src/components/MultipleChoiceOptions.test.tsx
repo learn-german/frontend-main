@@ -49,3 +49,17 @@ test("không tiết lộ đáp án đúng: phương án không được chọn g
   );
   assert.equal(html.match(/border-red-400/g)?.length, 1);
 });
+
+test("horizontal layout uses flex row", () => {
+  const html = renderToStaticMarkup(
+    <MultipleChoiceOptions
+      options={["A", "B", "C", "D"]}
+      selectedIndex={undefined}
+      onSelect={noop}
+      exerciseId="e1"
+      layout="horizontal"
+    />,
+  );
+  assert.match(html, /flex flex-wrap gap-2/);
+  assert.match(html, /inline-flex max-w-full items-center gap-1\.5/);
+});
