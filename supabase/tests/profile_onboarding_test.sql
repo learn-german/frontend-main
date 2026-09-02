@@ -26,7 +26,7 @@ select is(
   'ONB-02 trigger vẫn tạo user_stats');
 
 select policies_are('public', 'profiles', array[
-  'profiles: admin all',
+  'profiles: admin update',
   'profiles: own insert',
   'profiles: own read',
   'profiles: own update'
