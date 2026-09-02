@@ -207,6 +207,7 @@ export type Database = {
       exercise_sets: {
         Row: {
           category: string
+          general_instruction: string | null
           id: string
           lesson_id: string
           order_index: number
@@ -215,6 +216,7 @@ export type Database = {
         }
         Insert: {
           category?: string
+          general_instruction?: string | null
           id?: string
           lesson_id: string
           order_index?: number
@@ -223,6 +225,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          general_instruction?: string | null
           id?: string
           lesson_id?: string
           order_index?: number
