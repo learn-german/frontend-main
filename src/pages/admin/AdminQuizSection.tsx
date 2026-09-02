@@ -27,7 +27,7 @@ export const AdminQuizSection: React.FC = () => {
       ) : activeTab === "nghe" ? (
         <AdminListeningExerciseSection />
       ) : (
-        <AdminGrammarExerciseSection category={activeTab} />
+        <AdminGrammarExerciseSection />
       )}
     </div>
   );
