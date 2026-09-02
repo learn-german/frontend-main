@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from "react";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { AppState, Lesson, Module } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
 import { useLessonPositions } from "./lib/hooks/useLessonPositions";
@@ -24,6 +25,7 @@ import { ReadingSetListPage } from "./pages/ReadingSetListPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { SupportPage } from "./pages/SupportPage";
+import { RegistrationPage } from "./pages/RegistrationPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
@@ -32,10 +34,16 @@ import { signOut } from "./lib/auth";
 import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
 import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
+import { needsProfileOnboarding } from "./lib/profileOnboarding";
+
+type AppUser = { id: string; email: string; fullName: string; role: string };
+type PendingUser = Omit<AppUser, "fullName">;
 
 export default function App() {
   // Authentication states
-  const [user, setUser] = useState<{ id: string; email: string; fullName: string; role: string } | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [pendingUser, setPendingUser] = useState<PendingUser | null>(null);
+  const [profileError, setProfileError] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
   const { positions } = useLessonPositions(user?.id ?? null);
@@ -160,37 +168,69 @@ export default function App() {
 
   // Supabase auth state — handles initial session + OAuth callback redirect
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? "",
-          fullName: session.user.user_metadata?.full_name ?? session.user.email ?? "",
-          role: (session.user.app_metadata?.role as string) ?? "user",
-        });
-        // Chỉ đưa về dashboard khi URL không trỏ tới trang cụ thể nào.
-        // replaceState (không phải push) để nút Back không kẹt vòng lặp.
-        const route = parseRoute(window.location.pathname);
-        if (route.page === "landing" || route.page === "login") {
-          setCurrentPage("dashboard");
-          window.history.replaceState(null, "", "/dashboard");
+    const hydrateSessionUser = async (authUser: SupabaseUser) => {
+      const identity: PendingUser = {
+        id: authUser.id,
+        email: authUser.email ?? "",
+        role: (authUser.app_metadata?.role as string) ?? "user",
+      };
+
+      setProfileError("");
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", authUser.id)
+        .maybeSingle();
+
+      if (error) {
+        setUser(null);
+        setPendingUser(null);
+        setProfileError("Không thể tải hồ sơ. Vui lòng thử lại.");
+        return;
+      }
+
+      if (!profile) {
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({ id: identity.id, email: identity.email, full_name: null });
+        if (insertError) {
+          setUser(null);
+          setPendingUser(null);
+          setProfileError("Không thể khởi tạo hồ sơ. Vui lòng thử lại.");
+          return;
         }
+      }
+
+      const fullName = profile?.full_name?.trim() ?? "";
+      if (needsProfileOnboarding(fullName)) {
+        setUser(null);
+        setPendingUser(identity);
+        return;
+      }
+
+      setPendingUser(null);
+      setUser({ ...identity, fullName });
+      const route = parseRoute(window.location.pathname);
+      if (route.page === "landing" || route.page === "login") {
+        setCurrentPage("dashboard");
+        window.history.replaceState(null, "", "/dashboard");
+      }
+    };
+
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        await hydrateSessionUser(session.user);
       }
       setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? "",
-          fullName: session.user.user_metadata?.full_name ?? session.user.email ?? "",
-          role: (session.user.app_metadata?.role as string) ?? "user",
-        });
-        // Only redirect to dashboard on first login, not on token refresh
-        setCurrentPage(prev => (prev === "landing" || prev === "login") ? "dashboard" : prev);
+        void hydrateSessionUser(session.user);
       } else {
         setUser(null);
+        setPendingUser(null);
+        setProfileError("");
         setCurrentPage("landing");
       }
     });
@@ -202,6 +242,29 @@ export default function App() {
   const handleLogout = async () => {
     await signOut();
     // onAuthStateChange sẽ set user = null và chuyển về landing
+  };
+
+  const handleCompleteRegistration = async (fullName: string): Promise<string | null> => {
+    if (!pendingUser) return "Phiên đăng ký không còn hợp lệ.";
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ full_name: fullName })
+      .eq("id", pendingUser.id)
+      .select("full_name")
+      .single();
+
+    if (error || !data?.full_name) return "Không thể lưu tên hiển thị. Vui lòng thử lại.";
+
+    setUser({ ...pendingUser, fullName: data.full_name });
+    setPendingUser(null);
+
+    const route = parseRoute(window.location.pathname);
+    if (route.page === "landing" || route.page === "login") {
+      setCurrentPage("dashboard");
+      window.history.replaceState(null, "", "/dashboard");
+    }
+    return null;
   };
 
   // Không ép sang "login" nữa: URL đích được giữ nguyên và effectivePage lo
@@ -273,15 +336,35 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return <AppLoadingSkeleton />;
+  }
+
+  if (profileError) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p role="alert" className="text-sm text-red-600">{profileError}</p>
+        <Button onClick={() => window.location.reload()}>Thử lại</Button>
+        <Button variant="ghost" onClick={handleLogout}>Đăng xuất</Button>
+      </main>
+    );
+  }
+
+  if (pendingUser) {
+    return (
+      <RegistrationPage
+        email={pendingUser.email}
+        onSubmit={handleCompleteRegistration}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   // Trang thực sự được render. Khi chưa đăng nhập mà URL trỏ tới trang cần
   // quyền, ta render màn hình đăng nhập nhưng KHÔNG đổi URL — URL chính là
   // nơi ghi nhớ đích đến, sống sót qua cả lần reload của OAuth.
   const effectivePage: AppState["currentPage"] =
     !user && isProtectedPage(currentPage) ? "login" : currentPage;
-
-  if (authLoading) {
-    return <AppLoadingSkeleton />;
-  }
 
   // Show loading overlay while fetching modules (only on authenticated pages)
   const showModulesLoader = user && modulesLoading && modules.length === 0 &&
