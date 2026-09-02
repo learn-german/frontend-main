@@ -11,6 +11,7 @@ export interface ExerciseSet {
   title: string;
   orderIndex: number;
   status: "draft" | "published";
+  generalInstruction?: string | null;
 }
 
 interface ExerciseSetRow {
@@ -20,6 +21,7 @@ interface ExerciseSetRow {
   title: string;
   order_index: number;
   status: "draft" | "published";
+  general_instruction?: string | null;
 }
 
 const fromRow = (row: ExerciseSetRow): ExerciseSet => ({
@@ -29,6 +31,7 @@ const fromRow = (row: ExerciseSetRow): ExerciseSet => ({
   title: row.title,
   orderIndex: row.order_index,
   status: row.status,
+  generalInstruction: row.general_instruction ?? null,
 });
 
 // Không lọc theo 1 lesson — trang admin hiển thị danh sách bài tập của
@@ -44,7 +47,7 @@ export function useExerciseSets() {
     setLoading(true);
     supabase
       .from("exercise_sets")
-      .select("id, lesson_id, category, title, order_index, status")
+      .select("id, lesson_id, category, title, order_index, status, general_instruction")
       .order("lesson_id")
       .order("order_index")
       .then(({ data }) => {
@@ -80,7 +83,7 @@ export function useExerciseSets() {
         order_index: orderIndex,
         status: "draft",
       })
-      .select("id, lesson_id, category, title, order_index, status")
+      .select("id, lesson_id, category, title, order_index, status, general_instruction")
       .single();
     if (error || !data) return { data: null, error: error?.message ?? "Không tạo được bài tập." };
     const created = fromRow(data as ExerciseSetRow);
@@ -102,7 +105,7 @@ export function useExerciseSets() {
         order_index: orderIndex,
         status: "draft",
       })
-      .select("id, lesson_id, category, title, order_index, status")
+      .select("id, lesson_id, category, title, order_index, status, general_instruction")
       .single();
     if (error || !data) return { data: null, error: error?.message ?? "Không tạo được bài đọc." };
 
@@ -111,5 +114,17 @@ export function useExerciseSets() {
     return { data: created, error: null };
   };
 
-  return { sets, loading, refetch, toggleSetStatus, createSet, createReadingSet };
+  const updateGeneralInstruction = async (
+    id: string,
+    text: string,
+  ): Promise<{ error: string | null }> => {
+    const { error } = await supabase
+      .from("exercise_sets")
+      .update({ general_instruction: text.trim() || null })
+      .eq("id", id);
+    if (!error) refetch();
+    return { error: error?.message ?? null };
+  };
+
+  return { sets, loading, refetch, toggleSetStatus, createSet, createReadingSet, updateGeneralInstruction };
 }
