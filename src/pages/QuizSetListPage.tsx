@@ -75,13 +75,16 @@ const QuizExerciseSetBody: React.FC<{
 
   const exercises = useMemo(() => {
     if (!isListening) return rawExercises;
-    return rawExercises.filter((ex) => {
-      if (LISTENING_TYPE_SET.has(ex.type)) return true;
-      console.warn(
-        `[listening] Skipping unsupported exercise type "${ex.type}" (id=${ex.id})`,
-      );
-      return false;
-    });
+    return rawExercises.filter((ex) => LISTENING_TYPE_SET.has(ex.type));
+  }, [rawExercises, isListening]);
+
+  const legacyToastShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isListening || legacyToastShownRef.current) return;
+    if (rawExercises.some((ex) => !LISTENING_TYPE_SET.has(ex.type))) {
+      legacyToastShownRef.current = true;
+      showToast("Một số câu hỏi cũ không còn được hỗ trợ.", "warning");
+    }
   }, [rawExercises, isListening]);
 
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
@@ -231,6 +234,11 @@ const QuizExerciseSetBody: React.FC<{
     setResult(null);
     setSubmitError(null);
     setRetrying(true);
+    // Keep gate sticky when an attempt would re-hydrate the result card;
+    // otherwise release after reset (mid-exercise "Làm lại").
+    if (!attempt) {
+      queueMicrotask(() => setRetrying(false));
+    }
   };
 
   const firstExercise = exercises[0];
@@ -274,7 +282,9 @@ const QuizExerciseSetBody: React.FC<{
     return (
       <div className="space-y-3">
         <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
-        <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+        {!isListening && (
+          <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+        )}
         {group.type === "fill_in_the_blank" && wordBank && (
           <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
             {wordBank.words.map((word, wordIndex) => {
@@ -518,7 +528,20 @@ const QuizExerciseSetBody: React.FC<{
       )}
 
       <div className="space-y-3">
-        {groups.length === 1 ? (
+        {groups.length === 1 && isListening ? (
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex w-full items-center gap-3 px-4 py-4">
+              <span className="text-base font-display font-black text-slate-900">Bài 1</span>
+              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">
+                {GRAMMAR_TYPE_LABELS[groups[0].type]}
+              </span>
+              <span className="text-xs text-slate-400">{groups[0].exercises.length} câu</span>
+            </div>
+            <div className="border-t border-slate-100 p-4">
+              {renderGroupContent(groups[0], 0)}
+            </div>
+          </section>
+        ) : groups.length === 1 ? (
           renderGroupContent(groups[0], 0)
         ) : (
           groups.map((group, groupIndex) => {

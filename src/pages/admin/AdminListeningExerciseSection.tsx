@@ -454,7 +454,8 @@ const ListeningSetEditor: React.FC<{
     setSetExercises(rows);
     setClips((clipsRes.data ?? []) as ListeningClip[]);
     const clipFromEx = rows.find((r) => r.audio_clip_id)?.audio_clip_id ?? null;
-    setAssignedClipId(clipFromEx);
+    // Preserve pending clip when set has no exercises yet (assign-before-questions).
+    setAssignedClipId((prev) => (rows.length === 0 && prev ? prev : clipFromEx));
     const firstType = rows.find((r) => isListeningQuestionType(r.type));
     if (firstType && isListeningQuestionType(firstType.type)) {
       onQuestionTypeKnown(set.id, firstType.type);
@@ -464,6 +465,7 @@ const ListeningSetEditor: React.FC<{
   };
 
   useEffect(() => {
+    setAssignedClipId(null);
     fetchSetData();
     setInstructionDraft(set.generalInstruction ?? "");
     setEditingInstruction(false);
