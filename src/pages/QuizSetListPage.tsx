@@ -62,7 +62,7 @@ interface QuizResult {
 
 const QuizExerciseSetBody: React.FC<{
   lesson: Lesson;
-  set: { id: string; title: string; generalInstruction?: string | null };
+  set: { id: string; title: string; generalInstruction?: string | null; audioClipId?: string | null };
   isListening?: boolean;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onCollapse: () => void;
@@ -242,8 +242,9 @@ const QuizExerciseSetBody: React.FC<{
   };
 
   const firstExercise = exercises[0];
-  const clip = firstExercise?.audioClipId
-    ? lesson.listeningClips.find((c) => c.id === firstExercise.audioClipId)
+  const clipId = set.audioClipId ?? firstExercise?.audioClipId;
+  const clip = clipId
+    ? lesson.listeningClips.find((c) => c.id === clipId)
     : undefined;
   const clipIndex = clip
     ? Math.max(0, lesson.listeningClips.findIndex((c) => c.id === clip.id))
@@ -648,7 +649,7 @@ const SetRow: React.FC<{
       <div className="border-t border-slate-100 p-4">
         <QuizExerciseSetBody
           lesson={lesson}
-          set={{ id: set.id, title: set.title, generalInstruction: set.generalInstruction }}
+          set={{ id: set.id, title: set.title, generalInstruction: set.generalInstruction, audioClipId: set.audioClipId }}
           isListening={isListening}
           onSetFinished={onSetFinished}
           onCollapse={onToggle}
