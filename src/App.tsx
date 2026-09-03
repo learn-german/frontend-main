@@ -35,9 +35,10 @@ import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
 import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
 import { needsProfileOnboarding } from "./lib/profileOnboarding";
+import type { UserRole } from "./lib/trialGating";
 
-type AppUser = { id: string; email: string; fullName: string; role: string };
-type PendingUser = Omit<AppUser, "fullName">;
+type AppUser = { id: string; email: string; fullName: string; role: UserRole; subscriptionEndDate: string | null };
+type PendingUser = Omit<AppUser, "fullName" | "subscriptionEndDate">;
 
 export default function App() {
   // Authentication states
@@ -183,14 +184,14 @@ export default function App() {
       const identity: PendingUser = {
         id: authUser.id,
         email: authUser.email ?? "",
-        role: (authUser.app_metadata?.role as string) ?? "user",
+        role: (authUser.app_metadata?.role as UserRole) ?? "trial",
       };
 
       if (!isCurrent()) return;
       setProfileError("");
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, subscription_end_date")
         .eq("id", authUser.id)
         .maybeSingle();
 
@@ -227,7 +228,11 @@ export default function App() {
       }
 
       setPendingUser(null);
-      setUser({ ...identity, fullName });
+      setUser({
+        ...identity,
+        fullName,
+        subscriptionEndDate: profile?.subscription_end_date ?? null,
+      });
       const route = parseRoute(window.location.pathname);
       if (route.page === "landing" || route.page === "login") {
         setCurrentPage("dashboard");
@@ -295,7 +300,7 @@ export default function App() {
       .from("profiles")
       .update({ full_name: fullName })
       .eq("id", pendingUser.id)
-      .select("full_name")
+      .select("full_name, subscription_end_date")
       .single();
 
     if (
@@ -309,7 +314,11 @@ export default function App() {
 
     hydrationGenerationRef.current += 1;
     setProfileError("");
-    setUser({ ...pendingUser, fullName: data.full_name });
+    setUser({
+      ...pendingUser,
+      fullName: data.full_name,
+      subscriptionEndDate: data.subscription_end_date ?? null,
+    });
     setPendingUser(null);
 
     const route = parseRoute(window.location.pathname);
