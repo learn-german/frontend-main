@@ -18,3 +18,17 @@ test("App chặn user chưa có tên tại RegistrationPage", () => {
 test("App chỉ cập nhật full_name của chính user đang onboarding", () => {
   assert.match(source, /update\(\{ full_name: fullName \}\)[\s\S]*eq\("id", pendingUser\.id\)/);
 });
+
+test("App chỉ hydrate initial session từ auth callback và bỏ qua kết quả profile cũ", () => {
+  assert.doesNotMatch(source, /auth\.getSession\(\)/);
+  assert.match(source, /const requestId = \+\+authGenerationRef\.current/);
+  assert.match(source, /requestId === authGenerationRef\.current/);
+  assert.match(source, /isMountedRef\.current = true/);
+});
+
+test("App chỉ hoàn tất đăng ký cho identity session hiện tại", () => {
+  assert.match(
+    source,
+    /const pendingGeneration = authGenerationRef\.current;[\s\S]*update\(\{ full_name: fullName \}\)[\s\S]*single\(\);[\s\S]*pendingGeneration !== authGenerationRef\.current[\s\S]*authSessionUserIdRef\.current !== pendingUser\.id[\s\S]*setUser/,
+  );
+});

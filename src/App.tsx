@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { AppState, Lesson, Module } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
@@ -45,6 +45,9 @@ export default function App() {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null);
   const [profileError, setProfileError] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
+  const authGenerationRef = useRef(0);
+  const authSessionUserIdRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
   const { positions } = useLessonPositions(user?.id ?? null);
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
@@ -168,13 +171,21 @@ export default function App() {
 
   // Supabase auth state — handles initial session + OAuth callback redirect
   useEffect(() => {
-    const hydrateSessionUser = async (authUser: SupabaseUser) => {
+    let mounted = true;
+    isMountedRef.current = true;
+
+    const hydrateSessionUser = async (authUser: SupabaseUser, requestId: number) => {
+      const isCurrent = () =>
+        mounted &&
+        requestId === authGenerationRef.current &&
+        authSessionUserIdRef.current === authUser.id;
       const identity: PendingUser = {
         id: authUser.id,
         email: authUser.email ?? "",
         role: (authUser.app_metadata?.role as string) ?? "user",
       };
 
+      if (!isCurrent()) return;
       setProfileError("");
       const { data: profile, error } = await supabase
         .from("profiles")
@@ -182,10 +193,12 @@ export default function App() {
         .eq("id", authUser.id)
         .maybeSingle();
 
+      if (!isCurrent()) return;
       if (error) {
         setUser(null);
         setPendingUser(null);
         setProfileError("Không thể tải hồ sơ. Vui lòng thử lại.");
+        setAuthLoading(false);
         return;
       }
 
@@ -193,18 +206,22 @@ export default function App() {
         const { error: insertError } = await supabase
           .from("profiles")
           .insert({ id: identity.id, email: identity.email, full_name: null });
+        if (!isCurrent()) return;
         if (insertError) {
           setUser(null);
           setPendingUser(null);
           setProfileError("Không thể khởi tạo hồ sơ. Vui lòng thử lại.");
+          setAuthLoading(false);
           return;
         }
       }
 
+      if (!isCurrent()) return;
       const fullName = profile?.full_name?.trim() ?? "";
       if (needsProfileOnboarding(fullName)) {
         setUser(null);
         setPendingUser(identity);
+        setAuthLoading(false);
         return;
       }
 
@@ -215,37 +232,52 @@ export default function App() {
         setCurrentPage("dashboard");
         window.history.replaceState(null, "", "/dashboard");
       }
+      setAuthLoading(false);
     };
 
-    void supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        await hydrateSessionUser(session.user);
-      }
-      setAuthLoading(false);
-    });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const requestId = ++authGenerationRef.current;
+      const previousUserId = authSessionUserIdRef.current;
+      authSessionUserIdRef.current = session?.user.id ?? null;
+
       if (session?.user) {
-        void hydrateSessionUser(session.user);
-      } else {
-        setUser(null);
-        setPendingUser(null);
-        setProfileError("");
-        setCurrentPage("landing");
+        if (previousUserId !== session.user.id) {
+          setUser(null);
+          setPendingUser(null);
+          setProfileError("");
+          setAuthLoading(true);
+        }
+        void hydrateSessionUser(session.user, requestId);
+        return;
       }
+
+      setUser(null);
+      setPendingUser(null);
+      setProfileError("");
+      setAuthLoading(false);
+      setCurrentPage("landing");
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      isMountedRef.current = false;
+      authGenerationRef.current += 1;
+      authSessionUserIdRef.current = null;
+      subscription.unsubscribe();
+    };
   }, []);
 
 
   const handleLogout = async () => {
+    authGenerationRef.current += 1;
+    authSessionUserIdRef.current = null;
     await signOut();
     // onAuthStateChange sẽ set user = null và chuyển về landing
   };
 
   const handleCompleteRegistration = async (fullName: string): Promise<string | null> => {
     if (!pendingUser) return "Phiên đăng ký không còn hợp lệ.";
+    const pendingGeneration = authGenerationRef.current;
 
     const { data, error } = await supabase
       .from("profiles")
@@ -254,6 +286,13 @@ export default function App() {
       .select("full_name")
       .single();
 
+    if (
+      !isMountedRef.current ||
+      pendingGeneration !== authGenerationRef.current ||
+      authSessionUserIdRef.current !== pendingUser.id
+    ) {
+      return "Phiên đăng ký không còn hợp lệ.";
+    }
     if (error || !data?.full_name) return "Không thể lưu tên hiển thị. Vui lòng thử lại.";
 
     setUser({ ...pendingUser, fullName: data.full_name });
