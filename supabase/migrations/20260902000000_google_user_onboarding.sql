@@ -3,7 +3,8 @@ update public.profiles as p
 set full_name = coalesce(
   nullif(btrim(u.raw_user_meta_data ->> 'full_name'), ''),
   nullif(btrim(u.raw_user_meta_data ->> 'name'), ''),
-  p.email
+  nullif(btrim(u.raw_user_meta_data ->> 'email'), ''),
+  nullif(btrim(u.email), '')
 )
 from auth.users as u
 where u.id = p.id
