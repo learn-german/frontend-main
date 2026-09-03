@@ -462,6 +462,8 @@ export default function App() {
             onNavigate={handleNavigate}
             streak={stats.streak}
             currentLessonTitle={orderedLessons.find(l => lessonStatuses[l.id] === "current")?.titleVi}
+            userRole={user.role}
+            subscriptionEndDate={user.subscriptionEndDate}
           />
         )}
 
