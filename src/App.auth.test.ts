@@ -54,3 +54,15 @@ test("App cho phép auth event cùng user trong lúc lưu tên nhưng chặn ide
     /const handleLogout = async \(\) => \{[\s\S]*hydrationGenerationRef\.current \+= 1;[\s\S]*identityGenerationRef\.current \+= 1;[\s\S]*authSessionUserIdRef\.current = null;/,
   );
 });
+
+test("App xóa lỗi hồ sơ cũ khi hoàn tất đăng ký thành công", () => {
+  const registrationHandler = source.slice(
+    source.indexOf("const handleCompleteRegistration"),
+    source.indexOf("\n\n  // Không ép sang", source.indexOf("const handleCompleteRegistration")),
+  );
+  const acceptedCompletion = registrationHandler.indexOf("hydrationGenerationRef.current += 1;");
+  const clearProfileError = registrationHandler.indexOf('setProfileError("");');
+  const publishUser = registrationHandler.indexOf("setUser({ ...pendingUser, fullName: data.full_name });");
+
+  assert.ok(acceptedCompletion < clearProfileError && clearProfileError < publishUser);
+});

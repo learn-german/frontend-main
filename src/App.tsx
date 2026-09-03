@@ -308,6 +308,7 @@ export default function App() {
     if (error || !data?.full_name) return "Không thể lưu tên hiển thị. Vui lòng thử lại.";
 
     hydrationGenerationRef.current += 1;
+    setProfileError("");
     setUser({ ...pendingUser, fullName: data.full_name });
     setPendingUser(null);
 
