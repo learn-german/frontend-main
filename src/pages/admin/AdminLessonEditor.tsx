@@ -64,6 +64,8 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
   const [videoUploadPct, setVideoUploadPct] = useState<number | null>(null);
   const [imageUploadPct, setImageUploadPct] = useState<number | null>(null);
   const grammarTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const vocabTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [vocabImageUploadPct, setVocabImageUploadPct] = useState<number | null>(null);
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
 
@@ -114,6 +116,47 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     } finally {
       setImageUploadPct(null);
     }
+  };
+
+  const insertVocabImage = (objectKey: string) => {
+    const textarea = vocabTextareaRef.current;
+    const snippet = `![](r2img:${objectKey})`;
+    setData(prev => {
+      const current = prev.vocabulary_md ?? "";
+      const start = textarea?.selectionStart ?? current.length;
+      const end = textarea?.selectionEnd ?? current.length;
+      return { ...prev, vocabulary_md: `${current.slice(0, start)}${snippet}${current.slice(end)}` };
+    });
+    setVocabTab("preview");
+  };
+
+  const handleVocabImageUpload = async (file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      showToast("Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP", "warning");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      showToast("Ảnh vượt quá 5MB", "warning");
+      return;
+    }
+    setVocabImageUploadPct(0);
+    try {
+      const objectKey = await uploadMedia(file, data.id, "image", setVocabImageUploadPct);
+      insertVocabImage(objectKey);
+      showToast("Đã thêm ảnh vào từ vựng.", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Tải ảnh lên thất bại", "warning");
+    } finally {
+      setVocabImageUploadPct(null);
+    }
+  };
+
+  const handleVocabPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const item = Array.from(e.clipboardData.items).find(it => it.type.startsWith("image/"));
+    if (!item) return;
+    e.preventDefault();
+    const file = item.getAsFile();
+    if (file) handleVocabImageUpload(file);
   };
 
   const handleGrammarPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -440,30 +483,45 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
           {/* Từ vựng — Markdown editor */}
           <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
                 Từ vựng then chốt
               </span>
-              <div className="flex rounded-lg overflow-hidden border border-slate-200">
-                {(["edit", "preview"] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setVocabTab(tab)}
-                    className={`px-3 py-1 text-[11px] font-bold transition-colors ${vocabTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
-                  >
-                    {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-slate-50 transition">
+                  <ImageIcon className="w-3.5 h-3.5 text-orange-500" />
+                  {vocabImageUploadPct !== null ? `Đang tải... ${vocabImageUploadPct}%` : "Thêm ảnh"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={vocabImageUploadPct !== null}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleVocabImageUpload(f); e.target.value = ""; }}
+                  />
+                </label>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                  {(["edit", "preview"] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setVocabTab(tab)}
+                      className={`px-3 py-1 text-[11px] font-bold transition-colors ${vocabTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                    >
+                      {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {vocabTab === "edit" ? (
               <>
-                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown giống ô Nói/Viết. Bọc từ cần luyện phát âm trong <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{...}}"}</code>, ví dụ <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{Guten Tag}}"}</code> — học viên click vào sẽ nghe phát âm.</p>
+                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown giống ô Nói/Viết. Bọc từ cần luyện phát âm trong <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{...}}"}</code>, ví dụ <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{Guten Tag}}"}</code> — học viên click vào sẽ nghe phát âm. Paste ảnh trực tiếp hoặc dùng nút Thêm ảnh.</p>
                 <textarea
+                  ref={vocabTextareaRef}
                   rows={12}
                   value={data.vocabulary_md ?? ""}
                   onChange={e => upd({ vocabulary_md: e.target.value })}
+                  onPaste={handleVocabPaste}
                   placeholder={"### {{Guten Tag}} — Chào ngày mới / Xin chào\n*['gu:ten ta:k]*\n\n🇩🇪 Guten Tag, wie geht es Ihnen?\n\n🇻🇳 Xin chào, ông/bà khoẻ không?"}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
                 />
@@ -471,7 +529,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             ) : (
               <div className="min-h-32 bg-white border border-slate-200 rounded-xl p-4">
                 {data.vocabulary_md ? (
-                  <MarkdownBlock content={data.vocabulary_md} />
+                  <MarkdownBlock content={data.vocabulary_md} lessonId={data.id} />
                 ) : (
                   <p className="text-xs text-slate-400 italic">Chưa có từ vựng.</p>
                 )}

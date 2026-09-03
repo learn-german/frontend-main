@@ -89,9 +89,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateHome }) => {
           </div>
         </div>
 
+        {/* Right column - Branding image */}
         <div
           className="hidden min-h-[600px] bg-slate-950 bg-cover bg-center md:block"
-          style={{ backgroundImage: 'url("/login-illustration.png")' }}
+          style={{ backgroundImage: 'url("/login-bg.webp")' }}
           role="img"
           aria-label="Học viên DeutschSelbst đang học tiếng Đức"
         />
