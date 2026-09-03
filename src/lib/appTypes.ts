@@ -112,3 +112,50 @@ export interface LessonPosition {
 export interface AppState {
   currentPage: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard" | "packages" | "help";
 }
+
+export type SupportTicketStatus = "pending" | "processing" | "resolved";
+
+export type SupportTicketTopic =
+  | "website_issue"
+  | "lesson_content"
+  | "exercise_feedback"
+  | "account_access"
+  | "other";
+
+/** Khoá tiếng Anh lưu trong DB, nhãn tiếng Việt chỉ dùng để hiển thị. */
+export const SUPPORT_TOPIC_LABELS: Record<SupportTicketTopic, string> = {
+  website_issue: "Lỗi hoặc sự cố trên website",
+  lesson_content: "Nội dung bài học / bài tập",
+  exercise_feedback: "Đóng góp ý kiến cho phần bài tập",
+  account_access: "Tài khoản hoặc quyền truy cập",
+  other: "Khác",
+};
+
+export const SUPPORT_STATUS_LABELS: Record<SupportTicketStatus, string> = {
+  pending: "Đang chờ xử lý",
+  processing: "Đang xử lý",
+  resolved: "Đã xử lý",
+};
+
+export interface SupportTicket {
+  id: string;
+  code: string;
+  userId: string;
+  title: string;
+  topic: SupportTicketTopic;
+  status: SupportTicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  /** Chỉ màn admin mới nhúng; màn học viên luôn là null. */
+  author: { email: string; fullName: string | null } | null;
+}
+
+export interface SupportTicketMessage {
+  id: string;
+  ticketId: string;
+  authorId: string;
+  isStaff: boolean;
+  body: string;
+  imageKeys: string[];
+  createdAt: string;
+}

@@ -17,7 +17,7 @@ export async function uploadMedia(
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ lessonId, mediaType, fileExt, clipId }),
+    body: JSON.stringify({ lessonId, mediaType, fileExt, clipId, fileName: file.name }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string };

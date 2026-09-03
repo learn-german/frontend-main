@@ -127,6 +127,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const expectedProgress = reportSuccess && report?.expected_progress_percentage !== null && report?.expected_progress_percentage !== undefined
     ? report.expected_progress_percentage
     : null;
+  const isBehindSchedule = expectedProgress === null || actualProgress < expectedProgress;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -276,11 +277,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {expectedProgress !== null
                   ? <b className="text-slate-800">{Math.round(expectedProgress)}%</b>
                   : <NoData size="sm" />}
-                {" "}— Cần hoàn thành thêm{" "}
-                {catchUpLessons > 0
-                  ? <b className="text-slate-800">{catchUpLessons} bài</b>
-                  : <NoData size="sm" />}
-                {" "}để bắt kịp.
+                {isBehindSchedule && (
+                  <>
+                    {" "}— Cần hoàn thành thêm{" "}
+                    {catchUpLessons > 0
+                      ? <b className="text-slate-800">{catchUpLessons} bài</b>
+                      : <NoData size="sm" />}
+                    {" "}để bắt kịp
+                  </>
+                )}
+                .
               </p>
             </div>
           </div>

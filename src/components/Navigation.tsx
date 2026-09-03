@@ -18,14 +18,16 @@ import {
   Gift,
   HelpCircle
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { BrandLogo } from "./BrandLogo";
 import { Button } from "./DesignSystem";
 import type { AppNotification } from "../lib/hooks/useNotifications";
+import type { AppPage } from "../lib/router";
 
 interface NavigationProps {
   currentPage: string;
-  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard") => void;
+  onNavigate: (page: AppPage) => void;
   user: { email: string; fullName: string; role?: string } | null;
   onLogout: () => void;
   streak: number;
@@ -47,7 +49,7 @@ export const Navbar: React.FC<NavigationProps> = ({
   return (
     <div className="w-full flex flex-col shrink-0">
       {/* Subtle German flag-inspired micro-stripe (un-equal proportions, non-political accenting) */}
-      <div className="w-full h-1 bg-slate-100 flex select-none pointer-events-none">
+      <div className="relative z-50 w-full h-1 bg-slate-100 flex select-none pointer-events-none">
         <div className="w-10 bg-slate-950" />
         <div className="w-14 bg-red-600" />
         <div className="w-6 bg-yellow-400" />
@@ -63,7 +65,7 @@ export const Navbar: React.FC<NavigationProps> = ({
         >
           <BrandLogo size="md" />
           <span className="font-display font-extrabold text-xl tracking-tight text-slate-900 font-sans">
-            SelbstDeutsch
+            DeutschSelbst
           </span>
         </div>
 
@@ -118,13 +120,14 @@ export const Navbar: React.FC<NavigationProps> = ({
           <nav className="hidden md:flex items-center gap-6">
             <NotificationBell onNavigate={onNotificationNavigate} />
 
-            <div className="h-4 w-[1px] bg-slate-200" />
-
-            {/* User profile dropdown snippet — tên là phần tử cuối cùng, sát góc phải nhất */}
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full pl-2 pr-3.5 py-1">
+            {/* User profile snippet — avatar → tên → nút đăng xuất ngoài cùng phải */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full pl-1 pr-2.5 py-1">
               <div className="w-7 h-7 bg-slate-800 text-white rounded-full flex items-center justify-center font-display font-bold text-xs">
                 {user.fullName.charAt(0).toUpperCase()}
               </div>
+              <span className="text-xs font-display font-semibold text-slate-700 max-w-[100px] truncate">
+                {user.fullName}
+              </span>
               <button
                 id="btn-nav-logout"
                 onClick={onLogout}
@@ -133,9 +136,6 @@ export const Navbar: React.FC<NavigationProps> = ({
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-display font-semibold text-slate-700 max-w-[100px] truncate">
-                {user.fullName}
-              </span>
             </div>
           </nav>
         )}
@@ -278,13 +278,13 @@ export const Navbar: React.FC<NavigationProps> = ({
 
 interface SidebarProps {
   currentPage: string;
-  onNavigate: (page: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz") => void;
+  onNavigate: (page: AppPage) => void;
   streak: number;
   currentLessonTitle?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streak, currentLessonTitle }) => {
-  const links = [
+  const links: { id: AppPage; label: string; desc: string; icon: LucideIcon }[] = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
     { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
@@ -294,9 +294,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen -mt-[73px] pt-[73px]">
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen">
       {/* Dynamic Nav List */}
-      <div className="flex flex-col gap-1.5 flex-1">
+      <div className="flex flex-col gap-1.5">
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = currentPage === link.id || (link.id === "lesson-detail" && currentPage === "quiz");
@@ -304,7 +304,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
             <button
               id={`sidebar-link-${link.id}`}
               key={link.id}
-              onClick={() => onNavigate(link.id as any)}
+              onClick={() => onNavigate(link.id)}
               className={`flex items-center gap-3.5 px-5 py-3 rounded-xl text-left transition duration-150 group cursor-pointer ${
                 isActive
                   ? "bg-orange-50/40 text-orange-700 border-r-4 border-orange-600 font-medium"
@@ -322,7 +322,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
       </div>
 
       { /* Decorative minimalist Card */ }
-      <div className="bg-yellow-50/50 border border-yellow-200/50 p-4 rounded-xl relative overflow-hidden">
+      <div className="bg-yellow-50/50 border border-yellow-200/50 p-4 rounded-xl relative overflow-hidden mt-4">
         <div className="absolute right-[-10px] bottom-[-10px] text-5xl opacity-10 rotate-12 select-none">🔥</div>
         <h4 className="text-xs font-display font-bold text-amber-805 text-amber-900">Streak hằng ngày!</h4>
         <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
