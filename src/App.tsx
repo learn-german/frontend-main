@@ -33,9 +33,9 @@ import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
 import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
-import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
+import { parseRoute, serializeRoute, isProtectedPage, type AppRoute, type AppPage } from "./lib/router";
 import { needsProfileOnboarding } from "./lib/profileOnboarding";
-import type { UserRole } from "./lib/trialGating";
+import { isEffectivelyTrial, type UserRole } from "./lib/trialGating";
 
 type AppUser = { id: string; email: string; fullName: string; role: UserRole; subscriptionEndDate: string | null };
 type PendingUser = Omit<AppUser, "fullName" | "subscriptionEndDate">;
@@ -66,6 +66,8 @@ export default function App() {
     () => computeLessonStatuses(orderedLessons, stats.completedLessons),
     [orderedLessons, stats.completedLessons],
   );
+
+  const effectivelyTrial = user ? isEffectivelyTrial(user.role, user.subscriptionEndDate) : false;
 
   // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
   // nhưng lần đầu load thì đọc ngược từ URL để refresh/deep-link giữ đúng trang.
@@ -98,13 +100,33 @@ export default function App() {
     // "locked" và đẩy về /roadmap. Phải chờ cả 2 nguồn dữ liệu tải xong.
     if (!user || modulesLoading || statsLoading) return;
     if (currentPage !== "lesson-detail" && currentPage !== "quiz") return;
+
+    // Trial restriction: only lesson at index 0 allowed
+    if (effectivelyTrial) {
+      const lessonIndex = orderedLessons.findIndex((l) => l.id === selectedLessonId);
+      if (lessonIndex !== 0) {
+        showToast("Nâng cấp gói để truy cập bài học này.", "warning");
+        setCurrentPage("roadmap");
+        return;
+      }
+    }
+
     const status = lessonStatuses[selectedLessonId];
     const existsInFlatLessons = flatLessons.some((l) => l.id === selectedLessonId);
     const isLocked = status === "locked" || (status === undefined && existsInFlatLessons);
     if (!isLocked) return;
     showToast("Hãy hoàn thành bài học trước để mở bài này.", "warning");
     setCurrentPage("roadmap");
-  }, [user, modulesLoading, statsLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons]);
+  }, [user, modulesLoading, statsLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons, effectivelyTrial, orderedLessons]);
+
+  useEffect(() => {
+    if (!user || !effectivelyTrial) return;
+    const lockedPages: AppPage[] = ["leaderboard", "help", "packages"];
+    if (lockedPages.includes(currentPage as AppPage)) {
+      showToast("Nâng cấp gói để mở tính năng này.", "warning");
+      setCurrentPage("dashboard");
+    }
+  }, [user, effectivelyTrial, currentPage]);
 
   const currentRoute: AppRoute = useMemo(() => {
     if (currentPage === "lesson-detail") {
@@ -515,6 +537,7 @@ export default function App() {
                   modules={modules}
                   positions={positions}
                   onSelectLesson={handleSelectLesson}
+                  isTrialRestricted={effectivelyTrial}
                 />
               )}
 
