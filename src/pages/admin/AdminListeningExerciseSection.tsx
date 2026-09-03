@@ -385,6 +385,7 @@ const ListeningSetEditor: React.FC<{
   onBack: () => void;
   onToggleStatus: (id: string, current: "draft" | "published") => Promise<{ error: string | null }>;
   onUpdateInstruction: (id: string, text: string) => Promise<{ error: string | null }>;
+  onUpdateAudioClip: (id: string, audioClipId: string | null) => Promise<{ error: string | null }>;
   onExercisesChanged: () => void;
   onQuestionTypeKnown: (setId: string, type: ListeningQuestionType) => void;
 }> = ({
@@ -397,6 +398,7 @@ const ListeningSetEditor: React.FC<{
   onBack,
   onToggleStatus,
   onUpdateInstruction,
+  onUpdateAudioClip,
   onExercisesChanged,
   onQuestionTypeKnown,
 }) => {
@@ -454,8 +456,8 @@ const ListeningSetEditor: React.FC<{
     setSetExercises(rows);
     setClips((clipsRes.data ?? []) as ListeningClip[]);
     const clipFromEx = rows.find((r) => r.audio_clip_id)?.audio_clip_id ?? null;
-    // Preserve pending clip when set has no exercises yet (assign-before-questions).
-    setAssignedClipId((prev) => (rows.length === 0 && prev ? prev : clipFromEx));
+    // Prefer set-level audio (persists even before questions exist).
+    setAssignedClipId(set.audioClipId ?? clipFromEx ?? null);
     const firstType = rows.find((r) => isListeningQuestionType(r.type));
     if (firstType && isListeningQuestionType(firstType.type)) {
       onQuestionTypeKnown(set.id, firstType.type);
@@ -465,7 +467,7 @@ const ListeningSetEditor: React.FC<{
   };
 
   useEffect(() => {
-    setAssignedClipId(null);
+    setAssignedClipId(set.audioClipId ?? null);
     fetchSetData();
     setInstructionDraft(set.generalInstruction ?? "");
     setEditingInstruction(false);
@@ -484,6 +486,11 @@ const ListeningSetEditor: React.FC<{
 
   const assignClipToSet = async (clipId: string) => {
     setAssignedClipId(clipId);
+    const { error: setError } = await onUpdateAudioClip(set.id, clipId);
+    if (setError) {
+      showToast("Gán file nghe thất bại: " + setError, "warning");
+      return;
+    }
     if (setExercises.length > 0) {
       const { error } = await supabase
         .from("grammar_exercises")
@@ -536,6 +543,7 @@ const ListeningSetEditor: React.FC<{
     setClips((prev) => prev.filter((c) => c.id !== clip.id));
     if (assignedClipId === clip.id) {
       setAssignedClipId(null);
+      await onUpdateAudioClip(set.id, null);
       if (setExercises.length > 0) {
         await supabase.from("grammar_exercises").update({ audio_clip_id: null }).eq("set_id", set.id);
         setSetExercises((prev) => prev.map((ex) => ({ ...ex, audio_clip_id: null })));
@@ -1162,6 +1170,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
     createSet,
     toggleSetStatus,
     updateGeneralInstruction,
+    updateAudioClipId,
   } = useExerciseSets();
 
   const ngheSets = sets.filter((s) => s.category === "nghe");
@@ -1276,6 +1285,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
         }}
         onToggleStatus={toggleSetStatus}
         onUpdateInstruction={updateGeneralInstruction}
+        onUpdateAudioClip={updateAudioClipId}
         onExercisesChanged={fetchAll}
         onQuestionTypeKnown={(setId, type) =>
           setSetQuestionTypes((prev) => ({ ...prev, [setId]: type }))
