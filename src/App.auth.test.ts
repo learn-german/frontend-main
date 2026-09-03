@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+const authCallback = source.slice(
+  source.indexOf("supabase.auth.onAuthStateChange"),
+  source.indexOf("\n\n    return () =>", source.indexOf("supabase.auth.onAuthStateChange")),
+);
 
 test("App đọc tên hiển thị từ profiles thay vì Google metadata", () => {
   assert.match(source, /from\("profiles"\)[\s\S]*select\("full_name"\)/);
@@ -19,16 +23,34 @@ test("App chỉ cập nhật full_name của chính user đang onboarding", () =
   assert.match(source, /update\(\{ full_name: fullName \}\)[\s\S]*eq\("id", pendingUser\.id\)/);
 });
 
-test("App chỉ hydrate initial session từ auth callback và bỏ qua kết quả profile cũ", () => {
+test("App giữ route khi INITIAL_SESSION không có session và chỉ về landing khi SIGNED_OUT", () => {
   assert.doesNotMatch(source, /auth\.getSession\(\)/);
-  assert.match(source, /const requestId = \+\+authGenerationRef\.current/);
-  assert.match(source, /requestId === authGenerationRef\.current/);
+  assert.match(authCallback, /onAuthStateChange\(\(event, session\) =>/);
+  const signedOutGuard = authCallback.indexOf('if (event === "SIGNED_OUT")');
+  const landingNavigation = authCallback.indexOf('setCurrentPage("landing")');
+  const signedOutReturn = authCallback.indexOf("return;", signedOutGuard);
+  assert.ok(signedOutGuard < landingNavigation && landingNavigation < signedOutReturn);
+  assert.equal(authCallback.match(/setCurrentPage\("landing"\)/g)?.length, 1);
+  assert.match(authCallback.slice(signedOutReturn), /setAuthLoading\(false\);/);
+});
+
+test("App tách request hydrate khỏi vòng đời identity", () => {
+  assert.match(source, /const requestId = \+\+hydrationGenerationRef\.current/);
+  assert.match(source, /requestId === hydrationGenerationRef\.current/);
+  assert.match(
+    source,
+    /if \(previousUserId !== nextUserId\) \{[\s\S]*identityGenerationRef\.current \+= 1;[\s\S]*\}/,
+  );
   assert.match(source, /isMountedRef\.current = true/);
 });
 
-test("App chỉ hoàn tất đăng ký cho identity session hiện tại", () => {
+test("App cho phép auth event cùng user trong lúc lưu tên nhưng chặn identity cũ", () => {
   assert.match(
     source,
-    /const pendingGeneration = authGenerationRef\.current;[\s\S]*update\(\{ full_name: fullName \}\)[\s\S]*single\(\);[\s\S]*pendingGeneration !== authGenerationRef\.current[\s\S]*authSessionUserIdRef\.current !== pendingUser\.id[\s\S]*setUser/,
+    /const pendingIdentityGeneration = identityGenerationRef\.current;[\s\S]*update\(\{ full_name: fullName \}\)[\s\S]*single\(\);[\s\S]*pendingIdentityGeneration !== identityGenerationRef\.current[\s\S]*authSessionUserIdRef\.current !== pendingUser\.id[\s\S]*hydrationGenerationRef\.current \+= 1;[\s\S]*setUser/,
+  );
+  assert.match(
+    source,
+    /const handleLogout = async \(\) => \{[\s\S]*hydrationGenerationRef\.current \+= 1;[\s\S]*identityGenerationRef\.current \+= 1;[\s\S]*authSessionUserIdRef\.current = null;/,
   );
 });

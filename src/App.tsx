@@ -45,7 +45,8 @@ export default function App() {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null);
   const [profileError, setProfileError] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
-  const authGenerationRef = useRef(0);
+  const hydrationGenerationRef = useRef(0);
+  const identityGenerationRef = useRef(0);
   const authSessionUserIdRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
@@ -177,7 +178,7 @@ export default function App() {
     const hydrateSessionUser = async (authUser: SupabaseUser, requestId: number) => {
       const isCurrent = () =>
         mounted &&
-        requestId === authGenerationRef.current &&
+        requestId === hydrationGenerationRef.current &&
         authSessionUserIdRef.current === authUser.id;
       const identity: PendingUser = {
         id: authUser.id,
@@ -235,10 +236,14 @@ export default function App() {
       setAuthLoading(false);
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const requestId = ++authGenerationRef.current;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const requestId = ++hydrationGenerationRef.current;
       const previousUserId = authSessionUserIdRef.current;
-      authSessionUserIdRef.current = session?.user.id ?? null;
+      const nextUserId = session?.user.id ?? null;
+      authSessionUserIdRef.current = nextUserId;
+      if (previousUserId !== nextUserId) {
+        identityGenerationRef.current += 1;
+      }
 
       if (session?.user) {
         if (previousUserId !== session.user.id) {
@@ -251,17 +256,23 @@ export default function App() {
         return;
       }
 
-      setUser(null);
-      setPendingUser(null);
-      setProfileError("");
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        setPendingUser(null);
+        setProfileError("");
+        setAuthLoading(false);
+        setCurrentPage("landing");
+        return;
+      }
+
       setAuthLoading(false);
-      setCurrentPage("landing");
     });
 
     return () => {
       mounted = false;
       isMountedRef.current = false;
-      authGenerationRef.current += 1;
+      hydrationGenerationRef.current += 1;
+      identityGenerationRef.current += 1;
       authSessionUserIdRef.current = null;
       subscription.unsubscribe();
     };
@@ -269,7 +280,8 @@ export default function App() {
 
 
   const handleLogout = async () => {
-    authGenerationRef.current += 1;
+    hydrationGenerationRef.current += 1;
+    identityGenerationRef.current += 1;
     authSessionUserIdRef.current = null;
     await signOut();
     // onAuthStateChange sẽ set user = null và chuyển về landing
@@ -277,7 +289,7 @@ export default function App() {
 
   const handleCompleteRegistration = async (fullName: string): Promise<string | null> => {
     if (!pendingUser) return "Phiên đăng ký không còn hợp lệ.";
-    const pendingGeneration = authGenerationRef.current;
+    const pendingIdentityGeneration = identityGenerationRef.current;
 
     const { data, error } = await supabase
       .from("profiles")
@@ -288,13 +300,14 @@ export default function App() {
 
     if (
       !isMountedRef.current ||
-      pendingGeneration !== authGenerationRef.current ||
+      pendingIdentityGeneration !== identityGenerationRef.current ||
       authSessionUserIdRef.current !== pendingUser.id
     ) {
       return "Phiên đăng ký không còn hợp lệ.";
     }
     if (error || !data?.full_name) return "Không thể lưu tên hiển thị. Vui lòng thử lại.";
 
+    hydrationGenerationRef.current += 1;
     setUser({ ...pendingUser, fullName: data.full_name });
     setPendingUser(null);
 

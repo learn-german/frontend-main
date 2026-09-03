@@ -3,6 +3,7 @@ import test from "node:test";
 import { needsProfileOnboarding, validateDisplayName } from "./profileOnboarding";
 
 test("profile cần onboarding khi tên null, rỗng hoặc chỉ có khoảng trắng", () => {
+  assert.equal(needsProfileOnboarding(undefined), true);
   assert.equal(needsProfileOnboarding(null), true);
   assert.equal(needsProfileOnboarding(""), true);
   assert.equal(needsProfileOnboarding("   "), true);
