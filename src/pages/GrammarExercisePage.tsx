@@ -60,6 +60,7 @@ export const GRAMMAR_TYPE_LABELS: Record<GrammarExercise["type"], string> = {
   fill_in_the_blank: "Điền vào ô trống",
   multiple_choice: "Trắc nghiệm",
   matching: "Ghép cặp",
+  richtig_falsch: "Richtig / Falsch",
 };
 
 export const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> = {
@@ -72,6 +73,7 @@ export const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> 
   fill_in_the_blank: "Điền từ thích hợp vào từng ô trống:",
   multiple_choice: "Chọn một đáp án đúng cho mỗi câu:",
   matching: "Ghép cặp từ tương ứng:",
+  richtig_falsch: "Chọn Richtig hoặc Falsch cho nhận định sau:",
 };
 
 export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({

@@ -329,3 +329,31 @@ test("matching: sai 1 cặp thì cả câu sai", () => {
   assert.equal(r.exerciseResults.m1, false);
 });
 
+const rfExercise: ScorableGrammarExercise = {
+  id: "rf1",
+  type: "richtig_falsch",
+  correct_answer: "richtig",
+  acceptable_answers: null,
+  classification_items: null,
+  blanks: null,
+  options: null,
+  prompt_text: "Anna kommt aus Deutschland.",
+};
+
+test("richtig_falsch: đúng khi khớp richtig/falsch", () => {
+  const r = computeGrammarScore([rfExercise], { rf1: "richtig" });
+  assert.equal(r.correct, 1);
+  assert.equal(r.exerciseResults.rf1, true);
+});
+
+test("richtig_falsch: sai khi khác đáp án", () => {
+  const r = computeGrammarScore([rfExercise], { rf1: "falsch" });
+  assert.equal(r.correct, 0);
+  assert.equal(r.exerciseResults.rf1, false);
+});
+
+test("richtig_falsch: rỗng tính sai", () => {
+  const r = computeGrammarScore([rfExercise], { rf1: "" });
+  assert.equal(r.correct, 0);
+});
+

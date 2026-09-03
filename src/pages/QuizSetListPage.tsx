@@ -9,6 +9,7 @@ import { useExerciseSetDraft } from "../lib/hooks/useExerciseSetDraft";
 import { useExerciseSetDrafts } from "../lib/hooks/useExerciseSetDrafts";
 import { useNonEmptySetIds } from "../lib/hooks/useNonEmptySetIds";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
+import { useLessonSetSummary } from "../lib/hooks/useLessonSetSummary";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
@@ -25,9 +26,14 @@ import {
 import { ExerciseAnswerInput, ExerciseResultReview } from "../components/ExerciseAnswerInput";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
+import {
+  LISTENING_QUESTION_TYPES,
+} from "../lib/listeningExerciseTypes";
 import { GRAMMAR_TYPE_LABELS, GRAMMAR_TYPE_INSTRUCTIONS } from "./GrammarExercisePage";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
+
+const LISTENING_TYPE_SET = new Set<string>(LISTENING_QUESTION_TYPES);
 
 interface QuizSetListPageProps {
   lesson: Lesson;
@@ -56,15 +62,30 @@ interface QuizResult {
 
 const QuizExerciseSetBody: React.FC<{
   lesson: Lesson;
-  set: { id: string; title: string };
+  set: { id: string; title: string; generalInstruction?: string | null };
+  isListening?: boolean;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onCollapse: () => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
-}> = ({ lesson, set, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
-  const { exercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
+}> = ({ lesson, set, isListening = false, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
+  const { exercises: rawExercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
+
+  const exercises = useMemo(() => {
+    if (!isListening) return rawExercises;
+    return rawExercises.filter((ex) => LISTENING_TYPE_SET.has(ex.type));
+  }, [rawExercises, isListening]);
+
+  const legacyToastShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isListening || legacyToastShownRef.current) return;
+    if (rawExercises.some((ex) => !LISTENING_TYPE_SET.has(ex.type))) {
+      legacyToastShownRef.current = true;
+      showToast("Một số câu hỏi cũ không còn được hỗ trợ.", "warning");
+    }
+  }, [rawExercises, isListening]);
 
   const groups = useMemo(() => groupGrammarExercises(exercises), [exercises]);
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
@@ -213,12 +234,20 @@ const QuizExerciseSetBody: React.FC<{
     setResult(null);
     setSubmitError(null);
     setRetrying(true);
+    // Keep gate sticky when an attempt would re-hydrate the result card;
+    // otherwise release after reset (mid-exercise "Làm lại").
+    if (!attempt) {
+      queueMicrotask(() => setRetrying(false));
+    }
   };
 
   const firstExercise = exercises[0];
   const clip = firstExercise?.audioClipId
     ? lesson.listeningClips.find((c) => c.id === firstExercise.audioClipId)
     : undefined;
+  const clipIndex = clip
+    ? Math.max(0, lesson.listeningClips.findIndex((c) => c.id === clip.id))
+    : 0;
   const passage = firstExercise?.readingPassageId
     ? lesson.readingPassages.find((p) => p.id === firstExercise.readingPassageId)
     : undefined;
@@ -253,7 +282,9 @@ const QuizExerciseSetBody: React.FC<{
     return (
       <div className="space-y-3">
         <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
-        <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+        {!isListening && (
+          <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+        )}
         {group.type === "fill_in_the_blank" && wordBank && (
           <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
             {wordBank.words.map((word, wordIndex) => {
@@ -300,7 +331,11 @@ const QuizExerciseSetBody: React.FC<{
             })}
           </div>
         )}
-        <div className={group.type === "classification" ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
+        <div className={
+          isListening || group.type === "classification"
+            ? "flex flex-col gap-3"
+            : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        }>
           {group.exercises.map((exercise, childIndex) => (
             <ExerciseAnswerInput
               key={exercise.id}
@@ -348,6 +383,7 @@ const QuizExerciseSetBody: React.FC<{
                   [exercise.id]: { ...(prev[exercise.id] ?? {}), [de]: vi },
                 }));
               }}
+              optionLayout={isListening ? "horizontal" : "vertical"}
             />
           ))}
         </div>
@@ -462,7 +498,9 @@ const QuizExerciseSetBody: React.FC<{
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Headphones className="w-4 h-4 text-orange-500" />
-            <span className="text-sm font-display font-bold text-slate-800">Luyện nghe</span>
+            <span className="text-sm font-display font-bold text-slate-800">
+              {isListening ? `File nghe ${clipIndex + 1}` : "Luyện nghe"}
+            </span>
           </div>
           {audioPlayback.loading && <p className="text-xs text-slate-400">Đang tải...</p>}
           {audioPlayback.url && (
@@ -476,6 +514,12 @@ const QuizExerciseSetBody: React.FC<{
         </div>
       )}
 
+      {isListening && set.generalInstruction?.trim() && (
+        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap">
+          {set.generalInstruction}
+        </div>
+      )}
+
       {passage && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">🇩🇪 Đoạn văn</span>
@@ -484,7 +528,20 @@ const QuizExerciseSetBody: React.FC<{
       )}
 
       <div className="space-y-3">
-        {groups.length === 1 ? (
+        {groups.length === 1 && isListening ? (
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex w-full items-center gap-3 px-4 py-4">
+              <span className="text-base font-display font-black text-slate-900">Bài 1</span>
+              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">
+                {GRAMMAR_TYPE_LABELS[groups[0].type]}
+              </span>
+              <span className="text-xs text-slate-400">{groups[0].exercises.length} câu</span>
+            </div>
+            <div className="border-t border-slate-100 p-4">
+              {renderGroupContent(groups[0], 0)}
+            </div>
+          </section>
+        ) : groups.length === 1 ? (
           renderGroupContent(groups[0], 0)
         ) : (
           groups.map((group, groupIndex) => {
@@ -521,25 +578,34 @@ const QuizExerciseSetBody: React.FC<{
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
-      <div className="flex justify-end gap-3">
-        <Button
-          variant="secondary"
-          onClick={async () => {
-            const { error } = await saveDraft(collectDraftAnswers());
-            if (error) {
-              showToast("Không thể lưu, vui lòng thử lại.", "warning");
-              return;
-            }
-            showToast("Đã lưu bài làm dở.", "success");
-            onDraftSaved(true);
-          }}
-        >
-          Lưu
-        </Button>
-        <Button variant="primary" disabled={!allAnswered || submitting} onClick={handleSubmit}>
-          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Nộp bài
-        </Button>
+      <div className={`flex gap-3 ${isListening ? "justify-between" : "justify-end"}`}>
+        {isListening && (
+          <Button variant="secondary" onClick={handleRetry}>
+            <RotateCcw className="w-4 h-4 mr-2" /> Làm lại
+          </Button>
+        )}
+        <div className="flex gap-3">
+          {!isListening && (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                const { error } = await saveDraft(collectDraftAnswers());
+                if (error) {
+                  showToast("Không thể lưu, vui lòng thử lại.", "warning");
+                  return;
+                }
+                showToast("Đã lưu bài làm dở.", "success");
+                onDraftSaved(true);
+              }}
+            >
+              Lưu
+            </Button>
+          )}
+          <Button variant="primary" disabled={!allAnswered || submitting} onClick={handleSubmit}>
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isListening ? "Kiểm tra đáp án" : "Nộp bài"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -551,11 +617,12 @@ const SetRow: React.FC<{
   orderNumber: number;
   status: SetStatus;
   isExpanded: boolean;
+  isListening: boolean;
   onToggle: () => void;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
-}> = ({ lesson, set, orderNumber, status, isExpanded, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => (
+}> = ({ lesson, set, orderNumber, status, isExpanded, isListening, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => (
   <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <button
       type="button"
@@ -581,7 +648,8 @@ const SetRow: React.FC<{
       <div className="border-t border-slate-100 p-4">
         <QuizExerciseSetBody
           lesson={lesson}
-          set={{ id: set.id, title: set.title }}
+          set={{ id: set.id, title: set.title, generalInstruction: set.generalInstruction }}
+          isListening={isListening}
           onSetFinished={onSetFinished}
           onCollapse={onToggle}
           onAttemptUpdate={onAttemptUpdate}
@@ -598,7 +666,9 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
   onBackToLesson,
   onSetFinished,
 }) => {
+  const isListening = category === "nghe";
   const { sets: allSets, loading: setsLoading } = useExerciseSets();
+  const { summary: ngheSummary } = useLessonSetSummary(lesson.id, "nghe");
   const candidateSets = useMemo(
     () =>
       allSets
@@ -615,12 +685,27 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
     [candidateSets, nonEmptySetIds],
   );
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
-  const title = category === "nghe" ? "Bài tập nghe" : "Bài tập đọc";
+  const title = isListening ? "Bài tập nghe" : "Bài tập đọc";
+  const headerProps = isListening
+    ? {
+        title,
+        levelBadge: lesson.level,
+        lessonTitle: lesson.title,
+        progress:
+          lessonSets.length > 0
+            ? {
+                current: ngheSummary?.passedCount ?? 0,
+                total: ngheSummary?.totalCount ?? lessonSets.length,
+              }
+            : undefined,
+        onBackToLesson,
+      }
+    : { title, onBackToLesson };
 
   if (setsLoading || attemptsLoading || draftsLoading || nonEmptyLoading) {
     return (
       <div className="max-w-3xl mx-auto space-y-8">
-        <ExercisePageHeader title={title} onBackToLesson={onBackToLesson} />
+        <ExercisePageHeader {...headerProps} />
         <div className="flex items-center justify-center min-h-64">
           <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
         </div>
@@ -631,7 +716,7 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
   if (lessonSets.length === 0) {
     return (
       <div className="max-w-3xl mx-auto space-y-8">
-        <ExercisePageHeader title={title} onBackToLesson={onBackToLesson} />
+        <ExercisePageHeader {...headerProps} />
         <div className="text-center py-12">
           <p className="text-slate-500">{title} cho bài học này chưa được soạn.</p>
         </div>
@@ -641,7 +726,7 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <ExercisePageHeader title={title} onBackToLesson={onBackToLesson} />
+      <ExercisePageHeader {...headerProps} />
       <div className="space-y-3">
         {lessonSets.map((set, index) => (
           <SetRow
@@ -651,6 +736,7 @@ export const QuizSetListPage: React.FC<QuizSetListPageProps> = ({
             orderNumber={index + 1}
             status={computeSetStatus(attemptsBySetId[set.id], draftSetIds.has(set.id))}
             isExpanded={expandedSetId === set.id}
+            isListening={isListening}
             onToggle={() => setExpandedSetId((prev) => (prev === set.id ? null : set.id))}
             onSetFinished={onSetFinished}
             onAttemptUpdate={(status) => updateAttempt(set.id, status)}

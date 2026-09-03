@@ -102,6 +102,12 @@ const MatchingExercise: React.FC<{
   );
 };
 
+function formatRichtigFalschLabel(value: string): string {
+  if (value === "richtig") return "Richtig";
+  if (value === "falsch") return "Falsch";
+  return value;
+}
+
 export const ExerciseAnswerInput: React.FC<{
   exercise: GrammarExercise;
   numberLabel: string;
@@ -121,6 +127,7 @@ export const ExerciseAnswerInput: React.FC<{
   choiceResult?: boolean;
   matchedPairs?: Record<string, string>;
   onMatch?: (de: string, vi: string) => void;
+  optionLayout?: "vertical" | "horizontal";
 }> = ({
   exercise,
   numberLabel,
@@ -140,6 +147,7 @@ export const ExerciseAnswerInput: React.FC<{
   choiceResult,
   matchedPairs = {},
   onMatch,
+  optionLayout = "vertical",
 }) => {
   const letter = numberLabel;
   const [selectedClassificationItem, setSelectedClassificationItem] = useState<string | null>(null);
@@ -325,8 +333,34 @@ export const ExerciseAnswerInput: React.FC<{
             onSelect={onSelectChoice}
             exerciseId={exercise.id}
             result={choiceResult}
+            layout={optionLayout}
           />
         </>
+      )}
+
+      {exercise.type === "richtig_falsch" && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex-1 text-xs text-slate-700">
+            <span className="mr-1.5 font-bold text-slate-400">{letter}</span>
+            {exercise.promptText}
+          </p>
+          <div className="flex shrink-0 gap-2">
+            {(["richtig", "falsch"] as const).map((val) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => onTextAnswerChange(val)}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                  textAnswer === val
+                    ? "border-orange-500 bg-orange-500 text-white"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-orange-300 hover:text-orange-700"
+                }`}
+              >
+                {formatRichtigFalschLabel(val)}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {exercise.type === "matching" && (
@@ -432,6 +466,20 @@ export const ExerciseResultReview: React.FC<{
       </>
     )}
 
+    {exercise.type === "richtig_falsch" && (
+      <>
+        <SubmittedAnswer
+          value={formatRichtigFalschLabel(submittedText)}
+          correct={exerciseCorrect}
+        />
+        {revealed && exerciseCorrect === false && correctAnswerRaw && (
+          <p className="mb-2 text-[11px] text-green-700">
+            <b>Đáp án đúng:</b> {formatRichtigFalschLabel(correctAnswerRaw)}
+          </p>
+        )}
+      </>
+    )}
+
     {exercise.type === "classification" && (
       <div className="mb-2 space-y-2">
         {(exercise.classificationGroups ?? []).map((group) => {
@@ -525,6 +573,7 @@ export const ExerciseResultReview: React.FC<{
           exerciseId={exercise.id}
           result={choiceResult}
           correctIndex={revealed ? Number(correctAnswerRaw) : undefined}
+          layout="vertical"
         />
       </div>
     )}

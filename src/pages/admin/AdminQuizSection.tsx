@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { AdminGrammarExerciseSection } from "./AdminGrammarExerciseSection";
+import { AdminListeningExerciseSection } from "./AdminListeningExerciseSection";
 import { AdminReadingExerciseSection } from "./AdminReadingExerciseSection";
 
 export const AdminQuizSection: React.FC = () => {
@@ -21,7 +22,13 @@ export const AdminQuizSection: React.FC = () => {
         ))}
       </div>
 
-      {activeTab === "doc" ? <AdminReadingExerciseSection /> : <AdminGrammarExerciseSection category={activeTab} />}
+      {activeTab === "doc" ? (
+        <AdminReadingExerciseSection />
+      ) : activeTab === "nghe" ? (
+        <AdminListeningExerciseSection />
+      ) : (
+        <AdminGrammarExerciseSection />
+      )}
     </div>
   );
 };
