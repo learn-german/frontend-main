@@ -779,7 +779,7 @@
             <div class="session-info">
               <div class="session-title">
                 ${escapeHtml(session.title)}
-                <span class="level-badge">${session.level}</span>
+                <span class="level-badge">${escapeHtml(session.level)}</span>
                 ${userRegistered ? '<span class="registered-badge">ĐÃ ĐĂNG KÝ</span>' : ""}
               </div>
               ${session.note ? `<div class="session-note">${escapeHtml(session.note)}</div>` : ""}
