@@ -408,21 +408,44 @@
       }
     }
 
-    function createSeedStore() {
+    function buildUpcomingSeedDates() {
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       const monday = getMonday(today);
-      const fmt = (offset) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + offset);
-        return localDateStr(d);
-      };
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(0, 0, 0, 0);
+
+      const dates = [];
+      const cursor = new Date(today);
+      while (cursor <= sunday) {
+        dates.push(localDateStr(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      if (dates.length < 4) {
+        const nextMonday = new Date(monday);
+        nextMonday.setDate(monday.getDate() + 7);
+        const extra = new Date(nextMonday);
+        while (dates.length < 4) {
+          dates.push(localDateStr(extra));
+          extra.setDate(extra.getDate() + 1);
+        }
+      }
+
+      return dates.slice(0, 4);
+    }
+
+    function createSeedStore() {
+      const [d1, d2, d3, d4] = buildUpcomingSeedDates();
 
       const sessions = [
         {
           id: "s1",
           title: "Testing",
           level: "A1",
-          date: fmt(3),
+          date: d1,
           startTime: "10:00",
           endTime: "11:00",
           meetUrl: "https://meet.google.com/abc-defg-hij",
@@ -433,7 +456,7 @@
           id: "s2",
           title: "Luyện nói giao tiếp",
           level: "A2",
-          date: fmt(4),
+          date: d2,
           startTime: "14:00",
           endTime: "15:30",
           meetUrl: "https://meet.google.com/xyz-abcd-efg",
@@ -444,7 +467,7 @@
           id: "s3",
           title: "Giải đáp ngữ pháp A1",
           level: "A1",
-          date: fmt(5),
+          date: d3,
           startTime: "09:00",
           endTime: "10:00",
           meetUrl: "https://meet.google.com/full-room-001",
@@ -455,7 +478,7 @@
           id: "s4",
           title: "Office hours B1",
           level: "B1",
-          date: fmt(4),
+          date: d4,
           startTime: "16:00",
           endTime: "17:00",
           meetUrl: "https://meet.google.com/office-b1-hrs",
