@@ -33,6 +33,7 @@ import { GRAMMAR_TYPE_LABELS, GRAMMAR_TYPE_INSTRUCTIONS } from "./GrammarExercis
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
 import { openTranscriptionWindow } from "../lib/openTranscriptionWindow";
+import { formatExerciseNumberLabel } from "../lib/exerciseNumberLabel";
 
 const LISTENING_TYPE_SET = new Set<string>(LISTENING_QUESTION_TYPES);
 
@@ -352,7 +353,11 @@ const QuizExerciseSetBody: React.FC<{
             <ExerciseAnswerInput
               key={exercise.id}
               exercise={exercise}
-              numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
+              numberLabel={formatExerciseNumberLabel({
+                isListening,
+                groupIndex,
+                childIndex,
+              })}
               selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
               onToggleToken={(token, tokenIdx) => {
                 const key = `${tokenIdx}:${token}`;
@@ -470,7 +475,11 @@ const QuizExerciseSetBody: React.FC<{
                   <ExerciseResultReview
                     key={ex.id}
                     exercise={ex}
-                    numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
+                    numberLabel={formatExerciseNumberLabel({
+                      isListening,
+                      groupIndex,
+                      childIndex,
+                    })}
                     revealed={revealed}
                     submittedText={getSubmittedTextFor(ex)}
                     exerciseCorrect={result.exerciseResults?.[ex.id]}
