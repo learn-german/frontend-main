@@ -54,7 +54,7 @@ When `isTrial(user.subscriptionEndDate)`:
 
 1. `unlocked_levels = [clickedLevel]`
 2. `subscription_end_date = today + 90 days` (ISO date `YYYY-MM-DD`)
-3. Prefer syncing `role` from `trial` → `user` if currently `trial` (profiles + `set-admin-role` if that path already exists for role edits)
+3. Sync `role` `trial` → `user` when current role is `trial` (profiles column + existing `set-admin-role` path)
 4. Keep existing level-enrollment upsert behavior for the unlocked level
 5. Do not touch progress tables
 
@@ -64,7 +64,7 @@ When **not** Trial (Active or Expired): toggling a level only updates `unlocked_
 
 1. `unlocked_levels = []`
 2. `subscription_end_date = null`
-3. Optionally set `role` → `trial`
+3. Set `role` → `trial` (profiles + `set-admin-role`) unless user is `admin`
 4. Do not delete progress / enrollments / stats
 
 Trial checkbox is **interactive** (remove `disabled` / `readOnly`).
