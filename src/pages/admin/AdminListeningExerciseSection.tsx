@@ -1313,6 +1313,10 @@ export const AdminListeningExerciseSection: React.FC = () => {
   const [moduleExpanded, setModuleExpanded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+  const [selectedSetIds, setSelectedSetIds] = useState<Set<string>>(new Set());
+  const [bulkSetDeleteOpen, setBulkSetDeleteOpen] = useState(false);
+  const [bulkSetDeleteLessonId, setBulkSetDeleteLessonId] = useState<string | null>(null);
+  const [deletingSets, setDeletingSets] = useState(false);
   const [setQuestionTypes, setSetQuestionTypes] = useState<Record<string, ListeningQuestionType>>({});
   const [createTypeModal, setCreateTypeModal] = useState<{ lessonId: string; nextOrder: number } | null>(null);
   const [pickedQuestionType, setPickedQuestionType] = useState<ListeningQuestionType>("fill_in_the_blank");
@@ -1435,6 +1439,34 @@ export const AdminListeningExerciseSection: React.FC = () => {
     return { error };
   };
 
+  const handleBulkDeleteSets = async (lessonId: string) => {
+    const ids = [...selectedSetIds].filter((id) =>
+      ngheSets.some((set) => set.id === id && set.lessonId === lessonId),
+    );
+    if (ids.length === 0) return;
+    setDeletingSets(true);
+    const { error, deletedClipIds } = await deleteSets(ids, lessonId, "nghe");
+    if (!error && deletedClipIds.length > 0) {
+      const { error: clipCleanupError } = await supabase
+        .from("listening_clips")
+        .delete()
+        .in("id", deletedClipIds);
+      if (clipCleanupError) {
+        showToast("Dọn file nghe thất bại: " + clipCleanupError.message, "warning");
+      }
+    }
+    setDeletingSets(false);
+    if (error) {
+      showToast("Xóa hàng loạt thất bại: " + error, "warning");
+      return;
+    }
+    showToast(`Đã xóa ${ids.length} bài tập.`, "success");
+    setBulkSetDeleteOpen(false);
+    setBulkSetDeleteLessonId(null);
+    setSelectedSetIds(new Set());
+    await fetchAll();
+  };
+
   if (loading || moduleOrderLoading || setsLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -1532,7 +1564,10 @@ export const AdminListeningExerciseSection: React.FC = () => {
                 <div key={lesson.lesson_id} className="rounded-2xl border border-slate-200 bg-white">
                   <button
                     type="button"
-                    onClick={() => setExpanded((prev) => ({ ...prev, [lesson.lesson_id]: !isExpanded }))}
+                    onClick={() => {
+                      if (isExpanded) setSelectedSetIds(new Set());
+                      setExpanded((prev) => ({ ...prev, [lesson.lesson_id]: !isExpanded }));
+                    }}
                     className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50 text-left rounded-t-2xl"
                   >
                     {isExpanded ? (
@@ -1548,7 +1583,42 @@ export const AdminListeningExerciseSection: React.FC = () => {
                   </button>
                   {isExpanded && (
                     <div className="p-4 space-y-3">
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-between gap-3">
+                        {lessonSets.length > 0 && (
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                            <input
+                              type="checkbox"
+                              checked={lessonSets.every((set) => selectedSetIds.has(set.id))}
+                              onChange={(e) => {
+                                setSelectedSetIds((prev) => {
+                                  const next = new Set(prev);
+                                  lessonSets.forEach((set) =>
+                                    e.target.checked ? next.add(set.id) : next.delete(set.id),
+                                  );
+                                  return next;
+                                });
+                              }}
+                              className="h-4 w-4 accent-orange-500"
+                            />
+                            Chọn tất cả
+                          </label>
+                        )}
+                        <div className="flex items-center gap-3 ml-auto">
+                          {(() => {
+                            const selectedCount = lessonSets.filter((set) => selectedSetIds.has(set.id)).length;
+                            return selectedCount > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBulkSetDeleteLessonId(lesson.lesson_id);
+                                  setBulkSetDeleteOpen(true);
+                                }}
+                                className="text-xs font-bold text-rose-600 hover:text-rose-700"
+                              >
+                                Xóa {selectedCount} bài
+                              </button>
+                            ) : null;
+                          })()}
                         <button
                           type="button"
                           onClick={() => {
@@ -1562,6 +1632,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
                         >
                           <Plus className="w-3.5 h-3.5" /> Thêm bài tập
                         </button>
+                        </div>
                       </div>
                       {lessonSets.length === 0 && (
                         <p className="text-xs text-slate-400 italic">Chưa có bài tập nghe nào.</p>
@@ -1570,21 +1641,52 @@ export const AdminListeningExerciseSection: React.FC = () => {
                         const questionType = inferQuestionType(set.id);
                         const questionCount = questionCountForSet(set.id);
                         return (
-                          <button
+                          <div
                             key={set.id}
-                            type="button"
-                            onClick={() => setSelectedSetId(set.id)}
                             className="w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-orange-50/40 hover:border-orange-200 transition-colors text-left"
                           >
+                            <input
+                              type="checkbox"
+                              checked={selectedSetIds.has(set.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() =>
+                                setSelectedSetIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(set.id)) next.delete(set.id);
+                                  else next.add(set.id);
+                                  return next;
+                                })
+                              }
+                              aria-label={`Chọn ${set.title}`}
+                              className="h-4 w-4 accent-orange-500"
+                            />
                             <div className="w-9 h-9 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
                               <Headphones className="w-4 h-4" />
                             </div>
-                            <span className="text-sm font-display font-black text-slate-900">{set.title}</span>
-                            {questionType && (
-                              <span className="text-[10.5px] font-bold text-slate-500 border border-slate-200 rounded-full px-2 py-0.5">
-                                {LISTENING_TYPE_LABELS[questionType]}
-                              </span>
-                            )}
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => {
+                                setSelectedSetIds(new Set());
+                                setSelectedSetId(set.id);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedSetIds(new Set());
+                                  setSelectedSetId(set.id);
+                                }
+                              }}
+                              className="flex min-w-0 flex-1 flex-wrap items-center gap-3"
+                            >
+                              <span className="text-sm font-display font-black text-slate-900">{set.title}</span>
+                              {questionType && (
+                                <span className="text-[10.5px] font-bold text-slate-500 border border-slate-200 rounded-full px-2 py-0.5">
+                                  {LISTENING_TYPE_LABELS[questionType]}
+                                </span>
+                              )}
+                              <span className="ml-auto text-xs text-slate-400">{questionCount} câu hỏi</span>
+                            </div>
                             <span
                               role="presentation"
                               onClick={(e) => {
@@ -1594,8 +1696,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
                             >
                               <LessonStatusBadge status={set.status} />
                             </span>
-                            <span className="ml-auto text-xs text-slate-400">{questionCount} câu hỏi</span>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -1666,6 +1767,40 @@ export const AdminListeningExerciseSection: React.FC = () => {
                 className="px-4 py-2 text-xs font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 disabled:opacity-50"
               >
                 {creatingSet ? "Đang tạo..." : "Tiếp tục"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkSetDeleteOpen && bulkSetDeleteLessonId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full space-y-4">
+            <h3 className="text-sm font-display font-bold text-slate-800">
+              Xóa{" "}
+              {ngheSets.filter(
+                (set) => set.lessonId === bulkSetDeleteLessonId && selectedSetIds.has(set.id),
+              ).length}{" "}
+              bài tập đã chọn?
+            </h3>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkSetDeleteOpen(false);
+                  setBulkSetDeleteLessonId(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-slate-500 rounded-xl hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkDeleteSets(bulkSetDeleteLessonId)}
+                disabled={deletingSets}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 rounded-xl hover:bg-rose-700 disabled:opacity-50"
+              >
+                {deletingSets ? "Đang xóa..." : "Xóa tất cả"}
               </button>
             </div>
           </div>
