@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
 import { GrammarExercise } from "../lib/appTypes";
+import { blankInputCharWidth } from "../lib/blankInputSize";
 import { parseAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
 
 /** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */
@@ -308,7 +309,8 @@ export const ExerciseAnswerInput: React.FC<{
                   value={blankAnswers[index] ?? ""}
                   onFocus={() => onBlankFocus(index)}
                   onChange={(event) => onBlankAnswerChange(index, event.target.value)}
-                  className={`mx-1 inline-block w-28 rounded-lg border px-2 py-1.5 text-center text-xs focus:outline-none focus:ring-2 ${
+                  style={{ width: `${blankInputCharWidth(blankAnswers[index] ?? "")}ch` }}
+                  className={`mx-1 inline-block max-w-full rounded-lg border px-2 py-1.5 text-center text-xs focus:outline-none focus:ring-2 ${
                     blankResults?.[index] === true
                       ? "border-green-400 bg-green-50 text-green-800 focus:ring-green-500/20"
                       : blankResults?.[index] === false
