@@ -400,24 +400,23 @@
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(0, 0, 0, 0);
 
-      const dates = [];
+      const remaining = [];
       const cursor = new Date(today);
       while (cursor <= sunday) {
-        dates.push(localDateStr(cursor));
+        remaining.push(localDateStr(cursor));
         cursor.setDate(cursor.getDate() + 1);
       }
 
-      if (dates.length < 4) {
-        const nextMonday = new Date(monday);
-        nextMonday.setDate(monday.getDate() + 7);
-        const extra = new Date(nextMonday);
-        while (dates.length < 4) {
-          dates.push(localDateStr(extra));
-          extra.setDate(extra.getDate() + 1);
-        }
+      if (remaining.length === 0) {
+        const fallback = localDateStr(today);
+        return [fallback, fallback, fallback, fallback];
       }
 
-      return dates.slice(0, 4);
+      const dates = [];
+      for (let i = 0; i < 4; i++) {
+        dates.push(remaining[Math.min(i, remaining.length - 1)]);
+      }
+      return dates;
     }
 
     function createSeedStore() {
