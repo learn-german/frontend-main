@@ -1,4 +1,5 @@
 export const MIN_MULTIPLE_CHOICE_OPTIONS = 2;
+export const MAX_MULTIPLE_CHOICE_OPTIONS = 6;
 
 export interface ChoiceForm {
   options: string[];
@@ -10,10 +11,10 @@ export const optionLabel = (index: number): string =>
 
 export const createEmptyChoiceForm = (): ChoiceForm => ({ options: ["", "", ""], correctIndex: -1 });
 
-export const addOption = (form: ChoiceForm): ChoiceForm => ({
-  ...form,
-  options: [...form.options, ""],
-});
+export const addOption = (form: ChoiceForm): ChoiceForm => {
+  if (form.options.length >= MAX_MULTIPLE_CHOICE_OPTIONS) return form;
+  return { ...form, options: [...form.options, ""] };
+};
 
 export const setOption = (form: ChoiceForm, index: number, value: string): ChoiceForm => ({
   ...form,
