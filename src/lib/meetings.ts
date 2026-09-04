@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type {
+  LearnerMeetingSession,
   LearnerMeetingsResponse,
   Level,
   MeetingRegisterResult,
@@ -84,7 +85,16 @@ export async function listLearnerMeetings(): Promise<LearnerMeetingsResponse> {
   if (!data || typeof data !== "object" || !("sessions" in data)) {
     throw new Error(edgeErrorMessage(data, "Không thể tải lịch học trực tuyến."));
   }
-  return data as LearnerMeetingsResponse;
+  const response = data as LearnerMeetingsResponse;
+  return {
+    ...response,
+    sessions: response.sessions.map(
+      (session): LearnerMeetingSession => ({
+        ...session,
+        canRegister: session.canRegister === true,
+      }),
+    ),
+  };
 }
 
 export async function registerMeeting(sessionId: string): Promise<MeetingRegisterResult> {

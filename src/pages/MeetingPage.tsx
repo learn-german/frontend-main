@@ -249,7 +249,6 @@ export const MeetingPage: React.FC = () => {
           <MeetingSessionCard
             key={session.id}
             session={session}
-            weekRegistrationSessionId={data?.myRegistrationSessionId ?? null}
             busy={busySessionId === session.id}
             onRegister={handleRegister}
             onCancel={handleCancel}
@@ -262,7 +261,6 @@ export const MeetingPage: React.FC = () => {
 
 interface MeetingSessionCardProps {
   session: LearnerMeetingSession;
-  weekRegistrationSessionId: string | null;
   busy: boolean;
   onRegister: (sessionId: string) => Promise<void>;
   onCancel: (sessionId: string) => Promise<void>;
@@ -270,7 +268,6 @@ interface MeetingSessionCardProps {
 
 const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
   session,
-  weekRegistrationSessionId,
   busy,
   onRegister,
   onCancel,
@@ -278,9 +275,8 @@ const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
   const date = formatDateBlock(session.sessionDate);
   const status = capacityStatus(session.registrationCount);
   const remaining = Math.max(0, MAX_MEETING_CAPACITY - session.registrationCount);
-  const weekLimitReached =
-    weekRegistrationSessionId !== null && weekRegistrationSessionId !== session.id;
-  const registrationDisabled = status === "full" || weekLimitReached || busy;
+  const weekLimitReached = !session.canRegister && status !== "full";
+  const registrationDisabled = !session.canRegister || busy;
   const styles = STATUS_STYLES[status];
 
   return (

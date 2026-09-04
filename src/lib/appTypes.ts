@@ -187,6 +187,7 @@ export interface LearnerMeetingSession {
   note: string | null;
   registrationCount: number;
   isRegistered: boolean;
+  canRegister: boolean;
   meetUrl: string | null;
 }
 

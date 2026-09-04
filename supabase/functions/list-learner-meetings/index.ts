@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { canRegisterMeeting, vnWeekBounds } from "./eligibility.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,19 +26,6 @@ function vnToday(): string {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
-function vnWeekBounds(date: string): { start: string; end: string } {
-  const current = new Date(`${date}T00:00:00Z`);
-  const mondayOffset = (current.getUTCDay() + 6) % 7;
-  const start = new Date(current);
-  start.setUTCDate(current.getUTCDate() - mondayOffset);
-  const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 6);
-  return {
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
-  };
-}
-
 interface SessionRow {
   id: string;
   title: string;
@@ -47,6 +35,13 @@ interface SessionRow {
   end_time: string;
   meet_url: string;
   note: string | null;
+}
+
+interface RegistrationWithSessionRow {
+  session_id: string;
+  meeting_sessions:
+    | { session_date: string }
+    | Array<{ session_date: string }>;
 }
 
 serve(async (req) => {
@@ -133,20 +128,40 @@ serve(async (req) => {
       }
     }
 
-    const week = vnWeekBounds(today);
-    const { data: weekRegistration, error: weekError } = await supabase
+    const currentWeek = vnWeekBounds(today);
+    const lastSessionWeek = sessions.length > 0
+      ? vnWeekBounds(sessions[sessions.length - 1].session_date)
+      : currentWeek;
+    const { data: learnerRegistrations, error: learnerRegistrationsError } =
+      await supabase
       .from("meeting_registrations")
       .select("session_id, meeting_sessions!inner(session_date)")
       .eq("user_id", user.id)
-      .gte("meeting_sessions.session_date", week.start)
-      .lte("meeting_sessions.session_date", week.end)
-      .limit(1)
-      .maybeSingle();
-    if (weekError) throw weekError;
+      .gte("meeting_sessions.session_date", currentWeek.start)
+      .lte("meeting_sessions.session_date", lastSessionWeek.end);
+    if (learnerRegistrationsError) throw learnerRegistrationsError;
+
+    const registeredWeekStarts = new Set<string>();
+    let myRegistrationSessionId: string | null = null;
+    for (
+      const registration of (learnerRegistrations ?? []) as unknown as RegistrationWithSessionRow[]
+    ) {
+      const registeredSession = Array.isArray(registration.meeting_sessions)
+        ? registration.meeting_sessions[0]
+        : registration.meeting_sessions;
+      if (!registeredSession) continue;
+
+      const weekStart = vnWeekBounds(registeredSession.session_date).start;
+      registeredWeekStarts.add(weekStart);
+      if (weekStart === currentWeek.start && myRegistrationSessionId === null) {
+        myRegistrationSessionId = registration.session_id;
+      }
+    }
 
     return json({
       sessions: sessions.map((session) => {
         const isRegistered = registeredIds.has(session.id);
+        const registrationCount = registrationCounts.get(session.id) ?? 0;
         return {
           id: session.id,
           title: session.title,
@@ -155,12 +170,18 @@ serve(async (req) => {
           startTime: session.start_time,
           endTime: session.end_time,
           note: session.note,
-          registrationCount: registrationCounts.get(session.id) ?? 0,
+          registrationCount,
           isRegistered,
+          canRegister: canRegisterMeeting(
+            session.session_date,
+            registrationCount,
+            isRegistered,
+            registeredWeekStarts,
+          ),
           meetUrl: isRegistered ? session.meet_url : null,
         };
       }),
-      myRegistrationSessionId: weekRegistration?.session_id ?? null,
+      myRegistrationSessionId,
     });
   } catch (error) {
     console.error("list-learner-meetings failed", error);
