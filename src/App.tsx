@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { AppState, Lesson, Module } from "./lib/appTypes";
+import { AppState, Lesson, Module, type Level } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
 import { useLessonPositions } from "./lib/hooks/useLessonPositions";
 import { useUserStats } from "./lib/hooks/useUserStats";
@@ -33,9 +33,16 @@ import { supabase } from "./lib/supabase";
 import { signOut } from "./lib/auth";
 import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
-import { parseRoute, serializeRoute, isProtectedPage, type AppRoute, type AppPage } from "./lib/router";
+import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
 import { needsProfileOnboarding } from "./lib/profileOnboarding";
-import { isEffectivelyTrial, isSubscriptionExpired, type UserRole } from "./lib/trialGating";
+import {
+  getTrialLessonLimit,
+  isExpiredAccess,
+  isFeatureLocked,
+  isSubscriptionExpired,
+  isTrialAccess,
+  type UserRole,
+} from "./lib/trialGating";
 
 type AppUser = { id: string; email: string; fullName: string; role: UserRole; subscriptionEndDate: string | null };
 type PendingUser = Omit<AppUser, "fullName" | "subscriptionEndDate">;
@@ -54,20 +61,28 @@ export default function App() {
   const { positions } = useLessonPositions(user?.id ?? null);
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
   const { stats, statsLoading, applyLessonCompleteReward, applyQuizResult, lessonIdsCompletedToday } = useUserStats(user?.id ?? null, flatLessons);
+  const isTrial = user ? isTrialAccess(user.role, user.subscriptionEndDate) : false;
+  const isExpired = user ? isExpiredAccess(user.role, user.subscriptionEndDate) : false;
+  const roadmapUnlockLevels = useMemo<Level[]>(
+    () => isTrial ? ["A1"] : stats.unlockedLevels,
+    [isTrial, stats.unlockedLevels],
+  );
+  const roadmapStats = useMemo(
+    () => isTrial ? { ...stats, unlockedLevels: roadmapUnlockLevels } : stats,
+    [isTrial, roadmapUnlockLevels, stats],
+  );
 
   // Đúng thứ tự người học thấy trên Lộ trình: đã lọc level chưa mở khóa,
   // sort theo orderIndex, và bỏ các bài draft.
   const { orderedLessons } = useMemo(
-    () => buildRoadmapItems(modules, positions, stats.unlockedLevels),
-    [modules, positions, stats.unlockedLevels],
+    () => buildRoadmapItems(modules, positions, roadmapUnlockLevels),
+    [modules, positions, roadmapUnlockLevels],
   );
 
   const lessonStatuses = useMemo(
     () => computeLessonStatuses(orderedLessons, stats.completedLessons),
     [orderedLessons, stats.completedLessons],
   );
-
-  const effectivelyTrial = user ? isEffectivelyTrial(user.role, user.subscriptionEndDate) : false;
 
   // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
   // nhưng lần đầu load thì đọc ngược từ URL để refresh/deep-link giữ đúng trang.
@@ -101,10 +116,16 @@ export default function App() {
     if (!user || modulesLoading || statsLoading) return;
     if (currentPage !== "lesson-detail" && currentPage !== "quiz") return;
 
-    // Trial restriction: only lesson at index 0 allowed
-    if (effectivelyTrial) {
+    if (isExpired) {
+      showToast("Gói học của bạn đã hết hạn. Liên hệ admin để gia hạn.", "warning");
+      setCurrentPage("roadmap");
+      return;
+    }
+
+    // Trial restriction: only the configured number of first lessons is allowed
+    if (isTrial) {
       const lessonIndex = orderedLessons.findIndex((l) => l.id === selectedLessonId);
-      if (lessonIndex !== 0) {
+      if (lessonIndex < 0 || lessonIndex >= getTrialLessonLimit()) {
         showToast("Nâng cấp gói để truy cập bài học này.", "warning");
         setCurrentPage("roadmap");
         return;
@@ -117,16 +138,18 @@ export default function App() {
     if (!isLocked) return;
     showToast("Hãy hoàn thành bài học trước để mở bài này.", "warning");
     setCurrentPage("roadmap");
-  }, [user, modulesLoading, statsLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons, effectivelyTrial, orderedLessons]);
+  }, [user, modulesLoading, statsLoading, currentPage, selectedLessonId, lessonStatuses, flatLessons, isExpired, isTrial, orderedLessons]);
 
   useEffect(() => {
-    if (!user || !effectivelyTrial) return;
-    const lockedPages: AppPage[] = ["leaderboard", "help", "packages"];
-    if (lockedPages.includes(currentPage as AppPage)) {
+    if (
+      !user ||
+      (currentPage !== "leaderboard" && currentPage !== "help" && currentPage !== "packages")
+    ) return;
+    if (isFeatureLocked(user.role, user.subscriptionEndDate, currentPage)) {
       showToast("Nâng cấp gói để mở tính năng này.", "warning");
       setCurrentPage("dashboard");
     }
-  }, [user, effectivelyTrial, currentPage]);
+  }, [user, currentPage]);
 
   useEffect(() => {
     if (!user) return;
@@ -236,7 +259,14 @@ export default function App() {
       if (!profile) {
         const { error: insertError } = await supabase
           .from("profiles")
-          .insert({ id: identity.id, email: identity.email, full_name: null, role: "trial" });
+          .insert({
+            id: identity.id,
+            email: identity.email,
+            full_name: null,
+            role: "trial",
+            unlocked_levels: [],
+            subscription_end_date: null,
+          });
         if (!isCurrent()) return;
         if (insertError) {
           setUser(null);
@@ -528,24 +558,26 @@ export default function App() {
               {effectivePage === "dashboard" && user && (
                 <DashboardPage
                   user={user}
-                  stats={stats}
+                  stats={roadmapStats}
                   modules={modules}
                   orderedLessons={orderedLessons}
                   lessonStatuses={lessonStatuses}
                   lessonIdsCompletedToday={lessonIdsCompletedToday}
                   onNavigateLesson={handleSelectLesson}
                   onNavigateRoadmap={() => handleNavigate("roadmap")}
-                  isTrialRestricted={effectivelyTrial}
+                  isTrialRestricted={isTrial}
+                  isExpiredRestricted={isExpired}
                 />
               )}
 
               {effectivePage === "roadmap" && user && (
                 <RoadmapPage
-                  stats={stats}
+                  stats={roadmapStats}
                   modules={modules}
                   positions={positions}
                   onSelectLesson={handleSelectLesson}
-                  isTrialRestricted={effectivelyTrial}
+                  isTrialRestricted={isTrial}
+                  isExpiredRestricted={isExpired}
                 />
               )}
 

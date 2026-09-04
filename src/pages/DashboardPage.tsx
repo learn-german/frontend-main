@@ -28,6 +28,7 @@ interface DashboardPageProps {
   onNavigateLesson: (lessonId: string) => void;
   onNavigateRoadmap: () => void;
   isTrialRestricted?: boolean;
+  isExpiredRestricted?: boolean;
 }
 
 interface DailyProgressReport {
@@ -82,6 +83,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   lessonStatuses,
   onNavigateLesson,
   isTrialRestricted,
+  isExpiredRestricted,
 }) => {
   const allLessons = modules.flatMap(m => m.lessons);
   const nextSuggestedLesson: Lesson | undefined = allLessons.find(l => !stats.completedLessons.includes(l.id)) ?? allLessons[0];
@@ -161,7 +163,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {isTrialRestricted && (
+      {isExpiredRestricted && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 mb-4">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+          <div>
+            <p className="text-sm font-display font-bold text-red-900">Gói học đã hết hạn</p>
+            <p className="text-xs text-red-700 mt-0.5">Toàn bộ bài học đang bị khoá. Liên hệ admin để gia hạn — tiến trình của bạn vẫn được giữ.</p>
+          </div>
+        </div>
+      )}
+
+      {isTrialRestricted && !isExpiredRestricted && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 mb-4">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
           <div>
