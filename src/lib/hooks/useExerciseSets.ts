@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabase";
-import { nextDefaultSetTitle } from "../exerciseSetTitle";
+import { nextDefaultSetTitle, planSetRenumber } from "../exerciseSetTitle";
 
 export { nextDefaultSetTitle };
 
@@ -163,6 +163,52 @@ export function useExerciseSets() {
     return { error: error?.message ?? null };
   };
 
+  const deleteSets = async (
+    ids: string[],
+    lessonId: string,
+    category: string,
+  ): Promise<{ error: string | null; deletedClipIds: string[] }> => {
+    if (ids.length === 0) return { error: null, deletedClipIds: [] };
+
+    const toDelete = sets.filter((s) => ids.includes(s.id));
+    const clipIds = [
+      ...new Set(
+        toDelete
+          .map((s) => s.audioClipId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0),
+      ),
+    ];
+
+    const { error } = await supabase.from("exercise_sets").delete().in("id", ids);
+    if (error) return { error: error.message, deletedClipIds: [] };
+
+    const remaining = sets.filter(
+      (s) => s.lessonId === lessonId && s.category === category && !ids.includes(s.id),
+    );
+    const plan = planSetRenumber(
+      remaining.map((s) => ({ id: s.id, orderIndex: s.orderIndex })),
+    );
+    await Promise.all(
+      plan.map((row) =>
+        supabase
+          .from("exercise_sets")
+          .update({ order_index: row.order_index, title: row.title })
+          .eq("id", row.id),
+      ),
+    );
+
+    // Clips still referenced by other sets (any lesson) must not be deleted
+    const stillUsed = new Set(
+      sets
+        .filter((s) => !ids.includes(s.id) && s.audioClipId)
+        .map((s) => s.audioClipId as string),
+    );
+    const deletedClipIds = clipIds.filter((id) => !stillUsed.has(id));
+
+    refetch();
+    return { error: null, deletedClipIds };
+  };
+
   return {
     sets,
     loading,
@@ -173,5 +219,6 @@ export function useExerciseSets() {
     updateGeneralInstruction,
     updateAudioClipId,
     updateTranscription,
+    deleteSets,
   };
 }
