@@ -428,6 +428,7 @@ const ListeningSetEditor: React.FC<{
   onUpdateInstruction: (id: string, text: string) => Promise<{ error: string | null }>;
   onUpdateAudioClip: (id: string, audioClipId: string | null) => Promise<{ error: string | null }>;
   onUpdateTranscription: (id: string, text: string) => Promise<{ error: string | null }>;
+  onDeleteEmptySet: () => Promise<{ error: string | null }>;
   onExercisesChanged: () => void;
   onQuestionTypeKnown: (setId: string, type: ListeningQuestionType) => void;
 }> = ({
@@ -442,6 +443,7 @@ const ListeningSetEditor: React.FC<{
   onUpdateInstruction,
   onUpdateAudioClip,
   onUpdateTranscription,
+  onDeleteEmptySet,
   onExercisesChanged,
   onQuestionTypeKnown,
 }) => {
@@ -694,15 +696,27 @@ const ListeningSetEditor: React.FC<{
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const remainingAfter = setExercises.filter((ex) => ex.id !== deleteTarget.id).length;
     setDeleting(true);
     const { error } = await supabase.from("grammar_exercises").delete().eq("id", deleteTarget.id);
-    setDeleting(false);
     if (error) {
+      setDeleting(false);
       showToast("Xóa thất bại: " + error.message, "warning");
       return;
     }
-    showToast("Đã xóa câu hỏi.", "success");
     setDeleteTarget(null);
+    if (remainingAfter === 0) {
+      const { error: setError } = await onDeleteEmptySet();
+      setDeleting(false);
+      if (setError) {
+        showToast("Đã xóa câu nhưng không xóa được bài tập: " + setError, "warning");
+        return;
+      }
+      showToast("Đã xóa câu cuối — bài tập cũng được xóa.", "success");
+      return;
+    }
+    setDeleting(false);
+    showToast("Đã xóa câu hỏi.", "success");
     await fetchSetData();
     onExercisesChanged();
   };
@@ -710,13 +724,27 @@ const ListeningSetEditor: React.FC<{
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
+    const remainingAfter = setExercises.length - selectedIds.size;
     setDeleting(true);
     const { error } = await supabase.from("grammar_exercises").delete().in("id", ids);
-    setDeleting(false);
     if (error) {
+      setDeleting(false);
       showToast("Xóa hàng loạt thất bại: " + error.message, "warning");
       return;
     }
+    if (remainingAfter === 0) {
+      const { error: setError } = await onDeleteEmptySet();
+      setDeleting(false);
+      if (setError) {
+        showToast("Đã xóa câu nhưng không xóa được bài tập: " + setError, "warning");
+        return;
+      }
+      setBulkDeleteOpen(false);
+      setSelectedIds(new Set());
+      showToast("Đã xóa câu cuối — bài tập cũng được xóa.", "success");
+      return;
+    }
+    setDeleting(false);
     showToast(`Đã xóa ${ids.length} câu.`, "success");
     setBulkDeleteOpen(false);
     setSelectedIds(new Set());
@@ -1293,6 +1321,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
     updateGeneralInstruction,
     updateAudioClipId,
     updateTranscription,
+    deleteSets,
   } = useExerciseSets();
 
   const ngheSets = sets.filter((s) => s.category === "nghe");
@@ -1377,6 +1406,23 @@ export const AdminListeningExerciseSection: React.FC = () => {
     }
   };
 
+  const handleDeleteEmptySet = async () => {
+    if (!selectedSet) return { error: "Không tìm thấy bài tập." };
+    const { error, deletedClipIds } = await deleteSets(
+      [selectedSet.id],
+      selectedSet.lessonId,
+      "nghe",
+    );
+    if (!error && deletedClipIds.length > 0) {
+      await supabase.from("listening_clips").delete().in("id", deletedClipIds);
+    }
+    if (!error) {
+      setSelectedSetId(null);
+      await fetchAll();
+    }
+    return { error };
+  };
+
   if (loading || moduleOrderLoading || setsLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -1409,6 +1455,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
         onUpdateInstruction={updateGeneralInstruction}
         onUpdateAudioClip={updateAudioClipId}
         onUpdateTranscription={updateTranscription}
+        onDeleteEmptySet={handleDeleteEmptySet}
         onExercisesChanged={fetchAll}
         onQuestionTypeKnown={(setId, type) =>
           setSetQuestionTypes((prev) => ({ ...prev, [setId]: type }))
