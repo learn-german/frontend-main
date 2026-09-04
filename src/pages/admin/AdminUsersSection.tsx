@@ -189,7 +189,7 @@ export const AdminUsersSection: React.FC = () => {
     setSaving(true);
 
     const subscriptionEndDate = editForm.role === "trial" ? null : editForm.subscription_end_date || null;
-    const becomingTrial = editForm.role === "trial" || !subscriptionEndDate;
+    const becomingTrial = editForm.role === "trial";
     const profileUpdate: {
       full_name: string;
       role: string;
