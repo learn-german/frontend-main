@@ -26,6 +26,7 @@
 - Replace streak on dashboard banner + sidebar; **hide** mobile navbar streak badge.
 - Prefer DesignSystem components; reuse support-ticket patterns (`src/lib/support.ts`, `AdminSupportSection.tsx`, `SupportPage.tsx`).
 - Run `npm run lint` after TS changes. Impact-analyze symbols before editing (GitNexus) when required by repo rules.
+- **Week-limit enforcement lives only in Edge Functions.** Client must not reimplement Mon–Sun VN week keys for authorization; UI disables/hints use Edge DTO fields (`myRegistrationSessionId`, `isRegistered`, error codes). `src/lib/meetingWeek.ts` may still expose `MAX_MEETING_CAPACITY` + `capacityStatus` for display bars only.
 
 ---
 
