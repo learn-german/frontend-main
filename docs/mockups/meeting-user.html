@@ -526,6 +526,8 @@
     }
 
     function canRegister(currentStore, sessionId, userId) {
+      const session = currentStore.sessions.find((s) => s.id === sessionId);
+      if (!session) return { ok: false, reason: "missing" };
       const count = countForSession(currentStore, sessionId);
       if (count >= MAX_CAPACITY) return { ok: false, reason: "full" };
       const existing = getUserRegistrationThisWeek(currentStore, userId);
