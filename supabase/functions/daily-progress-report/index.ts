@@ -84,7 +84,7 @@ interface LessonRow extends LessonQuizFlags {
 async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, reportDate: string) {
   const { data: profile } = await supabase
     .from("profiles")
-    .select("is_premium, subscription_end_date, unlocked_levels")
+    .select("subscription_end_date, unlocked_levels")
     .eq("id", userId)
     .single();
 
@@ -206,7 +206,6 @@ async function handleBatch(supabase: SupabaseClient) {
   const { data: eligible } = await supabase
     .from("profiles")
     .select("id")
-    .eq("is_premium", true)
     .gte("subscription_end_date", reportDate);
 
   const results = [];

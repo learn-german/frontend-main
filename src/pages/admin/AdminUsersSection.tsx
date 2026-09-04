@@ -3,6 +3,7 @@ import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-re
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
+import { isTrialBySubscription } from "../../lib/isTrialBySubscription";
 import {
   computeCompletedLessons,
   computeLessonStatuses,
@@ -32,12 +33,11 @@ interface AdminUser {
   streak: number;
   role: string;
   unlockedLevels: string[];
-  isPremium: boolean;
   subscriptionEndDate: string | null;
 }
 
 interface CreateForm { email: string; password: string; full_name: string; role: string; }
-interface EditForm { full_name: string; role: string; is_premium: boolean; subscription_end_date: string; }
+interface EditForm { full_name: string; role: string; subscription_end_date: string; }
 
 const EMPTY_CREATE: CreateForm = { email: "", password: "", full_name: "", role: "trial" };
 const PAGE_SIZE = 15;
@@ -58,7 +58,7 @@ export const AdminUsersSection: React.FC = () => {
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE);
   const [creating, setCreating] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", role: "trial", is_premium: false, subscription_end_date: "" });
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", role: "trial", subscription_end_date: "" });
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -67,7 +67,7 @@ export const AdminUsersSection: React.FC = () => {
   const fetchUsers = () => {
     supabase
       .from("profiles")
-      .select("id, email, full_name, created_at, role, unlocked_levels, is_premium, subscription_end_date, user_stats(xp, streak)")
+      .select("id, email, full_name, created_at, role, unlocked_levels, subscription_end_date, user_stats(xp, streak)")
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setUsers(
@@ -82,7 +82,6 @@ export const AdminUsersSection: React.FC = () => {
               streak: stats?.streak ?? 0,
               role: (p as unknown as { role?: string }).role ?? "user",
               unlockedLevels: (p as unknown as { unlocked_levels?: string[] }).unlocked_levels ?? [],
-              isPremium: (p as unknown as { is_premium?: boolean }).is_premium ?? false,
               subscriptionEndDate: (p as unknown as { subscription_end_date?: string | null }).subscription_end_date ?? null,
             };
           }),
@@ -189,7 +188,6 @@ export const AdminUsersSection: React.FC = () => {
     }
     setSaving(true);
 
-    const isPremium = editForm.role === "user" ? true : editForm.role === "trial" ? false : editForm.is_premium;
     const subscriptionEndDate = editForm.role === "trial" ? null : editForm.subscription_end_date || null;
 
     // Update full_name + role column in profiles
@@ -198,7 +196,6 @@ export const AdminUsersSection: React.FC = () => {
       .update({
         full_name: editForm.full_name,
         role: editForm.role,
-        is_premium: isPremium,
         subscription_end_date: subscriptionEndDate,
       })
       .eq("id", editUser.id);
@@ -442,6 +439,17 @@ export const AdminUsersSection: React.FC = () => {
                         {level}
                       </label>
                     ))}
+                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                      <input
+                        type="checkbox"
+                        checked={isTrialBySubscription(u.subscriptionEndDate)}
+                        disabled
+                        readOnly
+                        className="w-3.5 h-3.5 accent-orange-600"
+                        title="Trial khi chưa có hoặc đã hết hạn subscription_end_date"
+                      />
+                      Trial
+                    </label>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString("vi-VN")}</td>
@@ -451,7 +459,6 @@ export const AdminUsersSection: React.FC = () => {
                       onClick={() => { setEditUser(u); setEditForm({
                         full_name: u.full_name ?? "",
                         role: u.role,
-                        is_premium: u.isPremium,
                         subscription_end_date: u.subscriptionEndDate ?? "",
                       }); }}
                       className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
@@ -582,19 +589,6 @@ export const AdminUsersSection: React.FC = () => {
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Gói học</label>
-              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editForm.is_premium}
-                  onChange={e => setEditForm(prev => ({ ...prev, is_premium: e.target.checked }))}
-                  className="w-4 h-4 accent-orange-600 cursor-pointer"
-                />
-                Gói đang active
-              </label>
             </div>
 
             {editForm.role === "user" && (
