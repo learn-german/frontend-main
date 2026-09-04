@@ -709,6 +709,8 @@ const ListeningSetEditor: React.FC<{
       const { error: setError } = await onDeleteEmptySet();
       setDeleting(false);
       if (setError) {
+        await fetchSetData();
+        onExercisesChanged();
         showToast("Đã xóa câu nhưng không xóa được bài tập: " + setError, "warning");
         return;
       }
@@ -736,6 +738,10 @@ const ListeningSetEditor: React.FC<{
       const { error: setError } = await onDeleteEmptySet();
       setDeleting(false);
       if (setError) {
+        setBulkDeleteOpen(false);
+        setSelectedIds(new Set());
+        await fetchSetData();
+        onExercisesChanged();
         showToast("Đã xóa câu nhưng không xóa được bài tập: " + setError, "warning");
         return;
       }
@@ -1414,7 +1420,13 @@ export const AdminListeningExerciseSection: React.FC = () => {
       "nghe",
     );
     if (!error && deletedClipIds.length > 0) {
-      await supabase.from("listening_clips").delete().in("id", deletedClipIds);
+      const { error: clipCleanupError } = await supabase
+        .from("listening_clips")
+        .delete()
+        .in("id", deletedClipIds);
+      if (clipCleanupError) {
+        showToast("Dọn file nghe thất bại: " + clipCleanupError.message, "warning");
+      }
     }
     if (!error) {
       setSelectedSetId(null);
