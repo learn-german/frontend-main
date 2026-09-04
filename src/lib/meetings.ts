@@ -133,25 +133,27 @@ export async function adminUpsertSession(
     updated_at: new Date().toISOString(),
   };
 
+  const sessionSelect = `${SESSION_COLUMNS}, meeting_registrations(count)`;
+
   if (input.id) {
     const { data, error } = await supabase
       .from("meeting_sessions")
       .update(payload)
       .eq("id", input.id)
-      .select(SESSION_COLUMNS)
+      .select(sessionSelect)
       .single();
     if (error) throw error;
-    return mapSessionRow({ ...(data as SessionRow), meeting_registrations: [{ count: 0 }] });
+    return mapSessionRow(data as SessionRow);
   }
 
   const { data: authData } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("meeting_sessions")
     .insert({ ...payload, created_by: authData.user?.id ?? null })
-    .select(SESSION_COLUMNS)
+    .select(sessionSelect)
     .single();
   if (error) throw error;
-  return mapSessionRow({ ...(data as SessionRow), meeting_registrations: [{ count: 0 }] });
+  return mapSessionRow(data as SessionRow);
 }
 
 export async function adminDeleteSession(id: string): Promise<void> {
