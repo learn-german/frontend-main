@@ -35,7 +35,7 @@ import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
 import { parseRoute, serializeRoute, isProtectedPage, type AppRoute, type AppPage } from "./lib/router";
 import { needsProfileOnboarding } from "./lib/profileOnboarding";
-import { isEffectivelyTrial, type UserRole } from "./lib/trialGating";
+import { isEffectivelyTrial, isSubscriptionExpired, type UserRole } from "./lib/trialGating";
 
 type AppUser = { id: string; email: string; fullName: string; role: UserRole; subscriptionEndDate: string | null };
 type PendingUser = Omit<AppUser, "fullName" | "subscriptionEndDate">;
@@ -127,6 +127,13 @@ export default function App() {
       setCurrentPage("dashboard");
     }
   }, [user, effectivelyTrial, currentPage]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === "user" && isSubscriptionExpired(user.subscriptionEndDate)) {
+      showToast("Gói học của bạn đã hết hạn. Liên hệ admin để gia hạn.", "warning");
+    }
+  }, [user]);
 
   const currentRoute: AppRoute = useMemo(() => {
     if (currentPage === "lesson-detail") {
@@ -528,6 +535,7 @@ export default function App() {
                   lessonIdsCompletedToday={lessonIdsCompletedToday}
                   onNavigateLesson={handleSelectLesson}
                   onNavigateRoadmap={() => handleNavigate("roadmap")}
+                  isTrialRestricted={effectivelyTrial}
                 />
               )}
 
