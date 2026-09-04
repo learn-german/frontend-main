@@ -230,7 +230,9 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
                       </button>
                     ) : (
                       <span className="text-[10px] text-slate-400 font-display font-semibold flex items-center gap-1 select-none">
-                        {isTrialRestricted && status === "locked" ? (
+                        {isExpiredRestricted && status === "locked" ? (
+                          <span className="text-[10px] text-red-600 font-display font-semibold">🔒 Gói đã hết hạn</span>
+                        ) : isTrialRestricted && status === "locked" ? (
                           <span className="text-[10px] text-amber-600 font-display font-semibold">🔒 Nâng cấp gói</span>
                         ) : (
                           <>

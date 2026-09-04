@@ -259,7 +259,7 @@ export const AdminUsersSection: React.FC = () => {
     const previousEnd = user.subscriptionEndDate;
     const previousRole = user.role;
     const wasTrial = isTrialBySubscription(user.subscriptionEndDate);
-    const isUnlocking = !previousLevels.includes(level);
+    const isUnlocking = wasTrial || !previousLevels.includes(level);
 
     if (wasTrial && !isUnlocking) return;
 
@@ -542,7 +542,7 @@ export const AdminUsersSection: React.FC = () => {
                       <label key={level} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={u.unlockedLevels.includes(level)}
+                          checked={!isTrialBySubscription(u.subscriptionEndDate) && u.unlockedLevels.includes(level)}
                           onChange={() => handleToggleLevel(u, level)}
                           className="w-3.5 h-3.5 accent-orange-600 cursor-pointer"
                         />
