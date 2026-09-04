@@ -65,7 +65,9 @@ function openMeeting(url: string | null) {
   }
 }
 
-export const MeetingPage: React.FC = () => {
+export const MeetingPage: React.FC<{ onMeetingsChanged: () => void }> = ({
+  onMeetingsChanged,
+}) => {
   const [data, setData] = useState<LearnerMeetingsResponse | null>(null);
   const [filter, setFilter] = useState<MeetingFilter>("all");
   const [loading, setLoading] = useState(true);
@@ -108,6 +110,7 @@ export const MeetingPage: React.FC = () => {
     try {
       await registerMeeting(sessionId);
       await loadMeetings();
+      onMeetingsChanged();
       showToast("Đăng ký lịch học thành công.", "success");
     } catch (error) {
       const code = await getEdgeErrorCode(error);
@@ -129,6 +132,7 @@ export const MeetingPage: React.FC = () => {
     try {
       await cancelMeeting(sessionId);
       await loadMeetings();
+      onMeetingsChanged();
       showToast("Đã hủy đăng ký lịch học.", "success");
     } catch {
       showToast("Không thể hủy đăng ký. Vui lòng thử lại.", "warning");

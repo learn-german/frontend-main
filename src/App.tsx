@@ -75,6 +75,7 @@ export default function App() {
     [isTrial, roadmapUnlockLevels, stats],
   );
   const [weeklyMeeting, setWeeklyMeeting] = useState<LearnerMeetingSession | null>(null);
+  const [meetingRefreshKey, setMeetingRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +95,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, meetingRefreshKey]);
 
   // Đúng thứ tự người học thấy trên Lộ trình: đã lọc level chưa mở khóa,
   // sort theo orderIndex, và bỏ các bài draft.
@@ -670,7 +671,9 @@ export default function App() {
                 <ComingSoonPage title="Gói học" />
               )}
               {effectivePage === "help" && user && <SupportPage />}
-              {effectivePage === "meetings" && user && <MeetingPage />}
+              {effectivePage === "meetings" && user && (
+                <MeetingPage onMeetingsChanged={() => setMeetingRefreshKey((key) => key + 1)} />
+              )}
             </motion.div>
           </AnimatePresence>
         </main>

@@ -28,13 +28,13 @@ test("prefers myRegistrationSessionId over another registered session", () => {
   assert.equal(selectWeeklyMeeting(response)?.id, "preferred");
 });
 
-test("falls back to the first registered upcoming session", () => {
+test("returns null instead of falling back to another registered session", () => {
   const response: LearnerMeetingsResponse = {
-    sessions: [session("open", false), session("registered", true)],
+    sessions: [session("future-week-registration", true)],
     myRegistrationSessionId: null,
   };
 
-  assert.equal(selectWeeklyMeeting(response)?.id, "registered");
+  assert.equal(selectWeeklyMeeting(response), null);
 });
 
 test("returns null when no session is registered", () => {

@@ -7,8 +7,6 @@ export function selectWeeklyMeeting(
     response.sessions.find(
       (session) =>
         session.id === response.myRegistrationSessionId && session.isRegistered,
-    ) ??
-    response.sessions.find((session) => session.isRegistered) ??
-    null
+    ) ?? null
   );
 }
