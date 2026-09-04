@@ -1,0 +1,12 @@
+# Task 8 Report
+- Replaced the dashboard streak hero with the Weekly Meeting card.
+- Empty state links to meetings; registered state shows date/time and a safe Join action.
+- Replaced the desktop sidebar streak block with a compact meeting teaser.
+- Removed the mobile navbar streak badge while retaining XP.
+- Lifted one learner-meeting fetch into `App` and shared the selected session via props.
+- Selection prefers `myRegistrationSessionId`, then the first registered upcoming session.
+- Added focused selector tests covering preferred, fallback, and empty cases.
+- Verification: selector tests, `npm run lint`, and `npm run build` pass.
+- Full suite: 228/232 pass; 4 pre-existing auth/trial/login source tests fail.
+- GitNexus impact/detect tools were unavailable; manual blast-radius review was LOW.
+- Browser verification was blocked by the IDE browser failing to retain its local tab.

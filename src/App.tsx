@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { AppState, Lesson, Module, type Level } from "./lib/appTypes";
+import { AppState, Lesson, Module, type LearnerMeetingSession, type Level } from "./lib/appTypes";
 import { useModules } from "./lib/hooks/useModules";
 import { useLessonPositions } from "./lib/hooks/useLessonPositions";
 import { useUserStats } from "./lib/hooks/useUserStats";
@@ -44,6 +44,8 @@ import {
   isTrialAccess,
   type UserRole,
 } from "./lib/trialGating";
+import { listLearnerMeetings } from "./lib/meetings";
+import { selectWeeklyMeeting } from "./lib/weeklyMeeting";
 
 type AppUser = { id: string; email: string; fullName: string; role: UserRole; subscriptionEndDate: string | null };
 type PendingUser = Omit<AppUser, "fullName" | "subscriptionEndDate">;
@@ -72,6 +74,27 @@ export default function App() {
     () => isTrial ? { ...stats, unlockedLevels: roadmapUnlockLevels } : stats,
     [isTrial, roadmapUnlockLevels, stats],
   );
+  const [weeklyMeeting, setWeeklyMeeting] = useState<LearnerMeetingSession | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setWeeklyMeeting(null);
+      return;
+    }
+
+    listLearnerMeetings()
+      .then((response) => {
+        if (!cancelled) setWeeklyMeeting(selectWeeklyMeeting(response));
+      })
+      .catch(() => {
+        if (!cancelled) setWeeklyMeeting(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   // Đúng thứ tự người học thấy trên Lộ trình: đã lọc level chưa mở khóa,
   // sort theo orderIndex, và bỏ các bài draft.
@@ -511,7 +534,6 @@ export default function App() {
           onNavigate={handleNavigate}
           user={user}
           onLogout={handleLogout}
-          streak={stats.streak}
           xp={stats.xp}
           onNotificationNavigate={handleNotificationNavigate}
         />
@@ -525,7 +547,7 @@ export default function App() {
           <Sidebar
             currentPage={effectivePage}
             onNavigate={handleNavigate}
-            streak={stats.streak}
+            weeklyMeeting={weeklyMeeting}
             currentLessonTitle={orderedLessons.find(l => lessonStatuses[l.id] === "current")?.titleVi}
             userRole={user.role}
             subscriptionEndDate={user.subscriptionEndDate}
@@ -571,6 +593,8 @@ export default function App() {
                   lessonIdsCompletedToday={lessonIdsCompletedToday}
                   onNavigateLesson={handleSelectLesson}
                   onNavigateRoadmap={() => handleNavigate("roadmap")}
+                  onNavigateMeetings={() => handleNavigate("meetings")}
+                  weeklyMeeting={weeklyMeeting}
                   isTrialRestricted={isTrial}
                   isExpiredRestricted={isExpired}
                 />
