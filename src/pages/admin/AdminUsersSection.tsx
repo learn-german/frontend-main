@@ -3,7 +3,12 @@ import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-re
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
-import { addCalendarDaysIso, isTrialBySubscription } from "../../lib/isTrialBySubscription";
+import {
+  addCalendarDaysIso,
+  isExpiredBySubscription,
+  isTrialBySubscription,
+  subscriptionDaysRemaining,
+} from "../../lib/isTrialBySubscription";
 import {
   computeCompletedLessons,
   computeLessonStatuses,
@@ -502,6 +507,7 @@ export const AdminUsersSection: React.FC = () => {
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Email</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Role</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Cấp độ mở</th>
+              <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Còn lại</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ngày tạo</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -543,18 +549,33 @@ export const AdminUsersSection: React.FC = () => {
                         {level}
                       </label>
                     ))}
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={isTrialBySubscription(u.subscriptionEndDate)}
-                        disabled={u.role === "admin" || isTrialBySubscription(u.subscriptionEndDate)}
+                        disabled={u.role === "admin"}
                         onChange={() => handleToggleTrial(u)}
-                        className="w-3.5 h-3.5 accent-orange-600"
-                        title="Trial khi chưa có hoặc đã hết hạn subscription_end_date"
+                        className={`w-3.5 h-3.5 cursor-pointer ${
+                          isTrialBySubscription(u.subscriptionEndDate) ? "accent-red-600" : "accent-orange-600"
+                        }`}
+                        title="Bật Trial: xoá cấp độ và ngày hết hạn. Tiến trình học được giữ."
                       />
-                      Trial
+                      <span className={isTrialBySubscription(u.subscriptionEndDate) ? "text-red-600" : undefined}>
+                        Trial
+                      </span>
                     </label>
                   </div>
+                </td>
+                <td className="px-4 py-3 text-center text-xs">
+                  {isTrialBySubscription(u.subscriptionEndDate) ? (
+                    <span className="text-slate-400">—</span>
+                  ) : isExpiredBySubscription(u.subscriptionEndDate) ? (
+                    <span className="font-bold text-red-600">Hết hạn</span>
+                  ) : (
+                    <span className="text-slate-600">
+                      {subscriptionDaysRemaining(u.subscriptionEndDate)} ngày
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString("vi-VN")}</td>
                 <td className="px-4 py-3">
@@ -583,7 +604,7 @@ export const AdminUsersSection: React.FC = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
               </tr>
             )}
           </tbody>
