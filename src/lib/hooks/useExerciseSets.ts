@@ -13,6 +13,7 @@ export interface ExerciseSet {
   status: "draft" | "published";
   generalInstruction?: string | null;
   audioClipId?: string | null;
+  transcription?: string | null;
 }
 
 interface ExerciseSetRow {
@@ -24,10 +25,11 @@ interface ExerciseSetRow {
   status: "draft" | "published";
   general_instruction?: string | null;
   audio_clip_id?: string | null;
+  transcription?: string | null;
 }
 
 const SET_SELECT =
-  "id, lesson_id, category, title, order_index, status, general_instruction, audio_clip_id";
+  "id, lesson_id, category, title, order_index, status, general_instruction, audio_clip_id, transcription";
 
 const fromRow = (row: ExerciseSetRow): ExerciseSet => ({
   id: row.id,
@@ -38,6 +40,7 @@ const fromRow = (row: ExerciseSetRow): ExerciseSet => ({
   status: row.status,
   generalInstruction: row.general_instruction ?? null,
   audioClipId: row.audio_clip_id ?? null,
+  transcription: row.transcription ?? null,
 });
 
 // Không lọc theo 1 lesson — trang admin hiển thị danh sách bài tập của
@@ -148,6 +151,18 @@ export function useExerciseSets() {
     return { error: error?.message ?? null };
   };
 
+  const updateTranscription = async (
+    id: string,
+    text: string,
+  ): Promise<{ error: string | null }> => {
+    const { error } = await supabase
+      .from("exercise_sets")
+      .update({ transcription: text.trim() || null })
+      .eq("id", id);
+    if (!error) refetch();
+    return { error: error?.message ?? null };
+  };
+
   return {
     sets,
     loading,
@@ -157,5 +172,6 @@ export function useExerciseSets() {
     createReadingSet,
     updateGeneralInstruction,
     updateAudioClipId,
+    updateTranscription,
   };
 }

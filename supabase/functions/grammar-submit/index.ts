@@ -52,7 +52,7 @@ serve(async (req) => {
 
     const { data: set, error: setErr } = await supabase
       .from("exercise_sets")
-      .select("id, lesson_id, category, status")
+      .select("id, lesson_id, category, status, transcription")
       .eq("id", set_id)
       .eq("status", "published")
       .maybeSingle();
@@ -75,6 +75,19 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const revealedPayload = (revealed: boolean) => {
+      if (!revealed) return {};
+      const base = {
+        correctAnswers: deriveCorrectAnswers(exercises),
+        explanations: Object.fromEntries(exercises.map((e) => [e.id, e.explanation ?? ""])),
+      };
+      const transcript =
+        set.category === "nghe" && typeof set.transcription === "string" && set.transcription.trim()
+          ? { transcription: set.transcription }
+          : {};
+      return { ...base, ...transcript };
+    };
 
     const answers = projectAnswers(exercises, rawAnswers);
     const { total, correct, blankResults, choiceResults, exerciseResults, classificationResults } =
@@ -107,12 +120,7 @@ serve(async (req) => {
           choiceResults,
           exerciseResults,
           classificationResults,
-          ...(revealedNow
-            ? {
-                correctAnswers: deriveCorrectAnswers(exercises),
-                explanations: Object.fromEntries(exercises.map((e) => [e.id, e.explanation ?? ""])),
-              }
-            : {}),
+          ...revealedPayload(revealedNow),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -236,12 +244,7 @@ serve(async (req) => {
         choiceResults,
         exerciseResults,
         classificationResults,
-        ...(update.revealed
-          ? {
-              correctAnswers: deriveCorrectAnswers(exercises),
-              explanations: Object.fromEntries(exercises.map((e) => [e.id, e.explanation ?? ""])),
-            }
-          : {}),
+        ...revealedPayload(update.revealed),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
