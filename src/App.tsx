@@ -26,6 +26,7 @@ import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { ComingSoonPage } from "./pages/ComingSoonPage";
 import { SupportPage } from "./pages/SupportPage";
 import { RegistrationPage } from "./pages/RegistrationPage";
+import { MeetingPage } from "./pages/MeetingPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
@@ -143,8 +144,13 @@ export default function App() {
   useEffect(() => {
     if (
       !user ||
-      (currentPage !== "leaderboard" && currentPage !== "help" && currentPage !== "packages")
-    ) return;
+      (currentPage !== "leaderboard" &&
+        currentPage !== "help" &&
+        currentPage !== "packages" &&
+        currentPage !== "meetings")
+    ) {
+      return;
+    }
     if (isFeatureLocked(user.role, user.subscriptionEndDate, currentPage)) {
       showToast("Nâng cấp gói để mở tính năng này.", "warning");
       setCurrentPage("dashboard");
@@ -165,7 +171,7 @@ export default function App() {
     if (currentPage === "quiz") {
       return { page: "quiz", lessonId: selectedLessonId, category: activeExerciseCategory };
     }
-    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" };
+    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" };
   }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory]);
 
   // State -> URL. So sánh trước khi push để popstate không kích hoạt vòng lặp:
@@ -493,7 +499,7 @@ export default function App() {
 
   // Layout check selectors
   const showNav = effectivePage !== "login" && effectivePage !== "landing";
-  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "meetings" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -640,6 +646,7 @@ export default function App() {
                 <ComingSoonPage title="Gói học" />
               )}
               {effectivePage === "help" && user && <SupportPage />}
+              {effectivePage === "meetings" && user && <MeetingPage />}
             </motion.div>
           </AnimatePresence>
         </main>

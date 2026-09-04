@@ -18,6 +18,7 @@ import {
   Gift,
   HelpCircle,
   Lock,
+  Video,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
@@ -42,6 +43,7 @@ const featureMap: Partial<Record<AppPage, LockedFeature>> = {
   leaderboard: "leaderboard",
   help: "help",
   packages: "packages",
+  meetings: "meetings",
 };
 
 export const Navbar: React.FC<NavigationProps> = ({
@@ -323,6 +325,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
     { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
+    { id: "meetings", label: "Lịch học trực tuyến", desc: "Đăng ký buổi hỗ trợ", icon: Video },
     { id: "packages", label: "Gói học", desc: "Xem gói & quyền lợi", icon: Gift },
     { id: "leaderboard", label: "Bảng xếp hạng", desc: "Thành tích học tập", icon: Trophy },
     { id: "help", label: "Trợ giúp học tập", desc: "Giải đáp thắc mắc", icon: HelpCircle },
