@@ -20,7 +20,7 @@ serve(async (req) => {
     if (authError || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (user.app_metadata?.role !== "admin") return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const { email, password, full_name, role = "user" } = await req.json();
+    const { email, password, full_name, role = "trial" } = await req.json();
     if (!email || !password) return new Response(JSON.stringify({ error: "email và password là bắt buộc" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { data, error } = await supabase.auth.admin.createUser({

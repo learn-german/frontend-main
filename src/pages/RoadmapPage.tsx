@@ -3,40 +3,51 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Check, Lock, Play, ArrowRight, LockKeyhole, Clock } from "lucide-react";
 import { ProgressBar } from "../components/DesignSystem";
 import { UserStats, Module, LessonPosition } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 import { buildRoadmapItems } from "../lib/lessonOrder";
-import { computeLessonStatuses } from "../lib/completion";
+import { computeLessonStatuses, type LessonStatus } from "../lib/completion";
 
 interface RoadmapPageProps {
   stats: UserStats;
   modules: Module[];
   positions: LessonPosition[];
   onSelectLesson: (lessonId: string) => void;
+  isTrialRestricted?: boolean;
 }
 
 export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   stats,
   modules,
   positions,
-  onSelectLesson
+  onSelectLesson,
+  isTrialRestricted = false,
 }) => {
   const { items, orderedLessons } = React.useMemo(
     () => buildRoadmapItems(modules, positions, stats.unlockedLevels),
     [modules, positions, stats.unlockedLevels],
   );
 
-  const statuses = React.useMemo(
+  const lessonStatuses = React.useMemo(
     () => computeLessonStatuses(orderedLessons, stats.completedLessons),
     [orderedLessons, stats.completedLessons],
   );
 
+  const effectiveStatuses = useMemo(() => {
+    if (!isTrialRestricted) return lessonStatuses;
+    const overridden: Record<string, LessonStatus> = {};
+    orderedLessons.forEach((lesson, idx) => {
+      overridden[lesson.id] = idx === 0 ? "current" : "locked";
+    });
+    return overridden;
+  }, [isTrialRestricted, lessonStatuses, orderedLessons]);
+
   useEffect(() => {
     const current = items.find(
-      (item) => item.kind === "lesson" && statuses[item.lesson.id] === "current",
+      (item) => item.kind === "lesson" && effectiveStatuses[item.lesson.id] === "current",
     );
     if (!current || current.kind !== "lesson") return;
     document
@@ -130,7 +141,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
               }
 
               const lesson = item.lesson;
-              const status = statuses[lesson.id] ?? "locked";
+              const status = effectiveStatuses[lesson.id] ?? "locked";
 
               const cardStyles = {
                 completed: "border-green-250 bg-white hover:border-green-300 shadow-sm hover:shadow",
@@ -210,7 +221,13 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
                       </button>
                     ) : (
                       <span className="text-[10px] text-slate-400 font-display font-semibold flex items-center gap-1 select-none">
-                        <LockKeyhole className="w-3 h-3 text-slate-300" /> Bị khóa bởi bài trước
+                        {isTrialRestricted && status === "locked" ? (
+                          <span className="text-[10px] text-amber-600 font-display font-semibold">🔒 Nâng cấp gói</span>
+                        ) : (
+                          <>
+                            <LockKeyhole className="w-3 h-3 text-slate-300" /> Bị khóa bởi bài trước
+                          </>
+                        )}
                       </span>
                     )}
                   </div>

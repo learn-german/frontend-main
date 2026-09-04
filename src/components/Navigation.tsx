@@ -16,7 +16,8 @@ import {
   Globe,
   Trophy,
   Gift,
-  HelpCircle
+  HelpCircle,
+  Lock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
@@ -24,16 +25,24 @@ import { BrandLogo } from "./BrandLogo";
 import { Button } from "./DesignSystem";
 import type { AppNotification } from "../lib/hooks/useNotifications";
 import type { AppPage } from "../lib/router";
+import { isFeatureLocked, type UserRole, type LockedFeature } from "../lib/trialGating";
+import { showToast } from "../lib/toast";
 
 interface NavigationProps {
   currentPage: string;
   onNavigate: (page: AppPage) => void;
-  user: { email: string; fullName: string; role?: string } | null;
+  user: { email: string; fullName: string; role: UserRole; subscriptionEndDate: string | null } | null;
   onLogout: () => void;
   streak: number;
   xp: number;
   onNotificationNavigate?: (n: AppNotification) => void;
 }
+
+const featureMap: Partial<Record<AppPage, LockedFeature>> = {
+  leaderboard: "leaderboard",
+  help: "help",
+  packages: "packages",
+};
 
 export const Navbar: React.FC<NavigationProps> = ({
   currentPage,
@@ -45,6 +54,9 @@ export const Navbar: React.FC<NavigationProps> = ({
   onNotificationNavigate
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const leaderboardLocked = user
+    ? isFeatureLocked(user.role, user.subscriptionEndDate, "leaderboard")
+    : false;
 
   return (
     <div className="w-full flex flex-col shrink-0">
@@ -253,13 +265,27 @@ export const Navbar: React.FC<NavigationProps> = ({
                 </button>
                 <button
                   id="mob-leaderboard"
-                  onClick={() => { onNavigate("leaderboard"); setMobileMenuOpen(false); }}
+                  onClick={() => {
+                    if (leaderboardLocked) {
+                      showToast("Nâng cấp gói để mở tính năng này.", "warning");
+                      return;
+                    }
+                    onNavigate("leaderboard");
+                    setMobileMenuOpen(false);
+                  }}
                   className={`flex items-center gap-2.5 p-3 rounded-xl text-sm font-display font-semibold transition ${
-                    currentPage === "leaderboard" ? "bg-green-50 text-green-700" : "text-gray-600 hover:bg-gray-50"
+                    leaderboardLocked
+                      ? "opacity-50 cursor-not-allowed text-gray-600"
+                      : currentPage === "leaderboard"
+                        ? "bg-green-50 text-green-700"
+                        : "text-gray-600 hover:bg-gray-50"
                   }`}
                 >
                   <Trophy className="w-5 h-5 text-gray-400" />
                   Bảng xếp hạng
+                  {leaderboardLocked && (
+                    <Lock className="w-3.5 h-3.5 text-slate-400 ml-auto" />
+                  )}
                 </button>
               </div>
 
@@ -281,9 +307,18 @@ interface SidebarProps {
   onNavigate: (page: AppPage) => void;
   streak: number;
   currentLessonTitle?: string;
+  userRole: UserRole;
+  subscriptionEndDate: string | null;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, streak, currentLessonTitle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentPage,
+  onNavigate,
+  streak,
+  currentLessonTitle,
+  userRole,
+  subscriptionEndDate,
+}) => {
   const links: { id: AppPage; label: string; desc: string; icon: LucideIcon }[] = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
@@ -300,12 +335,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = currentPage === link.id || (link.id === "lesson-detail" && currentPage === "quiz");
+          const locked = featureMap[link.id]
+            ? isFeatureLocked(userRole, subscriptionEndDate, featureMap[link.id]!)
+            : false;
           return (
             <button
               id={`sidebar-link-${link.id}`}
               key={link.id}
-              onClick={() => onNavigate(link.id)}
-              className={`flex items-center gap-3.5 px-5 py-3 rounded-xl text-left transition duration-150 group cursor-pointer ${
+              onClick={() => {
+                if (locked) {
+                  showToast("Nâng cấp gói để mở tính năng này.", "warning");
+                  return;
+                }
+                onNavigate(link.id);
+              }}
+              className={`flex items-center gap-3.5 px-5 py-3 rounded-xl text-left transition duration-150 group ${
+                locked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              } ${
                 isActive
                   ? "bg-orange-50/40 text-orange-700 border-r-4 border-orange-600 font-medium"
                   : "text-slate-500 hover:bg-slate-50 hover:text-slate-950"
@@ -316,6 +362,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, strea
                 <p className="text-sm font-display font-bold leading-tight">{link.label}</p>
                 <p className={`text-[11px] font-sans mt-0.5 ${isActive ? "text-orange-500/80" : "text-slate-400"}`}>{link.desc}</p>
               </div>
+              {locked && <Lock className="w-3.5 h-3.5 text-slate-400 ml-auto" />}
             </button>
           );
         })}
