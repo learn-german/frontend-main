@@ -386,6 +386,7 @@ const ListeningSetEditor: React.FC<{
   onToggleStatus: (id: string, current: "draft" | "published") => Promise<{ error: string | null }>;
   onUpdateInstruction: (id: string, text: string) => Promise<{ error: string | null }>;
   onUpdateAudioClip: (id: string, audioClipId: string | null) => Promise<{ error: string | null }>;
+  onUpdateTranscription: (id: string, text: string) => Promise<{ error: string | null }>;
   onExercisesChanged: () => void;
   onQuestionTypeKnown: (setId: string, type: ListeningQuestionType) => void;
 }> = ({
@@ -399,6 +400,7 @@ const ListeningSetEditor: React.FC<{
   onToggleStatus,
   onUpdateInstruction,
   onUpdateAudioClip,
+  onUpdateTranscription,
   onExercisesChanged,
   onQuestionTypeKnown,
 }) => {
@@ -412,6 +414,9 @@ const ListeningSetEditor: React.FC<{
   const [editingInstruction, setEditingInstruction] = useState(false);
   const [instructionDraft, setInstructionDraft] = useState(set.generalInstruction ?? "");
   const [savingInstruction, setSavingInstruction] = useState(false);
+  const [editingTranscription, setEditingTranscription] = useState(false);
+  const [transcriptionDraft, setTranscriptionDraft] = useState(set.transcription ?? "");
+  const [savingTranscription, setSavingTranscription] = useState(false);
   const [questionModal, setQuestionModal] = useState<"create" | "edit" | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<ListeningExerciseForm>(emptyForm("fill_in_the_blank"));
@@ -471,12 +476,18 @@ const ListeningSetEditor: React.FC<{
     fetchSetData();
     setInstructionDraft(set.generalInstruction ?? "");
     setEditingInstruction(false);
+    setTranscriptionDraft(set.transcription ?? "");
+    setEditingTranscription(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [set.id]);
 
   useEffect(() => {
     setInstructionDraft(set.generalInstruction ?? "");
   }, [set.generalInstruction]);
+
+  useEffect(() => {
+    setTranscriptionDraft(set.transcription ?? "");
+  }, [set.transcription]);
 
   const lessonClips = clips.filter((c) => c.lesson_id === lesson.lesson_id);
   const assignedClip = lessonClips.find((c) => c.id === assignedClipId) ?? null;
@@ -562,6 +573,18 @@ const ListeningSetEditor: React.FC<{
     }
     setEditingInstruction(false);
     showToast("Đã lưu yêu cầu chung.", "success");
+  };
+
+  const saveTranscription = async () => {
+    setSavingTranscription(true);
+    const { error } = await onUpdateTranscription(set.id, transcriptionDraft);
+    setSavingTranscription(false);
+    if (error) {
+      showToast("Lưu transcription thất bại: " + error, "warning");
+      return;
+    }
+    setEditingTranscription(false);
+    showToast("Đã lưu transcription.", "success");
   };
 
   const openCreateQuestion = () => {
@@ -906,11 +929,68 @@ const ListeningSetEditor: React.FC<{
         )}
       </section>
 
-      {/* §3 Câu hỏi */}
+      {/* §3 Transcription */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-display font-black text-slate-900">3. Transcription</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Bản ghi lời thoại — học viên xem sau khi mở đáp án (đúng hết hoặc ≥5 lần)
+            </p>
+          </div>
+          {!editingTranscription ? (
+            <button
+              type="button"
+              onClick={() => setEditingTranscription(true)}
+              className="text-xs font-bold text-orange-600 hover:text-orange-700"
+            >
+              Sửa
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTranscriptionDraft(set.transcription ?? "");
+                  setEditingTranscription(false);
+                }}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={saveTranscription}
+                disabled={savingTranscription}
+                className="text-xs font-bold text-orange-600 hover:text-orange-700 disabled:opacity-50"
+              >
+                {savingTranscription ? "Đang lưu..." : "Lưu"}
+              </button>
+            </div>
+          )}
+        </div>
+        {editingTranscription ? (
+          <textarea
+            rows={8}
+            value={transcriptionDraft}
+            onChange={(e) => setTranscriptionDraft(e.target.value)}
+            className={inputCls + " resize-y"}
+            placeholder={"A: Guten Tag!\nB: Guten Tag, wie geht's?"}
+          />
+        ) : (
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap min-h-[2.5rem]">
+            {set.transcription?.trim()
+              ? set.transcription
+              : <span className="text-slate-400 italic">Chưa có transcription.</span>}
+          </div>
+        )}
+      </section>
+
+      {/* §4 Câu hỏi */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-sm font-display font-black text-slate-900">3. Câu hỏi</h2>
+            <h2 className="text-sm font-display font-black text-slate-900">4. Câu hỏi</h2>
             <p className="text-xs text-slate-400 mt-0.5">
               Các câu hỏi trong bài tập (kéo thả để sắp xếp thứ tự)
             </p>
@@ -1171,6 +1251,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
     toggleSetStatus,
     updateGeneralInstruction,
     updateAudioClipId,
+    updateTranscription,
   } = useExerciseSets();
 
   const ngheSets = sets.filter((s) => s.category === "nghe");
@@ -1286,6 +1367,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
         onToggleStatus={toggleSetStatus}
         onUpdateInstruction={updateGeneralInstruction}
         onUpdateAudioClip={updateAudioClipId}
+        onUpdateTranscription={updateTranscription}
         onExercisesChanged={fetchAll}
         onQuestionTypeKnown={(setId, type) =>
           setSetQuestionTypes((prev) => ({ ...prev, [setId]: type }))

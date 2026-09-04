@@ -32,6 +32,7 @@ import {
 import { GRAMMAR_TYPE_LABELS, GRAMMAR_TYPE_INSTRUCTIONS } from "./GrammarExercisePage";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
+import { openTranscriptionWindow } from "../lib/openTranscriptionWindow";
 
 const LISTENING_TYPE_SET = new Set<string>(LISTENING_QUESTION_TYPES);
 
@@ -58,11 +59,18 @@ interface QuizResult {
   classificationResults: Record<string, boolean[]>;
   correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
+  transcription?: string | null;
 }
 
 const QuizExerciseSetBody: React.FC<{
   lesson: Lesson;
-  set: { id: string; title: string; generalInstruction?: string | null; audioClipId?: string | null };
+  set: {
+    id: string;
+    title: string;
+    generalInstruction?: string | null;
+    audioClipId?: string | null;
+    transcription?: string | null;
+  };
   isListening?: boolean;
   onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
   onCollapse: () => void;
@@ -149,6 +157,9 @@ const QuizExerciseSetBody: React.FC<{
       choiceResults: attempt.choiceResults,
       exerciseResults: attempt.exerciseResults,
       classificationResults: attempt.classificationResults,
+      ...(attempt.revealed && set.transcription?.trim()
+        ? { transcription: set.transcription }
+        : {}),
     });
     applyAnswers(attempt.answers);
     setSubmittedAnswerSnapshot(attempt.answers ?? {});
@@ -477,6 +488,19 @@ const QuizExerciseSetBody: React.FC<{
               </div>
             ))}
           </div>
+          {isListening &&
+            revealed &&
+            (result.transcription ?? set.transcription)?.trim() && (
+              <button
+                type="button"
+                onClick={() =>
+                  openTranscriptionWindow((result.transcription ?? set.transcription)!.trim())
+                }
+                className="text-sm font-bold text-orange-600 hover:text-orange-700 underline underline-offset-2"
+              >
+                Xem transcription
+              </button>
+            )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -649,7 +673,13 @@ const SetRow: React.FC<{
       <div className="border-t border-slate-100 p-4">
         <QuizExerciseSetBody
           lesson={lesson}
-          set={{ id: set.id, title: set.title, generalInstruction: set.generalInstruction, audioClipId: set.audioClipId }}
+          set={{
+            id: set.id,
+            title: set.title,
+            generalInstruction: set.generalInstruction,
+            audioClipId: set.audioClipId,
+            transcription: set.transcription,
+          }}
           isListening={isListening}
           onSetFinished={onSetFinished}
           onCollapse={onToggle}

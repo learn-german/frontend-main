@@ -39,7 +39,7 @@ interface AdminUser {
 interface CreateForm { email: string; password: string; full_name: string; role: string; }
 interface EditForm { full_name: string; role: string; subscription_end_date: string; }
 
-const EMPTY_CREATE: CreateForm = { email: "", password: "", full_name: "", role: "user" };
+const EMPTY_CREATE: CreateForm = { email: "", password: "", full_name: "", role: "trial" };
 const PAGE_SIZE = 15;
 const PLANNED_LEVEL_DAYS: Record<string, number> = { A1: 90, A2: 90, B1: 90, B2: 90 };
 
@@ -58,7 +58,7 @@ export const AdminUsersSection: React.FC = () => {
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE);
   const [creating, setCreating] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", role: "user", subscription_end_date: "" });
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", role: "trial", subscription_end_date: "" });
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -182,7 +182,13 @@ export const AdminUsersSection: React.FC = () => {
 
   const handleSaveEdit = async () => {
     if (!editUser) return;
+    if (editForm.role === "user" && !editForm.subscription_end_date) {
+      showToast("Vui lòng điền ngày hết hạn gói khi chuyển sang User.", "warning");
+      return;
+    }
     setSaving(true);
+
+    const subscriptionEndDate = editForm.role === "trial" ? null : editForm.subscription_end_date || null;
 
     // Update full_name + role column in profiles
     const { error: profileError } = await supabase
@@ -190,7 +196,7 @@ export const AdminUsersSection: React.FC = () => {
       .update({
         full_name: editForm.full_name,
         role: editForm.role,
-        subscription_end_date: editForm.subscription_end_date || null,
+        subscription_end_date: subscriptionEndDate,
       })
       .eq("id", editUser.id);
 
@@ -322,6 +328,7 @@ export const AdminUsersSection: React.FC = () => {
           className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
         >
           <option value="all">Tất cả role</option>
+          <option value="trial">Trial</option>
           <option value="user">User</option>
           <option value="admin">Admin</option>
         </select>
@@ -413,6 +420,8 @@ export const AdminUsersSection: React.FC = () => {
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
                       <ShieldCheck className="w-3 h-3" /> Admin
                     </span>
+                  ) : u.role === "trial" ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Trial</span>
                   ) : (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">User</span>
                   )}
@@ -532,6 +541,7 @@ export const AdminUsersSection: React.FC = () => {
                 onChange={e => setCreateForm(prev => ({ ...prev, role: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
               >
+                <option value="trial">Trial</option>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
@@ -575,20 +585,23 @@ export const AdminUsersSection: React.FC = () => {
                 onChange={e => setEditForm(prev => ({ ...prev, role: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
               >
+                <option value="trial">Trial</option>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Ngày hết hạn gói</label>
-              <input
-                type="date"
-                value={editForm.subscription_end_date}
-                onChange={e => setEditForm(prev => ({ ...prev, subscription_end_date: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-              />
-            </div>
+            {editForm.role === "user" && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Ngày hết hạn gói</label>
+                <input
+                  type="date"
+                  value={editForm.subscription_end_date}
+                  onChange={e => setEditForm(prev => ({ ...prev, subscription_end_date: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                />
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <Button variant="secondary" className="flex-1" onClick={() => setEditUser(null)}>Hủy</Button>

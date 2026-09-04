@@ -10,6 +10,7 @@ import {
   Clock,
   Users,
   HelpCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module } from "../lib/appTypes";
@@ -26,6 +27,7 @@ interface DashboardPageProps {
   lessonIdsCompletedToday: string[];
   onNavigateLesson: (lessonId: string) => void;
   onNavigateRoadmap: () => void;
+  isTrialRestricted?: boolean;
 }
 
 interface DailyProgressReport {
@@ -79,6 +81,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   orderedLessons,
   lessonStatuses,
   onNavigateLesson,
+  isTrialRestricted,
 }) => {
   const allLessons = modules.flatMap(m => m.lessons);
   const nextSuggestedLesson: Lesson | undefined = allLessons.find(l => !stats.completedLessons.includes(l.id)) ?? allLessons[0];
@@ -157,6 +160,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
       </div>
+
+      {isTrialRestricted && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 mb-4">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div>
+            <p className="text-sm font-display font-bold text-amber-900">Bạn đang dùng gói Trial</p>
+            <p className="text-xs text-amber-700 mt-0.5">Chỉ bài học đầu tiên khả dụng. Liên hệ admin để nâng cấp gói và mở toàn bộ nội dung.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         <div className="lg:col-span-8 flex flex-col gap-4 min-h-0">
