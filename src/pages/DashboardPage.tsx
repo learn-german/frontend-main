@@ -28,6 +28,7 @@ interface DashboardPageProps {
   onNavigateLesson: (lessonId: string) => void;
   onNavigateRoadmap: () => void;
   isTrialRestricted?: boolean;
+  isExpiredRestricted?: boolean;
 }
 
 interface DailyProgressReport {
@@ -82,6 +83,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   lessonStatuses,
   onNavigateLesson,
   isTrialRestricted,
+  isExpiredRestricted,
 }) => {
   const allLessons = modules.flatMap(m => m.lessons);
   const nextSuggestedLesson: Lesson | undefined = allLessons.find(l => !stats.completedLessons.includes(l.id)) ?? allLessons[0];
@@ -161,7 +163,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {isTrialRestricted && (
+      {isExpiredRestricted && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 mb-4">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+          <div>
+            <p className="text-sm font-display font-bold text-red-900">Gói học đã hết hạn</p>
+            <p className="text-xs text-red-700 mt-0.5">Toàn bộ bài học đang bị khoá. Liên hệ admin để gia hạn — tiến trình của bạn vẫn được giữ.</p>
+          </div>
+        </div>
+      )}
+
+      {isTrialRestricted && !isExpiredRestricted && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 mb-4">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
           <div>
@@ -329,10 +341,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 id="btn-dash-continue-learn"
                 variant="primary"
                 size="md"
-                className="w-full mt-auto rounded-full bg-red-800 hover:bg-red-900 shadow-[0_4px_14px_rgba(153,27,27,0.22)]"
+                className={`w-full mt-auto rounded-full ${
+                  isExpiredRestricted ? "" : "bg-red-800 hover:bg-red-900 shadow-[0_4px_14px_rgba(153,27,27,0.22)]"
+                }`}
+                disabled={isExpiredRestricted}
                 onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
               >
-                <PlayCircle className="w-4 h-4 mr-2" /> Tiếp tục học
+                <PlayCircle className="w-4 h-4 mr-2" />
+                {isExpiredRestricted ? "Gói đã hết hạn" : "Tiếp tục học"}
               </Button>
             </div>
 
@@ -373,9 +389,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   id="btn-start-test-first"
                   variant="secondary"
                   size="sm"
+                  disabled={isExpiredRestricted}
                   onClick={() => onNavigateLesson(nextSuggestedLesson.id)}
                 >
-                  Học bài đầu ngay
+                  {isExpiredRestricted ? "Gói đã hết hạn" : "Học bài đầu ngay"}
                 </Button>
               </div>
             ) : (
@@ -383,12 +400,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {recentScores.slice(0, 3).map((item, index) => (
                   <button
                     key={index}
+                    disabled={isExpiredRestricted}
                     onClick={() => onNavigateLesson(item.lessonId)}
-                    className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-slate-300 transition text-left gap-2.5"
+                    className={`w-full flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 transition text-left gap-2.5 ${
+                      isExpiredRestricted ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-slate-300"
+                    }`}
                   >
                     <div className="min-w-0">
                       <h4 className="text-xs font-display font-bold text-slate-800 truncate">{item.title}</h4>
-                      <span className="text-[10px] font-sans text-slate-400 mt-0.5 block">Đã hoàn thành</span>
+                      <span className="text-[10px] font-sans text-slate-400 mt-0.5 block">
+                        {isExpiredRestricted ? "Gói đã hết hạn" : "Đã hoàn thành"}
+                      </span>
                     </div>
                     <span className="text-[11px] font-display font-extrabold px-2 py-1.5 rounded-lg shrink-0 bg-rose-50 text-red-600 border border-red-200">
                       {item.score}%

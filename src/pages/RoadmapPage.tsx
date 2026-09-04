@@ -17,6 +17,7 @@ interface RoadmapPageProps {
   positions: LessonPosition[];
   onSelectLesson: (lessonId: string) => void;
   isTrialRestricted?: boolean;
+  isExpiredRestricted?: boolean;
 }
 
 export const RoadmapPage: React.FC<RoadmapPageProps> = ({
@@ -25,6 +26,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   positions,
   onSelectLesson,
   isTrialRestricted = false,
+  isExpiredRestricted = false,
 }) => {
   const { items, orderedLessons } = React.useMemo(
     () => buildRoadmapItems(modules, positions, stats.unlockedLevels),
@@ -37,13 +39,20 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   );
 
   const effectiveStatuses = useMemo(() => {
+    if (isExpiredRestricted) {
+      const overridden: Record<string, LessonStatus> = {};
+      orderedLessons.forEach((lesson) => {
+        overridden[lesson.id] = "locked";
+      });
+      return overridden;
+    }
     if (!isTrialRestricted) return lessonStatuses;
     const overridden: Record<string, LessonStatus> = {};
     orderedLessons.forEach((lesson, idx) => {
       overridden[lesson.id] = idx === 0 ? "current" : "locked";
     });
     return overridden;
-  }, [isTrialRestricted, lessonStatuses, orderedLessons]);
+  }, [isExpiredRestricted, isTrialRestricted, lessonStatuses, orderedLessons]);
 
   useEffect(() => {
     const current = items.find(
@@ -221,7 +230,9 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
                       </button>
                     ) : (
                       <span className="text-[10px] text-slate-400 font-display font-semibold flex items-center gap-1 select-none">
-                        {isTrialRestricted && status === "locked" ? (
+                        {isExpiredRestricted && status === "locked" ? (
+                          <span className="text-[10px] text-red-600 font-display font-semibold">🔒 Gói đã hết hạn</span>
+                        ) : isTrialRestricted && status === "locked" ? (
                           <span className="text-[10px] text-amber-600 font-display font-semibold">🔒 Nâng cấp gói</span>
                         ) : (
                           <>

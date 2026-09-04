@@ -3,7 +3,12 @@ import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-re
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
-import { isTrialBySubscription } from "../../lib/isTrialBySubscription";
+import {
+  addCalendarDaysIso,
+  isExpiredBySubscription,
+  isTrialBySubscription,
+  subscriptionDaysRemaining,
+} from "../../lib/isTrialBySubscription";
 import {
   computeCompletedLessons,
   computeLessonStatuses,
@@ -189,22 +194,34 @@ export const AdminUsersSection: React.FC = () => {
     setSaving(true);
 
     const subscriptionEndDate = editForm.role === "trial" ? null : editForm.subscription_end_date || null;
+    const becomingTrial = editForm.role === "trial";
+    const profileUpdate: {
+      full_name: string;
+      role: string;
+      subscription_end_date: string | null;
+      unlocked_levels?: string[];
+    } = {
+      full_name: editForm.full_name,
+      role: editForm.role,
+      subscription_end_date: subscriptionEndDate,
+    };
+    if (becomingTrial) {
+      profileUpdate.role = "trial";
+      profileUpdate.subscription_end_date = null;
+      profileUpdate.unlocked_levels = [];
+    }
 
     // Update full_name + role column in profiles
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({
-        full_name: editForm.full_name,
-        role: editForm.role,
-        subscription_end_date: subscriptionEndDate,
-      })
+      .update(profileUpdate)
       .eq("id", editUser.id);
 
     // Also sync role to auth.app_metadata via Edge Function
     let roleError: string | null = null;
-    if (editForm.role !== editUser.role) {
+    if (profileUpdate.role !== editUser.role) {
       const { data, error } = await supabase.functions.invoke("set-admin-role", {
-        body: { user_id: editUser.id, role: editForm.role },
+        body: { user_id: editUser.id, role: profileUpdate.role },
       });
       if (error || data?.error) roleError = data?.error ?? error?.message;
     }
@@ -239,19 +256,67 @@ export const AdminUsersSection: React.FC = () => {
 
   const handleToggleLevel = async (user: AdminUser, level: string) => {
     const previousLevels = user.unlockedLevels;
-    const isUnlocking = !previousLevels.includes(level);
-    const newLevels = isUnlocking
-      ? [...previousLevels, level]
-      : previousLevels.filter((l) => l !== level);
+    const previousEnd = user.subscriptionEndDate;
+    const previousRole = user.role;
+    const wasTrial = isTrialBySubscription(user.subscriptionEndDate);
+    const isUnlocking = wasTrial || !previousLevels.includes(level);
 
-    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: newLevels } : u)));
+    if (wasTrial && !isUnlocking) return;
 
-    const { error } = await supabase.from("profiles").update({ unlocked_levels: newLevels }).eq("id", user.id);
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    let newLevels: string[];
+    let newEnd: string | null = previousEnd;
+    let newRole = previousRole;
+
+    if (wasTrial && isUnlocking) {
+      newLevels = [level];
+      newEnd = addCalendarDaysIso(todayIso, 90);
+      if (previousRole === "trial") newRole = "user";
+    } else {
+      newLevels = isUnlocking
+        ? [...previousLevels, level]
+        : previousLevels.filter((l) => l !== level);
+    }
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id
+          ? { ...u, unlockedLevels: newLevels, subscriptionEndDate: newEnd, role: newRole }
+          : u,
+      ),
+    );
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        unlocked_levels: newLevels,
+        ...(wasTrial && isUnlocking
+          ? { subscription_end_date: newEnd, role: newRole }
+          : {}),
+      })
+      .eq("id", user.id);
 
     if (error) {
       showToast("Cập nhật cấp độ thất bại: " + error.message, "warning");
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: previousLevels } : u)));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, unlockedLevels: previousLevels, subscriptionEndDate: previousEnd, role: previousRole }
+            : u,
+        ),
+      );
       return;
+    }
+
+    if (wasTrial && isUnlocking && previousRole === "trial") {
+      const { data, error: roleErr } = await supabase.functions.invoke("set-admin-role", {
+        body: { user_id: user.id, role: "user" },
+      });
+      if (roleErr || data?.error) {
+        showToast("Đã mở cấp nhưng đồng bộ role thất bại: " + (data?.error ?? roleErr?.message), "warning");
+      }
     }
 
     if (!isUnlocking) return;
@@ -268,6 +333,50 @@ export const AdminUsersSection: React.FC = () => {
       );
     if (enrollError) {
       showToast("Không tạo được mốc thời gian cho cấp độ: " + enrollError.message, "warning");
+    }
+  };
+
+  const handleToggleTrial = async (user: AdminUser) => {
+    if (user.role === "admin") return;
+    const currentlyTrial = isTrialBySubscription(user.subscriptionEndDate);
+    if (currentlyTrial) return;
+
+    const previousLevels = user.unlockedLevels;
+    const previousEnd = user.subscriptionEndDate;
+    const previousRole = user.role;
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id
+          ? { ...u, unlockedLevels: [], subscriptionEndDate: null, role: "trial" }
+          : u,
+      ),
+    );
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ unlocked_levels: [], subscription_end_date: null, role: "trial" })
+      .eq("id", user.id);
+
+    if (error) {
+      showToast("Chuyển Trial thất bại: " + error.message, "warning");
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, unlockedLevels: previousLevels, subscriptionEndDate: previousEnd, role: previousRole }
+            : u,
+        ),
+      );
+      return;
+    }
+
+    const { data, error: roleErr } = await supabase.functions.invoke("set-admin-role", {
+      body: { user_id: user.id, role: "trial" },
+    });
+    if (roleErr || data?.error) {
+      showToast("Đã clear cấp nhưng đồng bộ role thất bại: " + (data?.error ?? roleErr?.message), "warning");
+    } else {
+      showToast("Đã chuyển về Trial. Tiến trình học vẫn được giữ.", "success");
     }
   };
 
@@ -398,6 +507,7 @@ export const AdminUsersSection: React.FC = () => {
               <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Email</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Role</th>
               <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Cấp độ mở</th>
+              <th className="text-center px-4 py-3 text-xs font-bold text-slate-500 uppercase">Còn lại</th>
               <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ngày tạo</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -432,25 +542,40 @@ export const AdminUsersSection: React.FC = () => {
                       <label key={level} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={u.unlockedLevels.includes(level)}
+                          checked={!isTrialBySubscription(u.subscriptionEndDate) && u.unlockedLevels.includes(level)}
                           onChange={() => handleToggleLevel(u, level)}
                           className="w-3.5 h-3.5 accent-orange-600 cursor-pointer"
                         />
                         {level}
                       </label>
                     ))}
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                    <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={isTrialBySubscription(u.subscriptionEndDate)}
-                        disabled
-                        readOnly
-                        className="w-3.5 h-3.5 accent-orange-600"
-                        title="Trial khi chưa có hoặc đã hết hạn subscription_end_date"
+                        disabled={u.role === "admin"}
+                        onChange={() => handleToggleTrial(u)}
+                        className={`w-3.5 h-3.5 cursor-pointer ${
+                          isTrialBySubscription(u.subscriptionEndDate) ? "accent-red-600" : "accent-orange-600"
+                        }`}
+                        title="Bật Trial: xoá cấp độ và ngày hết hạn. Tiến trình học được giữ."
                       />
-                      Trial
+                      <span className={isTrialBySubscription(u.subscriptionEndDate) ? "text-red-600" : undefined}>
+                        Trial
+                      </span>
                     </label>
                   </div>
+                </td>
+                <td className="px-4 py-3 text-center text-xs">
+                  {isTrialBySubscription(u.subscriptionEndDate) ? (
+                    <span className="text-slate-400">—</span>
+                  ) : isExpiredBySubscription(u.subscriptionEndDate) ? (
+                    <span className="font-bold text-red-600">Hết hạn</span>
+                  ) : (
+                    <span className="text-slate-600">
+                      {subscriptionDaysRemaining(u.subscriptionEndDate)} ngày
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString("vi-VN")}</td>
                 <td className="px-4 py-3">
@@ -479,7 +604,7 @@ export const AdminUsersSection: React.FC = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">Không tìm thấy người dùng.</td>
               </tr>
             )}
           </tbody>
