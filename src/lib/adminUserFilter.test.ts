@@ -25,7 +25,8 @@ test("filterUsers: search khớp email hoặc họ tên, không phân biệt hoa
 });
 
 test("filterUsers: role lọc đúng, 'all' không lọc", () => {
-  const users = [user({ role: "user" }), user({ role: "admin" })];
+  const users = [user({ role: "trial" }), user({ role: "admin" })];
+  assert.equal(filterUsers(users, { ...EMPTY_CRITERIA, role: "trial" }).length, 1);
   assert.equal(filterUsers(users, { ...EMPTY_CRITERIA, role: "admin" }).length, 1);
   assert.equal(filterUsers(users, EMPTY_CRITERIA).length, 2);
 });

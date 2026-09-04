@@ -8,7 +8,7 @@ export interface FilterableUser {
 
 export interface UserFilterCriteria {
   search: string;
-  role: "all" | "user" | "admin";
+  role: "all" | "trial" | "user" | "admin";
   levels: Set<string>;
   dateFrom: string;
   dateTo: string;
