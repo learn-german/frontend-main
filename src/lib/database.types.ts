@@ -209,6 +209,7 @@ export type Database = {
           category: string
           general_instruction: string | null
           audio_clip_id: string | null
+          transcription: string | null
           id: string
           lesson_id: string
           order_index: number
@@ -219,6 +220,7 @@ export type Database = {
           category?: string
           general_instruction?: string | null
           audio_clip_id?: string | null
+          transcription?: string | null
           id?: string
           lesson_id: string
           order_index?: number
@@ -229,6 +231,7 @@ export type Database = {
           category?: string
           general_instruction?: string | null
           audio_clip_id?: string | null
+          transcription?: string | null
           id?: string
           lesson_id?: string
           order_index?: number
