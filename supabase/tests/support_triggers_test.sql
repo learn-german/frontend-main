@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(19);
+select plan(21);
 
 -- --- Dữ liệu nền -------------------------------------------------------------
 insert into auth.users
@@ -101,11 +101,27 @@ select is(
   2::bigint,
   'TRG-07 mỗi ticket mới sinh một thông báo broadcast cho admin');
 
--- --- Vai: admin trả lời ------------------------------------------------------
+-- --- Vai: admin tự tạo ticket (test màn học viên) ----------------------------
 set local role authenticated;
 set local "request.jwt.claims" =
   '{"sub":"99999999-9999-9999-9999-999999999999","app_metadata":{"role":"admin"}}';
 
+select create_support_ticket(
+  'Admin tự mở ticket', 'other', 'Đang test luồng học viên.');
+
+select is(
+  (select m.is_staff from support_ticket_messages m
+     join support_tickets t on t.id = m.ticket_id
+    where t.title = 'Admin tự mở ticket'),
+  false,
+  'TRG-19 tin nhắn đầu của admin vẫn is_staff = false');
+
+select is(
+  (select status from support_tickets where title = 'Admin tự mở ticket'),
+  'pending',
+  'TRG-20 admin tạo ticket mới vẫn ở pending, không nhảy resolved');
+
+-- --- Vai: admin trả lời ------------------------------------------------------
 insert into support_ticket_messages (ticket_id, body)
 select id, 'Bên mình đã cập nhật lại audio.'
   from support_tickets where title = 'Không mở được bài nghe';
@@ -114,7 +130,6 @@ select is(
   (select status from support_tickets where title = 'Không mở được bài nghe'),
   'resolved',
   'TRG-08 admin trả lời thì ticket chuyển sang resolved');
-
 set local role postgres;
 select is(
   (select count(*) from notifications
