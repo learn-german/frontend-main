@@ -1565,7 +1565,24 @@ export const AdminListeningExerciseSection: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (isExpanded) setSelectedSetIds(new Set());
+                      if (isExpanded) {
+                        const ownsSelection = lessonSets.some((set) => selectedSetIds.has(set.id));
+                        if (ownsSelection) {
+                          setSelectedSetIds(new Set());
+                          setBulkSetDeleteOpen(false);
+                          setBulkSetDeleteLessonId(null);
+                        }
+                      } else {
+                        const ownerLessonId =
+                          selectedSetIds.size > 0
+                            ? (ngheSets.find((set) => selectedSetIds.has(set.id))?.lessonId ?? null)
+                            : null;
+                        if (ownerLessonId && ownerLessonId !== lesson.lesson_id) {
+                          setSelectedSetIds(new Set());
+                          setBulkSetDeleteOpen(false);
+                          setBulkSetDeleteLessonId(null);
+                        }
+                      }
                       setExpanded((prev) => ({ ...prev, [lesson.lesson_id]: !isExpanded }));
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50 text-left rounded-t-2xl"
