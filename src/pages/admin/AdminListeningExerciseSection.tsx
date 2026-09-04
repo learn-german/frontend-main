@@ -35,7 +35,16 @@ import {
   type ListeningExerciseForm,
 } from "../../lib/listeningExerciseForm";
 import { syncBlankDefinitions, type BlankDefinition } from "../../lib/grammarFillInBlank";
-import { optionLabel, parseCorrectIndex, normalizeOptionsFromDb } from "../../lib/grammarMultipleChoice";
+import {
+  addOption,
+  MAX_MULTIPLE_CHOICE_OPTIONS,
+  MIN_MULTIPLE_CHOICE_OPTIONS,
+  normalizeOptionsFromDb,
+  optionLabel,
+  parseCorrectIndex,
+  removeOption,
+  setOption,
+} from "../../lib/grammarMultipleChoice";
 import { ExerciseAnswerInput } from "../../components/ExerciseAnswerInput";
 import type { GrammarExercise } from "../../lib/appTypes";
 
@@ -78,13 +87,13 @@ const emptyForm = (type: ListeningQuestionType): ListeningExerciseForm => ({
   promptText: "",
   correctAnswer: null,
   correctOptionIndex: -1,
-  options: type === "multiple_choice" ? ["", "", "", ""] : [],
+  options: type === "multiple_choice" ? ["", ""] : [],
   blanks: [],
 });
 
 const formFromRow = (row: ListeningExerciseRow): ListeningExerciseForm => {
   const type = isListeningQuestionType(row.type) ? row.type : "fill_in_the_blank";
-  const options = normalizeOptionsFromDb(row.options) ?? (type === "multiple_choice" ? ["", "", "", ""] : []);
+  const options = normalizeOptionsFromDb(row.options) ?? (type === "multiple_choice" ? ["", ""] : []);
   return {
     type,
     promptText: row.prompt_text ?? "",
@@ -93,7 +102,7 @@ const formFromRow = (row: ListeningExerciseRow): ListeningExerciseForm => {
         ? row.correct_answer
         : null,
     correctOptionIndex: parseCorrectIndex(row.correct_answer, options.length),
-    options: type === "multiple_choice" ? (options.length > 0 ? options : ["", "", "", ""]) : [],
+    options: type === "multiple_choice" ? (options.length > 0 ? options : ["", ""]) : [],
     blanks: row.blanks ?? [],
   };
 };
@@ -188,7 +197,7 @@ const ListeningQuestionFields: React.FC<{
           />
         </div>
         <div>
-          <label className={labelCls}>4 phương án * (radio = đáp án đúng)</label>
+          <label className={labelCls}>Phương án (tối thiểu 2)</label>
           <div className="space-y-2">
             {form.options.map((opt, index) => (
               <div key={index} className="flex items-center gap-2">
@@ -204,18 +213,50 @@ const ListeningQuestionFields: React.FC<{
                 <input
                   type="text"
                   value={opt}
-                  onChange={(e) =>
-                    onChange({
-                      ...form,
-                      options: form.options.map((o, i) => (i === index ? e.target.value : o)),
-                    })
-                  }
+                  onChange={(e) => {
+                    const next = setOption(
+                      { options: form.options, correctIndex: form.correctOptionIndex },
+                      index,
+                      e.target.value,
+                    );
+                    onChange({ ...form, options: next.options, correctOptionIndex: next.correctIndex });
+                  }}
                   className={inputCls + " flex-1"}
                   placeholder={`Phương án ${optionLabel(index)}`}
                 />
+                <button
+                  type="button"
+                  disabled={form.options.length <= MIN_MULTIPLE_CHOICE_OPTIONS}
+                  onClick={() => {
+                    const next = removeOption(
+                      { options: form.options, correctIndex: form.correctOptionIndex },
+                      index,
+                    );
+                    onChange({ ...form, options: next.options, correctOptionIndex: next.correctIndex });
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:pointer-events-none"
+                  aria-label={`Xóa phương án ${optionLabel(index)}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
           </div>
+          {form.options.length < MAX_MULTIPLE_CHOICE_OPTIONS && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = addOption({
+                  options: form.options,
+                  correctIndex: form.correctOptionIndex,
+                });
+                onChange({ ...form, options: next.options, correctOptionIndex: next.correctIndex });
+              }}
+              className="mt-2 flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700"
+            >
+              <Plus className="h-3.5 w-3.5" /> Thêm phương án
+            </button>
+          )}
         </div>
       </div>
     );
