@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import {
-  addCalendarDaysIso,
+  extendSubscriptionEndDate,
   isExpiredBySubscription,
   isTrialBySubscription,
   subscriptionDaysRemaining,
@@ -272,12 +272,14 @@ export const AdminUsersSection: React.FC = () => {
 
     if (wasTrial && isUnlocking) {
       newLevels = [level];
-      newEnd = addCalendarDaysIso(todayIso, 90);
+      newEnd = extendSubscriptionEndDate(null, 90, todayIso);
       if (previousRole === "trial") newRole = "user";
+    } else if (isUnlocking) {
+      // Each additional unlocked level extends the current end date by +90 days.
+      newLevels = [...previousLevels, level];
+      newEnd = extendSubscriptionEndDate(previousEnd, 90, todayIso);
     } else {
-      newLevels = isUnlocking
-        ? [...previousLevels, level]
-        : previousLevels.filter((l) => l !== level);
+      newLevels = previousLevels.filter((l) => l !== level);
     }
 
     setUsers((prev) =>
@@ -292,8 +294,11 @@ export const AdminUsersSection: React.FC = () => {
       .from("profiles")
       .update({
         unlocked_levels: newLevels,
-        ...(wasTrial && isUnlocking
-          ? { subscription_end_date: newEnd, role: newRole }
+        ...(isUnlocking
+          ? {
+              subscription_end_date: newEnd,
+              ...(wasTrial && previousRole === "trial" ? { role: newRole } : {}),
+            }
           : {}),
       })
       .eq("id", user.id);

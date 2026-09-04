@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   addCalendarDaysIso,
+  extendSubscriptionEndDate,
   isExpiredBySubscription,
   isTrialBySubscription,
   subscriptionDaysRemaining,
@@ -53,4 +54,12 @@ test("days remaining: trial / expired → null", () => {
 
 test("addCalendarDaysIso +90", () => {
   assert.equal(addCalendarDaysIso("2026-09-04", 90), "2026-12-03");
+});
+
+test("extendSubscriptionEndDate: trial → today+90", () => {
+  assert.equal(extendSubscriptionEndDate(null, 90, TODAY), "2026-12-03");
+});
+
+test("extendSubscriptionEndDate: active → end+90", () => {
+  assert.equal(extendSubscriptionEndDate("2026-12-03", 90, TODAY), "2027-03-03");
 });

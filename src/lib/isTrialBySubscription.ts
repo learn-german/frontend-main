@@ -50,3 +50,13 @@ export function addCalendarDaysIso(startIso: string, days: number): string {
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/** Trial (null end) → today+days; otherwise extend the existing end date by days. */
+export function extendSubscriptionEndDate(
+  subscriptionEndDate: string | null,
+  days: number,
+  today: string = localTodayIso(),
+): string {
+  const end = normalizeEndDate(subscriptionEndDate);
+  return addCalendarDaysIso(end ?? today, days);
+}
