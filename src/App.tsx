@@ -236,7 +236,7 @@ export default function App() {
       if (!profile) {
         const { error: insertError } = await supabase
           .from("profiles")
-          .insert({ id: identity.id, email: identity.email, full_name: null });
+          .insert({ id: identity.id, email: identity.email, full_name: null, role: "trial" });
         if (!isCurrent()) return;
         if (insertError) {
           setUser(null);
