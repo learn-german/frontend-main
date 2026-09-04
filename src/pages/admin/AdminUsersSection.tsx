@@ -3,7 +3,7 @@ import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-re
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
-import { isTrialBySubscription } from "../../lib/isTrialBySubscription";
+import { addCalendarDaysIso, isTrialBySubscription } from "../../lib/isTrialBySubscription";
 import {
   computeCompletedLessons,
   computeLessonStatuses,
@@ -189,22 +189,34 @@ export const AdminUsersSection: React.FC = () => {
     setSaving(true);
 
     const subscriptionEndDate = editForm.role === "trial" ? null : editForm.subscription_end_date || null;
+    const becomingTrial = editForm.role === "trial" || !subscriptionEndDate;
+    const profileUpdate: {
+      full_name: string;
+      role: string;
+      subscription_end_date: string | null;
+      unlocked_levels?: string[];
+    } = {
+      full_name: editForm.full_name,
+      role: editForm.role,
+      subscription_end_date: subscriptionEndDate,
+    };
+    if (becomingTrial) {
+      profileUpdate.role = "trial";
+      profileUpdate.subscription_end_date = null;
+      profileUpdate.unlocked_levels = [];
+    }
 
     // Update full_name + role column in profiles
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({
-        full_name: editForm.full_name,
-        role: editForm.role,
-        subscription_end_date: subscriptionEndDate,
-      })
+      .update(profileUpdate)
       .eq("id", editUser.id);
 
     // Also sync role to auth.app_metadata via Edge Function
     let roleError: string | null = null;
-    if (editForm.role !== editUser.role) {
+    if (profileUpdate.role !== editUser.role) {
       const { data, error } = await supabase.functions.invoke("set-admin-role", {
-        body: { user_id: editUser.id, role: editForm.role },
+        body: { user_id: editUser.id, role: profileUpdate.role },
       });
       if (error || data?.error) roleError = data?.error ?? error?.message;
     }
@@ -239,19 +251,67 @@ export const AdminUsersSection: React.FC = () => {
 
   const handleToggleLevel = async (user: AdminUser, level: string) => {
     const previousLevels = user.unlockedLevels;
+    const previousEnd = user.subscriptionEndDate;
+    const previousRole = user.role;
+    const wasTrial = isTrialBySubscription(user.subscriptionEndDate);
     const isUnlocking = !previousLevels.includes(level);
-    const newLevels = isUnlocking
-      ? [...previousLevels, level]
-      : previousLevels.filter((l) => l !== level);
 
-    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: newLevels } : u)));
+    if (wasTrial && !isUnlocking) return;
 
-    const { error } = await supabase.from("profiles").update({ unlocked_levels: newLevels }).eq("id", user.id);
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    let newLevels: string[];
+    let newEnd: string | null = previousEnd;
+    let newRole = previousRole;
+
+    if (wasTrial && isUnlocking) {
+      newLevels = [level];
+      newEnd = addCalendarDaysIso(todayIso, 90);
+      if (previousRole === "trial") newRole = "user";
+    } else {
+      newLevels = isUnlocking
+        ? [...previousLevels, level]
+        : previousLevels.filter((l) => l !== level);
+    }
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id
+          ? { ...u, unlockedLevels: newLevels, subscriptionEndDate: newEnd, role: newRole }
+          : u,
+      ),
+    );
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        unlocked_levels: newLevels,
+        ...(wasTrial && isUnlocking
+          ? { subscription_end_date: newEnd, role: newRole }
+          : {}),
+      })
+      .eq("id", user.id);
 
     if (error) {
       showToast("Cập nhật cấp độ thất bại: " + error.message, "warning");
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, unlockedLevels: previousLevels } : u)));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, unlockedLevels: previousLevels, subscriptionEndDate: previousEnd, role: previousRole }
+            : u,
+        ),
+      );
       return;
+    }
+
+    if (wasTrial && isUnlocking && previousRole === "trial") {
+      const { data, error: roleErr } = await supabase.functions.invoke("set-admin-role", {
+        body: { user_id: user.id, role: "user" },
+      });
+      if (roleErr || data?.error) {
+        showToast("Đã mở cấp nhưng đồng bộ role thất bại: " + (data?.error ?? roleErr?.message), "warning");
+      }
     }
 
     if (!isUnlocking) return;
@@ -268,6 +328,50 @@ export const AdminUsersSection: React.FC = () => {
       );
     if (enrollError) {
       showToast("Không tạo được mốc thời gian cho cấp độ: " + enrollError.message, "warning");
+    }
+  };
+
+  const handleToggleTrial = async (user: AdminUser) => {
+    if (user.role === "admin") return;
+    const currentlyTrial = isTrialBySubscription(user.subscriptionEndDate);
+    if (currentlyTrial) return;
+
+    const previousLevels = user.unlockedLevels;
+    const previousEnd = user.subscriptionEndDate;
+    const previousRole = user.role;
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id
+          ? { ...u, unlockedLevels: [], subscriptionEndDate: null, role: "trial" }
+          : u,
+      ),
+    );
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ unlocked_levels: [], subscription_end_date: null, role: "trial" })
+      .eq("id", user.id);
+
+    if (error) {
+      showToast("Chuyển Trial thất bại: " + error.message, "warning");
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, unlockedLevels: previousLevels, subscriptionEndDate: previousEnd, role: previousRole }
+            : u,
+        ),
+      );
+      return;
+    }
+
+    const { data, error: roleErr } = await supabase.functions.invoke("set-admin-role", {
+      body: { user_id: user.id, role: "trial" },
+    });
+    if (roleErr || data?.error) {
+      showToast("Đã clear cấp nhưng đồng bộ role thất bại: " + (data?.error ?? roleErr?.message), "warning");
+    } else {
+      showToast("Đã chuyển về Trial. Tiến trình học vẫn được giữ.", "success");
     }
   };
 
@@ -443,8 +547,8 @@ export const AdminUsersSection: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={isTrialBySubscription(u.subscriptionEndDate)}
-                        disabled
-                        readOnly
+                        disabled={u.role === "admin" || isTrialBySubscription(u.subscriptionEndDate)}
+                        onChange={() => handleToggleTrial(u)}
                         className="w-3.5 h-3.5 accent-orange-600"
                         title="Trial khi chưa có hoặc đã hết hạn subscription_end_date"
                       />
