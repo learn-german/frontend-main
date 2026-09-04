@@ -159,3 +159,76 @@ export interface SupportTicketMessage {
   imageKeys: string[];
   createdAt: string;
 }
+
+/** Admin CRUD row — includes meetUrl. */
+export interface MeetingSessionAdmin {
+  id: string;
+  title: string;
+  level: Level;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  meetUrl: string;
+  note: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  registrationCount: number;
+}
+
+/** Edge DTO for learner list — meetUrl only when isRegistered. */
+export interface LearnerMeetingSession {
+  id: string;
+  title: string;
+  level: Level;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  note: string | null;
+  registrationCount: number;
+  isRegistered: boolean;
+  meetUrl: string | null;
+}
+
+export interface LearnerMeetingsResponse {
+  sessions: LearnerMeetingSession[];
+  myRegistrationSessionId: string | null;
+}
+
+export interface MeetingRegistrationRow {
+  id: string;
+  sessionId: string;
+  userId: string;
+  registeredAt: string;
+  user: { email: string; fullName: string | null } | null;
+}
+
+export interface MeetingRegisterResult {
+  registration: {
+    id: string;
+    sessionId: string;
+    userId: string;
+    registeredAt: string;
+  };
+  session: {
+    id: string;
+    title: string;
+    level: Level;
+    sessionDate: string;
+    startTime: string;
+    endTime: string;
+    note: string | null;
+    meetUrl: string;
+  };
+}
+
+export type MeetingSessionUpsertInput = {
+  id?: string;
+  title: string;
+  level: Level;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  meetUrl: string;
+  note?: string | null;
+};
