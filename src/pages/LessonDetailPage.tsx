@@ -342,7 +342,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                 </span>
               </div>
 
-              <MarkdownBlock content={lesson.vocabularyMd} onWordClick={handlePronounce} />
+              <MarkdownBlock content={lesson.vocabularyMd} lessonId={lesson.id} onWordClick={handlePronounce} />
             </section>
           )}
         </div>
