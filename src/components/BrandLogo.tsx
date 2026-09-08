@@ -5,6 +5,8 @@
 
 import React from "react";
 
+export const BRAND_LOGO_SRC = "/assets/deutschselbst-logo-sd-interlock.svg";
+
 interface BrandLogoProps {
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -21,8 +23,8 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   className = "",
 }) => (
   <img
-    src="/logo.png"
+    src={BRAND_LOGO_SRC}
     alt="DeutschSelbst"
-    className={`${sizeClasses[size]} rounded-xl object-cover shrink-0 ${className}`}
+    className={`${sizeClasses[size]} rounded-xl object-contain shrink-0 ${className}`}
   />
 );

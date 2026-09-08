@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 40 40" role="img" aria-labelledby="title description">
+  <title id="title">DeutschSelbst</title>
+  <desc id="description">Chữ S màu đen nằm trước chữ D màu vàng</desc>
+  <rect width="40" height="40" rx="9" fill="#e4003b"/>
+  <path
+    d="M19.5 18V16.5h3.8c6.5 0 10.2 3.4 10.2 8.75S29.8 34 23.3 34h-3.8V29.2"
+    fill="none"
+    stroke="#ffcc00"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    transform="translate(-1.5 -0.5)"
+  />
+  <path
+    d="M20.5 9.5h-5.8c-3.1 0-5.1 1.9-5.1 4.6s2 4.6 5.1 4.6h2.8c3 0 5 1.8 5 4.5s-2 4.8-5.2 4.8H10"
+    fill="none"
+    stroke="#e4003b"
+    stroke-width="4.1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    transform="translate(-1.56 -1.125) scale(1.06)"
+  />
+  <path
+    d="M20.5 9.5h-5.8c-3.1 0-5.1 1.9-5.1 4.6s2 4.6 5.1 4.6h2.8c3 0 5 1.8 5 4.5s-2 4.8-5.2 4.8H10"
+    fill="none"
+    stroke="#101828"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    transform="translate(-1.56 -1.125) scale(1.06)"
+  />
+</svg>
