@@ -4,6 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { BRAND_LOGO_SRC } from "../components/BrandLogo";
 
 interface LandingPageProps {
   onStartLearning: () => void;
@@ -24,7 +25,7 @@ const SECTION_TITLE =
 
 const BENEFITS = [
   {
-    title: "Học đủ trong mỗi bài",
+    title: "Video và bài tập trong cùng một lộ trình",
     alt: "Học tiếng Đức A1 qua video và bài tập",
     offset: "left-0",
     body: "Video đi cùng bài tập để bạn vừa tiếp nhận kiến thức, vừa luyện ngay trong cùng một lộ trình.",
@@ -35,7 +36,7 @@ const BENEFITS = [
     ],
   },
   {
-    title: "Có người góp ý và giải đáp",
+    title: "Được chấm bài và hỗ trợ hàng tuần",
     alt: "Buổi hỗ trợ trực tuyến cùng người hướng dẫn",
     offset: "left-[-100%]",
     body: "Bạn không phải tự xử lý mọi điểm khó khi học online. Người hướng dẫn hỗ trợ đều đặn trong suốt khóa học.",
@@ -55,6 +56,21 @@ const BENEFITS = [
       "Ôn lại nội dung khi cần",
       "Tiết kiệm thời gian và chi phí",
     ],
+  },
+];
+
+const AUDIENCE = [
+  {
+    title: "Người mới bắt đầu",
+    body: "Học tiếng Đức từ số 0 theo trình tự rõ ràng, không cần tự ghép nhiều nguồn tài liệu.",
+  },
+  {
+    title: "Người có lịch trình bận rộn",
+    body: "Chủ động xem video, làm bài tập và ôn lại kiến thức vào thời gian phù hợp.",
+  },
+  {
+    title: "Người cần hỗ trợ khi tự học",
+    body: "Được chấm bài viết, giải đáp bài học và luyện kỹ năng nói trong buổi hỗ trợ hàng tuần.",
   },
 ];
 
@@ -99,14 +115,14 @@ const COURSES: {
     id: "course-a1",
     tone: "open",
     badge: "Có sẵn",
-    title: "Khóa A1 đầy đủ",
+    title: "Khóa học tiếng Đức A1 online",
     body: "Khóa học chính dành cho người bắt đầu học tiếng Đức từ số 0.",
     points: [
       "Bài đầu tiên được học thử miễn phí",
       "Video và bài tập đủ kỹ năng",
       "Chấm bài và hỗ trợ trực tuyến hàng tuần",
     ],
-    action: "Liên hệ đăng ký →",
+    action: "Liên hệ tư vấn →",
     actionable: true,
     featured: true,
   },
@@ -116,7 +132,7 @@ const COURSES: {
     title: "Khóa học bổ túc A1 online",
     body: "Dành cho người đã học A1 nhưng cần ôn lại và lấp phần kiến thức còn hổng.",
     points: ["Củng cố ngữ pháp", "Sửa lỗi thường gặp", "Ôn luyện theo kỹ năng"],
-    action: "Nhận thông tin khi mở →",
+    action: "Liên hệ tư vấn →",
     actionable: true,
   },
   {
@@ -136,6 +152,30 @@ const COURSES: {
     points: ["Giao tiếp theo chủ đề", "Đọc và viết mở rộng", "Củng cố ngữ pháp B1"],
     action: "Đang lên kế hoạch",
     actionable: false,
+  },
+];
+
+const FAQS = [
+  {
+    question: "Khóa học tiếng Đức online của DeutschSelbst phù hợp với ai?",
+    answer:
+      "Khóa học phù hợp với người mới bắt đầu học tiếng Đức từ số 0, người cần lịch học linh hoạt và người muốn có người hướng dẫn hỗ trợ trong quá trình tự học.",
+    open: true,
+  },
+  {
+    question: "Có thể học thử khóa A1 trước khi đăng ký không?",
+    answer:
+      "Có. Bạn có thể đăng nhập để học miễn phí bài đầu tiên, xem video và làm bài tập trước khi quyết định đăng ký toàn bộ khóa A1.",
+  },
+  {
+    question: "Khóa học có hỗ trợ trực tuyến không?",
+    answer:
+      "Có. Người học được chấm bài viết, giải đáp nội dung bài học và hỗ trợ kỹ năng nói trong buổi học trực tuyến hàng tuần.",
+  },
+  {
+    question: "Làm thế nào để học tiếp sau bài học thử?",
+    answer:
+      "Sau khi học thử, bạn liên hệ DeutschSelbst để trao đổi mục tiêu học, hình thức hỗ trợ và kích hoạt toàn bộ khóa học tiếng Đức A1 online.",
   },
 ];
 
@@ -214,7 +254,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           >
             <span className="block h-[34px] w-[34px] shrink-0 shadow-[0_7px_16px_rgba(228,0,59,.25)] min-[720px]:h-[38px] min-[720px]:w-[38px]">
               <img
-                src="/assets/deutschselbst-mark.svg"
+                src={BRAND_LOGO_SRC}
                 alt=""
                 width={40}
                 height={40}
@@ -248,12 +288,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           id="home"
           className="scroll-mt-[72px] bg-white px-5 pt-[72px] pb-[58px] min-[720px]:px-6 min-[720px]:pt-[86px]"
         >
-          <div className="mx-auto max-w-[980px] text-center">
+          <div id="trial" className="mx-auto max-w-[980px] text-center">
             <div className={KICKER}>
               Khóa tiếng Đức online cho người Việt
             </div>
             <h1 className="mx-auto mt-[17px] max-w-[940px] text-[36px] font-extrabold leading-[1.15] text-balance min-[720px]:text-[48px] min-[720px]:leading-[1.12]">
-              Học tiếng Đức online, đầy đủ kỹ năng.{" "}
+              Khóa học tiếng Đức online.{" "}
               <span className="mt-1 block text-[#e4003b]">
                 Chủ động theo lịch của bạn.
               </span>
@@ -353,6 +393,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
                   </div>
                 </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Audience */}
+        <section
+          id="audience"
+          aria-labelledby="audience-title"
+          className="scroll-mt-[72px] border-b border-[#e5e9f0] bg-white px-5 pt-[10px] pb-[58px] min-[720px]:px-6 min-[720px]:pb-20"
+        >
+          <div className="mx-auto max-w-[1180px]">
+            <div className="mb-10 max-w-[1200px]">
+              <div className={KICKER}>Đối tượng phù hợp</div>
+              <h2 id="audience-title" className={SECTION_TITLE}>
+                Khóa học tiếng Đức online của DeutschSelbst phù hợp với ai?
+              </h2>
+              <p className="mt-3.5 text-base font-normal leading-[1.65] text-[#667085]">
+                Lộ trình được thiết kế cho người muốn học có hệ thống nhưng vẫn
+                chủ động sắp xếp thời gian.
+              </p>
+            </div>
+
+            <div className="grid border-y border-[#e5e9f0] min-[720px]:grid-cols-3">
+              {AUDIENCE.map((item, index) => (
+                <div
+                  key={item.title}
+                  className={`px-0 py-[22px] min-[720px]:px-7 min-[720px]:py-[26px] ${
+                    index > 0
+                      ? "border-t border-[#e5e9f0] min-[720px]:border-t-0 min-[720px]:border-l"
+                      : ""
+                  }`}
+                >
+                  <strong className="block text-[17px] leading-[1.35] font-bold">
+                    {item.title}
+                  </strong>
+                  <p className="mt-2 text-sm font-normal leading-[1.65] text-[#667085]">
+                    {item.body}
+                  </p>
+                </div>
               ))}
             </div>
           </div>
@@ -500,6 +580,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </section>
 
+        {/* FAQ */}
+        <section
+          id="faq"
+          aria-labelledby="faq-title"
+          className="scroll-mt-[72px] border-b border-[#e5e9f0] bg-white px-5 py-[58px] min-[720px]:px-6 min-[720px]:py-20"
+        >
+          <div className="mx-auto max-w-[1180px]">
+            <div className="mb-10 max-w-[760px]">
+              <div className={KICKER}>Câu hỏi thường gặp</div>
+              <h2 id="faq-title" className={SECTION_TITLE}>
+                Thông tin trước khi học tiếng Đức A1 online
+              </h2>
+            </div>
+            <div className="max-w-[900px] border-t border-[#e5e9f0]">
+              {FAQS.map((faq) => (
+                <details
+                  key={faq.question}
+                  open={faq.open}
+                  className="group border-b border-[#e5e9f0]"
+                >
+                  <summary className="relative cursor-pointer list-none py-[22px] pr-[46px] text-[17px] leading-[1.45] font-bold marker:content-none [&::-webkit-details-marker]:hidden after:absolute after:top-5 after:right-1 after:text-2xl after:leading-none after:font-medium after:text-[#e4003b] after:content-['+'] group-open:after:content-['−']">
+                    {faq.question}
+                  </summary>
+                  <p className="max-w-[760px] pr-[46px] pb-[22px] text-[15px] leading-[1.7] text-[#667085]">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Register */}
         <section
           id="contact"
@@ -572,7 +684,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 className="inline-flex items-center gap-[11px] text-[19px] font-extrabold text-white"
               >
                 <img
-                  src="/assets/deutschselbst-mark.svg"
+                  src={BRAND_LOGO_SRC}
                   alt=""
                   width={34}
                   height={34}
@@ -595,6 +707,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   className="text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
                 >
                   Điểm đặc biệt
+                </a>
+                <a
+                  href="#audience"
+                  onClick={scrollToSection("audience")}
+                  className="text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
+                >
+                  Phù hợp với ai
                 </a>
                 <a
                   href="#method"
@@ -623,6 +742,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 >
                   Học thử A1
                 </button>
+                <a
+                  href="#faq"
+                  onClick={scrollToSection("faq")}
+                  className="text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
+                >
+                  Câu hỏi thường gặp
+                </a>
                 <a
                   href="#contact"
                   onClick={scrollToSection("contact")}
