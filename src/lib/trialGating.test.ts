@@ -44,6 +44,12 @@ test("trial role locks meetings even with future end", () => {
   assert.equal(isFeatureLocked("trial", "2026-12-31", "help", TODAY), true);
 });
 
+test("stale JWT role=trial with active end → not locked", () => {
+  assert.equal(isTrialAccess("trial", "2026-12-31", TODAY), false);
+  assert.equal(isExpiredAccess("trial", "2026-12-31", TODAY), false);
+  assert.equal(isFeatureLocked("trial", "2026-12-31", "leaderboard", TODAY), false);
+});
+
 test("isSubscriptionExpired calendar past", () => {
   assert.equal(isSubscriptionExpired("2026-09-03", TODAY), true);
   assert.equal(isSubscriptionExpired(null, TODAY), false);
