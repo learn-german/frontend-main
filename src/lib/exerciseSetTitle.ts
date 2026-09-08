@@ -3,6 +3,14 @@
 // useExerciseSets.ts, test node:test sẽ crash lúc import do src/lib/supabase.ts
 // đọc import.meta.env ở top-level, chỉ hoạt động trong môi trường Vite.
 
+export function countSetsForCategory(
+  sets: { lessonId: string; category: string }[],
+  lessonId: string,
+  category: string,
+): number {
+  return sets.filter((s) => s.lessonId === lessonId && s.category === category).length;
+}
+
 export function defaultSetTitleAt(index: number): string {
   return `Bài tập ${index + 1}`;
 }

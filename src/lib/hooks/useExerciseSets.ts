@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabase";
-import { nextDefaultSetTitle, planSetRenumber } from "../exerciseSetTitle";
+import { countSetsForCategory, nextDefaultSetTitle, planSetRenumber } from "../exerciseSetTitle";
 
 export { nextDefaultSetTitle };
 
@@ -82,7 +82,7 @@ export function useExerciseSets() {
     category: string,
     orderIndex: number,
   ): Promise<{ data: ExerciseSet | null; error: string | null }> => {
-    const existingCountForLesson = sets.filter((s) => s.lessonId === forLessonId).length;
+    const existingCountForLesson = countSetsForCategory(sets, forLessonId, category);
     const { data, error } = await supabase
       .from("exercise_sets")
       .insert({
@@ -104,7 +104,7 @@ export function useExerciseSets() {
     forLessonId: string,
     orderIndex: number,
   ): Promise<{ data: ExerciseSet | null; error: string | null }> => {
-    const existingCountForLesson = sets.filter((s) => s.lessonId === forLessonId && s.category === "doc").length;
+    const existingCountForLesson = countSetsForCategory(sets, forLessonId, "doc");
     const { data, error } = await supabase
       .from("exercise_sets")
       .insert({
