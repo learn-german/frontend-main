@@ -370,6 +370,21 @@ export type Database = {
           },
         ]
       }
+      learning_activity_days: {
+        Row: {
+          activity_date: string
+          user_id: string
+        }
+        Insert: {
+          activity_date: string
+          user_id: string
+        }
+        Update: {
+          activity_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lesson_progress: {
         Row: {
           category: string
@@ -1258,6 +1273,7 @@ export type Database = {
         Args: { p_amount: number; p_user_id: string }
         Returns: undefined
       }
+      record_learning_activity: { Args: { p_user_id: string }; Returns: number }
       register_meeting_session: {
         Args: { p_session_id: string; p_user_id: string }
         Returns: {
