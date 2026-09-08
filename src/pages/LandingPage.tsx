@@ -11,6 +11,9 @@ interface LandingPageProps {
   onNavigateLogin: () => void;
 }
 
+const CONTACT_FACEBOOK_URL =
+  "https://web.facebook.com/share/1C9YswkzTN/?mibextid=wwXIfr&_rdc=1&_rdr";
+
 const BUTTON_BASE =
   "inline-flex min-h-[42px] items-center justify-center whitespace-nowrap rounded-lg border px-[17px] text-sm font-bold transition-transform duration-200 hover:-translate-y-px focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[rgba(40,86,197,.28)]";
 
@@ -265,8 +268,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </a>
           <div className="flex items-center gap-1.5 min-[720px]:gap-2.5">
             <a
-              href="#contact"
-              onClick={scrollToSection("contact")}
+              href={CONTACT_FACEBOOK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className={`${BUTTON_DEFAULT} min-h-[38px] px-2.5 text-xs min-[720px]:min-h-[42px] min-[720px]:px-[17px] min-[720px]:text-sm`}
             >
               Liên hệ
@@ -549,8 +553,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </ul>
                   {course.actionable ? (
                     <a
-                      href="#contact"
-                      onClick={scrollToSection("contact")}
+                      href={CONTACT_FACEBOOK_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="mt-auto pt-[22px] text-sm font-bold text-white"
                     >
                       {course.action}
@@ -637,8 +642,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     Học thử bài đầu tiên
                   </button>
                   <a
-                    href="#contact"
-                    onClick={scrollToSection("contact")}
+                    href={CONTACT_FACEBOOK_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className={`${BUTTON_DEFAULT} w-full min-[720px]:w-auto`}
                   >
                     Liên hệ tư vấn
