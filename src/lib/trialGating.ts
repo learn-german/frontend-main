@@ -24,8 +24,9 @@ export function isTrialAccess(
   subscriptionEndDate: string | null,
   today?: string,
 ): boolean {
+  // Trial = null/empty subscription_end_date only (not JWT role).
+  // Admin unlock sets end_date before the learner JWT refreshes role.
   if (role === "admin") return false;
-  if (role === "trial") return true;
   return isTrialBySubscription(subscriptionEndDate, today);
 }
 
