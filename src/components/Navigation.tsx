@@ -18,6 +18,7 @@ import {
   Gift,
   HelpCircle,
   Lock,
+  Video,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
@@ -27,13 +28,13 @@ import type { AppNotification } from "../lib/hooks/useNotifications";
 import type { AppPage } from "../lib/router";
 import { isFeatureLocked, type UserRole, type LockedFeature } from "../lib/trialGating";
 import { showToast } from "../lib/toast";
+import type { LearnerMeetingSession } from "../lib/appTypes";
 
 interface NavigationProps {
   currentPage: string;
   onNavigate: (page: AppPage) => void;
   user: { email: string; fullName: string; role: UserRole; subscriptionEndDate: string | null } | null;
   onLogout: () => void;
-  streak: number;
   xp: number;
   onNotificationNavigate?: (n: AppNotification) => void;
 }
@@ -42,6 +43,7 @@ const featureMap: Partial<Record<AppPage, LockedFeature>> = {
   leaderboard: "leaderboard",
   help: "help",
   packages: "packages",
+  meetings: "meetings",
 };
 
 export const Navbar: React.FC<NavigationProps> = ({
@@ -49,7 +51,6 @@ export const Navbar: React.FC<NavigationProps> = ({
   onNavigate,
   user,
   onLogout,
-  streak,
   xp,
   onNotificationNavigate
 }) => {
@@ -233,9 +234,6 @@ export const Navbar: React.FC<NavigationProps> = ({
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <div className="text-xs font-display font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/50">
-                    🔥 {streak} Ngày
-                  </div>
                   <div className="text-xs font-display font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50">
                     🏆 {xp} XP
                   </div>
@@ -305,7 +303,7 @@ export const Navbar: React.FC<NavigationProps> = ({
 interface SidebarProps {
   currentPage: string;
   onNavigate: (page: AppPage) => void;
-  streak: number;
+  weeklyMeeting: LearnerMeetingSession | null;
   currentLessonTitle?: string;
   userRole: UserRole;
   subscriptionEndDate: string | null;
@@ -314,15 +312,17 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentPage,
   onNavigate,
-  streak,
+  weeklyMeeting,
   currentLessonTitle,
   userRole,
   subscriptionEndDate,
 }) => {
+  const meetingsLocked = isFeatureLocked(userRole, subscriptionEndDate, "meetings");
   const links: { id: AppPage; label: string; desc: string; icon: LucideIcon }[] = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
     { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
+    { id: "meetings", label: "Lịch học trực tuyến", desc: "Đăng ký buổi hỗ trợ", icon: Video },
     { id: "packages", label: "Gói học", desc: "Xem gói & quyền lợi", icon: Gift },
     { id: "leaderboard", label: "Bảng xếp hạng", desc: "Thành tích học tập", icon: Trophy },
     { id: "help", label: "Trợ giúp học tập", desc: "Giải đáp thắc mắc", icon: HelpCircle },
@@ -368,18 +368,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </div>
 
-      { /* Decorative minimalist Card */ }
-      <div className="bg-yellow-50/50 border border-yellow-200/50 p-4 rounded-xl relative overflow-hidden mt-4">
-        <div className="absolute right-[-10px] bottom-[-10px] text-5xl opacity-10 rotate-12 select-none">🔥</div>
-        <h4 className="text-xs font-display font-bold text-amber-805 text-amber-900">Streak hằng ngày!</h4>
-        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-          Học tối thiểu 1 bài học mỗi ngày để duy trì chuỗi đỏ lấp lánh của bạn. Tích cực lên nhé!
-        </p>
-        <div className="mt-3 flex items-center gap-1">
-          <span className="text-sm">🔥</span>
-          <span className="text-xs font-display font-bold text-amber-800">{streak > 0 ? `${streak} ngày liên tiếp` : "Học 15 phút để bắt đầu streak"}</span>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (meetingsLocked) {
+            showToast("Nâng cấp gói để mở tính năng này.", "warning");
+            return;
+          }
+          onNavigate("meetings");
+        }}
+        className={`border p-4 rounded-xl relative overflow-hidden mt-4 text-left transition ${
+          weeklyMeeting
+            ? "bg-slate-50 border-slate-200 hover:border-slate-300"
+            : "bg-sky-50 border-sky-200 hover:border-sky-300"
+        } ${meetingsLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+      >
+        <Video className="absolute right-3 top-3 w-5 h-5 text-slate-300" />
+        <h4 className={`text-[11px] font-display font-bold uppercase tracking-wide ${
+          weeklyMeeting ? "text-slate-600" : "text-sky-700"
+        }`}>
+          {weeklyMeeting ? "Buổi học tuần này" : "Chưa có lịch tuần này"}
+        </h4>
+        {weeklyMeeting ? (
+          <>
+            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed pr-5 truncate">
+              {weeklyMeeting.title}
+            </p>
+            <span className="inline-block mt-2 text-[10px] font-mono font-semibold text-slate-700 bg-white border border-slate-200 rounded-full px-2.5 py-1">
+              {new Date(`${weeklyMeeting.sessionDate}T12:00:00`).toLocaleDateString("vi-VN")} • {weeklyMeeting.startTime.slice(0, 5)}
+            </span>
+          </>
+        ) : (
+          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed pr-5">
+            Đăng ký một buổi hỗ trợ trực tuyến.
+          </p>
+        )}
+      </button>
     </aside>
   );
 };

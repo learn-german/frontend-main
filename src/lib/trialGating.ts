@@ -4,7 +4,7 @@ import {
 } from "./isTrialBySubscription";
 
 export type UserRole = "trial" | "user" | "admin";
-export type LockedFeature = "leaderboard" | "help" | "packages";
+export type LockedFeature = "leaderboard" | "help" | "packages" | "meetings";
 
 const TRIAL_LESSON_LIMIT = 1;
 

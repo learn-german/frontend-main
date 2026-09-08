@@ -11,12 +11,14 @@ import {
   Users,
   HelpCircle,
   AlertTriangle,
+  Video,
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
-import { UserStats, Lesson, Module } from "../lib/appTypes";
+import { UserStats, Lesson, Module, type LearnerMeetingSession } from "../lib/appTypes";
 import { LessonStatus } from "../lib/completion";
 import { selectPlannedLessons, lessonsNeededToCatchUp } from "../lib/dashboardProgress";
 import { supabase } from "../lib/supabase";
+import { showToast } from "../lib/toast";
 
 interface DashboardPageProps {
   user: { email: string; fullName: string };
@@ -27,6 +29,8 @@ interface DashboardPageProps {
   lessonIdsCompletedToday: string[];
   onNavigateLesson: (lessonId: string) => void;
   onNavigateRoadmap: () => void;
+  onNavigateMeetings: () => void;
+  weeklyMeeting: LearnerMeetingSession | null;
   isTrialRestricted?: boolean;
   isExpiredRestricted?: boolean;
 }
@@ -62,6 +66,17 @@ const formatDurationLabel = (duration: string): string => {
   return `${duration} phút`;
 };
 
+const openMeeting = (url: string | null) => {
+  if (!url) return;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return;
+    window.open(parsed.toString(), "_blank", "noopener,noreferrer");
+  } catch {
+    showToast("Link phòng học không hợp lệ.", "warning");
+  }
+};
+
 const NoData: React.FC<{ size?: "sm" | "md" }> = ({ size = "md" }) => (
   <span
     className="inline-flex items-center gap-0.5 text-slate-400"
@@ -82,6 +97,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   orderedLessons,
   lessonStatuses,
   onNavigateLesson,
+  onNavigateMeetings,
+  weeklyMeeting,
   isTrialRestricted,
   isExpiredRestricted,
 }) => {
@@ -149,17 +166,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </p>
         </div>
 
-        <div className="bg-slate-950/55 backdrop-blur-md rounded-xl p-3 border border-white/10 flex items-center gap-3 z-10 self-stretch sm:self-auto min-w-[170px]">
-          <div className="w-10 h-10 rounded-xl bg-orange-600/15 text-orange-500 flex items-center justify-center text-xl shrink-0">
-            🔥
+        <div className="bg-slate-950/55 backdrop-blur-md rounded-xl p-3 border border-white/10 flex items-center gap-3 z-10 self-stretch sm:self-auto min-w-[240px]">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
+            <Video className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-display font-semibold block leading-tight">STREAK HÀNG NGÀY</span>
-            <span className="text-lg font-display font-extrabold text-white leading-tight">{stats.streak} ngày</span>
-            <span className="text-[10px] text-yellow-400 block font-sans">
-              {stats.streak > 0 ? "Đã an toàn hôm nay" : "Học 15 phút để bắt đầu streak"}
+          <div className="flex-1 min-w-0">
+            <span className="text-[10px] text-slate-400 font-display font-semibold block leading-tight tracking-wider">
+              WEEKLY MEETING
             </span>
+            {weeklyMeeting ? (
+              <span className="inline-block mt-1 text-[11px] font-mono font-medium text-white bg-white/10 border border-white/15 rounded-full px-2.5 py-1">
+                {new Date(`${weeklyMeeting.sessionDate}T12:00:00`).toLocaleDateString("vi-VN")} • {weeklyMeeting.startTime.slice(0, 5)}
+              </span>
+            ) : (
+              <>
+                <span className="text-xs text-slate-300 block mt-0.5">Chưa đăng ký lịch tuần này</span>
+                <button
+                  type="button"
+                  onClick={onNavigateMeetings}
+                  className="text-[10px] text-yellow-400 block mt-1 cursor-pointer hover:text-yellow-300"
+                >
+                  Chọn lịch học →
+                </button>
+              </>
+            )}
           </div>
+          {weeklyMeeting?.meetUrl && (
+            <button
+              type="button"
+              onClick={() => openMeeting(weeklyMeeting.meetUrl)}
+              className="text-xs font-display font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg px-3.5 py-2 whitespace-nowrap cursor-pointer transition"
+            >
+              Tham gia →
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SelbstDeutsch — Lịch học trực tuyến (Admin)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+      --red: #dc2626;
+      --red-dark: #b91c1c;
+      --red-light: #fef2f2;
+      --maroon: #991b1b;
+      --orange: #ea580c;
+      --navy: #0f172a;
+      --navy-mid: #1e293b;
+      --bg: #f8f9fa;
+      --white: #ffffff;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --slate-950: #020617;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --amber: #f59e0b;
+      --amber-dark: #b45309;
+      --amber-light: #fef3c7;
+      --yellow: #facc15;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+      --radius: 16px;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--slate-800);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+
+    /* Topbar */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: var(--slate-950);
+      border-bottom: 1px solid var(--slate-800);
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { width: 32px; height: 32px; border-radius: 12px; object-fit: cover; background: var(--orange); }
+    .brand-row { display: flex; align-items: center; gap: 8px; }
+    .brand-name { font-family: var(--font-display); font-weight: 700; color: var(--white); font-size: 14px; }
+    .brand-sep { color: var(--slate-600); font-size: 12px; }
+    .brand-tag { color: #fb923c; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--slate-400); }
+
+    /* Page shell */
+    .page { max-width: 1280px; margin: 0 auto; padding: 28px 32px 48px; }
+    .page-head { margin-bottom: 24px; }
+    .page-head h1 { font-family: var(--font-display); font-size: 22px; font-weight: 900; color: var(--slate-900); margin-bottom: 6px; }
+    .page-head p { color: var(--slate-500); font-size: 14px; max-width: 640px; }
+
+    /* Stats */
+    .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 20px; box-shadow: var(--shadow);
+    }
+    .stat-value { font-family: var(--font-display); font-size: 28px; font-weight: 900; color: var(--slate-900); }
+    .stat-label { font-size: 12px; color: var(--slate-500); margin-top: 4px; }
+
+    /* Two-column layout */
+    .layout { display: flex; gap: 24px; align-items: flex-start; }
+    #formPanel {
+      width: 360px; flex-shrink: 0;
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 24px; box-shadow: var(--shadow);
+    }
+    #listPanel { flex: 1; min-width: 0; }
+
+    .panel-title { font-family: var(--font-display); font-size: 15px; font-weight: 800; color: var(--slate-900); margin-bottom: 20px; }
+
+    /* Form */
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: var(--slate-600); margin-bottom: 6px; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 10px 12px; font-size: 14px;
+      border: 1px solid var(--slate-200); border-radius: 12px; background: var(--white); outline: 0;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--orange); box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.15);
+    }
+    .field textarea { min-height: 72px; resize: vertical; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .meet-row { display: flex; gap: 8px; }
+    .meet-row input { flex: 1; }
+    .limit-note { font-size: 12px; color: var(--slate-500); margin: 12px 0 20px; }
+    .limit-note strong { color: var(--slate-700); }
+    .form-error {
+      display: none; font-size: 12px; color: var(--red); background: var(--red-light);
+      border: 1px solid #fecaca; border-radius: 10px; padding: 10px 12px; margin-bottom: 16px;
+    }
+    .form-error.show { display: block; }
+    .form-actions { display: flex; flex-direction: column; gap: 8px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font-family: var(--font-display); font-weight: 600; font-size: 14px;
+      border-radius: 12px; padding: 10px 18px; border: 1px solid transparent; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--red); color: var(--white); }
+    .btn-primary:hover { background: var(--red-dark); }
+    .btn-secondary { background: var(--white); color: var(--slate-700); border-color: var(--slate-200); }
+    .btn-secondary:hover { background: var(--slate-50); }
+    .btn-ghost { background: transparent; color: var(--slate-500); border-color: var(--slate-200); font-size: 12px; padding: 6px 12px; }
+    .btn-ghost:hover { background: var(--slate-50); color: var(--slate-700); }
+    .btn-sm { font-size: 12px; padding: 6px 12px; border-radius: 8px; }
+    .btn-meet { background: var(--slate-100); color: var(--slate-700); border-color: var(--slate-200); white-space: nowrap; }
+    .btn-meet:hover { background: var(--slate-200); }
+    .btn-danger { color: var(--red); border-color: #fecaca; background: var(--red-light); }
+    .btn-danger:hover { background: #fee2e2; }
+
+    /* List panel */
+    .list-toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 14px 16px; margin-bottom: 16px; box-shadow: var(--shadow);
+    }
+    .list-toolbar input[type="search"] {
+      flex: 1; min-width: 160px; padding: 8px 12px; font-size: 14px;
+      border: 1px solid var(--slate-200); border-radius: 10px; outline: 0;
+    }
+    .list-toolbar select {
+      padding: 8px 12px; font-size: 14px; border: 1px solid var(--slate-200);
+      border-radius: 10px; background: var(--white); outline: 0;
+    }
+    .restore-btn { margin-left: auto; }
+
+    .session-list { display: flex; flex-direction: column; gap: 12px; }
+    .session-row {
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow);
+    }
+    .session-row.full { opacity: 0.85; }
+    .row-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+    .row-date { font-size: 12px; font-weight: 600; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.03em; }
+    .row-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--slate-900); margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .level-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--slate-100); color: var(--slate-600); border: 1px solid var(--slate-200);
+    }
+    .row-meta { font-size: 13px; color: var(--slate-500); margin-bottom: 8px; }
+    .row-note { font-size: 12px; color: var(--slate-400); margin-bottom: 12px; font-style: italic; }
+    .row-capacity { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .status-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status-label.open { color: var(--green); }
+    .status-label.almost { color: var(--amber-dark); }
+    .status-label.full { color: var(--red); }
+    .cap-count { font-size: 12px; font-weight: 600; color: var(--slate-600); font-family: var(--font-mono); }
+    .progress-wrap { flex: 1; height: 6px; background: var(--slate-100); border-radius: 999px; overflow: hidden; max-width: 120px; }
+    .progress-bar { height: 100%; border-radius: 999px; transition: width 0.2s; }
+    .progress-bar.open { background: var(--green); }
+    .progress-bar.almost { background: var(--amber); }
+    .progress-bar.full { background: var(--red); }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .empty-state {
+      text-align: center; padding: 48px 24px; color: var(--slate-400);
+      background: var(--white); border: 1px dashed var(--slate-200); border-radius: var(--radius);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(15, 23, 42, 0.45); align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-xl);
+      width: 100%; max-width: 440px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .modal-head { padding: 20px 24px 12px; border-bottom: 1px solid var(--slate-100); }
+    .modal-head h3 { font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--slate-900); }
+    .modal-body { padding: 16px 24px; overflow-y: auto; flex: 1; }
+    .modal-foot { padding: 16px 24px; border-top: 1px solid var(--slate-100); display: flex; justify-content: flex-end; gap: 8px; }
+    .reg-item {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--slate-50); font-size: 13px;
+    }
+    .reg-item:last-child { border-bottom: 0; }
+    .reg-name { font-weight: 600; color: var(--slate-800); }
+    .reg-time { font-size: 11px; color: var(--slate-400); font-family: var(--font-mono); }
+    .modal-empty { text-align: center; color: var(--slate-400); padding: 24px 0; font-size: 13px; }
+
+    @media (max-width: 960px) {
+      .layout { flex-direction: column; }
+      #formPanel { width: 100%; }
+      .stat-grid { grid-template-columns: 1fr; }
+      .page { padding: 20px 16px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <img class="brand-logo" src="../../public/logo.png" alt="SelbstDeutsch" onerror="this.style.background='#ea580c'" />
+      <div class="brand-row">
+        <span class="brand-name">SelbstDeutsch</span>
+        <span class="brand-sep">/</span>
+        <span class="brand-tag">Admin</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span>admin@selbstdeutsch.com</span>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="page-head">
+      <h1>Lịch hỗ trợ học viên</h1>
+      <p>Tạo buổi học trực tuyến với ngày, giờ và link Google Meet. Mỗi lịch tối đa 10 học viên đăng ký.</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="statUpcoming">0</div>
+        <div class="stat-label">Lịch sắp diễn ra</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statRegs">0</div>
+        <div class="stat-label">Tổng đăng ký</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statFull">0</div>
+        <div class="stat-label">Lịch đã đủ chỗ</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside id="formPanel">
+        <h2 class="panel-title" id="formPanelTitle">Tạo lịch học mới</h2>
+        <div class="form-error" id="formError"></div>
+        <form id="sessionForm" novalidate>
+          <div class="field">
+            <label for="title">Nội dung buổi học</label>
+            <input type="text" id="title" placeholder="VD: Luyện nói giao tiếp A2" required />
+          </div>
+          <div class="field">
+            <label for="level">Trình độ</label>
+            <select id="level">
+              <option value="A1">A1</option>
+              <option value="A2">A2</option>
+              <option value="B1">B1</option>
+              <option value="B2">B2</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="date">Ngày học</label>
+            <input type="date" id="date" required />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="startTime">Bắt đầu</label>
+              <input type="time" id="startTime" required />
+            </div>
+            <div class="field">
+              <label for="endTime">Kết thúc</label>
+              <input type="time" id="endTime" required />
+            </div>
+          </div>
+          <div class="field">
+            <label for="meetUrl">Link phòng học</label>
+            <div class="meet-row">
+              <input type="url" id="meetUrl" placeholder="https://meet.google.com/..." />
+              <button type="button" class="btn btn-meet btn-sm" id="genMeetBtn">Tạo Meet</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="note">Ghi chú</label>
+            <textarea id="note" placeholder="Ghi chú cho học viên (tuỳ chọn)"></textarea>
+          </div>
+          <p class="limit-note">Giới hạn đăng ký: <strong>10</strong> học viên</p>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Tạo lịch học</button>
+            <button type="button" class="btn btn-secondary" id="cancelEditBtn" hidden>Hủy sửa</button>
+          </div>
+        </form>
+      </aside>
+
+      <section id="listPanel">
+        <div class="list-toolbar">
+          <input type="search" id="search" placeholder="Tìm theo nội dung..." />
+          <select id="statusFilter">
+            <option value="all">Tất cả</option>
+            <option value="open">Còn chỗ</option>
+            <option value="full">Đã đủ chỗ</option>
+          </select>
+          <button type="button" class="btn btn-ghost restore-btn" id="restoreBtn">Khôi phục dữ liệu mẫu</button>
+        </div>
+        <div class="session-list" id="sessionList"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Delete confirm modal -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Xác nhận xóa</h3>
+      </div>
+      <div class="modal-body">
+        <p id="deleteModalText">Bạn có chắc muốn xóa lịch học này? Tất cả đăng ký liên quan cũng sẽ bị xóa.</p>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary btn-sm" id="deleteCancelBtn">Huỷ</button>
+        <button type="button" class="btn btn-danger btn-sm" id="deleteConfirmBtn">Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registrant list modal -->
+  <div class="modal-overlay" id="regModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="regModalTitle">Danh sách đăng ký</h3>
+      </div>
+      <div class="modal-body" id="regModalBody"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary btn-sm" id="regModalCloseBtn">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "deutschpath_meeting_mockup_v1";
+    const MAX_CAPACITY = 10;
+    const DEMO_USER = { userId: "demo-user", userName: "Nguyen Thang" };
+
+    const WEEKDAY_VI = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    const STATUS_LABEL = { open: "CÒN CHỖ", almost: "SẮP ĐẦY", full: "ĐÃ ĐỦ CHỖ" };
+
+    let store = null;
+    let editingId = null;
+    let pendingDeleteId = null;
+
+    function loadStore() {
+      return ensureStore();
+    }
+
+    function saveStore(nextStore) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextStore));
+      store = nextStore;
+    }
+
+    function ensureStore() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        const seed = createSeedStore();
+        saveStore(seed);
+        return seed;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        store = parsed;
+        return parsed;
+      } catch {
+        const seed = createSeedStore();
+        saveStore(seed);
+        return seed;
+      }
+    }
+
+    function buildUpcomingSeedDates() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const monday = getMonday(today);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(0, 0, 0, 0);
+
+      const remaining = [];
+      const cursor = new Date(today);
+      while (cursor <= sunday) {
+        remaining.push(localDateStr(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      if (remaining.length === 0) {
+        const fallback = localDateStr(today);
+        return [fallback, fallback, fallback, fallback];
+      }
+
+      const dates = [];
+      for (let i = 0; i < 4; i++) {
+        dates.push(remaining[Math.min(i, remaining.length - 1)]);
+      }
+      return dates;
+    }
+
+    function createSeedStore() {
+      const [d1, d2, d3, d4] = buildUpcomingSeedDates();
+
+      const sessions = [
+        {
+          id: "s1",
+          title: "Testing",
+          level: "A1",
+          date: d1,
+          startTime: "10:00",
+          endTime: "11:00",
+          meetUrl: "https://meet.google.com/abc-defg-hij",
+          note: "Buổi test cơ bản cho học viên A1",
+          createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+        },
+        {
+          id: "s2",
+          title: "Luyện nói giao tiếp",
+          level: "A2",
+          date: d2,
+          startTime: "14:00",
+          endTime: "15:30",
+          meetUrl: "https://meet.google.com/xyz-abcd-efg",
+          note: "Thực hành hội thoại hàng ngày",
+          createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+        },
+        {
+          id: "s3",
+          title: "Giải đáp ngữ pháp A1",
+          level: "A1",
+          date: d3,
+          startTime: "09:00",
+          endTime: "10:00",
+          meetUrl: "https://meet.google.com/full-room-001",
+          note: "Q&A ngữ pháp cơ bản — đã đủ chỗ",
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+        },
+        {
+          id: "s4",
+          title: "Office hours B1",
+          level: "B1",
+          date: d4,
+          startTime: "16:00",
+          endTime: "17:00",
+          meetUrl: "https://meet.google.com/office-b1-hrs",
+          note: "Giờ hỗ trợ trực tuyến cho trình độ B1",
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      const registrations = [];
+      const counts = { s1: 4, s2: 9, s3: 10, s4: 3 };
+      let userIdx = 1;
+
+      for (const [sessionId, count] of Object.entries(counts)) {
+        for (let i = 0; i < count; i++) {
+          registrations.push({
+            id: `reg-${sessionId}-${i + 1}`,
+            sessionId,
+            userId: `seed-user-${userIdx}`,
+            userName: `Học viên ${userIdx}`,
+            registeredAt: new Date(Date.now() - 3600000 * userIdx).toISOString(),
+          });
+          userIdx++;
+        }
+      }
+
+      return { sessions, registrations };
+    }
+
+    function getMonday(refDate) {
+      const d = new Date(refDate);
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function weekKeyFromDate(dateInput) {
+      const date = typeof dateInput === "string"
+        ? new Date(dateInput + "T12:00:00")
+        : new Date(dateInput);
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+    }
+
+    function countForSession(currentStore, sessionId) {
+      return currentStore.registrations.filter((r) => r.sessionId === sessionId).length;
+    }
+
+    function capacityStatus(count) {
+      if (count >= MAX_CAPACITY) return "full";
+      if (count >= 8) return "almost";
+      return "open";
+    }
+
+    function getUserRegistrationThisWeek(currentStore, userId, refDate = new Date()) {
+      const weekKey = weekKeyFromDate(refDate);
+      return currentStore.registrations.find((reg) => {
+        if (reg.userId !== userId) return false;
+        const session = currentStore.sessions.find((s) => s.id === reg.sessionId);
+        if (!session) return false;
+        return weekKeyFromDate(session.date) === weekKey;
+      }) || null;
+    }
+
+    function canRegister(currentStore, sessionId, userId) {
+      const session = currentStore.sessions.find((s) => s.id === sessionId);
+      if (!session) return { ok: false, reason: "missing" };
+      const count = countForSession(currentStore, sessionId);
+      if (count >= MAX_CAPACITY) return { ok: false, reason: "full" };
+      const existing = getUserRegistrationThisWeek(currentStore, userId);
+      if (existing && existing.sessionId !== sessionId) {
+        return { ok: false, reason: "weekly_limit" };
+      }
+      if (existing && existing.sessionId === sessionId) {
+        return { ok: false, reason: "already_registered" };
+      }
+      return { ok: true };
+    }
+
+    function registerUser(currentStore, sessionId) {
+      const check = canRegister(currentStore, sessionId, DEMO_USER.userId);
+      if (!check.ok) return { ok: false, reason: check.reason };
+      const next = {
+        sessions: [...currentStore.sessions],
+        registrations: [
+          ...currentStore.registrations,
+          {
+            id: crypto.randomUUID(),
+            sessionId,
+            userId: DEMO_USER.userId,
+            userName: DEMO_USER.userName,
+            registeredAt: new Date().toISOString(),
+          },
+        ],
+      };
+      return { ok: true, store: next };
+    }
+
+    function cancelRegistration(currentStore, sessionId, userId) {
+      return {
+        sessions: [...currentStore.sessions],
+        registrations: currentStore.registrations.filter(
+          (r) => !(r.sessionId === sessionId && r.userId === userId)
+        ),
+      };
+    }
+
+    function localDateStr(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function todayStr() {
+      return localDateStr(new Date());
+    }
+
+    function formatDateVi(dateStr) {
+      const d = new Date(dateStr + "T12:00:00");
+      return `${WEEKDAY_VI[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    }
+
+    function formatDateTime(iso) {
+      const d = new Date(iso);
+      return d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function showFormError(msg) {
+      const el = document.getElementById("formError");
+      el.textContent = msg;
+      el.classList.add("show");
+    }
+
+    function hideFormError() {
+      document.getElementById("formError").classList.remove("show");
+    }
+
+    function resetForm() {
+      editingId = null;
+      document.getElementById("sessionForm").reset();
+      document.getElementById("formPanelTitle").textContent = "Tạo lịch học mới";
+      document.getElementById("submitBtn").textContent = "Tạo lịch học";
+      document.getElementById("cancelEditBtn").hidden = true;
+      hideFormError();
+    }
+
+    function startEdit(session) {
+      editingId = session.id;
+      document.getElementById("title").value = session.title;
+      document.getElementById("level").value = session.level;
+      document.getElementById("date").value = session.date;
+      document.getElementById("startTime").value = session.startTime;
+      document.getElementById("endTime").value = session.endTime;
+      document.getElementById("meetUrl").value = session.meetUrl;
+      document.getElementById("note").value = session.note || "";
+      document.getElementById("formPanelTitle").textContent = "Sửa lịch học";
+      document.getElementById("submitBtn").textContent = "Lưu";
+      document.getElementById("cancelEditBtn").hidden = false;
+      hideFormError();
+      document.getElementById("formPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function renderAll() {
+      store = loadStore();
+      const today = todayStr();
+      const search = document.getElementById("search").value.trim().toLowerCase();
+      const statusFilter = document.getElementById("statusFilter").value;
+
+      const upcoming = store.sessions.filter((s) => s.date >= today).length;
+      const totalRegs = store.registrations.length;
+      const fullCount = store.sessions.filter((s) => countForSession(store, s.id) >= MAX_CAPACITY).length;
+
+      document.getElementById("statUpcoming").textContent = String(upcoming);
+      document.getElementById("statRegs").textContent = String(totalRegs);
+      document.getElementById("statFull").textContent = String(fullCount);
+
+      let sessions = [...store.sessions].sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.startTime.localeCompare(b.startTime);
+      });
+
+      if (search) {
+        sessions = sessions.filter((s) => s.title.toLowerCase().includes(search));
+      }
+
+      if (statusFilter === "open") {
+        sessions = sessions.filter((s) => countForSession(store, s.id) < MAX_CAPACITY);
+      } else if (statusFilter === "full") {
+        sessions = sessions.filter((s) => countForSession(store, s.id) >= MAX_CAPACITY);
+      }
+
+      const listEl = document.getElementById("sessionList");
+      if (sessions.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">Không có lịch học nào phù hợp.</div>';
+        return;
+      }
+
+      listEl.innerHTML = sessions.map((session) => {
+        const count = countForSession(store, session.id);
+        const status = capacityStatus(count);
+        const pct = Math.min(100, (count / MAX_CAPACITY) * 100);
+        const noteSnippet = session.note
+          ? (session.note.length > 60 ? session.note.slice(0, 60) + "…" : session.note)
+          : "";
+
+        return `
+          <article class="session-row ${status === "full" ? "full" : ""}" data-id="${session.id}">
+            <div class="row-top">
+              <div>
+                <div class="row-date">${formatDateVi(session.date)}</div>
+                <div class="row-title">
+                  ${escapeHtml(session.title)}
+                  <span class="level-badge">${session.level}</span>
+                </div>
+              </div>
+            </div>
+            <div class="row-meta">${session.startTime} – ${session.endTime}</div>
+            ${noteSnippet ? `<div class="row-note">${escapeHtml(noteSnippet)}</div>` : ""}
+            <div class="row-capacity">
+              <span class="status-label ${status}">${STATUS_LABEL[status]}</span>
+              <span class="cap-count">${count}/${MAX_CAPACITY}</span>
+              <div class="progress-wrap">
+                <div class="progress-bar ${status}" style="width:${pct}%"></div>
+              </div>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="btn btn-ghost btn-sm" data-action="regs" data-id="${session.id}">Danh sách (${count})</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="${session.id}">Sửa</button>
+              <button type="button" class="btn btn-ghost btn-sm btn-danger" data-action="delete" data-id="${session.id}">Xóa</button>
+              <a href="${escapeHtml(session.meetUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Mở link meeting</a>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function openRegModal(sessionId) {
+      const session = store.sessions.find((s) => s.id === sessionId);
+      if (!session) return;
+      const regs = store.registrations.filter((r) => r.sessionId === sessionId);
+      document.getElementById("regModalTitle").textContent = `Danh sách đăng ký — ${session.title}`;
+      const body = document.getElementById("regModalBody");
+      if (regs.length === 0) {
+        body.innerHTML = '<div class="modal-empty">Chưa có học viên đăng ký.</div>';
+      } else {
+        body.innerHTML = regs.map((r) => `
+          <div class="reg-item">
+            <span class="reg-name">${escapeHtml(r.userName)}</span>
+            <span class="reg-time">${formatDateTime(r.registeredAt)}</span>
+          </div>
+        `).join("");
+      }
+      document.getElementById("regModal").classList.add("show");
+    }
+
+    function closeRegModal() {
+      document.getElementById("regModal").classList.remove("show");
+    }
+
+    function openDeleteModal(sessionId) {
+      pendingDeleteId = sessionId;
+      const session = store.sessions.find((s) => s.id === sessionId);
+      document.getElementById("deleteModalText").textContent =
+        `Bạn có chắc muốn xóa lịch "${session ? session.title : ""}"? Tất cả đăng ký liên quan cũng sẽ bị xóa.`;
+      document.getElementById("deleteModal").classList.add("show");
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      document.getElementById("deleteModal").classList.remove("show");
+    }
+
+    function confirmDelete() {
+      if (!pendingDeleteId) return;
+      const next = {
+        sessions: store.sessions.filter((s) => s.id !== pendingDeleteId),
+        registrations: store.registrations.filter((r) => r.sessionId !== pendingDeleteId),
+      };
+      saveStore(next);
+      if (editingId === pendingDeleteId) resetForm();
+      closeDeleteModal();
+      renderAll();
+    }
+
+    document.getElementById("sessionForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      hideFormError();
+
+      const title = document.getElementById("title").value.trim();
+      const level = document.getElementById("level").value;
+      const date = document.getElementById("date").value;
+      const startTime = document.getElementById("startTime").value;
+      const endTime = document.getElementById("endTime").value;
+      const meetUrl = document.getElementById("meetUrl").value.trim();
+      const note = document.getElementById("note").value.trim();
+
+      if (!title) {
+        showFormError("Vui lòng nhập nội dung buổi học.");
+        return;
+      }
+      if (!date) {
+        showFormError("Vui lòng chọn ngày học.");
+        return;
+      }
+      if (!startTime || !endTime) {
+        showFormError("Vui lòng nhập giờ bắt đầu và kết thúc.");
+        return;
+      }
+      if (startTime >= endTime) {
+        showFormError("Giờ bắt đầu phải sớm hơn giờ kết thúc.");
+        return;
+      }
+      if (!meetUrl) {
+        showFormError("Vui lòng nhập link phòng học hoặc bấm Tạo Meet.");
+        return;
+      }
+
+      store = loadStore();
+
+      if (editingId) {
+        const idx = store.sessions.findIndex((s) => s.id === editingId);
+        if (idx === -1) {
+          showFormError("Không tìm thấy lịch học cần sửa.");
+          return;
+        }
+        store.sessions[idx] = {
+          ...store.sessions[idx],
+          title, level, date, startTime, endTime, meetUrl, note,
+        };
+      } else {
+        store.sessions.push({
+          id: crypto.randomUUID(),
+          title, level, date, startTime, endTime, meetUrl, note,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      saveStore(store);
+      resetForm();
+      renderAll();
+    });
+
+    document.getElementById("genMeetBtn").addEventListener("click", () => {
+      document.getElementById("meetUrl").value = "https://meet.google.com/abc-defg-hij";
+    });
+
+    document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
+
+    document.getElementById("search").addEventListener("input", renderAll);
+    document.getElementById("statusFilter").addEventListener("change", renderAll);
+
+    document.getElementById("restoreBtn").addEventListener("click", () => {
+      saveStore(createSeedStore());
+      resetForm();
+      renderAll();
+    });
+
+    document.getElementById("sessionList").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      if (action === "edit") {
+        const session = store.sessions.find((s) => s.id === id);
+        if (session) startEdit(session);
+      } else if (action === "delete") {
+        openDeleteModal(id);
+      } else if (action === "regs") {
+        openRegModal(id);
+      }
+    });
+
+    document.getElementById("deleteCancelBtn").addEventListener("click", closeDeleteModal);
+    document.getElementById("deleteConfirmBtn").addEventListener("click", confirmDelete);
+    document.getElementById("regModalCloseBtn").addEventListener("click", closeRegModal);
+
+    document.getElementById("deleteModal").addEventListener("click", (e) => {
+      if (e.target === e.currentTarget) closeDeleteModal();
+    });
+    document.getElementById("regModal").addEventListener("click", (e) => {
+      if (e.target === e.currentTarget) closeRegModal();
+    });
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === STORAGE_KEY) renderAll();
+    });
+
+    store = ensureStore();
+    renderAll();
+  </script>
+</body>
+</html>

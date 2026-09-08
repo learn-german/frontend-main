@@ -206,39 +206,46 @@ export type Database = {
       }
       exercise_sets: {
         Row: {
+          audio_clip_id: string | null
           category: string
           general_instruction: string | null
-          audio_clip_id: string | null
-          transcription: string | null
           id: string
           lesson_id: string
           order_index: number
           status: string
           title: string
+          transcription: string | null
         }
         Insert: {
+          audio_clip_id?: string | null
           category?: string
           general_instruction?: string | null
-          audio_clip_id?: string | null
-          transcription?: string | null
           id?: string
           lesson_id: string
           order_index?: number
           status?: string
           title: string
+          transcription?: string | null
         }
         Update: {
+          audio_clip_id?: string | null
           category?: string
           general_instruction?: string | null
-          audio_clip_id?: string | null
-          transcription?: string | null
           id?: string
           lesson_id?: string
           order_index?: number
           status?: string
           title?: string
+          transcription?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "exercise_sets_audio_clip_id_fkey"
+            columns: ["audio_clip_id"]
+            isOneToOne: false
+            referencedRelation: "listening_clips"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "exercise_sets_lesson_id_fkey"
             columns: ["lesson_id"]
@@ -567,6 +574,99 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_registrations: {
+        Row: {
+          id: string
+          registered_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          registered_at?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          registered_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_registrations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_registrations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sessions_for_learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_time: string
+          id: string
+          level: string
+          meet_url: string
+          note: string | null
+          session_date: string
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_time: string
+          id?: string
+          level: string
+          meet_url: string
+          note?: string | null
+          session_date: string
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_time?: string
+          id?: string
+          level?: string
+          meet_url?: string
+          note?: string | null
+          session_date?: string
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_sessions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1048,6 +1148,42 @@ export type Database = {
           },
         ]
       }
+      meeting_sessions_for_learners: {
+        Row: {
+          created_at: string | null
+          end_time: string | null
+          id: string | null
+          level: string | null
+          note: string | null
+          registration_count: number | null
+          session_date: string | null
+          start_time: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_time?: string | null
+          id?: string | null
+          level?: string | null
+          note?: string | null
+          registration_count?: never
+          session_date?: string | null
+          start_time?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string | null
+          id?: string | null
+          level?: string | null
+          note?: string | null
+          registration_count?: never
+          session_date?: string | null
+          start_time?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       reading_question_groups_public: {
         Row: {
           id: string | null
@@ -1095,7 +1231,12 @@ export type Database = {
     }
     Functions: {
       create_support_ticket: {
-        Args: { p_body: string; p_image_keys?: string[]; p_title: string; p_topic: string }
+        Args: {
+          p_body: string
+          p_image_keys?: string[]
+          p_title: string
+          p_topic: string
+        }
         Returns: {
           code: string
           created_at: string
@@ -1117,6 +1258,22 @@ export type Database = {
         Args: { p_amount: number; p_user_id: string }
         Returns: undefined
       }
+      register_meeting_session: {
+        Args: { p_session_id: string; p_user_id: string }
+        Returns: {
+          registration_id: string
+          registration_registered_at: string
+          registration_session_id: string
+          registration_user_id: string
+          session_date: string
+          session_end_time: string
+          session_level: string
+          session_meet_url: string
+          session_note: string
+          session_start_time: string
+          session_title: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1135,12 +1292,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1164,11 +1321,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1189,11 +1346,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1214,11 +1371,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1231,11 +1388,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

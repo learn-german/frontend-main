@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SelbstDeutsch — Lịch học trực tuyến</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+      --red: #dc2626;
+      --red-dark: #b91c1c;
+      --red-light: #fef2f2;
+      --maroon: #991b1b;
+      --orange: #ea580c;
+      --navy: #0f172a;
+      --navy-mid: #1e293b;
+      --bg: #f8f9fa;
+      --white: #ffffff;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --amber: #f59e0b;
+      --amber-dark: #b45309;
+      --amber-light: #fef3c7;
+      --yellow: #facc15;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --radius: 16px;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--slate-800);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+
+    .flag-stripe { display: flex; height: 4px; }
+    .flag-stripe span:nth-child(1) { width: 40px; background: var(--slate-900); }
+    .flag-stripe span:nth-child(2) { width: 56px; background: var(--red); }
+    .flag-stripe span:nth-child(3) { width: 24px; background: var(--yellow); }
+    .flag-stripe span:nth-child(4) { flex: 1; background: var(--slate-100); }
+
+    header {
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--slate-200);
+      padding: 12px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-logo { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; background: var(--red); }
+    .brand-name { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.025em; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--slate-200);
+      background: var(--white); display: flex; align-items: center; justify-content: center; color: var(--slate-500);
+    }
+    .user-block {
+      display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 5px;
+      border-radius: 999px; border: 1px solid var(--slate-200); background: var(--white);
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%; background: var(--slate-800); color: white;
+      font-family: var(--font-display); font-weight: 700; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .user-name { font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--slate-800); }
+
+    .app-shell { display: flex; min-height: calc(100vh - 69px); }
+    aside {
+      width: 248px; flex-shrink: 0; background: var(--white); border-right: 1px solid var(--slate-200);
+      padding: 16px 0 16px 16px; display: flex; flex-direction: column;
+      position: sticky; top: 69px; height: calc(100vh - 69px);
+    }
+    .nav-links { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+      border: none; background: transparent; text-align: left; width: 100%;
+      border-radius: 10px 0 0 10px; transition: background 0.15s;
+    }
+    .nav-link svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--slate-400); stroke-width: 2; }
+    .nav-link .label { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--slate-600); line-height: 1.2; }
+    .nav-link .desc { font-size: 10px; color: var(--slate-400); margin-top: 1px; }
+    .nav-link:hover { background: var(--slate-50); }
+    .nav-link.active { background: var(--red-light); border-right: 3px solid var(--red); padding-right: 17px; }
+    .nav-link.active svg { color: var(--red); }
+    .nav-link.active .label { color: var(--red); }
+    .nav-link.active .desc { color: #ef4444; }
+
+    .sidebar-teaser {
+      margin: 12px 16px 0 0; background: var(--slate-50); border: 1px solid var(--slate-200);
+      border-radius: 12px; padding: 14px; position: relative; overflow: hidden;
+    }
+    .sidebar-teaser h4 { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: var(--slate-600); text-transform: uppercase; letter-spacing: 0.04em; }
+    .sidebar-teaser p { font-size: 10px; color: var(--slate-500); margin-top: 4px; line-height: 1.45; }
+    .sidebar-teaser .teaser-pill {
+      margin-top: 8px; display: inline-block; font-size: 10px; font-weight: 600;
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: 999px; padding: 4px 10px;
+      font-family: var(--font-mono); color: var(--slate-700);
+    }
+    .sidebar-teaser.empty { background: #f0f9ff; border-color: #bae6fd; }
+    .sidebar-teaser.empty h4 { color: #0369a1; }
+
+    main { flex: 1; padding: 14px 20px 28px; overflow-y: auto; min-width: 0; }
+    .content-stack { display: flex; flex-direction: column; gap: 14px; }
+
+    .welcome-banner {
+      background: linear-gradient(120deg, #0f172a 0%, #1a2744 45%, #2a1f4e 100%);
+      border-radius: var(--radius); padding: 18px 22px; color: white;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      position: relative; overflow: hidden;
+    }
+    .welcome-banner::before {
+      content: ""; position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .welcome-text { position: relative; z-index: 1; }
+    .welcome-tag { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--yellow); text-transform: uppercase; letter-spacing: 0.05em; }
+    .welcome-title { font-family: var(--font-display); font-size: 24px; font-weight: 900; margin-top: 4px; line-height: 1.25; letter-spacing: -0.025em; }
+    .welcome-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; max-width: 440px; }
+
+    #weeklyMeetingCard {
+      position: relative; z-index: 1; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px; min-width: 240px;
+    }
+    .wm-icon {
+      width: 40px; height: 40px; border-radius: 10px; background: rgba(59, 130, 246, 0.2);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .wm-icon svg { width: 20px; height: 20px; color: #93c5fd; }
+    .wm-body { flex: 1; min-width: 0; }
+    .wm-label { font-family: var(--font-display); font-size: 10px; font-weight: 600; color: #94a3b8; letter-spacing: 0.04em; display: block; }
+    .wm-pill {
+      display: inline-block; margin-top: 4px; font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 999px;
+      padding: 3px 10px; color: white;
+    }
+    .wm-empty-text { font-size: 12px; color: #cbd5e1; margin-top: 2px; }
+    .wm-hint { font-size: 10px; color: var(--yellow); margin-top: 4px; display: block; }
+    .btn-join {
+      font-family: var(--font-display); font-size: 12px; font-weight: 700; color: white;
+      background: var(--red); border: none; border-radius: 8px; padding: 8px 14px; white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .btn-join:hover { background: var(--red-dark); }
+
+    .page-head { margin-top: 4px; }
+    .page-eyebrow { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: 0.08em; }
+    .page-title { font-family: var(--font-display); font-size: 20px; font-weight: 900; color: var(--slate-900); margin-top: 4px; }
+    .page-desc { font-size: 13px; color: var(--slate-500); margin-top: 6px; max-width: 560px; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .summary-card {
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow);
+    }
+    .summary-value { font-family: var(--font-display); font-size: 28px; font-weight: 900; color: var(--slate-900); }
+    .summary-label { font-size: 12px; color: var(--slate-500); margin-top: 4px; }
+
+    .list-toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 12px 16px; box-shadow: var(--shadow);
+    }
+    .list-toolbar select {
+      padding: 8px 12px; font-size: 14px; border: 1px solid var(--slate-200);
+      border-radius: 10px; background: var(--white); outline: 0;
+    }
+
+    .session-list { display: flex; flex-direction: column; gap: 12px; }
+    .session-card {
+      background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow);
+      display: grid; grid-template-columns: 72px 1fr 180px 160px; gap: 20px; align-items: center;
+    }
+    .session-card.full { opacity: 0.55; }
+    .session-card.registered { border-color: #fecaca; background: linear-gradient(90deg, #fff 0%, #fef2f2 100%); }
+
+    .date-block { text-align: center; }
+    .date-weekday { font-family: var(--font-display); font-size: 10px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: 0.04em; }
+    .date-day { font-family: var(--font-display); font-size: 32px; font-weight: 900; color: var(--slate-900); line-height: 1; margin: 2px 0; }
+    .date-month { font-size: 11px; color: var(--slate-500); }
+
+    .session-info .session-title {
+      font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--slate-900);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .level-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--slate-100); color: var(--slate-600); border: 1px solid var(--slate-200);
+    }
+    .registered-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--red-light); color: var(--red); border: 1px solid #fecaca;
+    }
+    .session-note { font-size: 12px; color: var(--slate-500); margin-top: 6px; font-style: italic; }
+    .session-time { font-size: 13px; color: var(--slate-600); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+    .session-time svg { width: 14px; height: 14px; color: var(--slate-400); flex-shrink: 0; }
+
+    .capacity-col { min-width: 0; }
+    .cap-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .status-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status-label.open { color: var(--green); }
+    .status-label.almost { color: var(--amber-dark); }
+    .status-label.full { color: var(--red); }
+    .cap-count { font-size: 11px; font-weight: 600; color: var(--slate-600); font-family: var(--font-mono); }
+    .progress-wrap { height: 6px; background: var(--slate-100); border-radius: 999px; overflow: hidden; }
+    .progress-bar { height: 100%; border-radius: 999px; transition: width 0.2s; }
+    .progress-bar.open { background: var(--green); }
+    .progress-bar.almost { background: var(--amber); }
+    .progress-bar.full { background: var(--red); }
+    .remaining-text { font-size: 11px; color: var(--slate-500); margin-top: 6px; }
+
+    .actions-col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font-family: var(--font-display); font-weight: 600; font-size: 13px;
+      border-radius: 10px; padding: 9px 14px; border: 1px solid transparent; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--red); color: var(--white); }
+    .btn-primary:hover:not(:disabled) { background: var(--red-dark); }
+    .btn-secondary { background: var(--white); color: var(--slate-700); border-color: var(--slate-200); }
+    .btn-secondary:hover:not(:disabled) { background: var(--slate-50); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .action-caption { font-size: 10px; color: var(--slate-400); text-align: center; margin-top: 2px; }
+
+    .empty-state {
+      text-align: center; padding: 48px 24px; color: var(--slate-400);
+      background: var(--white); border: 1px dashed var(--slate-200); border-radius: var(--radius);
+    }
+
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--slate-900); color: white; font-size: 13px; font-weight: 600;
+      padding: 12px 20px; border-radius: 10px; box-shadow: var(--shadow);
+      opacity: 0; transition: transform 0.25s, opacity 0.25s; z-index: 200; pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    @media (max-width: 960px) {
+      aside { display: none; }
+      .session-card { grid-template-columns: 1fr; gap: 12px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .welcome-banner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="flag-stripe"><span></span><span></span><span></span><span></span></div>
+
+  <header>
+    <div class="brand">
+      <img class="brand-logo" src="../../public/logo.png" alt="SelbstDeutsch" onerror="this.style.background='#dc2626'" />
+      <span class="brand-name">SelbstDeutsch</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" aria-label="Thông báo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      </button>
+      <div class="user-block">
+        <div class="avatar">N</div>
+        <span class="user-name">Nguyen Thang</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside>
+      <nav class="nav-links">
+        <button class="nav-link" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          <div><div class="label">Dashboard</div><div class="desc">Bảng tổng quan</div></div>
+        </button>
+        <button class="nav-link" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+          <div><div class="label">Lộ trình</div><div class="desc">Sơ đồ khóa học</div></div>
+        </button>
+        <button class="nav-link" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          <div><div class="label">Bài học</div><div class="desc">Nội dung học tập</div></div>
+        </button>
+        <button class="nav-link active" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <div><div class="label">Lịch học trực tuyến</div><div class="desc">Đăng ký buổi hỗ trợ</div></div>
+        </button>
+        <button class="nav-link" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>
+          <div><div class="label">Gói học</div><div class="desc">Xem gói &amp; quyền lợi</div></div>
+        </button>
+        <button class="nav-link" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          <div><div class="label">Bảng xếp hạng</div><div class="desc">Thành tích học tập</div></div>
+        </button>
+        <button class="nav-link" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          <div><div class="label">Trợ giúp</div><div class="desc">Giải đáp thắc mắc</div></div>
+        </button>
+      </nav>
+
+      <div class="sidebar-teaser" id="sidebarTeaser"></div>
+    </aside>
+
+    <main>
+      <div class="content-stack">
+
+        <section class="welcome-banner">
+          <div class="welcome-text">
+            <p class="welcome-tag">CHÀO NGÀY MỚI!</p>
+            <h1 class="welcome-title">Hallo, Nguyen Thang!</h1>
+            <p class="welcome-sub">Đăng ký buổi hỗ trợ trực tuyến hàng tuần — tối đa 1 lịch mỗi tuần, mỗi buổi tối đa 10 học viên.</p>
+          </div>
+          <div id="weeklyMeetingCard"></div>
+        </section>
+
+        <div class="page-head">
+          <p class="page-eyebrow">HỖ TRỢ TRỰC TUYẾN HÀNG TUẦN</p>
+          <h2 class="page-title">Chọn lịch hỗ trợ trực tuyến</h2>
+          <p class="page-desc">Chọn một buổi học phù hợp với lịch của bạn. Sau khi đăng ký, bạn sẽ nhận link Google Meet để tham gia.</p>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-value" id="sumAvailable">0</div>
+            <div class="summary-label">Lịch còn chỗ trống</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-value" id="sumRegistered">0</div>
+            <div class="summary-label">Lịch đã đăng ký tuần này</div>
+          </div>
+        </div>
+
+        <div class="list-toolbar">
+          <select id="userFilter">
+            <option value="all">Tất cả lịch</option>
+            <option value="open">Còn chỗ</option>
+            <option value="registered">Đã đăng ký</option>
+          </select>
+        </div>
+
+        <div class="session-list" id="sessionList"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const STORAGE_KEY = "deutschpath_meeting_mockup_v1";
+    const MAX_CAPACITY = 10;
+    const DEMO_USER = { userId: "demo-user", userName: "Nguyen Thang" };
+
+    const WEEKDAY_VI = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    const STATUS_LABEL = { open: "CÒN CHỖ", almost: "SẮP ĐẦY", full: "ĐÃ ĐỦ CHỖ" };
+
+    let store = null;
+    let toastTimer = null;
+
+    function loadStore() {
+      return ensureStore();
+    }
+
+    function saveStore(nextStore) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextStore));
+      store = nextStore;
+    }
+
+    function ensureStore() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        const seed = createSeedStore();
+        saveStore(seed);
+        return seed;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        store = parsed;
+        return parsed;
+      } catch {
+        const seed = createSeedStore();
+        saveStore(seed);
+        return seed;
+      }
+    }
+
+    function buildUpcomingSeedDates() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const monday = getMonday(today);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(0, 0, 0, 0);
+
+      const remaining = [];
+      const cursor = new Date(today);
+      while (cursor <= sunday) {
+        remaining.push(localDateStr(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      if (remaining.length === 0) {
+        const fallback = localDateStr(today);
+        return [fallback, fallback, fallback, fallback];
+      }
+
+      const dates = [];
+      for (let i = 0; i < 4; i++) {
+        dates.push(remaining[Math.min(i, remaining.length - 1)]);
+      }
+      return dates;
+    }
+
+    function createSeedStore() {
+      const [d1, d2, d3, d4] = buildUpcomingSeedDates();
+
+      const sessions = [
+        {
+          id: "s1",
+          title: "Testing",
+          level: "A1",
+          date: d1,
+          startTime: "10:00",
+          endTime: "11:00",
+          meetUrl: "https://meet.google.com/abc-defg-hij",
+          note: "Buổi test cơ bản cho học viên A1",
+          createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+        },
+        {
+          id: "s2",
+          title: "Luyện nói giao tiếp",
+          level: "A2",
+          date: d2,
+          startTime: "14:00",
+          endTime: "15:30",
+          meetUrl: "https://meet.google.com/xyz-abcd-efg",
+          note: "Thực hành hội thoại hàng ngày",
+          createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+        },
+        {
+          id: "s3",
+          title: "Giải đáp ngữ pháp A1",
+          level: "A1",
+          date: d3,
+          startTime: "09:00",
+          endTime: "10:00",
+          meetUrl: "https://meet.google.com/full-room-001",
+          note: "Q&A ngữ pháp cơ bản — đã đủ chỗ",
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+        },
+        {
+          id: "s4",
+          title: "Office hours B1",
+          level: "B1",
+          date: d4,
+          startTime: "16:00",
+          endTime: "17:00",
+          meetUrl: "https://meet.google.com/office-b1-hrs",
+          note: "Giờ hỗ trợ trực tuyến cho trình độ B1",
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      const registrations = [];
+      const counts = { s1: 4, s2: 9, s3: 10, s4: 3 };
+      let userIdx = 1;
+
+      for (const [sessionId, count] of Object.entries(counts)) {
+        for (let i = 0; i < count; i++) {
+          registrations.push({
+            id: `reg-${sessionId}-${i + 1}`,
+            sessionId,
+            userId: `seed-user-${userIdx}`,
+            userName: `Học viên ${userIdx}`,
+            registeredAt: new Date(Date.now() - 3600000 * userIdx).toISOString(),
+          });
+          userIdx++;
+        }
+      }
+
+      return { sessions, registrations };
+    }
+
+    function getMonday(refDate) {
+      const d = new Date(refDate);
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function weekKeyFromDate(dateInput) {
+      const date = typeof dateInput === "string"
+        ? new Date(dateInput + "T12:00:00")
+        : new Date(dateInput);
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+    }
+
+    function countForSession(currentStore, sessionId) {
+      return currentStore.registrations.filter((r) => r.sessionId === sessionId).length;
+    }
+
+    function capacityStatus(count) {
+      if (count >= MAX_CAPACITY) return "full";
+      if (count >= 8) return "almost";
+      return "open";
+    }
+
+    function getUserRegistrationThisWeek(currentStore, userId, refDate = new Date()) {
+      const weekKey = weekKeyFromDate(refDate);
+      return currentStore.registrations.find((reg) => {
+        if (reg.userId !== userId) return false;
+        const session = currentStore.sessions.find((s) => s.id === reg.sessionId);
+        if (!session) return false;
+        return weekKeyFromDate(session.date) === weekKey;
+      }) || null;
+    }
+
+    function canRegister(currentStore, sessionId, userId) {
+      const session = currentStore.sessions.find((s) => s.id === sessionId);
+      if (!session) return { ok: false, reason: "missing" };
+      const count = countForSession(currentStore, sessionId);
+      if (count >= MAX_CAPACITY) return { ok: false, reason: "full" };
+      const existing = getUserRegistrationThisWeek(currentStore, userId);
+      if (existing && existing.sessionId !== sessionId) {
+        return { ok: false, reason: "weekly_limit" };
+      }
+      if (existing && existing.sessionId === sessionId) {
+        return { ok: false, reason: "already_registered" };
+      }
+      return { ok: true };
+    }
+
+    function registerUser(currentStore, sessionId) {
+      const check = canRegister(currentStore, sessionId, DEMO_USER.userId);
+      if (!check.ok) return { ok: false, reason: check.reason };
+      const next = {
+        sessions: [...currentStore.sessions],
+        registrations: [
+          ...currentStore.registrations,
+          {
+            id: crypto.randomUUID(),
+            sessionId,
+            userId: DEMO_USER.userId,
+            userName: DEMO_USER.userName,
+            registeredAt: new Date().toISOString(),
+          },
+        ],
+      };
+      return { ok: true, store: next };
+    }
+
+    function cancelRegistration(currentStore, sessionId, userId) {
+      return {
+        sessions: [...currentStore.sessions],
+        registrations: currentStore.registrations.filter(
+          (r) => !(r.sessionId === sessionId && r.userId === userId)
+        ),
+      };
+    }
+
+    function localDateStr(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function todayStr() {
+      return localDateStr(new Date());
+    }
+
+    function formatDateVi(dateStr) {
+      const d = new Date(dateStr + "T12:00:00");
+      return `${WEEKDAY_VI[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    }
+
+    function formatDateBlock(dateStr) {
+      const d = new Date(dateStr + "T12:00:00");
+      const weekdayShort = WEEKDAY_VI[d.getDay()].replace("Thứ ", "THỨ ").replace("Chủ nhật", "CN");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      return {
+        weekday: weekdayShort,
+        day: d.getDate(),
+        monthYear: `tháng ${month}, ${d.getFullYear()}`,
+      };
+    }
+
+    function formatPillDateTime(dateStr, startTime) {
+      const d = new Date(dateStr + "T12:00:00");
+      return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} • ${startTime}`;
+    }
+
+    function isUserRegistered(currentStore, sessionId, userId) {
+      return currentStore.registrations.some(
+        (r) => r.userId === userId && r.sessionId === sessionId
+      );
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+    }
+
+    function openMeetUrl(url) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
+      } catch {
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+
+    function renderWeeklyCard(weekReg, session) {
+      const card = document.getElementById("weeklyMeetingCard");
+      if (weekReg && session) {
+        const pill = formatPillDateTime(session.date, session.startTime);
+        card.innerHTML = `
+          <div class="wm-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="wm-body">
+            <span class="wm-label">WEEKLY MEETING</span>
+            <span class="wm-pill">${escapeHtml(pill)}</span>
+          </div>
+          <button type="button" class="btn-join" data-action="join-banner" data-url="${escapeHtml(session.meetUrl)}">Tham gia →</button>
+        `;
+      } else {
+        card.innerHTML = `
+          <div class="wm-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="wm-body">
+            <span class="wm-label">WEEKLY MEETING</span>
+            <span class="wm-empty-text">Chưa đăng ký lịch tuần này</span>
+            <span class="wm-hint">Chọn lịch bên dưới</span>
+          </div>
+        `;
+      }
+    }
+
+    function renderSidebarTeaser(weekReg, session) {
+      const el = document.getElementById("sidebarTeaser");
+      if (weekReg && session) {
+        const pill = formatPillDateTime(session.date, session.startTime);
+        el.className = "sidebar-teaser";
+        el.innerHTML = `
+          <h4>Buổi học tuần này</h4>
+          <p>${escapeHtml(session.title)}</p>
+          <span class="teaser-pill">${escapeHtml(pill)}</span>
+        `;
+      } else {
+        el.className = "sidebar-teaser empty";
+        el.innerHTML = `
+          <h4>Chưa có lịch tuần này</h4>
+          <p>Đăng ký một buổi hỗ trợ trực tuyến bên dưới.</p>
+        `;
+      }
+    }
+
+    function renderSessionActions(session, count, userRegistered, weekReg) {
+      if (userRegistered) {
+        return `
+          <button type="button" class="btn btn-primary" data-action="join" data-id="${session.id}">Vào phòng học</button>
+          <button type="button" class="btn btn-secondary" data-action="cancel" data-id="${session.id}">Hủy đăng ký</button>
+        `;
+      }
+      if (count >= MAX_CAPACITY) {
+        return `
+          <button type="button" class="btn btn-primary" disabled>Đã đủ 10/10</button>
+          <p class="action-caption">Lịch đã đóng đăng ký</p>
+        `;
+      }
+      if (weekReg && weekReg.sessionId !== session.id) {
+        return `
+          <button type="button" class="btn btn-primary" disabled>Đăng ký lịch này</button>
+          <p class="action-caption">Bạn đã dùng slot tuần này</p>
+        `;
+      }
+      return `
+        <button type="button" class="btn btn-primary" data-action="register" data-id="${session.id}">Đăng ký lịch này</button>
+      `;
+    }
+
+    function renderAll() {
+      store = loadStore();
+      const today = todayStr();
+      const filter = document.getElementById("userFilter").value;
+      const weekReg = getUserRegistrationThisWeek(store, DEMO_USER.userId);
+      const weekSession = weekReg
+        ? store.sessions.find((s) => s.id === weekReg.sessionId)
+        : null;
+
+      renderWeeklyCard(weekReg, weekSession);
+      renderSidebarTeaser(weekReg, weekSession);
+
+      const upcoming = store.sessions.filter((s) => s.date >= today);
+      const availableCount = upcoming.filter((s) => countForSession(store, s.id) < MAX_CAPACITY).length;
+      const registeredCount = weekReg ? 1 : 0;
+
+      document.getElementById("sumAvailable").textContent = String(availableCount);
+      document.getElementById("sumRegistered").textContent = String(registeredCount);
+
+      let sessions = [...upcoming].sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.startTime.localeCompare(b.startTime);
+      });
+
+      if (filter === "open") {
+        sessions = sessions.filter((s) => countForSession(store, s.id) < MAX_CAPACITY);
+      } else if (filter === "registered") {
+        sessions = sessions.filter((s) => isUserRegistered(store, s.id, DEMO_USER.userId));
+      }
+
+      const listEl = document.getElementById("sessionList");
+      if (sessions.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">Không có lịch học nào phù hợp.</div>';
+        return;
+      }
+
+      listEl.innerHTML = sessions.map((session) => {
+        const count = countForSession(store, session.id);
+        const status = capacityStatus(count);
+        const pct = Math.min(100, (count / MAX_CAPACITY) * 100);
+        const remaining = MAX_CAPACITY - count;
+        const userRegistered = isUserRegistered(store, session.id, DEMO_USER.userId);
+        const dateBlock = formatDateBlock(session.date);
+        const cardClass = [
+          "session-card",
+          status === "full" ? "full" : "",
+          userRegistered ? "registered" : "",
+        ].filter(Boolean).join(" ");
+
+        return `
+          <article class="${cardClass}" data-id="${session.id}">
+            <div class="date-block">
+              <div class="date-weekday">${escapeHtml(dateBlock.weekday)}</div>
+              <div class="date-day">${dateBlock.day}</div>
+              <div class="date-month">${escapeHtml(dateBlock.monthYear)}</div>
+            </div>
+            <div class="session-info">
+              <div class="session-title">
+                ${escapeHtml(session.title)}
+                <span class="level-badge">${escapeHtml(session.level)}</span>
+                ${userRegistered ? '<span class="registered-badge">ĐÃ ĐĂNG KÝ</span>' : ""}
+              </div>
+              ${session.note ? `<div class="session-note">${escapeHtml(session.note)}</div>` : ""}
+              <div class="session-time">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                ${session.startTime}–${session.endTime} · Online qua Google Meet
+              </div>
+            </div>
+            <div class="capacity-col">
+              <div class="cap-row">
+                <span class="status-label ${status}">${STATUS_LABEL[status]}</span>
+                <span class="cap-count">${count}/${MAX_CAPACITY}</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-bar ${status}" style="width:${pct}%"></div>
+              </div>
+              <div class="remaining-text">${remaining > 0 ? `${remaining} chỗ còn lại` : "Không còn chỗ trống"}</div>
+            </div>
+            <div class="actions-col">
+              ${renderSessionActions(session, count, userRegistered, weekReg)}
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    document.getElementById("userFilter").addEventListener("change", renderAll);
+
+    document.getElementById("weeklyMeetingCard").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action='join-banner']");
+      if (!btn) return;
+      openMeetUrl(btn.dataset.url);
+    });
+
+    document.getElementById("sessionList").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const sessionId = btn.dataset.id;
+      store = loadStore();
+
+      if (action === "register") {
+        const result = registerUser(store, sessionId);
+        if (!result.ok) return;
+        saveStore(result.store);
+        showToast("Đăng ký thành công");
+        renderAll();
+      } else if (action === "cancel") {
+        const next = cancelRegistration(store, sessionId, DEMO_USER.userId);
+        saveStore(next);
+        showToast("Đã hủy đăng ký");
+        renderAll();
+      } else if (action === "join") {
+        const session = store.sessions.find((s) => s.id === sessionId);
+        if (session && isUserRegistered(store, sessionId, DEMO_USER.userId)) {
+          openMeetUrl(session.meetUrl);
+        }
+      }
+    });
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === STORAGE_KEY) renderAll();
+    });
+
+    store = ensureStore();
+    renderAll();
+  </script>
+</body>
+</html>
