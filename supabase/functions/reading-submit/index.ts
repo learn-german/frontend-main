@@ -76,6 +76,20 @@ serve(async (req) => {
       });
     }
 
+    const recordLearningActivity = async () => {
+      const { data: streakVal, error: streakErr } = await supabase.rpc(
+        "record_learning_activity",
+        { p_user_id: user.id },
+      );
+      if (!streakErr && typeof streakVal === "number") {
+        return streakVal;
+      }
+      if (streakErr) {
+        console.error("record_learning_activity failed", streakErr);
+      }
+      return undefined;
+    };
+
     const answers = projectAnswers(groups, rawAnswers);
     const { total, correct, itemResults } = computeReadingScore(groups, answers);
 
@@ -91,6 +105,7 @@ serve(async (req) => {
     // double-click/retry như grammar-submit.
     if (existingRow && existingRow.last_submission_id === submission_id) {
       const revealedNow = existingRow.revealed;
+      const newStreak = await recordLearningActivity();
       return new Response(
         JSON.stringify({
           score: existingRow.best_score,
@@ -103,6 +118,7 @@ serve(async (req) => {
           xpEarned: 0,
           lessonQuizScore: 0,
           itemResults,
+          newStreak,
           ...(revealedNow
             ? {
                 correctAnswers: deriveCorrectAnswers(groups),
@@ -211,6 +227,8 @@ serve(async (req) => {
       { onConflict: "user_id,lesson_id,category" },
     );
 
+    const newStreak = await recordLearningActivity();
+
     return new Response(
       JSON.stringify({
         score: update.score,
@@ -223,6 +241,7 @@ serve(async (req) => {
         xpEarned: update.xpEarned + (lessonJustCompleted ? XP_REWARD : 0),
         lessonQuizScore,
         itemResults,
+        newStreak,
         ...(update.revealed
           ? {
               correctAnswers: deriveCorrectAnswers(groups),
