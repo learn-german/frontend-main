@@ -35,13 +35,15 @@
 
 **Interfaces:**
 - Consumes: existing `Button`, existing `openMeeting(url: string | null): void`
-- Produces: `CONTACT_FANPAGE_URL` constant; buttons visible when banners render
+- Produces: `CONTACT_FANPAGE_URL` constant; local `ContactFanpageButton`; buttons visible when banners render
 
-- [ ] **Step 1: Impact analysis**
+- [x] **Step 1: Impact analysis**
 
 Run GitNexus impact on `DashboardPage` (upstream). Report blast radius. If HIGH/CRITICAL, stop and warn user.
 
-- [ ] **Step 2: Add URL constant**
+> **Done:** GitNexus MCP unavailable; manual grep fallback — sole caller `App.tsx`, blast radius LOW.
+
+- [x] **Step 2: Add URL constant**
 
 Insert after the existing helpers near the top of `DashboardPage.tsx` (after `openMeeting` / before `NoData`):
 
@@ -50,7 +52,7 @@ const CONTACT_FANPAGE_URL =
   "https://web.facebook.com/share/1C9YswkzTN/?mibextid=wwXIfr&_rdc=1&_rdr";
 ```
 
-- [ ] **Step 3: Update expired banner**
+- [x] **Step 3: Update expired banner**
 
 Replace the expired banner block so text is `flex-1` and a primary sm button sits on the right:
 
@@ -62,19 +64,12 @@ Replace the expired banner block so text is `flex-1` and a primary sm button sit
       <p className="text-sm font-display font-bold text-red-900">Gói học đã hết hạn</p>
       <p className="text-xs text-red-700 mt-0.5">Toàn bộ bài học đang bị khoá. Liên hệ admin để gia hạn — tiến trình của bạn vẫn được giữ.</p>
     </div>
-    <Button
-      size="sm"
-      className="shrink-0"
-      type="button"
-      onClick={() => openMeeting(CONTACT_FANPAGE_URL)}
-    >
-      Liên hệ
-    </Button>
+    <ContactFanpageButton />
   </div>
 )}
 ```
 
-- [ ] **Step 4: Update Trial banner**
+- [x] **Step 4: Update Trial banner**
 
 Same pattern for the amber banner:
 
@@ -86,19 +81,14 @@ Same pattern for the amber banner:
       <p className="text-sm font-display font-bold text-amber-900">Bạn đang dùng gói Trial</p>
       <p className="text-xs text-amber-700 mt-0.5">Chỉ bài học đầu tiên khả dụng. Liên hệ admin để nâng cấp gói và mở toàn bộ nội dung.</p>
     </div>
-    <Button
-      size="sm"
-      className="shrink-0"
-      type="button"
-      onClick={() => openMeeting(CONTACT_FANPAGE_URL)}
-    >
-      Liên hệ
-    </Button>
+    <ContactFanpageButton />
   </div>
 )}
 ```
 
-- [ ] **Step 5: Lint**
+> **Human Decision B (override Steps 3–4):** extracted light local `ContactFanpageButton` in `DashboardPage.tsx` instead of inline duplicated `Button` JSX in each banner. Opens via `openMeeting` on button click (not `<a>` wrapping `Button`).
+
+- [x] **Step 5: Lint**
 
 Run: `npm run lint`  
 Expected: exit 0 (no new TypeScript errors).
@@ -109,7 +99,7 @@ Expected: exit 0 (no new TypeScript errors).
 - Expired user → red banner + same button/URL  
 - Active paid/admin → neither banner  
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Run `detect_changes()` then:
 
@@ -132,6 +122,6 @@ EOF
 | Button on expired banner | Task 1 Step 3 |
 | Fanpage URL | Task 1 Step 2 |
 | New tab / noopener | via `openMeeting` |
-| DesignSystem Button primary/sm | Task 1 Steps 3–4 |
+| DesignSystem Button primary/sm via `ContactFanpageButton` | Task 1 Steps 3–4 (Decision B) |
 | Only `DashboardPage.tsx` | File Structure |
 | Manual + lint | Steps 5–6 |
