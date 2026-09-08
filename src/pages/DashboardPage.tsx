@@ -77,6 +77,20 @@ const openMeeting = (url: string | null) => {
   }
 };
 
+const CONTACT_FANPAGE_URL =
+  "https://web.facebook.com/share/1C9YswkzTN/?mibextid=wwXIfr&_rdc=1&_rdr";
+
+const ContactFanpageButton: React.FC = () => (
+  <Button
+    size="sm"
+    className="shrink-0"
+    type="button"
+    onClick={() => openMeeting(CONTACT_FANPAGE_URL)}
+  >
+    Liên hệ
+  </Button>
+);
+
 const NoData: React.FC<{ size?: "sm" | "md" }> = ({ size = "md" }) => (
   <span
     className="inline-flex items-center gap-0.5 text-slate-400"
@@ -206,20 +220,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {isExpiredRestricted && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 mb-4">
           <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-display font-bold text-red-900">Gói học đã hết hạn</p>
             <p className="text-xs text-red-700 mt-0.5">Toàn bộ bài học đang bị khoá. Liên hệ admin để gia hạn — tiến trình của bạn vẫn được giữ.</p>
           </div>
+          <ContactFanpageButton />
         </div>
       )}
 
       {isTrialRestricted && !isExpiredRestricted && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 mb-4">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-display font-bold text-amber-900">Bạn đang dùng gói Trial</p>
             <p className="text-xs text-amber-700 mt-0.5">Chỉ bài học đầu tiên khả dụng. Liên hệ admin để nâng cấp gói và mở toàn bộ nội dung.</p>
           </div>
+          <ContactFanpageButton />
         </div>
       )}
 
