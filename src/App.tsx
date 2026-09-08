@@ -63,7 +63,7 @@ export default function App() {
   const { modules, loading: modulesLoading } = useModules(user?.id ?? null);
   const { positions } = useLessonPositions(user?.id ?? null);
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
-  const { stats, statsLoading, applyLessonCompleteReward, applyQuizResult, lessonIdsCompletedToday } = useUserStats(user?.id ?? null, flatLessons);
+  const { stats, statsLoading, applyLessonCompleteReward, applyQuizResult, lessonIdsCompletedToday, weekActivity } = useUserStats(user?.id ?? null, flatLessons);
   const isTrial = user ? isTrialAccess(user.role, user.subscriptionEndDate) : false;
   const isExpired = user ? isExpiredAccess(user.role, user.subscriptionEndDate) : false;
   const roadmapUnlockLevels = useMemo<Level[]>(
@@ -462,8 +462,8 @@ export default function App() {
 
   // Triggers after completing a quiz (XP is awarded server-side by quiz-submit EF).
   // Records the category-specific score; completedLessons re-derives automatically.
-  const handleQuizFinished = (scorePercentage: number, xpEarned: number) => {
-    applyQuizResult(selectedLessonId, activeExerciseCategory, scorePercentage, xpEarned);
+  const handleQuizFinished = (scorePercentage: number, xpEarned: number, newStreak?: number) => {
+    applyQuizResult(selectedLessonId, activeExerciseCategory, scorePercentage, xpEarned, newStreak);
   };
 
   // Find active Lesson detail item — no fallback to flatLessons[0]: if the
@@ -552,6 +552,8 @@ export default function App() {
             currentLessonTitle={orderedLessons.find(l => lessonStatuses[l.id] === "current")?.titleVi}
             userRole={user.role}
             subscriptionEndDate={user.subscriptionEndDate}
+            streak={stats.streak}
+            weekActivity={weekActivity}
           />
         )}
 

@@ -41,7 +41,7 @@ interface QuizSetListPageProps {
   lesson: Lesson;
   category: "nghe" | "doc";
   onBackToLesson: () => void;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
 }
 
 interface QuizResult {
@@ -58,6 +58,7 @@ interface QuizResult {
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
   classificationResults: Record<string, boolean[]>;
+  newStreak?: number;
   correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
   transcription?: string | null;
@@ -73,7 +74,7 @@ const QuizExerciseSetBody: React.FC<{
     transcription?: string | null;
   };
   isListening?: boolean;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onCollapse: () => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
@@ -229,7 +230,7 @@ const QuizExerciseSetBody: React.FC<{
     onAttemptUpdate({ isPassed: res.isPassed, attemptCount: res.attemptCount });
     deleteDraft();
     onDraftSaved(false);
-    onSetFinished(res.lessonQuizScore, res.xpEarned);
+    onSetFinished(res.lessonQuizScore, res.xpEarned, res.newStreak);
   };
 
   const handleRetry = () => {
@@ -653,7 +654,7 @@ const SetRow: React.FC<{
   isExpanded: boolean;
   isListening: boolean;
   onToggle: () => void;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
 }> = ({ lesson, set, orderNumber, status, isExpanded, isListening, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => (

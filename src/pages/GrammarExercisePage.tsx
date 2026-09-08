@@ -24,7 +24,7 @@ import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 
 interface GrammarExerciseSetBodyProps {
   set: { id: string; title: string };
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onCollapse: () => void;
   /** Cập nhật badge "Đã đạt"/"Chưa làm" ở danh sách set ngay sau khi nộp bài. */
   onAttemptUpdate?: (status: { isPassed: boolean; attemptCount: number }) => void;
@@ -46,6 +46,7 @@ interface GrammarResult {
   choiceResults: Record<string, boolean>;
   exerciseResults: Record<string, boolean>;
   classificationResults: Record<string, boolean[]>;
+  newStreak?: number;
   correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
 }
@@ -254,7 +255,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     // Report rollup theo cả lesson (không phải điểm riêng set này) — khớp
     // đúng giá trị server vừa ghi vào lesson_progress.quiz_score, để state
     // optimistic phía client (Roadmap/Dashboard) không lệch server.
-    onSetFinished(res.lessonQuizScore, res.xpEarned);
+    onSetFinished(res.lessonQuizScore, res.xpEarned, res.newStreak);
   };
 
   const handleRetry = () => {
