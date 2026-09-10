@@ -25,7 +25,7 @@ import { showToast } from "../lib/toast";
 interface ReadingSetListPageProps {
   lesson: Lesson;
   onBackToLesson: () => void;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
 }
 
 interface ReadingResult {
@@ -38,6 +38,7 @@ interface ReadingResult {
   bestScore: number;
   attemptCount: number;
   lessonQuizScore: number;
+  newStreak?: number;
   itemResults: Record<string, boolean>;
   correctAnswers?: Record<string, string>;
   explanations?: Record<string, string>;
@@ -257,7 +258,7 @@ const ReadingExerciseSetBody: React.FC<{
   lesson: Lesson;
   set: { id: string; title: string };
   passageCount: number;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onCollapse: () => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
@@ -355,7 +356,7 @@ const ReadingExerciseSetBody: React.FC<{
     onAttemptUpdate({ isPassed: res.isPassed, attemptCount: res.attemptCount });
     deleteDraft();
     onDraftSaved(false);
-    onSetFinished(res.lessonQuizScore, res.xpEarned);
+    onSetFinished(res.lessonQuizScore, res.xpEarned, res.newStreak);
   };
 
   const handleRetry = () => {
@@ -695,7 +696,7 @@ const SetRow: React.FC<{
   status: SetStatus;
   isExpanded: boolean;
   onToggle: () => void;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
 }> = ({ lesson, set, orderNumber, passageCount, status, isExpanded, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => {

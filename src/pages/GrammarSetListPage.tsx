@@ -13,7 +13,7 @@ import { GrammarExerciseSetBody, GRAMMAR_TYPE_LABELS } from "./GrammarExercisePa
 interface GrammarSetListPageProps {
   lessonId: string;
   onBackToLesson: () => void;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
 }
 
 // 1 hàng = 1 set. Set nào chỉ có đúng 1 nhóm câu hỏi thì nhãn hàng lấy
@@ -28,7 +28,7 @@ const SetRow: React.FC<{
   status: SetStatus;
   isExpanded: boolean;
   onToggle: () => void;
-  onSetFinished: (lessonQuizScore: number, xpEarned: number) => void;
+  onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
 }> = ({ set, orderNumber, status, isExpanded, onToggle, onSetFinished, onAttemptUpdate, onDraftSaved }) => {

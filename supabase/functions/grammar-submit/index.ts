@@ -76,6 +76,20 @@ serve(async (req) => {
       });
     }
 
+    const recordLearningActivity = async () => {
+      const { data: streakVal, error: streakErr } = await supabase.rpc(
+        "record_learning_activity",
+        { p_user_id: user.id },
+      );
+      if (!streakErr && typeof streakVal === "number") {
+        return streakVal;
+      }
+      if (streakErr) {
+        console.error("record_learning_activity failed", streakErr);
+      }
+      return undefined;
+    };
+
     const revealedPayload = (revealed: boolean) => {
       if (!revealed) return {};
       const base = {
@@ -105,6 +119,7 @@ serve(async (req) => {
     // request bị retry (mạng chập chờn gửi lại cùng request).
     if (existingRow && existingRow.last_submission_id === submission_id) {
       const revealedNow = existingRow.revealed;
+      const newStreak = await recordLearningActivity();
       return new Response(
         JSON.stringify({
           score: existingRow.best_score,
@@ -120,6 +135,7 @@ serve(async (req) => {
           choiceResults,
           exerciseResults,
           classificationResults,
+          newStreak,
           ...revealedPayload(revealedNow),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -229,6 +245,8 @@ serve(async (req) => {
       { onConflict: "user_id,lesson_id,category" },
     );
 
+    const newStreak = await recordLearningActivity();
+
     return new Response(
       JSON.stringify({
         score: update.score,
@@ -244,6 +262,7 @@ serve(async (req) => {
         choiceResults,
         exerciseResults,
         classificationResults,
+        newStreak,
         ...revealedPayload(update.revealed),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

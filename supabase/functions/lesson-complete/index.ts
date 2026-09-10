@@ -65,31 +65,14 @@ serve(async (req) => {
       );
     }
 
-    // Get current user_stats
+    const XP_REWARD = 15;
+
+    // Get current user_stats for XP and fallback streak
     const { data: stats } = await supabase
       .from("user_stats")
-      .select("xp, streak, last_activity_date")
+      .select("xp, streak")
       .eq("user_id", user.id)
       .single();
-
-    // Streak logic (UTC dates)
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    const lastDate: string | null = stats?.last_activity_date ?? null;
-
-    let newStreak: number;
-    if (!lastDate) {
-      newStreak = 1;
-    } else if (lastDate === today) {
-      // Already active today — keep streak, still award XP for completing another lesson
-      newStreak = stats.streak;
-    } else {
-      const yesterday = new Date();
-      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-      newStreak = lastDate === yesterdayStr ? (stats.streak ?? 0) + 1 : 1;
-    }
-
-    const XP_REWARD = 15;
 
     // Insert lesson_progress
     await supabase.from("lesson_progress").insert({
@@ -98,13 +81,22 @@ serve(async (req) => {
       category: "nguphap",
     });
 
-    // Update user_stats atomically
+    // Update XP only — streak delegated to record_learning_activity RPC
     await supabase.from("user_stats").update({
       xp: (stats?.xp ?? 0) + XP_REWARD,
-      streak: newStreak,
-      last_activity_date: today,
       updated_at: new Date().toISOString(),
     }).eq("user_id", user.id);
+
+    let newStreak = stats?.streak ?? 0;
+    const { data: streakVal, error: streakErr } = await supabase.rpc(
+      "record_learning_activity",
+      { p_user_id: user.id },
+    );
+    if (!streakErr && typeof streakVal === "number") {
+      newStreak = streakVal;
+    } else if (streakErr) {
+      console.error("record_learning_activity failed", streakErr);
+    }
 
     return new Response(
       JSON.stringify({ xpAwarded: XP_REWARD, newStreak, alreadyCompleted: false }),
