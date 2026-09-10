@@ -255,13 +255,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             aria-label="DeutschSelbst - Trang chủ"
             className="inline-flex items-center gap-2 whitespace-nowrap text-[17px] font-extrabold min-[720px]:gap-3 min-[720px]:text-[20px]"
           >
-            <span className="block h-[34px] w-[34px] shrink-0 shadow-[0_7px_16px_rgba(228,0,59,.25)] min-[720px]:h-[38px] min-[720px]:w-[38px]">
+            <span className="block h-[34px] w-[34px] shrink-0 min-[720px]:h-[38px] min-[720px]:w-[38px]">
               <img
                 src={BRAND_LOGO_SRC}
                 alt=""
                 width={40}
                 height={40}
-                className="block h-full w-full"
+                className="block h-full w-full drop-shadow-[0_7px_16px_rgba(228,0,59,.25)]"
               />
             </span>
             <span className="max-[360px]:hidden">DeutschSelbst</span>
