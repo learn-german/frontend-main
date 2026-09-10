@@ -18,6 +18,7 @@ interface RoadmapPageProps {
   onSelectLesson: (lessonId: string) => void;
   isTrialRestricted?: boolean;
   isExpiredRestricted?: boolean;
+  unlockAllLessons?: boolean;
 }
 
 export const RoadmapPage: React.FC<RoadmapPageProps> = ({
@@ -27,6 +28,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   onSelectLesson,
   isTrialRestricted = false,
   isExpiredRestricted = false,
+  unlockAllLessons = false,
 }) => {
   const { items, orderedLessons } = React.useMemo(
     () => buildRoadmapItems(modules, positions, stats.unlockedLevels),
@@ -34,8 +36,8 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
   );
 
   const lessonStatuses = React.useMemo(
-    () => computeLessonStatuses(orderedLessons, stats.completedLessons),
-    [orderedLessons, stats.completedLessons],
+    () => computeLessonStatuses(orderedLessons, stats.completedLessons, unlockAllLessons),
+    [orderedLessons, stats.completedLessons, unlockAllLessons],
   );
 
   const effectiveStatuses = useMemo(() => {

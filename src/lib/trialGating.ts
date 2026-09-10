@@ -1,3 +1,4 @@
+import type { Level } from "./appTypes";
 import {
   isExpiredBySubscription,
   isTrialBySubscription,
@@ -5,6 +6,8 @@ import {
 
 export type UserRole = "trial" | "user" | "admin";
 export type LockedFeature = "leaderboard" | "help" | "packages" | "meetings";
+
+export const ALL_LEVELS: Level[] = ["A1", "A2", "B1", "B2"];
 
 const TRIAL_LESSON_LIMIT = 1;
 
@@ -64,4 +67,16 @@ export function isFeatureLocked(
 
 export function getTrialLessonLimit(): number {
   return TRIAL_LESSON_LIMIT;
+}
+
+/** Levels shown on the learner roadmap. Admin sees every level. */
+export function getUnlockedLevels(
+  role: UserRole,
+  subscriptionEndDate: string | null,
+  unlockedLevels: Level[],
+  today?: string,
+): Level[] {
+  if (role === "admin") return ALL_LEVELS;
+  if (isTrialAccess(role, subscriptionEndDate, today)) return ["A1"];
+  return unlockedLevels;
 }
