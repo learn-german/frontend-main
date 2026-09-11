@@ -57,6 +57,14 @@ assert.deepEqual(first.items.map((i) => (i.kind === "lesson" ? i.lesson.id : i.i
 assert.equal(computeLessonStatuses(first.orderedLessons, [])["l1"], "current");
 assert.equal(computeLessonStatuses(first.orderedLessons, [])["l3"], "locked");
 
+// Admin / unlockAll: incomplete lessons stay current instead of locked
+const unlocked = computeLessonStatuses(first.orderedLessons, [], true);
+assert.equal(unlocked["l1"], "current");
+assert.equal(unlocked["l3"], "current");
+const unlockedAfterComplete = computeLessonStatuses(first.orderedLessons, ["l1"], true);
+assert.equal(unlockedAfterComplete["l1"], "completed");
+assert.equal(unlockedAfterComplete["l3"], "current");
+
 // Level chưa unlock bị loại hoàn toàn
 const onlyA1 = buildRoadmapItems([moduleA1, moduleA2], [], ["A1"]);
 assert.deepEqual(onlyA1.orderedLessons.map((l) => l.id), ["l1", "l3"]);

@@ -74,17 +74,20 @@ export type LessonStatus = "completed" | "current" | "locked";
  * "current" if it's the first lesson, or the immediately preceding lesson
  * (in the given order) is completed. Everything else not-yet-completed is
  * "locked". Caller must pass lessons already in the correct display order.
+ * Pass `unlockAll` (admin) to skip sequential lock: incomplete lessons are
+ * all "current".
  */
 export function computeLessonStatuses<T extends { id: string }>(
   orderedLessons: T[],
   completedIds: string[],
+  unlockAll = false,
 ): Record<string, LessonStatus> {
   const completedSet = new Set(completedIds);
   const statuses: Record<string, LessonStatus> = {};
   orderedLessons.forEach((lesson, idx) => {
     if (completedSet.has(lesson.id)) {
       statuses[lesson.id] = "completed";
-    } else if (idx === 0 || completedSet.has(orderedLessons[idx - 1].id)) {
+    } else if (unlockAll || idx === 0 || completedSet.has(orderedLessons[idx - 1].id)) {
       statuses[lesson.id] = "current";
     } else {
       statuses[lesson.id] = "locked";
