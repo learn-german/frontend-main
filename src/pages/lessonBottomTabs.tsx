@@ -11,12 +11,17 @@ import {
 
 export type BottomTab = "nguphapthenchot" | "quiz" | "nghe" | "doc" | "tuvung" | "noi" | "viet";
 
-export const BOTTOM_TABS: { id: BottomTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-  { id: "nguphapthenchot", label: "Grammatik", Icon: GraduationCap },
-  { id: "tuvung", label: "Wortschatz", Icon: BookOpen },
-  { id: "quiz", label: "Grammatikübungen", Icon: HelpCircle },
-  { id: "doc", label: "Lesen", Icon: FileText },
-  { id: "nghe", label: "Hören", Icon: Headphones },
-  { id: "viet", label: "Schreiben", Icon: PenLine },
-  { id: "noi", label: "Sprechen", Icon: Mic },
+export const BOTTOM_TABS: {
+  id: BottomTab;
+  label: string;
+  labelVi: string;
+  Icon: React.FC<{ className?: string }>;
+}[] = [
+  { id: "nguphapthenchot", label: "Grammatik", labelVi: "Ngữ pháp", Icon: GraduationCap },
+  { id: "tuvung", label: "Wortschatz", labelVi: "Từ vựng", Icon: BookOpen },
+  { id: "quiz", label: "Grammatikübungen", labelVi: "Bài tập ngữ pháp", Icon: HelpCircle },
+  { id: "doc", label: "Lesen", labelVi: "Bài đọc", Icon: FileText },
+  { id: "nghe", label: "Hören", labelVi: "Bài nghe", Icon: Headphones },
+  { id: "viet", label: "Schreiben", labelVi: "Bài viết", Icon: PenLine },
+  { id: "noi", label: "Sprechen", labelVi: "Bài nói", Icon: Mic },
 ];
