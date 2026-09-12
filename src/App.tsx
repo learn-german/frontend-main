@@ -23,7 +23,7 @@ import { QuizSetListPage } from "./pages/QuizSetListPage";
 import { GrammarSetListPage } from "./pages/GrammarSetListPage";
 import { ReadingSetListPage } from "./pages/ReadingSetListPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
-import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { PackagesPage } from "./pages/PackagesPage";
 import { SupportPage } from "./pages/SupportPage";
 import { RegistrationPage } from "./pages/RegistrationPage";
 import { MeetingPage } from "./pages/MeetingPage";
@@ -603,6 +603,11 @@ export default function App() {
                   onNavigateLesson={handleSelectLesson}
                   onNavigateRoadmap={() => handleNavigate("roadmap")}
                   onNavigateMeetings={() => handleNavigate("meetings")}
+                  onStartQuiz={(lessonId, category = "nguphap") => {
+                    setSelectedLessonId(lessonId);
+                    setActiveExerciseCategory(category);
+                    setCurrentPage("quiz");
+                  }}
                   weeklyMeeting={weeklyMeeting}
                   isTrialRestricted={isTrial}
                   isExpiredRestricted={isExpired}
@@ -677,7 +682,7 @@ export default function App() {
                 <LeaderboardPage currentUserId={user.id} />
               )}
               {effectivePage === "packages" && user && (
-                <ComingSoonPage title="Gói học" />
+                <PackagesPage />
               )}
               {effectivePage === "help" && user && <SupportPage />}
               {effectivePage === "meetings" && user && (

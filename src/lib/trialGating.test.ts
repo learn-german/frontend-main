@@ -45,6 +45,7 @@ test("null end → trial access", () => {
   assert.equal(isTrialAccess("trial", null, TODAY), true);
   assert.equal(isExpiredAccess("user", null, TODAY), false);
   assert.equal(isFeatureLocked("user", null, "meetings", TODAY), true);
+  assert.equal(isFeatureLocked("user", null, "packages", TODAY), false);
 });
 
 test("past end → expired, not trial", () => {
@@ -53,6 +54,7 @@ test("past end → expired, not trial", () => {
   assert.equal(isEffectivelyTrial("user", "2026-09-01", TODAY), false);
   assert.equal(isFeatureLocked("user", "2026-09-01", "help", TODAY), true);
   assert.equal(isFeatureLocked("user", "2026-09-01", "meetings", TODAY), true);
+  assert.equal(isFeatureLocked("user", "2026-09-01", "packages", TODAY), true);
 });
 
 test("future end → neither", () => {

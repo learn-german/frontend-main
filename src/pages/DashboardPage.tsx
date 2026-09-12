@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module, type LearnerMeetingSession } from "../lib/appTypes";
-import { LessonStatus } from "../lib/completion";
+import { LessonStatus, PASS_THRESHOLD, type QuizCategory } from "../lib/completion";
 import { selectPlannedLessons, lessonsNeededToCatchUp } from "../lib/dashboardProgress";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
@@ -30,10 +30,23 @@ interface DashboardPageProps {
   onNavigateLesson: (lessonId: string) => void;
   onNavigateRoadmap: () => void;
   onNavigateMeetings: () => void;
+  onStartQuiz: (lessonId: string, category?: QuizCategory) => void;
   weeklyMeeting: LearnerMeetingSession | null;
   isTrialRestricted?: boolean;
   isExpiredRestricted?: boolean;
 }
+
+const EXERCISE_CATEGORY_BUTTONS: { category: QuizCategory; label: string }[] = [
+  { category: "nguphap", label: "Ngữ pháp" },
+  { category: "nghe", label: "Nghe" },
+  { category: "doc", label: "Đọc" },
+];
+
+const CATEGORY_SHORT: Record<QuizCategory, string> = {
+  nguphap: "NP",
+  nghe: "Nghe",
+  doc: "Đọc",
+};
 
 interface DailyProgressReport {
   report_date: string;
@@ -112,6 +125,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   lessonStatuses,
   onNavigateLesson,
   onNavigateMeetings,
+  onStartQuiz,
   weeklyMeeting,
   isTrialRestricted,
   isExpiredRestricted,
@@ -180,41 +194,43 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </p>
         </div>
 
-        <div className="bg-slate-950/55 backdrop-blur-md rounded-xl p-3 border border-white/10 flex items-center gap-3 z-10 self-stretch sm:self-auto min-w-[240px]">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
-            <Video className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-[10px] text-slate-400 font-display font-semibold block leading-tight tracking-wider">
-              WEEKLY MEETING
-            </span>
-            {weeklyMeeting ? (
-              <span className="inline-block mt-1 text-[11px] font-mono font-medium text-white bg-white/10 border border-white/15 rounded-full px-2.5 py-1">
-                {new Date(`${weeklyMeeting.sessionDate}T12:00:00`).toLocaleDateString("vi-VN")} • {weeklyMeeting.startTime.slice(0, 5)}
+        {!isTrialRestricted && (
+          <div className="bg-slate-950/55 backdrop-blur-md rounded-xl p-3 border border-white/10 flex items-center gap-3 z-10 self-stretch sm:self-auto min-w-[240px]">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
+              <Video className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] text-slate-400 font-display font-semibold block leading-tight tracking-wider">
+                WEEKLY MEETING
               </span>
-            ) : (
-              <>
-                <span className="text-xs text-slate-300 block mt-0.5">Chưa đăng ký lịch tuần này</span>
-                <button
-                  type="button"
-                  onClick={onNavigateMeetings}
-                  className="text-[10px] text-yellow-400 block mt-1 cursor-pointer hover:text-yellow-300"
-                >
-                  Chọn lịch học →
-                </button>
-              </>
+              {weeklyMeeting ? (
+                <span className="inline-block mt-1 text-[11px] font-mono font-medium text-white bg-white/10 border border-white/15 rounded-full px-2.5 py-1">
+                  {new Date(`${weeklyMeeting.sessionDate}T12:00:00`).toLocaleDateString("vi-VN")} • {weeklyMeeting.startTime.slice(0, 5)}
+                </span>
+              ) : (
+                <>
+                  <span className="text-xs text-slate-300 block mt-0.5">Chưa đăng ký lịch tuần này</span>
+                  <button
+                    type="button"
+                    onClick={onNavigateMeetings}
+                    className="text-[10px] text-yellow-400 block mt-1 cursor-pointer hover:text-yellow-300"
+                  >
+                    Chọn lịch học →
+                  </button>
+                </>
+              )}
+            </div>
+            {weeklyMeeting?.meetUrl && (
+              <button
+                type="button"
+                onClick={() => openMeeting(weeklyMeeting.meetUrl)}
+                className="text-xs font-display font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg px-3.5 py-2 whitespace-nowrap cursor-pointer transition"
+              >
+                Tham gia →
+              </button>
             )}
           </div>
-          {weeklyMeeting?.meetUrl && (
-            <button
-              type="button"
-              onClick={() => openMeeting(weeklyMeeting.meetUrl)}
-              className="text-xs font-display font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg px-3.5 py-2 whitespace-nowrap cursor-pointer transition"
-            >
-              Tham gia →
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {isExpiredRestricted && (
@@ -393,6 +409,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </p>
                 </div>
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                {EXERCISE_CATEGORY_BUTTONS.map(({ category, label }) => {
+                  const score = stats.quizScoresByCategory[nextSuggestedLesson.id]?.[category];
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      id={`btn-dash-cat-${category}`}
+                      disabled={isExpiredRestricted}
+                      onClick={() => onStartQuiz(nextSuggestedLesson.id, category)}
+                      className={`rounded-xl border px-2 py-2 text-left transition ${
+                        isExpiredRestricted
+                          ? "cursor-not-allowed opacity-60 border-slate-200 bg-slate-50"
+                          : "cursor-pointer border-slate-200 bg-slate-50 hover:border-red-200 hover:bg-rose-50"
+                      }`}
+                    >
+                      <span className="block text-[10px] font-display font-bold text-slate-500 uppercase tracking-wide">
+                        {label}
+                      </span>
+                      <span className="mt-0.5 block text-sm font-display font-black text-slate-800">
+                        {score !== undefined ? `${Math.round(score)}%` : "—"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
               <Button
                 id="btn-dash-continue-learn"
                 variant="primary"
@@ -483,45 +525,69 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {planLessons.length > 0 && (
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col flex-1 min-h-0">
               <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
-                Kế hoạch học tập
+                Kế hoạch bài tập
               </h3>
               <p className="text-[11px] font-sans text-slate-400 mb-3 mt-1">
                 {planLessons.length} bài trong lộ trình gần nhất
               </p>
 
               <div className="flex flex-col gap-2 flex-1 border border-slate-200 rounded-xl p-2">
-                {planLessons.map((lesson, i) => (
-                  <div
-                    key={lesson.id}
-                    className={`flex gap-2.5 items-start p-2.5 rounded-lg border flex-1 ${
-                      i === 0
-                        ? "bg-rose-50/80 border-rose-200 border-l-4 border-l-red-600"
-                        : "bg-white border-slate-200"
-                    }`}
-                  >
-                    <div className="w-6 h-6 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-display font-bold text-[11px] flex items-center justify-center shrink-0">
-                      {i + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-xs font-display font-bold text-slate-800 leading-snug">{lesson.title}</h4>
-                        <span
-                          className={`text-[9px] font-display font-bold px-2 py-0.5 rounded-md shrink-0 whitespace-nowrap ${
-                            i === 0
-                              ? "bg-rose-100 text-red-600 border border-rose-200"
-                              : i === 1
-                                ? "bg-green-50 text-green-600 border border-green-200"
-                                : "bg-indigo-50 text-slate-500 border border-slate-200"
-                          }`}
-                        >
-                          {planStatusLabel(i)}
-                        </span>
+                {planLessons.map((lesson, i) => {
+                  const byCat = stats.quizScoresByCategory[lesson.id] ?? {};
+                  return (
+                    <div
+                      key={lesson.id}
+                      className={`flex gap-2.5 items-start p-2.5 rounded-lg border flex-1 ${
+                        i === 0
+                          ? "bg-rose-50/80 border-rose-200 border-l-4 border-l-red-600"
+                          : "bg-white border-slate-200"
+                      }`}
+                    >
+                      <div className="w-6 h-6 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-display font-bold text-[11px] flex items-center justify-center shrink-0">
+                        {i + 1}
                       </div>
-                      <p className="text-[10px] font-sans text-slate-400 mt-0.5">{lesson.moduleTitle}</p>
-                      <p className="text-[10px] font-sans text-slate-400 mt-0.5">{formatDurationLabel(lesson.duration)}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-xs font-display font-bold text-slate-800 leading-snug">{lesson.title}</h4>
+                          <span
+                            className={`text-[9px] font-display font-bold px-2 py-0.5 rounded-md shrink-0 whitespace-nowrap ${
+                              i === 0
+                                ? "bg-rose-100 text-red-600 border border-rose-200"
+                                : i === 1
+                                  ? "bg-green-50 text-green-600 border border-green-200"
+                                  : "bg-indigo-50 text-slate-500 border border-slate-200"
+                            }`}
+                          >
+                            {planStatusLabel(i)}
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-sans text-slate-400 mt-0.5">{lesson.moduleTitle}</p>
+                        <p className="text-[10px] font-sans text-slate-400 mt-0.5">{formatDurationLabel(lesson.duration)}</p>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {EXERCISE_CATEGORY_BUTTONS.map(({ category }) => {
+                            const score = byCat[category];
+                            const passed = score !== undefined && score >= PASS_THRESHOLD;
+                            return (
+                              <span
+                                key={category}
+                                className={`text-[9px] font-display font-bold px-1.5 py-0.5 rounded border ${
+                                  score === undefined
+                                    ? "bg-slate-50 text-slate-400 border-slate-200"
+                                    : passed
+                                      ? "bg-green-50 text-green-700 border-green-200"
+                                      : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}
+                              >
+                                {CATEGORY_SHORT[category]}{" "}
+                                {score !== undefined ? `${Math.round(score)}%` : "—"}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
