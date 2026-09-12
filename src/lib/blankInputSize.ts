@@ -1,4 +1,4 @@
-export const BLANK_INPUT_MIN_CHARS = 6;
+export const BLANK_INPUT_MIN_CHARS = 12;
 export const BLANK_INPUT_MAX_CHARS = 40;
 
 /** Character-based width for fill-in-the-blank inputs (for CSS `ch` units). */

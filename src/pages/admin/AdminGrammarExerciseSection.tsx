@@ -19,6 +19,7 @@ import {
   flattenGroupsWithOrder,
   groupGrammarExercises,
   moveGroup,
+  orderedUniqueSetIds,
   resolveAppendGroupId,
   toggleGroupSelection,
   type GrammarExerciseGroup,
@@ -796,7 +797,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
-  const { sets: exerciseSets, createSet, toggleSetStatus } = useExerciseSets();
+  const { sets: exerciseSets, createSet, toggleSetStatus, refetch: refetchExerciseSets } = useExerciseSets();
   const findSet = (setId: string) => exerciseSets.find((s) => s.id === setId);
   const [hint, setHint] = useState("");
   const [wordBankEnabled, setWordBankEnabled] = useState(false);
@@ -1127,6 +1128,11 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       .map((key) => exerciseGroups.find((group) => group.key === key))
       .filter((group): group is GrammarExerciseGroup<GrammarExercise> => !!group);
     const ordered = flattenGroupsWithOrder(reorderedGroups);
+    const orderedSetIds = orderedUniqueSetIds(reorderedGroups);
+    const previousSetOrders = orderedSetIds.map((setId) => ({
+      setId,
+      orderIndex: exerciseSets.find((set) => set.id === setId)?.orderIndex ?? 0,
+    }));
     const nextExercises = ordered.map(({ exercise, orderIndex }) => ({
       ...exercise,
       order_index: orderIndex,
@@ -1135,24 +1141,36 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
     setGroups((previous) => previous.map((group) => group.lesson_id === lessonId ? { ...group, exercises: nextExercises } : group));
     setReorderSavingLessonId(lessonId);
-    const results = await Promise.all(
-      ordered.map(({ exercise, orderIndex }) =>
-        supabase.from("grammar_exercises").update({ order_index: orderIndex }).eq("id", exercise.id),
+    const [exerciseResults, setResults] = await Promise.all([
+      Promise.all(
+        ordered.map(({ exercise, orderIndex }) =>
+          supabase.from("grammar_exercises").update({ order_index: orderIndex }).eq("id", exercise.id),
+        ),
       ),
-    );
-    const firstError = results.find((result) => result.error)?.error;
-    if (firstError) {
-      await Promise.all(
-        previousExercises.map((exercise) =>
+      Promise.all(
+        orderedSetIds.map((setId, orderIndex) =>
+          supabase.from("exercise_sets").update({ order_index: orderIndex }).eq("id", setId),
+        ),
+      ),
+    ]);
+    const firstExerciseError = exerciseResults.find((result) => result.error)?.error;
+    const firstSetError = setResults.find((result) => result.error)?.error;
+    if (firstExerciseError || firstSetError) {
+      await Promise.all([
+        ...previousExercises.map((exercise) =>
           supabase.from("grammar_exercises").update({ order_index: exercise.order_index }).eq("id", exercise.id),
         ),
-      );
+        ...previousSetOrders.map(({ setId, orderIndex }) =>
+          supabase.from("exercise_sets").update({ order_index: orderIndex }).eq("id", setId),
+        ),
+      ]);
       setGroups((previous) => previous.map((group) => group.lesson_id === lessonId ? { ...group, exercises: previousExercises } : group));
-      showToast("Không thể lưu thứ tự mới: " + firstError.message, "warning");
+      showToast("Không thể lưu thứ tự mới: " + (firstExerciseError?.message ?? firstSetError?.message ?? "Lỗi không xác định"), "warning");
       setReorderSavingLessonId(null);
       return;
     }
     await fetchExercises();
+    refetchExerciseSets();
     setReorderSavingLessonId(null);
     showToast("Đã cập nhật thứ tự câu hỏi.", "success");
   };

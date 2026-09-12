@@ -88,3 +88,24 @@ export function resolveAppendGroupId(
     ? { groupId, assignedLegacyId: false }
     : { groupId: createId(), assignedLegacyId: true };
 }
+
+export interface SetIdentifiableExercise {
+  setId?: string;
+}
+
+export function orderedUniqueSetIds<T extends GroupableGrammarExercise & SetIdentifiableExercise>(
+  groups: readonly GrammarExerciseGroup<T>[],
+): string[] {
+  const orderedSetIds: string[] = [];
+  const seenSetIds = new Set<string>();
+
+  for (const group of groups) {
+    const setId = group.exercises[0]?.setId;
+    if (setId && !seenSetIds.has(setId)) {
+      seenSetIds.add(setId);
+      orderedSetIds.push(setId);
+    }
+  }
+
+  return orderedSetIds;
+}

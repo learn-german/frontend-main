@@ -12,5 +12,5 @@ test("login page offers Google as the only authentication method", () => {
 });
 
 test("login page uses the approved learning illustration", () => {
-  assert.match(source, /login-illustration\.png/);
+  assert.match(source, /login-bg\.webp/);
 });

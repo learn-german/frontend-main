@@ -9,7 +9,7 @@ const authCallback = source.slice(
 );
 
 test("App đọc tên hiển thị từ profiles thay vì Google metadata", () => {
-  assert.match(source, /from\("profiles"\)[\s\S]*select\("full_name"\)/);
+  assert.match(source, /from\("profiles"\)[\s\S]*select\("full_name, subscription_end_date"\)/);
   assert.doesNotMatch(source, /user_metadata\?\.full_name/);
 });
 
@@ -62,7 +62,7 @@ test("App xóa lỗi hồ sơ cũ khi hoàn tất đăng ký thành công", () =
   );
   const acceptedCompletion = registrationHandler.indexOf("hydrationGenerationRef.current += 1;");
   const clearProfileError = registrationHandler.indexOf('setProfileError("");');
-  const publishUser = registrationHandler.indexOf("setUser({ ...pendingUser, fullName: data.full_name });");
+  const publishUser = registrationHandler.indexOf("fullName: data.full_name");
 
   assert.ok(acceptedCompletion < clearProfileError && clearProfileError < publishUser);
 });

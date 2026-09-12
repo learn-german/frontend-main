@@ -8,6 +8,7 @@ import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { ToastType } from "../../lib/toast";
 import type { AppNotification } from "../../lib/hooks/useNotifications";
 import { AnimatePresence, motion } from "motion/react";
+import { isAdminPortalRole } from "../../lib/adminAcl";
 
 export const AdminApp: React.FC = () => {
   const [user, setUser] = useState<{ id: string; email: string; role: string } | null>(null);
@@ -46,10 +47,10 @@ export const AdminApp: React.FC = () => {
     supabase.auth.getUser().then(({ data: { user: authUser } }) => {
       if (authUser) {
         const role = (authUser.app_metadata?.role as string) ?? "user";
-        if (role === "admin") {
+        if (isAdminPortalRole(role)) {
           setUser({ id: authUser.id, email: authUser.email ?? "", role });
         } else {
-          // Logged in but not admin — sign out silently
+          // Logged in but not admin/tutor — sign out silently
           supabase.auth.signOut();
         }
       }
@@ -59,10 +60,10 @@ export const AdminApp: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const role = (session.user.app_metadata?.role as string) ?? "user";
-        if (role === "admin") {
+        if (isAdminPortalRole(role)) {
           setUser({ id: session.user.id, email: session.user.email ?? "", role });
         } else {
-          // Logged in via OAuth but not admin — sign out and show error
+          // Logged in via OAuth but not admin/tutor — sign out and show error
           supabase.auth.signOut();
           setLoginError("Tài khoản này không có quyền truy cập Admin.");
         }
@@ -88,7 +89,7 @@ export const AdminApp: React.FC = () => {
     }
 
     const role = (data.user?.app_metadata?.role as string) ?? "user";
-    if (role !== "admin") {
+    if (!isAdminPortalRole(role)) {
       await supabase.auth.signOut();
       setLoginError("Tài khoản này không có quyền truy cập Admin.");
       return;
@@ -137,7 +138,9 @@ export const AdminApp: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-white text-sm">DeutschSelbst</span>
               <span className="text-slate-600 text-xs">/</span>
-              <span className="text-orange-400 text-xs font-bold uppercase tracking-widest">Admin</span>
+              <span className="text-orange-400 text-xs font-bold uppercase tracking-widest">
+                {user.role === "tutor" ? "Gia sư" : "Admin"}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-3">

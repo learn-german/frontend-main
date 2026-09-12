@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
 import { GrammarExercise } from "../lib/appTypes";
 import { blankInputCharWidth } from "../lib/blankInputSize";
+import { shuffleCopy } from "../lib/shuffleCopy";
 import { parseAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
 
 /** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */
@@ -42,8 +43,8 @@ const MatchingExercise: React.FC<{
 }> = ({ pairs, matched, onMatch }) => {
   const [selectedDe, setSelectedDe] = useState("");
   const [selectedVi, setSelectedVi] = useState("");
-  const shuffledDe = useMemo(() => [...pairs.map((p) => p.de)].sort(() => Math.random() - 0.5), [pairs]);
-  const shuffledVi = useMemo(() => [...pairs.map((p) => p.vi)].sort(() => Math.random() - 0.5), [pairs]);
+  const shuffledDe = useMemo(() => shuffleCopy(pairs.map((p) => p.de)), [pairs]);
+  const shuffledVi = useMemo(() => shuffleCopy(pairs.map((p) => p.vi)), [pairs]);
 
   React.useEffect(() => {
     if (!selectedDe || !selectedVi) return;
@@ -152,6 +153,10 @@ export const ExerciseAnswerInput: React.FC<{
 }) => {
   const letter = numberLabel;
   const [selectedClassificationItem, setSelectedClassificationItem] = useState<string | null>(null);
+  const shuffledClassificationItems = useMemo(
+    () => shuffleCopy(exercise.classificationItems ?? []),
+    [exercise.type === "classification" ? exercise.classificationItems : undefined],
+  );
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
@@ -235,7 +240,7 @@ export const ExerciseAnswerInput: React.FC<{
         <>
           <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{letter}</span>
           <div className="flex flex-wrap gap-1.5">
-            {(exercise.classificationItems ?? [])
+            {shuffledClassificationItems
               .filter((item) => !itemGroups[item])
               .map((item) => (
                 <button

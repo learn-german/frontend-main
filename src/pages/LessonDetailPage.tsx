@@ -18,7 +18,7 @@ import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 import { useWritingSubmission, MAX_WRITING_ATTEMPTS } from "../lib/hooks/useWritingSubmission";
 import { useLessonSetSummary } from "../lib/hooks/useLessonSetSummary";
-import type { LessonSetSummary } from "../lib/lessonSetSummary";
+import { isAllSetsPassed, type LessonSetSummary } from "../lib/lessonSetSummary";
 import { PASS_THRESHOLD } from "../lib/completion";
 import { BOTTOM_TABS, BottomTab } from "./lessonBottomTabs";
 
@@ -49,9 +49,11 @@ const ExerciseStartPanel: React.FC<{
   <>
     <h3 className="text-sm font-display font-extrabold text-slate-800">{heading}</h3>
     {summary && <SetSummaryLine summary={summary} />}
-    <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
-      Cần vượt qua <b>{PASS_THRESHOLD}%</b> để hoàn tất!
-    </p>
+    {!isAllSetsPassed(summary) && (
+      <p className="text-xs text-slate-500 max-w-lg mx-auto font-sans leading-relaxed">
+        Cần vượt qua <b>{PASS_THRESHOLD}%</b> để hoàn tất!
+      </p>
+    )}
     <div className="flex justify-center gap-3 pt-1">{children}</div>
   </>
 );
@@ -201,18 +203,27 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
       <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl overflow-hidden">
         {/* Tab bar */}
         <div className="flex border-b border-slate-200/60 bg-white">
-          {visibleTabs.map(({ id, label, Icon }) => (
+          {visibleTabs.map(({ id, label, labelVi, Icon }) => (
             <button
               key={id}
               onClick={() => handleSelectTab(id)}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-display font-bold transition-colors border-b-2 ${
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-display font-bold transition-colors border-b-2 ${
                 bottomTab === id
                   ? "border-orange-500 text-orange-600 bg-orange-50/50"
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="flex flex-col items-start leading-tight">
+                <span>{label}</span>
+                <span
+                  className={`text-[10px] font-sans font-normal ${
+                    bottomTab === id ? "text-orange-500/80" : "text-slate-400"
+                  }`}
+                >
+                  {labelVi}
+                </span>
+              </span>
             </button>
           ))}
         </div>
@@ -261,7 +272,8 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
                   </Button>
                 )}
                 <Button id="btn-lesson-start-quiz-bottom" variant="primary" onClick={() => onStartQuiz(lesson.id)}>
-                  Bắt đầu bài tập ngữ pháp <ArrowRight className="w-4 h-4 ml-1.5" />
+                  {isAllSetsPassed(nguphapSummary) ? "Luyện tập lại" : "Bắt đầu bài tập ngữ pháp"}{" "}
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </ExerciseStartPanel>
             </div>
@@ -294,7 +306,8 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
               {lesson.hasNgheQuestions === true ? (
                 <ExerciseStartPanel heading="Sẵn sàng luyện nghe chưa?" summary={ngheSummary}>
                   <Button id="btn-lesson-start-nghe" variant="primary" onClick={() => onStartQuiz(lesson.id, "nghe")}>
-                    Bắt đầu bài tập nghe <ArrowRight className="w-4 h-4 ml-1.5" />
+                    {isAllSetsPassed(ngheSummary) ? "Luyện tập lại" : "Bắt đầu bài tập nghe"}{" "}
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>
                 </ExerciseStartPanel>
               ) : (
@@ -316,7 +329,8 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
               {lesson.hasDocQuestions === true ? (
                 <ExerciseStartPanel heading="Sẵn sàng luyện đọc chưa?" summary={docSummary}>
                   <Button id="btn-lesson-start-doc" variant="primary" onClick={() => onStartQuiz(lesson.id, "doc")}>
-                    Bắt đầu bài tập đọc <ArrowRight className="w-4 h-4 ml-1.5" />
+                    {isAllSetsPassed(docSummary) ? "Luyện tập lại" : "Bắt đầu bài tập đọc"}{" "}
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>
                 </ExerciseStartPanel>
               ) : (

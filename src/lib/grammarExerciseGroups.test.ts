@@ -4,8 +4,10 @@ import {
   getGroupSelectionState,
   groupGrammarExercises,
   moveGroup,
+  orderedUniqueSetIds,
   resolveAppendGroupId,
   toggleGroupSelection,
+  type GrammarExerciseGroup,
 } from "./grammarExerciseGroups";
 
 const items = [
@@ -52,3 +54,54 @@ assert.deepEqual(resolveAppendGroupId(null, () => { createIdCalls += 1; return "
   assignedLegacyId: true,
 });
 assert.equal(createIdCalls, 1);
+
+type TestGroup = GrammarExerciseGroup<{ id: string; type: string; orderIndex: number; setId?: string }>;
+
+const makeGroup = (
+  key: string,
+  exercises: Array<{ id: string; setId?: string; orderIndex?: number }>,
+): TestGroup => ({
+  key,
+  type: "translation",
+  exercises: exercises.map((exercise, index) => ({
+    ...exercise,
+    type: "translation",
+    orderIndex: exercise.orderIndex ?? index,
+  })),
+});
+
+assert.deepEqual(orderedUniqueSetIds([]), []);
+
+assert.deepEqual(
+  orderedUniqueSetIds([
+    makeGroup("g1", [{ id: "a", setId: "set-1" }, { id: "b", setId: "set-1" }]),
+  ]),
+  ["set-1"],
+);
+
+assert.deepEqual(
+  orderedUniqueSetIds([
+    makeGroup("g1", [{ id: "a", setId: "set-1" }]),
+    makeGroup("g2", [{ id: "b", setId: "set-2" }]),
+    makeGroup("g3", [{ id: "c", setId: "set-3" }]),
+  ]),
+  ["set-1", "set-2", "set-3"],
+);
+
+assert.deepEqual(
+  orderedUniqueSetIds([
+    makeGroup("g1", [{ id: "a", setId: "set-1" }]),
+    makeGroup("g2", [{ id: "b", setId: "set-1" }]),
+    makeGroup("g3", [{ id: "c", setId: "set-2" }]),
+  ]),
+  ["set-1", "set-2"],
+);
+
+assert.deepEqual(
+  orderedUniqueSetIds([
+    makeGroup("empty", []),
+    makeGroup("g1", [{ id: "a", setId: "set-1" }]),
+    makeGroup("missing", [{ id: "b" }]),
+  ]),
+  ["set-1"],
+);
