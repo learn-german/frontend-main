@@ -18,9 +18,21 @@ test("admin never trial/expired/locked", () => {
   assert.equal(isFeatureLocked("admin", null, "meetings", TODAY), false);
 });
 
+test("tutor never trial/expired/locked", () => {
+  assert.equal(isTrialAccess("tutor", null, TODAY), false);
+  assert.equal(isExpiredAccess("tutor", "2026-09-01", TODAY), false);
+  assert.equal(isFeatureLocked("tutor", null, "leaderboard", TODAY), false);
+  assert.equal(isFeatureLocked("tutor", null, "meetings", TODAY), false);
+});
+
 test("admin unlocks every level regardless of profile", () => {
   assert.deepEqual(getUnlockedLevels("admin", null, [], TODAY), ["A1", "A2", "B1", "B2"]);
   assert.deepEqual(getUnlockedLevels("admin", "2026-09-01", ["A1"], TODAY), ["A1", "A2", "B1", "B2"]);
+});
+
+test("tutor unlocks every level regardless of profile", () => {
+  assert.deepEqual(getUnlockedLevels("tutor", null, [], TODAY), ["A1", "A2", "B1", "B2"]);
+  assert.deepEqual(getUnlockedLevels("tutor", "2026-09-01", ["A1"], TODAY), ["A1", "A2", "B1", "B2"]);
 });
 
 test("trial unlocks only A1; paid user keeps profile levels", () => {

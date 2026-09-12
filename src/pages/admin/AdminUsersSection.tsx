@@ -342,7 +342,7 @@ export const AdminUsersSection: React.FC = () => {
   };
 
   const handleToggleTrial = async (user: AdminUser) => {
-    if (user.role === "admin") return;
+    if (user.role === "admin" || user.role === "tutor") return;
     const currentlyTrial = isTrialBySubscription(user.subscriptionEndDate);
     if (currentlyTrial) return;
 
@@ -445,6 +445,7 @@ export const AdminUsersSection: React.FC = () => {
           <option value="trial">Trial</option>
           <option value="user">User</option>
           <option value="admin">Admin</option>
+          <option value="tutor">Gia sư</option>
         </select>
 
         <div className="flex items-center gap-1.5">
@@ -535,6 +536,10 @@ export const AdminUsersSection: React.FC = () => {
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
                       <ShieldCheck className="w-3 h-3" /> Admin
                     </span>
+                  ) : u.role === "tutor" ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                      <ShieldCheck className="w-3 h-3" /> Gia sư
+                    </span>
                   ) : u.role === "trial" ? (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Trial</span>
                   ) : (
@@ -558,7 +563,7 @@ export const AdminUsersSection: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={isTrialBySubscription(u.subscriptionEndDate)}
-                        disabled={u.role === "admin"}
+                        disabled={u.role === "admin" || u.role === "tutor"}
                         onChange={() => handleToggleTrial(u)}
                         className={`w-3.5 h-3.5 cursor-pointer ${
                           isTrialBySubscription(u.subscriptionEndDate) ? "accent-red-600" : "accent-orange-600"
@@ -674,6 +679,7 @@ export const AdminUsersSection: React.FC = () => {
                 <option value="trial">Trial</option>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
+                <option value="tutor">Gia sư</option>
               </select>
             </div>
 
@@ -718,6 +724,7 @@ export const AdminUsersSection: React.FC = () => {
                 <option value="trial">Trial</option>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
+                <option value="tutor">Gia sư</option>
               </select>
             </div>
 

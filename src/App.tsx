@@ -39,6 +39,7 @@ import { needsProfileOnboarding } from "./lib/profileOnboarding";
 import {
   getTrialLessonLimit,
   getUnlockedLevels,
+  hasStaffLearnerAccess,
   isExpiredAccess,
   isFeatureLocked,
   isSubscriptionExpired,
@@ -65,7 +66,7 @@ export default function App() {
   const { positions } = useLessonPositions(user?.id ?? null);
   const flatLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
   const { stats, statsLoading, applyLessonCompleteReward, applyQuizResult, lessonIdsCompletedToday, weekActivity } = useUserStats(user?.id ?? null, flatLessons);
-  const isAdmin = user?.role === "admin";
+  const hasStaffAccess = user ? hasStaffLearnerAccess(user.role) : false;
   const isTrial = user ? isTrialAccess(user.role, user.subscriptionEndDate) : false;
   const isExpired = user ? isExpiredAccess(user.role, user.subscriptionEndDate) : false;
   const roadmapUnlockLevels = useMemo<Level[]>(
@@ -75,8 +76,8 @@ export default function App() {
     [user?.role, user?.subscriptionEndDate, stats.unlockedLevels],
   );
   const roadmapStats = useMemo(
-    () => isTrial || isAdmin ? { ...stats, unlockedLevels: roadmapUnlockLevels } : stats,
-    [isAdmin, isTrial, roadmapUnlockLevels, stats],
+    () => isTrial || hasStaffAccess ? { ...stats, unlockedLevels: roadmapUnlockLevels } : stats,
+    [hasStaffAccess, isTrial, roadmapUnlockLevels, stats],
   );
   const [weeklyMeeting, setWeeklyMeeting] = useState<LearnerMeetingSession | null>(null);
   const [meetingRefreshKey, setMeetingRefreshKey] = useState(0);
@@ -109,8 +110,8 @@ export default function App() {
   );
 
   const lessonStatuses = useMemo(
-    () => computeLessonStatuses(orderedLessons, stats.completedLessons, isAdmin),
-    [orderedLessons, stats.completedLessons, isAdmin],
+    () => computeLessonStatuses(orderedLessons, stats.completedLessons, hasStaffAccess),
+    [orderedLessons, stats.completedLessons, hasStaffAccess],
   );
 
   // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
@@ -144,7 +145,7 @@ export default function App() {
     // "locked" và đẩy về /roadmap. Phải chờ cả 2 nguồn dữ liệu tải xong.
     if (!user || modulesLoading || statsLoading) return;
     if (currentPage !== "lesson-detail" && currentPage !== "quiz") return;
-    if (user.role === "admin") return;
+    if (hasStaffLearnerAccess(user.role)) return;
 
     if (isExpired) {
       showToast("Gói học của bạn đã hết hạn. Liên hệ admin để gia hạn.", "warning");
@@ -616,7 +617,7 @@ export default function App() {
                   onSelectLesson={handleSelectLesson}
                   isTrialRestricted={isTrial}
                   isExpiredRestricted={isExpired}
-                  unlockAllLessons={isAdmin}
+                  unlockAllLessons={hasStaffAccess}
                 />
               )}
 

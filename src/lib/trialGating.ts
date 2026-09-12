@@ -4,12 +4,17 @@ import {
   isTrialBySubscription,
 } from "./isTrialBySubscription";
 
-export type UserRole = "trial" | "user" | "admin";
+export type UserRole = "trial" | "user" | "admin" | "tutor";
 export type LockedFeature = "leaderboard" | "help" | "packages" | "meetings";
 
 export const ALL_LEVELS: Level[] = ["A1", "A2", "B1", "B2"];
 
 const TRIAL_LESSON_LIMIT = 1;
+
+/** Admin and tutor bypass trial/expired/sequential locks in the learner app. */
+export function hasStaffLearnerAccess(role: UserRole): boolean {
+  return role === "admin" || role === "tutor";
+}
 
 export function isTrialUser(role: UserRole): boolean {
   return role === "trial";
@@ -28,8 +33,8 @@ export function isTrialAccess(
   today?: string,
 ): boolean {
   // Trial = null/empty subscription_end_date only (not JWT role).
-  // Admin unlock sets end_date before the learner JWT refreshes role.
-  if (role === "admin") return false;
+  // Staff unlock sets end_date before the learner JWT refreshes role.
+  if (hasStaffLearnerAccess(role)) return false;
   return isTrialBySubscription(subscriptionEndDate, today);
 }
 
@@ -38,7 +43,7 @@ export function isExpiredAccess(
   subscriptionEndDate: string | null,
   today?: string,
 ): boolean {
-  if (role === "admin") return false;
+  if (hasStaffLearnerAccess(role)) return false;
   if (isTrialAccess(role, subscriptionEndDate, today)) return false;
   return isExpiredBySubscription(subscriptionEndDate, today);
 }
@@ -76,7 +81,7 @@ export function getUnlockedLevels(
   unlockedLevels: Level[],
   today?: string,
 ): Level[] {
-  if (role === "admin") return ALL_LEVELS;
+  if (hasStaffLearnerAccess(role)) return ALL_LEVELS;
   if (isTrialAccess(role, subscriptionEndDate, today)) return ["A1"];
   return unlockedLevels;
 }
