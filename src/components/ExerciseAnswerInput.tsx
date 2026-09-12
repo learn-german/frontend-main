@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
 import { GrammarExercise } from "../lib/appTypes";
 import { blankInputCharWidth } from "../lib/blankInputSize";
+import { shuffleCopy } from "../lib/shuffleCopy";
 import { parseAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
 
 /** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */
@@ -42,8 +43,8 @@ const MatchingExercise: React.FC<{
 }> = ({ pairs, matched, onMatch }) => {
   const [selectedDe, setSelectedDe] = useState("");
   const [selectedVi, setSelectedVi] = useState("");
-  const shuffledDe = useMemo(() => [...pairs.map((p) => p.de)].sort(() => Math.random() - 0.5), [pairs]);
-  const shuffledVi = useMemo(() => [...pairs.map((p) => p.vi)].sort(() => Math.random() - 0.5), [pairs]);
+  const shuffledDe = useMemo(() => shuffleCopy(pairs.map((p) => p.de)), [pairs]);
+  const shuffledVi = useMemo(() => shuffleCopy(pairs.map((p) => p.vi)), [pairs]);
 
   React.useEffect(() => {
     if (!selectedDe || !selectedVi) return;
@@ -153,7 +154,7 @@ export const ExerciseAnswerInput: React.FC<{
   const letter = numberLabel;
   const [selectedClassificationItem, setSelectedClassificationItem] = useState<string | null>(null);
   const shuffledClassificationItems = useMemo(
-    () => [...(exercise.classificationItems ?? [])].sort(() => Math.random() - 0.5),
+    () => shuffleCopy(exercise.classificationItems ?? []),
     [exercise.type === "classification" ? exercise.classificationItems : undefined],
   );
 

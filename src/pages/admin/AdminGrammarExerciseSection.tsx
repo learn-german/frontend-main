@@ -19,6 +19,7 @@ import {
   flattenGroupsWithOrder,
   groupGrammarExercises,
   moveGroup,
+  orderedUniqueSetIds,
   resolveAppendGroupId,
   toggleGroupSelection,
   type GrammarExerciseGroup,
@@ -1127,15 +1128,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       .map((key) => exerciseGroups.find((group) => group.key === key))
       .filter((group): group is GrammarExerciseGroup<GrammarExercise> => !!group);
     const ordered = flattenGroupsWithOrder(reorderedGroups);
-    const orderedSetIds: string[] = [];
-    const seenSetIds = new Set<string>();
-    for (const group of reorderedGroups) {
-      const setId = group.exercises[0]?.setId;
-      if (setId && !seenSetIds.has(setId)) {
-        seenSetIds.add(setId);
-        orderedSetIds.push(setId);
-      }
-    }
+    const orderedSetIds = orderedUniqueSetIds(reorderedGroups);
     const previousSetOrders = orderedSetIds.map((setId) => ({
       setId,
       orderIndex: exerciseSets.find((set) => set.id === setId)?.orderIndex ?? 0,

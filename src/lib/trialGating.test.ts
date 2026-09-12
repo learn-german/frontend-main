@@ -50,9 +50,10 @@ test("future end → neither", () => {
   assert.equal(isFeatureLocked("user", "2026-12-31", "meetings", TODAY), false);
 });
 
-test("trial role locks meetings even with future end", () => {
-  assert.equal(isFeatureLocked("trial", "2026-12-31", "meetings", TODAY), true);
-  assert.equal(isFeatureLocked("trial", "2026-12-31", "help", TODAY), true);
+test("stale JWT role=trial with future end does not lock meetings/help", () => {
+  // Gating follows subscription_end_date, not JWT role label.
+  assert.equal(isFeatureLocked("trial", "2026-12-31", "meetings", TODAY), false);
+  assert.equal(isFeatureLocked("trial", "2026-12-31", "help", TODAY), false);
 });
 
 test("stale JWT role=trial with active end → not locked", () => {

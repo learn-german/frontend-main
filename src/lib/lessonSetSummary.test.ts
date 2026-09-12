@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { summarizeAttempts } from "./lessonSetSummary";
+import { isAllSetsPassed, summarizeAttempts, type LessonSetSummary } from "./lessonSetSummary";
+
+const summary = (passedCount: number, totalCount: number): LessonSetSummary => ({
+  passedCount,
+  totalCount,
+  latestScore: 85,
+  latestSubmittedAt: "2026-08-01T10:00:00Z",
+});
 
 test("chưa có attempt nào -> null", () => {
   assert.equal(summarizeAttempts(["s1", "s2"], []), null);
@@ -41,4 +48,22 @@ test("latestScore/latestSubmittedAt lấy từ attempt có submitted_at lớn nh
   );
   assert.equal(r?.latestScore, 40);
   assert.equal(r?.latestSubmittedAt, "2026-08-05T15:00:00Z");
+});
+
+test("isAllSetsPassed: null summary -> false", () => {
+  assert.equal(isAllSetsPassed(null), false);
+});
+
+test("isAllSetsPassed: totalCount 0 -> false", () => {
+  assert.equal(isAllSetsPassed(summary(0, 0)), false);
+});
+
+test("isAllSetsPassed: passed < total -> false", () => {
+  assert.equal(isAllSetsPassed(summary(1, 3)), false);
+  assert.equal(isAllSetsPassed(summary(0, 2)), false);
+});
+
+test("isAllSetsPassed: passed === total > 0 -> true", () => {
+  assert.equal(isAllSetsPassed(summary(1, 1)), true);
+  assert.equal(isAllSetsPassed(summary(3, 3)), true);
 });

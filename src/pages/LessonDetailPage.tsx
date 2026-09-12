@@ -18,7 +18,7 @@ import { Lesson, UserStats } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 import { useWritingSubmission, MAX_WRITING_ATTEMPTS } from "../lib/hooks/useWritingSubmission";
 import { useLessonSetSummary } from "../lib/hooks/useLessonSetSummary";
-import type { LessonSetSummary } from "../lib/lessonSetSummary";
+import { isAllSetsPassed, type LessonSetSummary } from "../lib/lessonSetSummary";
 import { PASS_THRESHOLD } from "../lib/completion";
 import { BOTTOM_TABS, BottomTab } from "./lessonBottomTabs";
 
@@ -39,9 +39,6 @@ const SetSummaryLine: React.FC<{ summary: LessonSetSummary }> = ({ summary }) =>
     {new Date(summary.latestSubmittedAt).toLocaleString("vi-VN")}
   </p>
 );
-
-const isAllSetsPassed = (summary: LessonSetSummary | null): boolean =>
-  !!(summary && summary.passedCount === summary.totalCount && summary.totalCount > 0);
 
 /** Khối "bắt đầu làm bài" dùng chung cho cả 3 tab bài tập: ngữ pháp, nghe, đọc. */
 const ExerciseStartPanel: React.FC<{

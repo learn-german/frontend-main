@@ -37,3 +37,8 @@ export function summarizeAttempts(
     latestSubmittedAt: latest.submitted_at,
   };
 }
+
+/** True when every non-empty set has a passing attempt (and at least one set exists). */
+export function isAllSetsPassed(summary: LessonSetSummary | null): boolean {
+  return !!(summary && summary.passedCount === summary.totalCount && summary.totalCount > 0);
+}
