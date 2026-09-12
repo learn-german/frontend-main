@@ -373,7 +373,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </div>
 
-      <div className="mt-auto flex flex-col gap-3 pt-4 shrink-0">
+      <div className="mt-4 shrink-0">
         <LearningStreakCard streak={streak} weekActivity={weekActivity} />
       </div>
     </aside>
