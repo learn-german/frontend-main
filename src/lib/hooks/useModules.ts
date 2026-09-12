@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import { Module, Lesson, Level, GrammarExplanation } from "../appTypes";
+import { filterPublishedLessons } from "../publishedLessons";
 
 type SupabaseLesson = {
   id: string;
@@ -20,6 +21,7 @@ type SupabaseLesson = {
   speaking_md: string | null;
   writing_prompt_md: string | null;
   video_r2_key: string | null;
+  status: string;
   listening_clips: { id: string; r2_key: string; order_index: number }[];
   reading_passages: { id: string; text_de: string; order_index: number }[];
 };
@@ -43,7 +45,7 @@ function transformModule(
     level: m.level as Level,
     title: m.title,
     titleVi: m.title_vi,
-    lessons: (m.lessons ?? []).map((l): Lesson => ({
+    lessons: filterPublishedLessons(m.lessons ?? []).map((l): Lesson => ({
       id: l.id,
       moduleId: m.id,
       moduleTitle: m.title_vi,
@@ -106,7 +108,7 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
             id, level, title, title_vi, objective, summary,
             youtube_id, duration, order_index, xp_reward,
             next_lesson_id, vocabulary_md, grammar,
-            grammar_md, speaking_md, writing_prompt_md, video_r2_key,
+            grammar_md, speaking_md, writing_prompt_md, video_r2_key, status,
             listening_clips (id, r2_key, order_index),
             reading_passages (id, text_de, order_index)
           )
