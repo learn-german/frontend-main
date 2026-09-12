@@ -23,6 +23,11 @@ serve(async (req) => {
     const { user_id, role = "admin" } = await req.json();
     if (!user_id) return new Response(JSON.stringify({ error: "user_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const allowedRoles = new Set(["admin", "user", "trial", "tutor"]);
+    if (!allowedRoles.has(role)) {
+      return new Response(JSON.stringify({ error: "Invalid role" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { error } = await supabase.auth.admin.updateUserById(user_id, {
       app_metadata: { role },
     });
