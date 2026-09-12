@@ -554,7 +554,6 @@ export default function App() {
           <Sidebar
             currentPage={effectivePage}
             onNavigate={handleNavigate}
-            weeklyMeeting={weeklyMeeting}
             currentLessonTitle={orderedLessons.find(l => lessonStatuses[l.id] === "current")?.titleVi}
             userRole={user.role}
             subscriptionEndDate={user.subscriptionEndDate}
