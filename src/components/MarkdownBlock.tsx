@@ -250,16 +250,18 @@ const components: Components = {
   ),
   table: ({ children }) => (
     <div className="overflow-x-auto my-2">
-      <table className="w-full text-xs border-collapse table-fixed">{children}</table>
+      <table className="w-full text-xs border-collapse table-auto">{children}</table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="border border-slate-200 bg-slate-100 px-2 py-1 text-left font-display font-bold text-slate-700">
+    <th className="border border-slate-200 bg-slate-100 px-2 py-1 text-left font-display font-bold text-slate-700 break-words whitespace-pre-wrap">
       {splitBrText(children, "th")}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border border-slate-200 px-2 py-1 text-slate-600">{splitBrText(children, "td")}</td>
+    <td className="border border-slate-200 px-2 py-1 text-slate-600 break-words whitespace-pre-wrap">
+      {splitBrText(children, "td")}
+    </td>
   ),
 };
 
