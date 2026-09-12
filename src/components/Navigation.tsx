@@ -27,7 +27,7 @@ import { Button } from "./DesignSystem";
 import { LearningStreakCard } from "./LearningStreakCard";
 import type { AppNotification } from "../lib/hooks/useNotifications";
 import type { AppPage } from "../lib/router";
-import { isFeatureLocked, type UserRole, type LockedFeature } from "../lib/trialGating";
+import { isFeatureLocked, isTrialAccess, type UserRole, type LockedFeature } from "../lib/trialGating";
 import { showToast } from "../lib/toast";
 import type { LearnerMeetingSession } from "../lib/appTypes";
 
@@ -323,6 +323,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   weekActivity,
 }) => {
   const meetingsLocked = isFeatureLocked(userRole, subscriptionEndDate, "meetings");
+  const hideMeetingTeaser = isTrialAccess(userRole, subscriptionEndDate);
   const links: { id: AppPage; label: string; desc: string; icon: LucideIcon }[] = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
@@ -374,42 +375,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <div className="mt-auto flex flex-col gap-3 pt-4">
-        <button
-          type="button"
-          onClick={() => {
-            if (meetingsLocked) {
-              showToast("Nâng cấp gói để mở tính năng này.", "warning");
-              return;
-            }
-            onNavigate("meetings");
-          }}
-          className={`border p-4 rounded-xl relative overflow-hidden text-left transition ${
-            weeklyMeeting
-              ? "bg-slate-50 border-slate-200 hover:border-slate-300"
-              : "bg-sky-50 border-sky-200 hover:border-sky-300"
-          } ${meetingsLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-        >
-          <Video className="absolute right-3 top-3 w-5 h-5 text-slate-300" />
-          <h4 className={`text-[11px] font-display font-bold uppercase tracking-wide ${
-            weeklyMeeting ? "text-slate-600" : "text-sky-700"
-          }`}>
-            {weeklyMeeting ? "Buổi học tuần này" : "Chưa có lịch tuần này"}
-          </h4>
-          {weeklyMeeting ? (
-            <>
-              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed pr-5 truncate">
-                {weeklyMeeting.title}
+        {!hideMeetingTeaser && (
+          <button
+            type="button"
+            onClick={() => {
+              if (meetingsLocked) {
+                showToast("Nâng cấp gói để mở tính năng này.", "warning");
+                return;
+              }
+              onNavigate("meetings");
+            }}
+            className={`border p-4 rounded-xl relative overflow-hidden text-left transition ${
+              weeklyMeeting
+                ? "bg-slate-50 border-slate-200 hover:border-slate-300"
+                : "bg-sky-50 border-sky-200 hover:border-sky-300"
+            } ${meetingsLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          >
+            <Video className="absolute right-3 top-3 w-5 h-5 text-slate-300" />
+            <h4 className={`text-[11px] font-display font-bold uppercase tracking-wide ${
+              weeklyMeeting ? "text-slate-600" : "text-sky-700"
+            }`}>
+              {weeklyMeeting ? "Buổi học tuần này" : "Chưa có lịch tuần này"}
+            </h4>
+            {weeklyMeeting ? (
+              <>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed pr-5 truncate">
+                  {weeklyMeeting.title}
+                </p>
+                <span className="inline-block mt-2 text-[10px] font-mono font-semibold text-slate-700 bg-white border border-slate-200 rounded-full px-2.5 py-1">
+                  {new Date(`${weeklyMeeting.sessionDate}T12:00:00`).toLocaleDateString("vi-VN")} • {weeklyMeeting.startTime.slice(0, 5)}
+                </span>
+              </>
+            ) : (
+              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed pr-5">
+                Đăng ký một buổi hỗ trợ trực tuyến.
               </p>
-              <span className="inline-block mt-2 text-[10px] font-mono font-semibold text-slate-700 bg-white border border-slate-200 rounded-full px-2.5 py-1">
-                {new Date(`${weeklyMeeting.sessionDate}T12:00:00`).toLocaleDateString("vi-VN")} • {weeklyMeeting.startTime.slice(0, 5)}
-              </span>
-            </>
-          ) : (
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed pr-5">
-              Đăng ký một buổi hỗ trợ trực tuyến.
-            </p>
-          )}
-        </button>
+            )}
+          </button>
+        )}
         <LearningStreakCard streak={streak} weekActivity={weekActivity} />
       </div>
     </aside>

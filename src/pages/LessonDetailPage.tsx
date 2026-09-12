@@ -191,10 +191,6 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           </h3>
           <div className="flex-1 bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
             <p className="text-xs text-slate-650 leading-relaxed font-sans">{lesson.objective}</p>
-            <div className="h-[1px] bg-slate-100" />
-            <p className="text-xs text-slate-500 leading-relaxed font-sans">
-              <b>Tóm tắt:</b> {lesson.summary}
-            </p>
           </div>
         </div>
       </div>

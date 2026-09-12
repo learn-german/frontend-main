@@ -63,7 +63,10 @@ export function isFeatureLocked(
   feature: LockedFeature,
   today?: string,
 ): boolean {
-  void feature;
+  // Packages stay open for trial so learners can view course offers.
+  if (feature === "packages" && isTrialAccess(role, subscriptionEndDate, today)) {
+    return false;
+  }
   return (
     isTrialAccess(role, subscriptionEndDate, today) ||
     isExpiredAccess(role, subscriptionEndDate, today)

@@ -542,17 +542,12 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
         {/* Right column: Objective */}
         <div className="lg:col-span-4 space-y-8">
 
-          {/* Objective + Summary */}
+          {/* Objective */}
           <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-display font-bold text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
               <GraduationCap className="w-4 h-4 text-amber-500" /> Mục tiêu bài học
             </h3>
             <EditableText value={data.objective ?? ""} onChange={v => upd({ objective: v })} multiline rows={4} className="text-xs text-slate-600 leading-relaxed" placeholder="Mô tả mục tiêu bài học..." />
-            <div className="h-px bg-slate-100" />
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Tóm tắt</span>
-              <EditableText value={data.summary ?? ""} onChange={v => upd({ summary: v })} multiline rows={3} className="text-xs text-slate-500 leading-relaxed" placeholder="Tóm tắt nội dung..." />
-            </div>
           </div>
         </div>
       </div>
