@@ -19,7 +19,7 @@ export function LearningStreakCard({
       : "Bạn đang duy trì thói quen học rất tốt!";
 
   return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+    <div className="shrink-0 overflow-hidden rounded-2xl border border-red-200 bg-red-50 p-4">
       <div className="mb-2 flex items-center gap-2">
         <Flame className="h-5 w-5 shrink-0 text-orange-500" aria-hidden="true" />
         <span className="text-xs font-bold uppercase tracking-wide text-red-600">

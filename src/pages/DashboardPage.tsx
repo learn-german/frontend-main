@@ -17,11 +17,12 @@ import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module, type LearnerMeetingSession } from "../lib/appTypes";
 import { LessonStatus, PASS_THRESHOLD, type QuizCategory } from "../lib/completion";
 import { selectPlannedLessons, lessonsNeededToCatchUp } from "../lib/dashboardProgress";
+import { isTrialUser, type UserRole } from "../lib/trialGating";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
 
 interface DashboardPageProps {
-  user: { email: string; fullName: string };
+  user: { email: string; fullName: string; role?: UserRole };
   stats: UserStats;
   modules: Module[];
   orderedLessons: Lesson[];
@@ -178,6 +179,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     ? report.expected_progress_percentage
     : null;
   const isBehindSchedule = expectedProgress === null || actualProgress < expectedProgress;
+  const hideWeeklyMeeting =
+    !!isTrialRestricted ||
+    !!isExpiredRestricted ||
+    (user.role != null && isTrialUser(user.role));
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -194,7 +199,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </p>
         </div>
 
-        {!isTrialRestricted && (
+        {!hideWeeklyMeeting && (
           <div className="bg-slate-950/55 backdrop-blur-md rounded-xl p-3 border border-white/10 flex items-center gap-3 z-10 self-stretch sm:self-auto min-w-[240px]">
             <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
               <Video className="w-5 h-5" />

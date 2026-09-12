@@ -27,7 +27,13 @@ import { Button } from "./DesignSystem";
 import { LearningStreakCard } from "./LearningStreakCard";
 import type { AppNotification } from "../lib/hooks/useNotifications";
 import type { AppPage } from "../lib/router";
-import { isFeatureLocked, isTrialAccess, type UserRole, type LockedFeature } from "../lib/trialGating";
+import {
+  isFeatureLocked,
+  isTrialAccess,
+  isTrialUser,
+  type UserRole,
+  type LockedFeature,
+} from "../lib/trialGating";
 import { showToast } from "../lib/toast";
 import type { LearnerMeetingSession } from "../lib/appTypes";
 
@@ -323,7 +329,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   weekActivity,
 }) => {
   const meetingsLocked = isFeatureLocked(userRole, subscriptionEndDate, "meetings");
-  const hideMeetingTeaser = isTrialAccess(userRole, subscriptionEndDate);
+  // Hide schedule teaser for effective trial AND JWT role=trial (admin may leave end_date set).
+  const hideMeetingTeaser =
+    meetingsLocked || isTrialAccess(userRole, subscriptionEndDate) || isTrialUser(userRole);
   const links: { id: AppPage; label: string; desc: string; icon: LucideIcon }[] = [
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
@@ -335,9 +343,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen">
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 p-5 shrink-0 sticky top-0 h-screen overflow-y-auto">
       {/* Dynamic Nav List */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 shrink-0">
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = currentPage === link.id || (link.id === "lesson-detail" && currentPage === "quiz");
@@ -374,7 +382,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </div>
 
-      <div className="mt-auto flex flex-col gap-3 pt-4">
+      <div className="mt-auto flex flex-col gap-3 pt-4 shrink-0">
         {!hideMeetingTeaser && (
           <button
             type="button"
