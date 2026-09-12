@@ -152,6 +152,10 @@ export const ExerciseAnswerInput: React.FC<{
 }) => {
   const letter = numberLabel;
   const [selectedClassificationItem, setSelectedClassificationItem] = useState<string | null>(null);
+  const shuffledClassificationItems = useMemo(
+    () => [...(exercise.classificationItems ?? [])].sort(() => Math.random() - 0.5),
+    [exercise.type === "classification" ? exercise.classificationItems : undefined],
+  );
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
@@ -235,7 +239,7 @@ export const ExerciseAnswerInput: React.FC<{
         <>
           <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">{letter}</span>
           <div className="flex flex-wrap gap-1.5">
-            {(exercise.classificationItems ?? [])
+            {shuffledClassificationItems
               .filter((item) => !itemGroups[item])
               .map((item) => (
                 <button

@@ -11,8 +11,8 @@ test("empty value uses min width", () => {
 });
 
 test("grows with content (+1 padding)", () => {
-  assert.equal(blankInputCharWidth("hello"), 6); // max(5+1, 6) = 6
-  assert.equal(blankInputCharWidth("hello!!"), 8); // 7+1
+  assert.equal(blankInputCharWidth("hello"), 12); // max(5+1, 12) = 12
+  assert.equal(blankInputCharWidth("abcdefghijkl"), 13); // 12+1
 });
 
 test("clamps at max", () => {
