@@ -566,7 +566,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             {planStatusLabel(i)}
                           </span>
                         </div>
-                        <p className="text-[10px] font-sans text-slate-400 mt-0.5">{lesson.moduleTitle}</p>
+                        <p className="text-[10px] font-sans text-slate-400 mt-0.5">{lesson.titleVi}</p>
                         <p className="text-[10px] font-sans text-slate-400 mt-0.5">{formatDurationLabel(lesson.duration)}</p>
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {EXERCISE_CATEGORY_BUTTONS.map(({ category }) => {
