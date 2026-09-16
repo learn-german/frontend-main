@@ -18,6 +18,7 @@ import {
   applyChipToBlank,
   applyTypedBlankAnswer,
   countBlankMarkers,
+  fillInBlankGroupClassName,
   findBlankTarget,
   getUsedWordIndexes,
   type BlankAssignments,
@@ -299,56 +300,12 @@ const QuizExerciseSetBody: React.FC<{
         {!isListening && (
           <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
         )}
-        {group.type === "fill_in_the_blank" && wordBank && (
-          <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
-            {wordBank.words.map((word, wordIndex) => {
-              const used = usedWordIndexes.has(wordIndex);
-              const disabled = wordBank.mode === "single_use" && used;
-              return (
-                <button
-                  key={`${wordIndex}:${word}`}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => {
-                    const answersWithDefaults = Object.fromEntries(group.exercises.map((exercise) => [
-                      exercise.id,
-                      blankAnswersByExercise[exercise.id]
-                        ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
-                    ]));
-                    const target = findBlankTarget(
-                      group.exercises.map((exercise) => exercise.id),
-                      answersWithDefaults,
-                      focusedBlank,
-                    );
-                    if (!target) return;
-                    const next = applyChipToBlank(
-                      { ...blankAnswersByExercise, ...answersWithDefaults },
-                      blankAssignments,
-                      target,
-                      wordIndex,
-                      word,
-                      wordBank.mode,
-                    );
-                    setBlankAnswersByExercise(next.answers);
-                    setBlankAssignments(next.assignments);
-                    setFocusedBlank(target);
-                  }}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                    used
-                      ? "border-orange-200 bg-orange-100 text-orange-500 opacity-60"
-                      : "border-orange-300 bg-white text-orange-700 hover:bg-orange-100"
-                  } disabled:cursor-not-allowed`}
-                >
-                  {word}
-                </button>
-              );
-            })}
-          </div>
-        )}
         <div className={
-          isListening || group.type === "classification"
-            ? "flex flex-col gap-3"
-            : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          group.type === "fill_in_the_blank"
+            ? fillInBlankGroupClassName(group.exercises.length)
+            : isListening || group.type === "classification"
+              ? "flex flex-col gap-3"
+              : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
         }>
           {group.exercises.map((exercise, childIndex) => (
             <ExerciseAnswerInput
@@ -405,6 +362,52 @@ const QuizExerciseSetBody: React.FC<{
             />
           ))}
         </div>
+        {group.type === "fill_in_the_blank" && wordBank && (
+          <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
+            {wordBank.words.map((word, wordIndex) => {
+              const used = usedWordIndexes.has(wordIndex);
+              const disabled = wordBank.mode === "single_use" && used;
+              return (
+                <button
+                  key={`${wordIndex}:${word}`}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    const answersWithDefaults = Object.fromEntries(group.exercises.map((exercise) => [
+                      exercise.id,
+                      blankAnswersByExercise[exercise.id]
+                        ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
+                    ]));
+                    const target = findBlankTarget(
+                      group.exercises.map((exercise) => exercise.id),
+                      answersWithDefaults,
+                      focusedBlank,
+                    );
+                    if (!target) return;
+                    const next = applyChipToBlank(
+                      { ...blankAnswersByExercise, ...answersWithDefaults },
+                      blankAssignments,
+                      target,
+                      wordIndex,
+                      word,
+                      wordBank.mode,
+                    );
+                    setBlankAnswersByExercise(next.answers);
+                    setBlankAssignments(next.assignments);
+                    setFocusedBlank(target);
+                  }}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                    used
+                      ? "border-orange-200 bg-orange-100 text-orange-500 opacity-60"
+                      : "border-orange-300 bg-white text-orange-700 hover:bg-orange-100"
+                  } disabled:cursor-not-allowed`}
+                >
+                  {word}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
