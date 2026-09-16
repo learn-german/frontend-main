@@ -45,3 +45,21 @@ gitnexus detect_changes --repo frontend-main
 - No dedicated UI test suite exists for this admin component; manual browser
   verification should cover adding to six, removing back to two, and changing
   the selected correct option.
+
+## Follow-up Fix Verification
+
+Covering tests/command: TypeScript project check for the admin grammar preview modal scroll fix.
+
+Command run:
+
+```text
+npm run lint
+```
+
+Output:
+
+```text
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> react-example@0.0.0 lint
+> tsc --noEmit

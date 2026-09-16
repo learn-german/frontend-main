@@ -1534,8 +1534,8 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       )}
 
       {previewTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className={`bg-white rounded-2xl shadow-xl p-6 w-full space-y-4 ${
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className={`bg-white rounded-2xl shadow-xl p-6 w-full my-8 space-y-4 ${
             previewTarget.type === "fill_in_the_blank" ? "max-w-3xl" : "max-w-lg"
           }`}>
             <div className="flex items-center justify-between">
