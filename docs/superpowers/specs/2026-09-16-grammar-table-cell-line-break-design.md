@@ -1,7 +1,7 @@
 # Grammar table cell line break — Design Spec
 
 **Date:** 2026-09-16  
-**Status:** Draft  
+**Status:** Approved  
 **Scope:** Admin editor ngữ pháp (`grammar_md`) + render bảng markdown dùng chung (`MarkdownBlock`). Không đổi DB, CSS wrap, hay editor speaking/vocab/writing.
 
 ## Problem
