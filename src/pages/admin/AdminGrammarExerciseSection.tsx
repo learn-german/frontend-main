@@ -25,6 +25,7 @@ import {
   type GrammarExerciseGroup,
 } from "../../lib/grammarExerciseGroups";
 import {
+  fillInBlankGroupClassName,
   normalizeWordBank,
   syncBlankDefinitions,
   type BlankDefinition,
@@ -1191,6 +1192,18 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     }))
     .filter((mod) => mod.lessonGroups.length > 0);
 
+  const fillBlankPreviewGroup = (() => {
+    if (!previewTarget || previewTarget.type !== "fill_in_the_blank") return null;
+    const setExercises = groups
+      .flatMap((lesson) => lesson.exercises)
+      .filter((exercise) => exercise.setId === previewTarget.setId);
+    const grouped = groupGrammarExercises(setExercises);
+    const match = grouped.find((group) =>
+      group.exercises.some((exercise) => exercise.id === previewTarget.id),
+    );
+    return match?.exercises ?? [previewTarget];
+  })();
+
   if (loading || moduleOrderLoading) {
     return (
       <div className="flex items-center justify-center min-h-48">
@@ -1522,7 +1535,9 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
       {previewTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg space-y-4">
+          <div className={`bg-white rounded-2xl shadow-xl p-6 w-full space-y-4 ${
+            previewTarget.type === "fill_in_the_blank" ? "max-w-3xl" : "max-w-lg"
+          }`}>
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-slate-900">Xem trước — {TYPE_LABELS[previewTarget.type]}</h3>
               <button onClick={() => setPreviewTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
@@ -1575,32 +1590,42 @@ export const AdminGrammarExerciseSection: React.FC = () => {
               </div>
             )}
 
-            {previewTarget.type === "fill_in_the_blank" && (
+            {previewTarget.type === "fill_in_the_blank" && fillBlankPreviewGroup && (
               <div className="space-y-3">
-                {previewTarget.word_bank && (
+                <div className={fillInBlankGroupClassName(fillBlankPreviewGroup.length)}>
+                  {fillBlankPreviewGroup.map((exercise, childIndex) => (
+                    <div key={exercise.id} className="text-sm leading-10 text-slate-700">
+                      <span className="mr-1 font-bold text-slate-400">
+                        {childIndex + 1}
+                      </span>
+                      {(exercise.prompt_text ?? "").split("___").map((segment, index, segments) => (
+                        <React.Fragment key={`${exercise.id}:${index}:${segment}`}>
+                          <span className="whitespace-pre-wrap">{segment}</span>
+                          {index < segments.length - 1 && (
+                            <input
+                              type="text"
+                              readOnly
+                              className="mx-1 inline-block w-28 rounded-lg border border-slate-200 px-2 py-1.5"
+                              aria-label={`Ô trống ${index + 1}`}
+                            />
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                {fillBlankPreviewGroup[0]?.word_bank && (
                   <div className="flex flex-wrap gap-2 rounded-xl bg-orange-50 p-3">
-                    {previewTarget.word_bank.words.map((word, index) => (
-                      <span key={`${index}:${word}`} className="rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-bold text-orange-700">
+                    {fillBlankPreviewGroup[0].word_bank.words.map((word, index) => (
+                      <span
+                        key={`${index}:${word}`}
+                        className="rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-bold text-orange-700"
+                      >
                         {word}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="text-sm leading-10 text-slate-700">
-                  {(previewTarget.prompt_text ?? "").split("___").map((segment, index, segments) => (
-                    <React.Fragment key={`${index}:${segment}`}>
-                      <span className="whitespace-pre-wrap">{segment}</span>
-                      {index < segments.length - 1 && (
-                        <input
-                          type="text"
-                          readOnly
-                          className="mx-1 inline-block w-28 rounded-lg border border-slate-200 px-2 py-1.5"
-                          aria-label={`Ô trống ${index + 1}`}
-                        />
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
               </div>
             )}
 
