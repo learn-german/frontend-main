@@ -11,6 +11,7 @@ import {
   applyChipToBlank,
   applyTypedBlankAnswer,
   countBlankMarkers,
+  fillInBlankGroupClassName,
   findBlankTarget,
   getUsedWordIndexes,
   type BlankAssignments,
@@ -397,7 +398,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     );
   }
 
-  // Nội dung 1 nhóm câu hỏi (hint, hướng dẫn, word bank, danh sách câu) —
+  // Nội dung 1 nhóm câu hỏi (hint, hướng dẫn, danh sách câu, word bank) —
   // dùng chung cho cả 2 cách hiển thị bên dưới: nếu set chỉ có 1 nhóm, nội
   // dung này hiện thẳng ra ngoài (khỏi bấm thêm 1 lần nữa); nếu set có nhiều
   // nhóm, mỗi nhóm vẫn là 1 accordion con như cũ.
@@ -413,6 +414,50 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
       <div className="space-y-3">
         <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
         <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
+        <div className={
+          group.type === "fill_in_the_blank"
+            ? fillInBlankGroupClassName(group.exercises.length)
+            : group.type === "classification"
+              ? "grid grid-cols-1 gap-3"
+              : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        }>
+          {group.exercises.map((exercise, childIndex) => (
+            <ExerciseAnswerInput
+              key={exercise.id}
+              exercise={exercise}
+              numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
+              selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
+              onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
+              onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
+              textAnswer={textAnswerByExercise[exercise.id] ?? ""}
+              onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
+              itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
+              onItemGroupChange={(item, itemGroup) => setItemGroupsByExercise((prev) => ({
+                ...prev,
+                [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: itemGroup },
+              }))}
+              blankAnswers={blankAnswersByExercise[exercise.id]
+                ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill("")}
+              onBlankFocus={(blankIndex) => setFocusedBlank({ exerciseId: exercise.id, blankIndex })}
+              onBlankAnswerChange={(blankIndex, value) => {
+                const target = { exerciseId: exercise.id, blankIndex };
+                const answersWithDefaults = {
+                  ...blankAnswersByExercise,
+                  [exercise.id]: blankAnswersByExercise[exercise.id]
+                    ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
+                };
+                const next = applyTypedBlankAnswer(answersWithDefaults, blankAssignments, target, value);
+                setBlankAnswersByExercise(next.answers);
+                setBlankAssignments(next.assignments);
+              }}
+              selectedChoice={choiceByExercise[exercise.id]}
+              onSelectChoice={(index) =>
+                setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: index }))
+              }
+              choiceResult={result?.choiceResults?.[exercise.id]}
+            />
+          ))}
+        </div>
         {group.type === "fill_in_the_blank" && wordBank && (
           <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
             {wordBank.words.map((word, wordIndex) => {
@@ -459,44 +504,6 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
             })}
           </div>
         )}
-        <div className={group.type === "classification" ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
-          {group.exercises.map((exercise, childIndex) => (
-            <ExerciseAnswerInput
-              key={exercise.id}
-              exercise={exercise}
-              numberLabel={`${groupIndex + 1}.${childIndex + 1}`}
-              selectedTokens={selectedTokensByExercise[exercise.id] ?? []}
-              onToggleToken={(token, tokenIdx) => toggleToken(exercise.id, token, tokenIdx)}
-              onClearTokens={() => setSelectedTokensByExercise((prev) => ({ ...prev, [exercise.id]: [] }))}
-              textAnswer={textAnswerByExercise[exercise.id] ?? ""}
-              onTextAnswerChange={(value) => setTextAnswerByExercise((prev) => ({ ...prev, [exercise.id]: value }))}
-              itemGroups={itemGroupsByExercise[exercise.id] ?? {}}
-              onItemGroupChange={(item, itemGroup) => setItemGroupsByExercise((prev) => ({
-                ...prev,
-                [exercise.id]: { ...(prev[exercise.id] ?? {}), [item]: itemGroup },
-              }))}
-              blankAnswers={blankAnswersByExercise[exercise.id]
-                ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill("")}
-              onBlankFocus={(blankIndex) => setFocusedBlank({ exerciseId: exercise.id, blankIndex })}
-              onBlankAnswerChange={(blankIndex, value) => {
-                const target = { exerciseId: exercise.id, blankIndex };
-                const answersWithDefaults = {
-                  ...blankAnswersByExercise,
-                  [exercise.id]: blankAnswersByExercise[exercise.id]
-                    ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
-                };
-                const next = applyTypedBlankAnswer(answersWithDefaults, blankAssignments, target, value);
-                setBlankAnswersByExercise(next.answers);
-                setBlankAssignments(next.assignments);
-              }}
-              selectedChoice={choiceByExercise[exercise.id]}
-              onSelectChoice={(index) =>
-                setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: index }))
-              }
-              choiceResult={result?.choiceResults?.[exercise.id]}
-            />
-          ))}
-        </div>
       </div>
     );
   };

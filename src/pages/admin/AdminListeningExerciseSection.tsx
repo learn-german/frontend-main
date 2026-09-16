@@ -34,7 +34,12 @@ import {
   buildListeningPayload,
   type ListeningExerciseForm,
 } from "../../lib/listeningExerciseForm";
-import { syncBlankDefinitions, type BlankDefinition } from "../../lib/grammarFillInBlank";
+import {
+  fillInBlankGroupClassName,
+  syncBlankDefinitions,
+  type BlankDefinition,
+} from "../../lib/grammarFillInBlank";
+import { groupGrammarExercises } from "../../lib/grammarExerciseGroups";
 import {
   addOption,
   MAX_MULTIPLE_CHOICE_OPTIONS,
@@ -70,6 +75,7 @@ interface ListeningExerciseRow {
   correct_answer: string | null;
   options: string[] | null;
   blanks: BlankDefinition[] | null;
+  word_bank: { words: string[]; mode: "single_use" | "multiple_use" } | null;
   audio_clip_id: string | null;
   order_index: number;
   explanation: string | null;
@@ -490,7 +496,7 @@ const ListeningSetEditor: React.FC<{
       supabase
         .from("grammar_exercises")
         .select(
-          "id, lesson_id, set_id, group_id, type, prompt_text, correct_answer, options, blanks, audio_clip_id, order_index, explanation",
+          "id, lesson_id, set_id, group_id, type, prompt_text, correct_answer, options, blanks, word_bank, audio_clip_id, order_index, explanation",
         )
         .eq("set_id", set.id)
         .order("order_index"),
@@ -1258,44 +1264,74 @@ const ListeningSetEditor: React.FC<{
               <p className="text-xs text-slate-400 italic">Chưa có câu hỏi.</p>
             ) : (
               <div className="space-y-3">
-                {setExercises.map((row, i) => {
-                  const exercise = toClientExercise(row);
-                  return (
-                    <ExerciseAnswerInput
-                      key={row.id}
-                      exercise={exercise}
-                      numberLabel={String(i + 1)}
-                      selectedTokens={[]}
-                      onToggleToken={() => undefined}
-                      onClearTokens={() => undefined}
-                      textAnswer={previewText[row.id] ?? ""}
-                      onTextAnswerChange={(v) => setPreviewText((prev) => ({ ...prev, [row.id]: v }))}
-                      itemGroups={{}}
-                      onItemGroupChange={() => undefined}
-                      blankAnswers={
-                        previewBlanks[row.id] ??
-                        Array((row.prompt_text ?? "").split("___").length - 1).fill("")
+                {groupGrammarExercises(
+                  setExercises.map((row) => ({
+                    ...row,
+                    groupId: row.group_id,
+                    orderIndex: row.order_index,
+                  })),
+                ).map((group) => (
+                  <div key={group.key} className="space-y-3">
+                    <div
+                      className={
+                        group.type === "fill_in_the_blank"
+                          ? fillInBlankGroupClassName(group.exercises.length)
+                          : "flex flex-col gap-3"
                       }
-                      onBlankFocus={() => undefined}
-                      onBlankAnswerChange={(blankIndex, value) =>
-                        setPreviewBlanks((prev) => {
-                          const current =
-                            prev[row.id] ??
-                            Array((row.prompt_text ?? "").split("___").length - 1).fill("");
-                          return {
-                            ...prev,
-                            [row.id]: current.map((v, j) => (j === blankIndex ? value : v)),
-                          };
-                        })
-                      }
-                      selectedChoice={previewChoice[row.id]}
-                      onSelectChoice={(idx) =>
-                        setPreviewChoice((prev) => ({ ...prev, [row.id]: idx }))
-                      }
-                      optionLayout="horizontal"
-                    />
-                  );
-                })}
+                    >
+                      {group.exercises.map((row, childIndex) => {
+                        const exercise = toClientExercise(row);
+                        return (
+                          <ExerciseAnswerInput
+                            key={row.id}
+                            exercise={exercise}
+                            numberLabel={String(childIndex + 1)}
+                            selectedTokens={[]}
+                            onToggleToken={() => undefined}
+                            onClearTokens={() => undefined}
+                            textAnswer={previewText[row.id] ?? ""}
+                            onTextAnswerChange={(v) => setPreviewText((prev) => ({ ...prev, [row.id]: v }))}
+                            itemGroups={{}}
+                            onItemGroupChange={() => undefined}
+                            blankAnswers={
+                              previewBlanks[row.id] ??
+                              Array((row.prompt_text ?? "").split("___").length - 1).fill("")
+                            }
+                            onBlankFocus={() => undefined}
+                            onBlankAnswerChange={(blankIndex, value) =>
+                              setPreviewBlanks((prev) => {
+                                const current =
+                                  prev[row.id] ??
+                                  Array((row.prompt_text ?? "").split("___").length - 1).fill("");
+                                return {
+                                  ...prev,
+                                  [row.id]: current.map((v, j) => (j === blankIndex ? value : v)),
+                                };
+                              })
+                            }
+                            selectedChoice={previewChoice[row.id]}
+                            onSelectChoice={(idx) =>
+                              setPreviewChoice((prev) => ({ ...prev, [row.id]: idx }))
+                            }
+                            optionLayout="horizontal"
+                          />
+                        );
+                      })}
+                    </div>
+                    {group.type === "fill_in_the_blank" && group.exercises[0]?.word_bank && (
+                      <div className="flex flex-wrap gap-2 rounded-xl bg-orange-50 p-3">
+                        {group.exercises[0].word_bank.words.map((word, index) => (
+                          <span
+                            key={`${index}:${word}`}
+                            className="rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-bold text-orange-700"
+                          >
+                            {word}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

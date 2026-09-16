@@ -3,6 +3,8 @@ import {
   applyChipToBlank,
   applyTypedBlankAnswer,
   countBlankMarkers,
+  fillInBlankGroupClassName,
+  fillInBlankLayout,
   findBlankTarget,
   getUsedWordIndexes,
   normalizeBlankDefinitions,
@@ -101,3 +103,10 @@ assert.deepEqual(normalizeWordBank(true, [" der ", "", "die"], "single_use"), {
 });
 assert.equal(normalizeWordBank(true, [" "], "multiple_use"), null);
 assert.equal(normalizeWordBank(false, ["der"], "single_use"), null);
+
+assert.equal(fillInBlankLayout(0), "passage");
+assert.equal(fillInBlankLayout(1), "passage");
+assert.equal(fillInBlankLayout(2), "rows");
+assert.equal(fillInBlankLayout(8), "rows");
+assert.equal(fillInBlankGroupClassName(1), "grid grid-cols-1 gap-3");
+assert.equal(fillInBlankGroupClassName(2), "grid grid-cols-1 gap-3 md:grid-cols-2");
