@@ -21,6 +21,18 @@ const blankKey = ({ exerciseId, blankIndex }: BlankFocus): string => `${exercise
 
 export const countBlankMarkers = (promptText: string): number => promptText.split("___").length - 1;
 
+export type FillBlankLayout = "passage" | "rows";
+
+export function fillInBlankLayout(exerciseCount: number): FillBlankLayout {
+  return exerciseCount <= 1 ? "passage" : "rows";
+}
+
+export function fillInBlankGroupClassName(exerciseCount: number): string {
+  return fillInBlankLayout(exerciseCount) === "passage"
+    ? "grid grid-cols-1 gap-3"
+    : "grid grid-cols-1 gap-3 md:grid-cols-2";
+}
+
 export function syncBlankDefinitions(promptText: string, current: BlankDefinition[]): BlankDefinition[] {
   return Array.from(
     { length: countBlankMarkers(promptText) },
