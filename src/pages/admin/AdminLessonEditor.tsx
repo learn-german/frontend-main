@@ -9,6 +9,7 @@ import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { MarkdownBlock } from "../../components/MarkdownBlock";
 import { showToast } from "../../lib/toast";
 import { uploadMedia } from "../../lib/uploadMedia";
+import { markdownTableEnter } from "../../lib/markdownTable";
 
 interface GrammarExample { de: string; vi: string; }
 interface Grammar { title: string; rule: string; examples: GrammarExample[]; }
@@ -165,6 +166,18 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     e.preventDefault();
     const file = item.getAsFile();
     if (file) handleGrammarImageUpload(file);
+  };
+
+  const handleGrammarKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+    const el = e.currentTarget;
+    const result = markdownTableEnter(el.value, el.selectionStart, el.selectionEnd);
+    if (!result) return;
+    e.preventDefault();
+    upd({ grammar_md: result.value });
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = result.cursor;
+    });
   };
 
   const handleSave = async () => {
@@ -375,13 +388,14 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
             {grammarTab === "edit" ? (
               <>
-                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách (lồng nhau được), - [ ] checkbox, bảng, ```code block```, blockquote, và callout 💡 ⚠️ ❗ ✅ ℹ️. Bọc từ cần luyện phát âm trong <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{...}}"}</code>, ví dụ <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{heißen}}"}</code> — học viên click vào sẽ nghe phát âm.</p>
+                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách (lồng nhau được), - [ ] checkbox, bảng, ```code block```, blockquote, và callout 💡 ⚠️ ❗ ✅ ℹ️. Bọc từ cần luyện phát âm trong <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{...}}"}</code>, ví dụ <code className="bg-slate-100 text-orange-700 px-1 rounded">{"{{heißen}}"}</code> — học viên click vào sẽ nghe phát âm. Trong bảng, Enter xuống dòng trong ô; Shift+Enter xuống dòng markdown.</p>
                 <textarea
                   ref={grammarTextareaRef}
                   rows={12}
                   value={data.grammar_md ?? ""}
                   onChange={e => upd({ grammar_md: e.target.value })}
                   onPaste={handleGrammarPaste}
+                  onKeyDown={handleGrammarKeyDown}
                   placeholder={"## Mạo từ (Artikel)\n\nTiếng Đức có 3 mạo từ: **der** (nam), **die** (nữ), **das** (trung)\n\n### Ví dụ\n- **der** Mann (người đàn ông)\n- **die** Frau (người phụ nữ)\n- **das** Kind (đứa trẻ)"}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
                 />
