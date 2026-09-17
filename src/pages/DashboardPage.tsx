@@ -260,7 +260,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         <div className="lg:col-span-8 flex flex-col gap-4 min-h-0">
 
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3.5">
@@ -499,8 +499,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2">
-                {recentScores.slice(0, 3).map((item, index) => (
+              <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                {recentScores.map((item, index) => (
                   <button
                     key={index}
                     disabled={isExpiredRestricted}
@@ -528,7 +528,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {planLessons.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col flex-1 min-h-0">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col min-h-0">
               <h3 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
                 Kế hoạch bài tập
               </h3>
@@ -536,13 +536,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {planLessons.length} bài trong lộ trình gần nhất
               </p>
 
-              <div className="flex flex-col gap-2 flex-1 border border-slate-200 rounded-xl p-2">
+              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto pr-1 border border-slate-200 rounded-xl p-2">
                 {planLessons.map((lesson, i) => {
                   const byCat = stats.quizScoresByCategory[lesson.id] ?? {};
                   return (
                     <div
                       key={lesson.id}
-                      className={`flex gap-2.5 items-start p-2.5 rounded-lg border flex-1 ${
+                      className={`flex gap-2.5 items-start p-2.5 rounded-lg border shrink-0 ${
                         i === 0
                           ? "bg-rose-50/80 border-rose-200 border-l-4 border-l-red-600"
                           : "bg-white border-slate-200"

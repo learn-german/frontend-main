@@ -297,14 +297,12 @@ const QuizExerciseSetBody: React.FC<{
     return (
       <div className="space-y-3">
         <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
-        {!isListening && (
-          <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
-        )}
+        <p className="text-sm text-slate-500">{GRAMMAR_TYPE_INSTRUCTIONS[group.type]}</p>
         <div className={
           group.type === "fill_in_the_blank"
             ? fillInBlankGroupClassName(group.exercises.length)
-            : isListening || group.type === "classification"
-              ? "flex flex-col gap-3"
+            : group.type === "classification"
+              ? "grid grid-cols-1 gap-3"
               : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
         }>
           {group.exercises.map((exercise, childIndex) => (
@@ -358,7 +356,6 @@ const QuizExerciseSetBody: React.FC<{
                   [exercise.id]: { ...(prev[exercise.id] ?? {}), [de]: vi },
                 }));
               }}
-              optionLayout={isListening ? "horizontal" : "vertical"}
             />
           ))}
         </div>
@@ -566,20 +563,7 @@ const QuizExerciseSetBody: React.FC<{
       )}
 
       <div className="space-y-3">
-        {groups.length === 1 && isListening ? (
-          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex w-full items-center gap-3 px-4 py-4">
-              <span className="text-base font-display font-black text-slate-900">Bài 1</span>
-              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">
-                {GRAMMAR_TYPE_LABELS[groups[0].type]}
-              </span>
-              <span className="text-xs text-slate-400">{groups[0].exercises.length} câu</span>
-            </div>
-            <div className="border-t border-slate-100 p-4">
-              {renderGroupContent(groups[0], 0)}
-            </div>
-          </section>
-        ) : groups.length === 1 ? (
+        {groups.length === 1 ? (
           renderGroupContent(groups[0], 0)
         ) : (
           groups.map((group, groupIndex) => {

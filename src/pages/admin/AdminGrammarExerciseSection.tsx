@@ -133,6 +133,61 @@ const inputBaseCls =
   "px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500";
 const inputCls = `w-full ${inputBaseCls}`;
 const labelCls = "block text-xs font-bold text-slate-600 mb-1";
+const promptMdHint = "Dùng **đậm** *nghiêng*";
+const TEXT_ENTRY_WITH_ALTS: ReadonlySet<EditForm["type"]> = new Set([
+  "translation",
+  "error_correction",
+  "sentence_transformation",
+  "guided_sentence_writing",
+]);
+
+const AcceptableAnswersEditor: React.FC<{
+  entry: EditForm;
+  onChange: (updater: (prev: EditForm) => EditForm) => void;
+}> = ({ entry, onChange }) => (
+  <div>
+    <label className={labelCls}>Đáp án khác chấp nhận được</label>
+    <p className="text-[11px] text-slate-400 mb-1.5">Các câu khác cũng được tính đúng (không phân biệt hoa thường, dấu câu).</p>
+    <div className="space-y-2">
+      {entry.acceptable_answers.map((ans, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <textarea
+            rows={2}
+            value={ans}
+            onChange={(e) =>
+              onChange((prev) => ({
+                ...prev,
+                acceptable_answers: prev.acceptable_answers.map((a, j) => (j === i ? e.target.value : a)),
+              }))
+            }
+            className={inputCls + " resize-none"}
+            placeholder="Câu khác được chấp nhận"
+          />
+          <button
+            type="button"
+            onClick={() =>
+              onChange((prev) => ({
+                ...prev,
+                acceptable_answers: prev.acceptable_answers.filter((_, j) => j !== i),
+              }))
+            }
+            className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+            aria-label="Xóa đáp án"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange((prev) => ({ ...prev, acceptable_answers: [...prev.acceptable_answers, ""] }))}
+        className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700"
+      >
+        <Plus className="w-3.5 h-3.5" /> Thêm đáp án
+      </button>
+    </div>
+  </div>
+);
 
 const previewContent = (ex: GrammarExercise): string => {
   if (ex.type === "classification") {
@@ -357,6 +412,7 @@ export const ExerciseEntryFields: React.FC<{
       <>
         <div>
           <label className={labelCls}>Câu sai *</label>
+          <p className="text-[11px] text-slate-400 mb-1.5">{promptMdHint}</p>
           <textarea
             rows={2}
             value={entry.prompt_text}
@@ -382,6 +438,7 @@ export const ExerciseEntryFields: React.FC<{
       <>
         <div>
           <label className={labelCls}>Câu tiếng Việt *</label>
+          <p className="text-[11px] text-slate-400 mb-1.5">{promptMdHint}</p>
           <textarea
             rows={3}
             value={entry.prompt_text}
@@ -400,48 +457,6 @@ export const ExerciseEntryFields: React.FC<{
             placeholder="Ich lerne Deutsch."
           />
         </div>
-        <div>
-          <label className={labelCls}>Đáp án khác chấp nhận được</label>
-          <p className="text-[11px] text-slate-400 mb-1.5">Các câu tiếng Đức khác cũng được tính đúng (không phân biệt hoa thường, dấu câu).</p>
-          <div className="space-y-2">
-            {entry.acceptable_answers.map((ans, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <textarea
-                  rows={3}
-                  value={ans}
-                  onChange={(e) =>
-                    onChange((prev) => ({
-                      ...prev,
-                      acceptable_answers: prev.acceptable_answers.map((a, j) => (j === i ? e.target.value : a)),
-                    }))
-                  }
-                  className={inputCls + " resize-none"}
-                  placeholder="Ich studiere Deutsch."
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChange((prev) => ({
-                      ...prev,
-                      acceptable_answers: prev.acceptable_answers.filter((_, j) => j !== i),
-                    }))
-                  }
-                  className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
-                  aria-label="Xóa đáp án"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, acceptable_answers: [...prev.acceptable_answers, ""] }))}
-              className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700"
-            >
-              <Plus className="w-3.5 h-3.5" /> Thêm đáp án
-            </button>
-          </div>
-        </div>
       </>
     )}
 
@@ -449,6 +464,7 @@ export const ExerciseEntryFields: React.FC<{
       <>
         <div>
           <label className={labelCls}>Câu gốc *</label>
+          <p className="text-[11px] text-slate-400 mb-1.5">{promptMdHint}</p>
           <textarea
             rows={2}
             value={entry.prompt_text}
@@ -484,6 +500,7 @@ export const ExerciseEntryFields: React.FC<{
       <>
         <div>
           <label className={labelCls}>Dữ liệu gợi ý *</label>
+          <p className="text-[11px] text-slate-400 mb-1.5">{promptMdHint}</p>
           <textarea
             rows={2}
             value={entry.prompt_text}
@@ -768,6 +785,10 @@ export const ExerciseEntryFields: React.FC<{
           </button>
         </div>
       </div>
+    )}
+
+    {TEXT_ENTRY_WITH_ALTS.has(entry.type) && (
+      <AcceptableAnswersEditor entry={entry} onChange={onChange} />
     )}
 
     <div>

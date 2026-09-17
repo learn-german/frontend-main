@@ -280,3 +280,25 @@ export const MarkdownBlock: React.FC<{
     </div>
   );
 };
+
+/** Inline **bold** / *italic* for exercise prompts. No raw HTML, no tables/links. */
+const promptMarkdownComponents: Components = {
+  p: ({ children }) => <>{children}</>,
+  strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+};
+
+export const PromptMarkdown: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      skipHtml
+      unwrapDisallowed
+      allowedElements={["p", "strong", "em"]}
+      components={promptMarkdownComponents}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+};

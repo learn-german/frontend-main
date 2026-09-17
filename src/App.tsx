@@ -681,7 +681,10 @@ export default function App() {
                 <LeaderboardPage currentUserId={user.id} />
               )}
               {effectivePage === "packages" && user && (
-                <PackagesPage />
+                <PackagesPage
+                  isTrial={isTrial}
+                  onContinueLearning={() => handleNavigate("roadmap")}
+                />
               )}
               {effectivePage === "help" && user && <SupportPage />}
               {effectivePage === "meetings" && user && (
