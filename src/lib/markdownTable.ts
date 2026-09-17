@@ -27,7 +27,7 @@ function isTableSeparatorRow(line: string): boolean {
   const inner = line.trim();
   if (!inner.startsWith("|")) return false;
   const cells = inner.split("|").slice(1, inner.endsWith("|") ? -1 : undefined);
-  return cells.length > 0 && cells.every(cell => /^\s*:?-{3,}:?\s*$/.test(cell));
+  return cells.length > 0 && cells.every(cell => /^\s*:?-+:?\s*$/.test(cell));
 }
 
 export function isInsideMarkdownTableCell(line: string, col: number): boolean {

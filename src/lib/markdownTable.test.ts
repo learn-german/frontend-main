@@ -100,6 +100,10 @@ test("markdownTableEnter returns null on separator row", () => {
   assert.equal(markdownTableEnter(sep, 4, 4), null);
 });
 
+test("markdownTableEnter returns null on one-dash GFM separator row", () => {
+  assert.equal(markdownTableEnter("| - | :-: |", 3, 3), null);
+});
+
 test("markdownTableEnter returns null for a multi-line selection", () => {
   const value = "| a | b |\n| c | d |";
   assert.equal(markdownTableEnter(value, 2, value.length - 2), null);
