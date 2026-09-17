@@ -60,7 +60,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, 
       <div className="flex flex-col items-center justify-center min-h-64 gap-4 text-center">
         <AlertTriangle className="w-10 h-10 text-amber-500" />
         <h2 className="text-lg font-display font-bold text-slate-700">Không có quyền truy cập</h2>
-        <p className="text-sm text-slate-500">Trang này chỉ dành cho quản trị viên hoặc gia sư.</p>
+        <p className="text-sm text-slate-500">Trang này chỉ dành cho quản trị viên hoặc tutor.</p>
         <Button variant="secondary" onClick={onNavigateHome}>Quay về Dashboard</Button>
       </div>
     );
@@ -71,7 +71,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, 
       <aside className="w-52 shrink-0">
         <div className="sticky top-6 space-y-1">
           <p className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-widest px-3 mb-3">
-            {isTutor ? "Gia sư" : "Admin Panel"}
+            {isTutor ? "tutor" : "Admin Panel"}
           </p>
           {visibleSections.map((id) => {
             const { label, Icon } = NAV_META[id];

@@ -166,15 +166,17 @@ export function computeGrammarScore(
 
     total += 1;
     const userAnswer = normalizeWord(answers[ex.id] ?? "");
-    let isCorrect: boolean;
-    if (ex.type === "translation") {
-      const accepted = [ex.correct_answer ?? "", ...(ex.acceptable_answers ?? [])]
+    const usesAcceptableAnswers =
+      ex.type === "translation"
+      || ex.type === "error_correction"
+      || ex.type === "sentence_transformation"
+      || ex.type === "guided_sentence_writing";
+    const isCorrect = usesAcceptableAnswers
+      ? [ex.correct_answer ?? "", ...(ex.acceptable_answers ?? [])]
         .map(normalizeWord)
-        .filter((s) => s.length > 0);
-      isCorrect = accepted.includes(userAnswer);
-    } else {
-      isCorrect = userAnswer === normalizeWord(ex.correct_answer ?? "");
-    }
+        .filter((s) => s.length > 0)
+        .includes(userAnswer)
+      : userAnswer === normalizeWord(ex.correct_answer ?? "");
     exerciseResults[ex.id] = isCorrect;
     if (isCorrect) correct++;
   }

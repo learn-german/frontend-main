@@ -4,11 +4,11 @@ import { computeSetAttemptUpdate, type ExistingSetAttempt } from "./setAttemptUp
 
 const XP = 30;
 
-test("lần đầu đúng 4/5 (80%) thì pass, không reveal, được XP", () => {
+test("lần đầu đúng 4/5 (80%) thì pass và reveal, được XP", () => {
   const r = computeSetAttemptUpdate(null, 4, 5, XP);
   assert.deepEqual(r, {
     score: 80, bestScore: 80, attemptCount: 1,
-    isPassed: true, revealed: false, xpEarned: XP,
+    isPassed: true, revealed: true, xpEarned: XP,
   });
 });
 
@@ -28,14 +28,14 @@ test("lần đầu đúng 3/5 (60%) thì chưa đạt, không reveal, không XP"
   });
 });
 
-test("lần 4 đúng 4/5 (80%) thì pass, không reveal, cho tiếp tục", () => {
+test("lần 4 đúng 4/5 (80%) thì pass và reveal, cho tiếp tục", () => {
   const existing: ExistingSetAttempt = {
     bestScore: 60, attemptCount: 3, isPassed: false, revealed: false,
   };
   const r = computeSetAttemptUpdate(existing, 4, 5, XP);
   assert.equal(r.attemptCount, 4);
   assert.equal(r.isPassed, true);
-  assert.equal(r.revealed, false);
+  assert.equal(r.revealed, true);
   assert.equal(r.xpEarned, XP);
 });
 
@@ -68,6 +68,7 @@ test("đã pass rồi, làm lại điểm thấp hơn: best_score không hạ, i
   const r = computeSetAttemptUpdate(existing, 2, 5, XP);
   assert.equal(r.bestScore, 90);
   assert.equal(r.isPassed, true);
+  assert.equal(r.revealed, true, "đã Pass thì lần nộp sau vẫn mở lời giải");
   assert.equal(r.xpEarned, 0);
 });
 
@@ -79,6 +80,7 @@ test("isPassed sticky: từng đạt 80% ở lần 1, lần 2 rớt xuống 40% 
   assert.equal(r.score, 40);
   assert.equal(r.bestScore, 80);
   assert.equal(r.isPassed, true);
+  assert.equal(r.revealed, true, "đã Pass thì vẫn mở lời giải dù lần này điểm thấp");
   assert.equal(r.xpEarned, 0, "không thưởng XP lại vì đã Pass từ trước");
 });
 
@@ -86,4 +88,5 @@ test("77.78% (7/9) không được làm tròn thành pass — BR-02", () => {
   const r = computeSetAttemptUpdate(null, 7, 9, XP);
   assert.equal(r.score, 78);
   assert.equal(r.isPassed, false);
+  assert.equal(r.revealed, false);
 });

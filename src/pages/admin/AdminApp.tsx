@@ -139,7 +139,7 @@ export const AdminApp: React.FC = () => {
               <span className="font-display font-bold text-white text-sm">DeutschSelbst</span>
               <span className="text-slate-600 text-xs">/</span>
               <span className="text-orange-400 text-xs font-bold uppercase tracking-widest">
-                {user.role === "tutor" ? "Gia sư" : "Admin"}
+                {user.role === "tutor" ? "tutor" : "Admin"}
               </span>
             </div>
           </div>

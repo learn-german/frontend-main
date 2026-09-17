@@ -287,6 +287,10 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <LessonStatusBadge status={data.status} />
           <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-500">
+            <input type="number" min={1} value={parseInt(data.duration, 10) || 0} onChange={e => upd({ duration: `${parseInt(e.target.value, 10) || 0} phút` })} className="w-16 bg-transparent outline-none font-bold text-slate-700 text-center" />
+            <span className="text-xs font-bold text-slate-400">phút</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-500">
             <span className="text-xs font-bold text-slate-400">XP</span>
             <input type="number" value={data.xp_reward} onChange={e => upd({ xp_reward: parseInt(e.target.value) || 0 })} className="w-16 bg-transparent outline-none font-bold text-blue-600 text-center" />
           </div>

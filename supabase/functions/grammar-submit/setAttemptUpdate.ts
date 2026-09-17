@@ -28,10 +28,9 @@ export interface SetAttemptUpdate {
  * lỡ nộp lại điểm thấp sau khi đã Pass, và badge "Đã đạt" lật lại "Chưa đạt"
  * sai.
  *
- * revealed mở vĩnh viễn: một khi true (đúng hết hoặc đủ 5 lần), giữ true dù
- * các lần nộp sau điểm thấp hơn. isPassed và revealed độc lập nhau — Pass ở
- * 80-99% không tự mở lời giải, đúng theo spec gốc (requirement.md, bước 9-10
- * và bảng Test cases chính).
+ * revealed mở vĩnh viễn: một khi true (Pass ≥80%, đúng hết, hoặc đủ 5 lần),
+ * giữ true dù các lần nộp sau điểm thấp hơn. Pass 80–99% cũng mở đáp án
+ * đúng và giải thích — không đợi 100% hay lần thứ 5.
  *
  * XP chỉ thưởng lần đầu tiên isPassed chuyển từ false sang true.
  */
@@ -46,7 +45,8 @@ export function computeSetAttemptUpdate(
   const isPassed = (existing?.isPassed ?? false) || passedNow;
   const previousBest = existing?.bestScore ?? 0;
   const attemptCount = (existing?.attemptCount ?? 0) + 1;
-  const revealed = (existing?.revealed ?? false) || correct === total || attemptCount >= 5;
+  const revealed =
+    (existing?.revealed ?? false) || isPassed || correct === total || attemptCount >= 5;
   const reachedPassNow = isPassed && !(existing?.isPassed ?? false);
 
   return {

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { MultipleChoiceOptions } from "./MultipleChoiceOptions";
+import { PromptMarkdown } from "./MarkdownBlock";
 import { GrammarExercise } from "../lib/appTypes";
 import { blankInputCharWidth } from "../lib/blankInputSize";
 import { shuffleCopy } from "../lib/shuffleCopy";
@@ -198,7 +199,7 @@ export const ExerciseAnswerInput: React.FC<{
       {exercise.type === "error_correction" && (
         <>
           <p className="text-xs bg-red-50 text-red-700 rounded-lg px-2.5 py-2">
-            <span className="font-bold text-red-400">{letter}</span> {exercise.promptText}
+            <span className="font-bold text-red-400">{letter}</span> <PromptMarkdown text={exercise.promptText ?? ""} />
           </p>
           <TextAnswerField value={textAnswer} onChange={onTextAnswerChange} placeholder="Nhập câu đúng..." />
         </>
@@ -207,7 +208,7 @@ export const ExerciseAnswerInput: React.FC<{
       {exercise.type === "translation" && (
         <>
           <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
-            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+            <span className="font-bold text-slate-400">{letter}</span> <PromptMarkdown text={exercise.promptText ?? ""} />
           </p>
           <TextAnswerField value={textAnswer} onChange={onTextAnswerChange} placeholder="Nhập câu tiếng Đức..." />
         </>
@@ -216,7 +217,7 @@ export const ExerciseAnswerInput: React.FC<{
       {exercise.type === "sentence_transformation" && (
         <>
           <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
-            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+            <span className="font-bold text-slate-400">{letter}</span> <PromptMarkdown text={exercise.promptText ?? ""} />
           </p>
           {exercise.transformationHint && (
             <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
@@ -230,7 +231,7 @@ export const ExerciseAnswerInput: React.FC<{
       {exercise.type === "guided_sentence_writing" && (
         <>
           <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
-            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+            <span className="font-bold text-slate-400">{letter}</span> <PromptMarkdown text={exercise.promptText ?? ""} />
           </p>
           <TextAnswerField value={textAnswer} onChange={onTextAnswerChange} placeholder="Viết câu hoàn chỉnh..." />
         </>
@@ -307,7 +308,7 @@ export const ExerciseAnswerInput: React.FC<{
           <span className="mr-1 font-bold text-slate-400">{letter}</span>
           {(exercise.promptText ?? "").split("___").map((segment, index, segments) => (
             <React.Fragment key={`${index}:${segment}`}>
-              <span className="whitespace-pre-wrap">{segment}</span>
+              <span className="whitespace-pre-wrap"><PromptMarkdown text={segment} /></span>
               {index < segments.length - 1 && (
                 <input
                   type="text"
@@ -332,7 +333,7 @@ export const ExerciseAnswerInput: React.FC<{
       {exercise.type === "multiple_choice" && (
         <>
           <p className="text-xs bg-slate-50 text-slate-700 rounded-lg px-2.5 py-2">
-            <span className="font-bold text-slate-400">{letter}</span> {exercise.promptText}
+            <span className="font-bold text-slate-400">{letter}</span> <PromptMarkdown text={exercise.promptText ?? ""} />
           </p>
           <MultipleChoiceOptions
             options={exercise.options ?? []}
@@ -349,7 +350,7 @@ export const ExerciseAnswerInput: React.FC<{
         <div className="flex items-center justify-between gap-3">
           <p className="flex-1 text-xs text-slate-700">
             <span className="mr-1.5 font-bold text-slate-400">{letter}</span>
-            {exercise.promptText}
+            <PromptMarkdown text={exercise.promptText ?? ""} />
           </p>
           <div className="flex shrink-0 gap-2">
             {(["richtig", "falsch"] as const).map((val) => (
@@ -455,7 +456,7 @@ export const ExerciseResultReview: React.FC<{
 }) => (
   <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/40 text-xs">
     <p className="font-display font-bold text-slate-800 leading-tight mb-1 whitespace-pre-wrap">
-      {numberLabel} {exercise.promptText ?? "Phân loại"}
+      {numberLabel} <PromptMarkdown text={exercise.promptText ?? "Phân loại"} />
     </p>
 
     {(exercise.type === "word_reorder"
@@ -548,7 +549,7 @@ export const ExerciseResultReview: React.FC<{
             const correctBlank = revealed ? getCorrectBlanks(exercise, correctAnswerRaw)[index] : undefined;
             return (
               <React.Fragment key={`${index}:${segment}`}>
-                <span className="whitespace-pre-wrap">{segment}</span>
+                <span className="whitespace-pre-wrap"><PromptMarkdown text={segment} /></span>
                 {index < segments.length - 1 && (
                   <>
                     <span className={`mx-1 inline-block min-w-20 rounded-md border px-2 py-1 text-center font-bold ${

@@ -36,6 +36,13 @@ export interface EditForm {
   order_index: number;
 }
 
+const TEXT_ENTRY_WITH_ALTS: ReadonlySet<EditForm["type"]> = new Set([
+  "translation",
+  "error_correction",
+  "sentence_transformation",
+  "guided_sentence_writing",
+]);
+
 export const EMPTY_FORM: EditForm = {
   type: "word_reorder",
   prompt_text: "",
@@ -138,10 +145,9 @@ export const buildPayload = (form: EditForm) => {
           : form.type === "matching"
             ? serializeMatching(Object.fromEntries(validMatchingPairs.map((p) => [p.de, p.vi])))
             : form.correct_answer,
-    acceptable_answers:
-      form.type === "translation"
-        ? form.acceptable_answers.map((a) => a.trim()).filter(Boolean)
-        : null,
+    acceptable_answers: TEXT_ENTRY_WITH_ALTS.has(form.type)
+      ? form.acceptable_answers.map((a) => a.trim()).filter(Boolean)
+      : null,
     tokens:
       form.type === "word_reorder"
         ? form.tokens_input.split("/").map((t) => t.trim()).filter(Boolean)
