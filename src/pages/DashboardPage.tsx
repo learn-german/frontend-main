@@ -18,6 +18,7 @@ import { UserStats, Lesson, Module, type LearnerMeetingSession } from "../lib/ap
 import { LessonStatus, PASS_THRESHOLD, type QuizCategory } from "../lib/completion";
 import { selectPlannedLessons, lessonsNeededToCatchUp } from "../lib/dashboardProgress";
 import { isTrialUser, type UserRole } from "../lib/trialGating";
+import { formatDurationLabel } from "../lib/lessonDuration";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
 
@@ -73,11 +74,6 @@ const PROGRESS_STATUS_PHRASE: Record<"on_track" | "attention" | "behind", string
   on_track: "đúng kế hoạch",
   attention: "đang thấp hơn kế hoạch",
   behind: "đang chậm tiến độ",
-};
-
-const formatDurationLabel = (duration: string): string => {
-  if (!duration.includes(":")) return `${Number(duration) || 0} phút`;
-  return `${duration} phút`;
 };
 
 const openMeeting = (url: string | null) => {
