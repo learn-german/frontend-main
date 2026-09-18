@@ -5,6 +5,16 @@ export interface WordBank {
   mode: WordBankMode;
 }
 
+/** HTML5 drag payload for word-bank → blank drops. */
+export const WORD_BANK_DRAG_MIME = "application/x-deutschpath-wordbank";
+
+export function parseWordBankDragIndex(dataTransfer: DataTransfer): number | null {
+  const raw = dataTransfer.getData(WORD_BANK_DRAG_MIME);
+  if (!raw) return null;
+  const index = Number.parseInt(raw, 10);
+  return Number.isFinite(index) && index >= 0 ? index : null;
+}
+
 export interface BlankDefinition {
   acceptedAnswers: string[];
 }

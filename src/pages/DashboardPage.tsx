@@ -462,13 +462,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   🏆
                 </div>
               </div>
-              <div className="flex-1 flex items-center justify-center py-5">
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 py-4">
                 <p className="text-5xl font-display font-black text-slate-800 leading-none tracking-tight">
                   {stats.xp} <span className="text-3xl font-black">XP</span>
                 </p>
+                {(() => {
+                  const XP_MILESTONE = 500;
+                  const progress = Math.min(100, Math.round((stats.xp / XP_MILESTONE) * 100));
+                  const unlocked = stats.xp >= XP_MILESTONE;
+                  return (
+                    <div className="w-full max-w-[220px] space-y-1.5">
+                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${unlocked ? "bg-amber-400" : "bg-orange-500"}`}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-400 text-center tracking-wide">
+                        {unlocked ? "Đã mở khóa danh hiệu" : `${stats.xp} / ${XP_MILESTONE} XP`}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
               <p className="text-[11px] font-sans text-slate-500 leading-relaxed text-center">
-                Tích đủ <b className="text-slate-700">500 XP</b> để nhận danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!
+                {stats.xp >= 500 ? (
+                  <>Bạn đã đạt danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> — tiếp tục tích XP để giữ phong độ!</>
+                ) : (
+                  <>Tích đủ <b className="text-slate-700">500 XP</b> để nhận danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!</>
+                )}
               </p>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { Button } from "../components/DesignSystem";
 import { showToast } from "../lib/toast";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import { ExerciseAnswerInput, SubmittedAnswer, ExerciseResultReview } from "../components/ExerciseAnswerInput";
+import { FillBlankWordBank } from "../components/FillBlankWordBank";
 import { GrammarExercise } from "../lib/appTypes";
 import { useGrammarExercises } from "../lib/hooks/useGrammarExercises";
 import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
@@ -16,6 +17,7 @@ import {
   getUsedWordIndexes,
   type BlankAssignments,
   type BlankFocus,
+  type WordBankMode,
 } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
 import { parseAnswer, parseAnswersIntoFormState, serializeAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
@@ -72,7 +74,7 @@ export const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> 
   sentence_transformation: "Biến đổi câu sau theo yêu cầu:",
   guided_sentence_writing: "Viết câu hoàn chỉnh từ dữ liệu gợi ý sau:",
   classification: "Phân loại các item sau vào đúng nhóm:",
-  fill_in_the_blank: "Điền từ thích hợp vào từng ô trống:",
+  fill_in_the_blank: "Điền từ thích hợp vào từng ô trống (kéo từ bảng từ nếu có):",
   multiple_choice: "Chọn một đáp án đúng cho mỗi câu:",
   matching: "Ghép cặp từ tương ứng:",
   richtig_falsch: "Chọn Richtig hoặc Falsch cho nhận định sau:",
@@ -410,6 +412,31 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
     );
     const usedWordIndexes = getUsedWordIndexes(groupAssignments);
 
+    const answersWithDefaultsForGroup = () => Object.fromEntries(group.exercises.map((exercise) => [
+      exercise.id,
+      blankAnswersByExercise[exercise.id]
+        ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
+    ]));
+
+    const placeWord = (
+      target: BlankFocus,
+      wordIndex: number,
+      word: string,
+      mode: WordBankMode,
+    ) => {
+      const next = applyChipToBlank(
+        { ...blankAnswersByExercise, ...answersWithDefaultsForGroup() },
+        blankAssignments,
+        target,
+        wordIndex,
+        word,
+        mode,
+      );
+      setBlankAnswersByExercise(next.answers);
+      setBlankAssignments(next.assignments);
+      setFocusedBlank(target);
+    };
+
     return (
       <div className="space-y-3">
         <GrammarExerciseHint hint={group.exercises[0]?.hint} groupKey={group.key} />
@@ -450,6 +477,16 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
                 setBlankAnswersByExercise(next.answers);
                 setBlankAssignments(next.assignments);
               }}
+              onBlankWordDrop={wordBank ? (blankIndex, wordIndex) => {
+                const word = wordBank.words[wordIndex];
+                if (!word) return;
+                placeWord(
+                  { exerciseId: exercise.id, blankIndex },
+                  wordIndex,
+                  word,
+                  wordBank.mode,
+                );
+              } : undefined}
               selectedChoice={choiceByExercise[exercise.id]}
               onSelectChoice={(index) =>
                 setChoiceByExercise((prev) => ({ ...prev, [exercise.id]: index }))
@@ -459,50 +496,19 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
           ))}
         </div>
         {group.type === "fill_in_the_blank" && wordBank && (
-          <div className="flex flex-wrap gap-2 rounded-xl border border-orange-100 bg-orange-50/50 p-3">
-            {wordBank.words.map((word, wordIndex) => {
-              const used = usedWordIndexes.has(wordIndex);
-              const disabled = wordBank.mode === "single_use" && used;
-              return (
-                <button
-                  key={`${wordIndex}:${word}`}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => {
-                    const answersWithDefaults = Object.fromEntries(group.exercises.map((exercise) => [
-                      exercise.id,
-                      blankAnswersByExercise[exercise.id]
-                        ?? Array(countBlankMarkers(exercise.promptText ?? "")).fill(""),
-                    ]));
-                    const target = findBlankTarget(
-                      group.exercises.map((exercise) => exercise.id),
-                      answersWithDefaults,
-                      focusedBlank,
-                    );
-                    if (!target) return;
-                    const next = applyChipToBlank(
-                      { ...blankAnswersByExercise, ...answersWithDefaults },
-                      blankAssignments,
-                      target,
-                      wordIndex,
-                      word,
-                      wordBank.mode,
-                    );
-                    setBlankAnswersByExercise(next.answers);
-                    setBlankAssignments(next.assignments);
-                    setFocusedBlank(target);
-                  }}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                    used
-                      ? "border-orange-200 bg-orange-100 text-orange-500 opacity-60"
-                      : "border-orange-300 bg-white text-orange-700 hover:bg-orange-100"
-                  } disabled:cursor-not-allowed`}
-                >
-                  {word}
-                </button>
+          <FillBlankWordBank
+            wordBank={wordBank}
+            usedWordIndexes={usedWordIndexes}
+            onChipActivate={(wordIndex, word, mode) => {
+              const target = findBlankTarget(
+                group.exercises.map((exercise) => exercise.id),
+                answersWithDefaultsForGroup(),
+                focusedBlank,
               );
-            })}
-          </div>
+              if (!target) return;
+              placeWord(target, wordIndex, word, mode);
+            }}
+          />
         )}
       </div>
     );

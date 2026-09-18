@@ -9,7 +9,9 @@ import {
   getUsedWordIndexes,
   normalizeBlankDefinitions,
   normalizeWordBank,
+  parseWordBankDragIndex,
   syncBlankDefinitions,
+  WORD_BANK_DRAG_MIME,
   type BlankAssignments,
   type BlankFocus,
 } from "./grammarFillInBlank";
@@ -110,3 +112,7 @@ assert.equal(fillInBlankLayout(2), "rows");
 assert.equal(fillInBlankLayout(8), "rows");
 assert.equal(fillInBlankGroupClassName(1), "grid grid-cols-1 gap-3");
 assert.equal(fillInBlankGroupClassName(2), "grid grid-cols-1 gap-3 md:grid-cols-2");
+
+assert.equal(parseWordBankDragIndex({ getData: (m: string) => (m === WORD_BANK_DRAG_MIME ? "2" : "") } as unknown as DataTransfer), 2);
+assert.equal(parseWordBankDragIndex({ getData: () => "" } as unknown as DataTransfer), null);
+assert.equal(parseWordBankDragIndex({ getData: () => "x" } as unknown as DataTransfer), null);
