@@ -10,6 +10,7 @@ import { UserStats, Module, LessonPosition } from "../lib/appTypes";
 import { showToast } from "../lib/toast";
 import { buildRoadmapItems } from "../lib/lessonOrder";
 import { computeLessonStatuses, type LessonStatus } from "../lib/completion";
+import { formatDurationLabel } from "../lib/lessonDuration";
 
 interface RoadmapPageProps {
   stats: UserStats;
@@ -220,7 +221,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
 
                   {/* Bottom action trigger block */}
                   <div className="pt-3 border-t border-slate-100 mt-1 flex justify-between items-center">
-                    <span className="text-[10px] font-mono text-slate-400">⏱ Video: {lesson.duration}</span>
+                    <span className="text-[10px] font-mono text-slate-400">⏱ Video: {formatDurationLabel(lesson.duration)}</span>
                     {status !== "locked" ? (
                       <button
                         id={`btn-road-start-${lesson.id}`}

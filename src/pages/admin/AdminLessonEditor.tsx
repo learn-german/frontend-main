@@ -10,6 +10,11 @@ import { MarkdownBlock } from "../../components/MarkdownBlock";
 import { showToast } from "../../lib/toast";
 import { uploadMedia } from "../../lib/uploadMedia";
 import { markdownTableEnter } from "../../lib/markdownTable";
+import {
+  formatDurationClock,
+  parseDurationSeconds,
+  readVideoFileDurationSeconds,
+} from "../../lib/lessonDuration";
 
 interface GrammarExample { de: string; vi: string; }
 interface Grammar { title: string; rule: string; examples: GrammarExample[]; }
@@ -74,7 +79,11 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     setVideoUploadPct(0);
     try {
       const objectKey = await uploadMedia(file, data.id, "video", setVideoUploadPct);
-      upd({ video_r2_key: objectKey });
+      const seconds = await readVideoFileDurationSeconds(file);
+      upd({
+        video_r2_key: objectKey,
+        ...(seconds != null ? { duration: formatDurationClock(seconds) } : {}),
+      });
       showToast("Đã tải video lên, nhớ bấm Lưu bài học.", "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Tải video lên thất bại", "warning");
@@ -286,8 +295,33 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <LessonStatusBadge status={data.status} />
-          <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-500">
-            <input type="number" min={1} value={parseInt(data.duration, 10) || 0} onChange={e => upd({ duration: `${parseInt(e.target.value, 10) || 0} phút` })} className="w-16 bg-transparent outline-none font-bold text-slate-700 text-center" />
+          <div className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-500">
+            <input
+              type="number"
+              min={0}
+              value={Math.floor(parseDurationSeconds(data.duration) / 60)}
+              onChange={(e) => {
+                const minutes = Math.max(0, parseInt(e.target.value, 10) || 0);
+                const seconds = parseDurationSeconds(data.duration) % 60;
+                upd({ duration: formatDurationClock(minutes * 60 + seconds) });
+              }}
+              className="w-12 bg-transparent outline-none font-bold text-slate-700 text-center"
+              aria-label="Phút"
+            />
+            <span className="text-xs font-bold text-slate-400">:</span>
+            <input
+              type="number"
+              min={0}
+              max={59}
+              value={parseDurationSeconds(data.duration) % 60}
+              onChange={(e) => {
+                const seconds = Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0));
+                const minutes = Math.floor(parseDurationSeconds(data.duration) / 60);
+                upd({ duration: formatDurationClock(minutes * 60 + seconds) });
+              }}
+              className="w-12 bg-transparent outline-none font-bold text-slate-700 text-center"
+              aria-label="Giây"
+            />
             <span className="text-xs font-bold text-slate-400">phút</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-500">

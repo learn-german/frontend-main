@@ -140,7 +140,7 @@ export const AdminContentSection: React.FC = () => {
         level: mod.level,
         title: "Bài học mới",
         title_vi: "Bài học mới",
-        duration: "10 phút",
+        duration: "10:00",
         xp_reward: 10,
         order_index: n,
         grammar: { title: "", rule: "", examples: [] },
