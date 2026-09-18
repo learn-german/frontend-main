@@ -5,6 +5,7 @@ import { GrammarExercise } from "../lib/appTypes";
 import { blankInputCharWidth } from "../lib/blankInputSize";
 import { shuffleCopy } from "../lib/shuffleCopy";
 import { parseAnswer, type ParsedAnswer } from "../lib/grammarAnswerCodec";
+import { parseWordBankDragIndex, WORD_BANK_DRAG_MIME } from "../lib/grammarFillInBlank";
 
 /** Auto-growing answer box so long answers stay fully visible instead of scrolling out of a one-line input. */
 const TextAnswerField: React.FC<{
@@ -124,6 +125,8 @@ export const ExerciseAnswerInput: React.FC<{
   blankAnswers: string[];
   onBlankFocus: (blankIndex: number) => void;
   onBlankAnswerChange: (blankIndex: number, value: string) => void;
+  /** When set, blanks accept word-bank HTML5 drops. */
+  onBlankWordDrop?: (blankIndex: number, wordIndex: number) => void;
   blankResults?: boolean[];
   selectedChoice: number | undefined;
   onSelectChoice: (index: number) => void;
@@ -144,6 +147,7 @@ export const ExerciseAnswerInput: React.FC<{
   blankAnswers,
   onBlankFocus,
   onBlankAnswerChange,
+  onBlankWordDrop,
   blankResults,
   selectedChoice,
   onSelectChoice,
@@ -315,6 +319,20 @@ export const ExerciseAnswerInput: React.FC<{
                   value={blankAnswers[index] ?? ""}
                   onFocus={() => onBlankFocus(index)}
                   onChange={(event) => onBlankAnswerChange(index, event.target.value)}
+                  onDragOver={(event) => {
+                    if (!onBlankWordDrop) return;
+                    if (![...event.dataTransfer.types].includes(WORD_BANK_DRAG_MIME)) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "copy";
+                  }}
+                  onDrop={(event) => {
+                    if (!onBlankWordDrop) return;
+                    event.preventDefault();
+                    const wordIndex = parseWordBankDragIndex(event.dataTransfer);
+                    if (wordIndex === null) return;
+                    onBlankFocus(index);
+                    onBlankWordDrop(index, wordIndex);
+                  }}
                   style={{ width: `${blankInputCharWidth(blankAnswers[index] ?? "")}ch` }}
                   className={`mx-1 inline-block max-w-full rounded-lg border px-2 py-1.5 text-center text-xs focus:outline-none focus:ring-2 ${
                     blankResults?.[index] === true
