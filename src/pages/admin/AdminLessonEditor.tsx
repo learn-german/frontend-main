@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, Save,
   GraduationCap, Video, Loader2,
@@ -14,7 +14,10 @@ import {
   formatDurationClock,
   parseDurationSeconds,
   readVideoFileDurationSeconds,
+  readVideoUrlDurationSeconds,
 } from "../../lib/lessonDuration";
+import { useMediaPlaybackUrl } from "../../lib/hooks/useMediaPlaybackUrl";
+import { syncLessonVideoDuration } from "../../lib/syncLessonVideoDuration";
 
 interface GrammarExample { de: string; vi: string; }
 interface Grammar { title: string; rule: string; examples: GrammarExample[]; }
@@ -75,6 +78,25 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
 
+  const { url: videoPlaybackUrl } = useMediaPlaybackUrl(data.id, "video", data.video_r2_key ?? undefined);
+
+  useEffect(() => {
+    if (!data.video_r2_key || !videoPlaybackUrl) return;
+    let cancelled = false;
+    void (async () => {
+      const seconds = await readVideoUrlDurationSeconds(videoPlaybackUrl);
+      if (cancelled || seconds == null) return;
+      const clock = formatDurationClock(seconds);
+      if (formatDurationClock(parseDurationSeconds(data.duration)) === clock) return;
+      upd({ duration: clock });
+      const saved = await syncLessonVideoDuration(data.id, seconds);
+      if (saved) showToast(`Đã đồng bộ thời lượng video: ${saved}`, "success");
+    })();
+    return () => { cancelled = true; };
+    // Only re-run when the playback URL for this lesson video changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.id, data.video_r2_key, videoPlaybackUrl]);
+
   const handleVideoUpload = async (file: File) => {
     setVideoUploadPct(0);
     try {
@@ -84,6 +106,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
         video_r2_key: objectKey,
         ...(seconds != null ? { duration: formatDurationClock(seconds) } : {}),
       });
+      if (seconds != null) await syncLessonVideoDuration(data.id, seconds);
       showToast("Đã tải video lên, nhớ bấm Lưu bài học.", "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Tải video lên thất bại", "warning");
