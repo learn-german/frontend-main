@@ -181,7 +181,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           <h2 className="text-base font-display font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide font-sans">
             <Video className="w-5 h-5 text-orange-500" /> Bài giảng lý thuyết
           </h2>
-          <VideoPlayer lessonId={lesson.id} youtubeId={lesson.youtubeId} videoR2Key={lesson.videoR2Key} title={lesson.title} levelBadge={lesson.level} />
+          <VideoPlayer lessonId={lesson.id} youtubeId={lesson.youtubeId} videoR2Key={lesson.videoR2Key} title={lesson.title} levelBadge={lesson.level} storedDuration={lesson.duration} />
         </section>
 
         {/* Objectives */}

@@ -27,20 +27,27 @@ export function formatDurationLabel(raw: string): string {
   return `${formatDurationClock(parseDurationSeconds(raw))} phút`;
 }
 
-export function readVideoFileDurationSeconds(file: File): Promise<number | null> {
+function readHtmlVideoDurationSeconds(src: string, revokeObjectUrl: boolean): Promise<number | null> {
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
     const video = document.createElement("video");
     video.preload = "metadata";
     video.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
+      if (revokeObjectUrl) URL.revokeObjectURL(src);
       const duration = video.duration;
       resolve(Number.isFinite(duration) && duration > 0 ? duration : null);
     };
     video.onerror = () => {
-      URL.revokeObjectURL(url);
+      if (revokeObjectUrl) URL.revokeObjectURL(src);
       resolve(null);
     };
-    video.src = url;
+    video.src = src;
   });
+}
+
+export function readVideoFileDurationSeconds(file: File): Promise<number | null> {
+  return readHtmlVideoDurationSeconds(URL.createObjectURL(file), true);
+}
+
+export function readVideoUrlDurationSeconds(url: string): Promise<number | null> {
+  return readHtmlVideoDurationSeconds(url, false);
 }
