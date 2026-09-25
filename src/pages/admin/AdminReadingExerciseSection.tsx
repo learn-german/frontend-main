@@ -56,6 +56,7 @@ interface ReadingQuestionGroupRowData {
 const QUESTION_TYPE_LABEL: Record<ReadingQuestionType, string> = {
   richtig_falsch: "Đúng / Sai",
   multiple_choice: "Trắc nghiệm",
+  fill_in_the_blank: "Điền vào ô trống",
 };
 
 const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({ group }) => {
@@ -80,7 +81,25 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
           ))}
         </div>
       ))}
-      {group.question_type === "multiple_choice" && (group.sub_questions ?? []).map((q, qi) => (
+      {(group.question_type === "multiple_choice" || group.question_type === "fill_in_the_blank") && (group.sub_questions ?? []).map((q, qi) => (
+        group.question_type === "fill_in_the_blank" ? (
+          <label key={qi} className="flex items-center gap-2 text-sm text-slate-700">
+            <span className="w-8 shrink-0 text-xs font-bold text-slate-400">{qi + 1}.</span>
+            <select
+              value={chosenOption[qi] ?? ""}
+              onChange={(e) => {
+                if (e.target.value === "") return;
+                setChosenOption((prev) => ({ ...prev, [qi]: Number(e.target.value) }));
+              }}
+              className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white"
+            >
+              <option value="" disabled>Chọn cụm từ</option>
+              {q.options.map((opt, oi) => (
+                <option key={oi} value={oi}>{opt}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
         <div key={qi} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
           {q.text_snippet && <p className="text-xs text-slate-500">{q.text_snippet}</p>}
           <p className="text-sm font-medium text-slate-700">{q.question}</p>
@@ -96,6 +115,7 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
             ))}
           </div>
         </div>
+        )
       ))}
     </div>
   );

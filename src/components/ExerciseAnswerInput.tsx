@@ -182,14 +182,14 @@ export const ExerciseAnswerInput: React.FC<{
                       : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  {token}
+                  <PromptMarkdown text={token} />
                 </button>
               );
             })}
           </div>
           <div className="min-h-[2.5rem] p-2.5 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-xs font-medium text-slate-800">
             {selectedTokens.length > 0
-              ? selectedTokens.map((t) => t.split(":").slice(1).join(":")).join(" ")
+              ? <PromptMarkdown text={selectedTokens.map((t) => t.split(":").slice(1).join(":")).join(" ")} />
               : "Câu của bạn sẽ hiện ở đây..."}
           </div>
           {selectedTokens.length > 0 && (

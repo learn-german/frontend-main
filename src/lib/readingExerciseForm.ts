@@ -20,7 +20,7 @@ export interface ReadingQuestionGroupForm {
   passageId: string;
   title: string;
   questionIntro: string;
-  questionType: "richtig_falsch" | "multiple_choice";
+  questionType: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
   statements: StatementForm[];
   subQuestions: SubQuestionForm[];
   explanation: string;
@@ -137,7 +137,7 @@ export interface ReadingQuestionGroupPayload {
   order_index: number;
   title: string | null;
   question_intro: string | null;
-  question_type: "richtig_falsch" | "multiple_choice";
+  question_type: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
   statements: { text: string; correct_answer: "richtig" | "falsch" }[] | null;
   sub_questions:
     | { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string }[]
@@ -161,7 +161,7 @@ export const buildReadingPayload = (
       ? form.statements.map((s) => ({ text: s.text, correct_answer: s.correctAnswer as "richtig" | "falsch" }))
       : null,
   sub_questions:
-    form.questionType === "multiple_choice"
+    form.questionType !== "richtig_falsch"
       ? form.subQuestions.map((q) => {
           const choicePayload = buildMultipleChoicePayload({ options: q.options, correctIndex: q.correctIndex });
           return {
@@ -180,7 +180,7 @@ export interface ReadingQuestionGroupRow {
   passage_id: string;
   title: string | null;
   question_intro: string | null;
-  question_type: "richtig_falsch" | "multiple_choice";
+  question_type: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
   statements: { text: string; correct_answer: "richtig" | "falsch" }[] | null;
   sub_questions:
     | { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string }[]

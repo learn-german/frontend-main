@@ -27,6 +27,14 @@ export type ReadingCarouselScreen =
       items: { key: string; text: string }[];
       slideIndex: number;
       slideCount: number;
+    }
+  | {
+      kind: "single_fill";
+      passageId: string;
+      groupId: string;
+      items: { key: string; label: string; options: string[] }[];
+      slideIndex: number;
+      slideCount: number;
     };
 
 export type BuildReadingCarouselResult =
@@ -115,6 +123,22 @@ function buildSinglePassageScreens(sortedGroups: ReadingQuestionGroupPublic[]): 
       kind: "single_rf_summary",
       passageId,
       items: rfItems,
+      slideIndex: 0,
+      slideCount: 0,
+    });
+  }
+
+  for (const group of sortedGroups) {
+    if (group.questionType !== "fill_in_the_blank" || group.subQuestions.length === 0) continue;
+    screens.push({
+      kind: "single_fill",
+      passageId: group.passageId,
+      groupId: group.id,
+      items: group.subQuestions.map((q, i) => ({
+        key: itemKey(group.id, i),
+        label: q.question,
+        options: q.options,
+      })),
       slideIndex: 0,
       slideCount: 0,
     });

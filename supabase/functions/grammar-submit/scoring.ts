@@ -165,18 +165,22 @@ export function computeGrammarScore(
     }
 
     total += 1;
-    const userAnswer = normalizeWord(answers[ex.id] ?? "");
     const usesAcceptableAnswers =
-      ex.type === "translation"
+      ex.type === "word_reorder"
+      || ex.type === "translation"
       || ex.type === "error_correction"
       || ex.type === "sentence_transformation"
       || ex.type === "guided_sentence_writing";
+    const compare = ex.type === "word_reorder"
+      ? (s: string) => normalizeWord(s).replace(/[*_]/g, "")
+      : normalizeWord;
+    const compared = compare(answers[ex.id] ?? "");
     const isCorrect = usesAcceptableAnswers
       ? [ex.correct_answer ?? "", ...(ex.acceptable_answers ?? [])]
-        .map(normalizeWord)
+        .map(compare)
         .filter((s) => s.length > 0)
-        .includes(userAnswer)
-      : userAnswer === normalizeWord(ex.correct_answer ?? "");
+        .includes(compared)
+      : compared === compare(ex.correct_answer ?? "");
     exerciseResults[ex.id] = isCorrect;
     if (isCorrect) correct++;
   }

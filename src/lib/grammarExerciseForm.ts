@@ -37,6 +37,7 @@ export interface EditForm {
 }
 
 const TEXT_ENTRY_WITH_ALTS: ReadonlySet<EditForm["type"]> = new Set([
+  "word_reorder",
   "translation",
   "error_correction",
   "sentence_transformation",
@@ -61,16 +62,23 @@ export const EMPTY_FORM: EditForm = {
 };
 
 const normalizeWord = (s: string): string => s.toLowerCase().replace(/[.,!?]/g, "").trim();
+const plainWord = (s: string): string => normalizeWord(s).replace(/[*_]/g, "");
 
 export const validateForm = (f: EditForm): string | null => {
   if (f.type === "word_reorder") {
     const tokens = f.tokens_input.split("/").map((t) => t.trim()).filter(Boolean);
     if (tokens.length < 2) return "Cần ít nhất 2 từ.";
     if (!f.correct_answer.trim()) return "Câu đúng không được để trống.";
-    const answerWords = f.correct_answer.split(/\s+/).map(normalizeWord).filter(Boolean).sort();
-    const tokenWords = tokens.flatMap((t) => t.split(/\s+/)).map(normalizeWord).filter(Boolean).sort();
-    if (JSON.stringify(answerWords) !== JSON.stringify(tokenWords)) {
+    const tokenWords = tokens.flatMap((t) => t.split(/\s+/)).map(plainWord).filter(Boolean).sort();
+    const matchesTokens = (sentence: string) => {
+      const words = sentence.split(/\s+/).map(plainWord).filter(Boolean).sort();
+      return JSON.stringify(words) === JSON.stringify(tokenWords);
+    };
+    if (!matchesTokens(f.correct_answer)) {
       return "Các từ cho sẵn không khớp với câu đúng — kiểm tra lại chính tả.";
+    }
+    if (f.acceptable_answers.some((answer) => answer.trim() && !matchesTokens(answer))) {
+      return "Đáp án khác phải dùng đúng các từ cho sẵn.";
     }
     return null;
   }

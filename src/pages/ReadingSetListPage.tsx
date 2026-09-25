@@ -324,7 +324,7 @@ const ReadingExerciseSetBody: React.FC<{
   const isLastScreen = screens.length > 0 && currentScreenIndex === screens.length - 1;
   const currentAnswered = !currentScreen
     ? false
-    : currentScreen.kind === "single_rf_summary"
+    : currentScreen.kind === "single_rf_summary" || currentScreen.kind === "single_fill"
       ? currentScreen.items.every((item) => !!answersByKey[item.key])
       : !!answersByKey[currentScreen.key];
 
@@ -603,6 +603,33 @@ const ReadingExerciseSetBody: React.FC<{
                     passageMarkdown={passagesById[screen.passageId]?.textDe ?? ""}
                     passageLabel={`Văn bản ${passageOrder + 1}`}
                   />
+                </div>
+              );
+            }
+
+            if (screen.kind === "single_fill") {
+              return (
+                <div key={screen.groupId} style={slideStyle}>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+                    <p className="text-xs font-bold text-slate-500">Điền cụm từ thích hợp vào đúng ô trống</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {screen.items.map((item, index) => (
+                        <label key={item.key} className="flex items-center gap-2 text-sm text-slate-700">
+                          <span className="w-8 shrink-0 text-xs font-bold text-slate-400">{index + 1}.</span>
+                          <select
+                            value={answersByKey[item.key] ?? ""}
+                            onChange={(e) => setAnswersByKey((prev) => ({ ...prev, [item.key]: e.target.value }))}
+                            className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white"
+                          >
+                            <option value="">Chọn cụm từ</option>
+                            {item.options.map((opt, oi) => (
+                              <option key={oi} value={String(oi)}>{opt}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               );
             }

@@ -17,7 +17,7 @@ export interface ReadingQuestionGroupPublic {
   passageId: string;
   title: string | null;
   questionIntro: string | null;
-  questionType: "richtig_falsch" | "multiple_choice";
+  questionType: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
   statements: ReadingStatement[];
   subQuestions: ReadingSubQuestion[];
   orderIndex: number;
@@ -77,7 +77,7 @@ export function useReadingQuestionGroups(setId: string): {
           passageId: row.passage_id as string,
           title: row.title as string | null,
           questionIntro: row.question_intro as string | null,
-          questionType: row.question_type as "richtig_falsch" | "multiple_choice",
+          questionType: row.question_type as ReadingQuestionGroupPublic["questionType"],
           statements: (row.statements as ReadingStatement[] | null) ?? [],
           subQuestions: (row.sub_questions as ReadingSubQuestion[] | null) ?? [],
           orderIndex: row.order_index as number,

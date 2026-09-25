@@ -135,6 +135,7 @@ const inputCls = `w-full ${inputBaseCls}`;
 const labelCls = "block text-xs font-bold text-slate-600 mb-1";
 const promptMdHint = "Dùng **đậm** *nghiêng*";
 const TEXT_ENTRY_WITH_ALTS: ReadonlySet<EditForm["type"]> = new Set([
+  "word_reorder",
   "translation",
   "error_correction",
   "sentence_transformation",
@@ -387,6 +388,7 @@ export const ExerciseEntryFields: React.FC<{
       <>
         <div>
           <label className={labelCls}>Các từ cho sẵn *</label>
+          <p className="text-[11px] text-slate-400 mb-1.5">{promptMdHint}</p>
           <input
             type="text"
             value={entry.tokens_input}

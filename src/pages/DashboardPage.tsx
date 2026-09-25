@@ -12,6 +12,7 @@ import {
   HelpCircle,
   AlertTriangle,
   Video,
+  Flame,
 } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import { UserStats, Lesson, Module, type LearnerMeetingSession } from "../lib/appTypes";
@@ -454,38 +455,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col h-full min-h-0">
               <div className="flex items-start justify-between">
                 <h3 className="text-xs font-display font-bold text-stone-500 uppercase tracking-widest">Tổng điểm tích lũy</h3>
-                <div className="w-9 h-9 rounded-lg bg-yellow-100 border border-yellow-300 flex items-center justify-center text-base shrink-0">
-                  🏆
-                </div>
+                {stats.xp >= 5000 ? (
+                  <div className="w-9 h-9 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
+                    <Flame className="w-5 h-5 text-orange-500" />
+                  </div>
+                ) : (
+                  <div className="w-9 h-9 rounded-lg bg-yellow-100 border border-yellow-300 flex items-center justify-center text-base shrink-0">
+                    🏆
+                  </div>
+                )}
               </div>
               <div className="flex-1 flex flex-col items-center justify-center gap-3 py-4">
                 <p className="text-5xl font-display font-black text-slate-800 leading-none tracking-tight">
                   {stats.xp} <span className="text-3xl font-black">XP</span>
                 </p>
-                {(() => {
-                  const XP_MILESTONE = 500;
-                  const progress = Math.min(100, Math.round((stats.xp / XP_MILESTONE) * 100));
-                  const unlocked = stats.xp >= XP_MILESTONE;
-                  return (
-                    <div className="w-full max-w-[220px] space-y-1.5">
-                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${unlocked ? "bg-amber-400" : "bg-orange-500"}`}
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <p className="text-[10px] font-bold text-slate-400 text-center tracking-wide">
-                        {unlocked ? "Đã mở khóa danh hiệu" : `${stats.xp} / ${XP_MILESTONE} XP`}
-                      </p>
+                {stats.xp < 5000 && (
+                  <div className="w-full max-w-[220px] space-y-1.5">
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-orange-500 transition-all"
+                        style={{ width: `${Math.min(100, Math.round((stats.xp / 5000) * 100))}%` }}
+                      />
                     </div>
-                  );
-                })()}
+                    <p className="text-[10px] font-bold text-slate-400 text-center tracking-wide">
+                      {stats.xp} / 5000 XP
+                    </p>
+                  </div>
+                )}
               </div>
               <p className="text-[11px] font-sans text-slate-500 leading-relaxed text-center">
-                {stats.xp >= 500 ? (
-                  <>Bạn đã đạt danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> — tiếp tục tích XP để giữ phong độ!</>
+                {stats.xp >= 5000 ? (
+                  <>Bạn đã đạt <b className="text-slate-700">5000 XP</b>, nhận danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!</>
                 ) : (
-                  <>Tích đủ <b className="text-slate-700">500 XP</b> để nhận danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!</>
+                  <>Tích đủ <b className="text-slate-700">5000 XP</b> để nhận danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!</>
                 )}
               </p>
             </div>
