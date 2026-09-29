@@ -325,7 +325,7 @@ const ReadingExerciseSetBody: React.FC<{
   const currentAnswered = !currentScreen
     ? false
     : currentScreen.kind === "single_rf_summary" || currentScreen.kind === "single_fill"
-      ? currentScreen.items.every((item) => !!answersByKey[item.key])
+      ? currentScreen.items.every((item) => !!answersByKey[item.key]?.trim())
       : !!answersByKey[currentScreen.key];
 
   React.useEffect(() => {
@@ -469,8 +469,12 @@ const ReadingExerciseSetBody: React.FC<{
                 const correct = result.itemResults?.[key];
                 const chosen = answersByKey[key];
                 const correctAns = result.correctAnswers?.[key];
-                const chosenLabel = chosen !== undefined ? String.fromCharCode(65 + Number(chosen)) : "—";
-                const optionText = chosen !== undefined ? q.options[Number(chosen)] : "";
+                const isFill = group.questionType === "fill_in_the_blank";
+                const chosenLabel = isFill
+                  ? (chosen?.trim() || "—")
+                  : chosen !== undefined && chosen !== ""
+                    ? `${String.fromCharCode(65 + Number(chosen))}. ${q.options[Number(chosen)] ?? ""}`
+                    : "—";
                 return (
                   <div
                     key={key}
@@ -482,11 +486,11 @@ const ReadingExerciseSetBody: React.FC<{
                       ? <CheckCircle2 className="w-[15px] h-[15px] text-green-600 shrink-0" />
                       : <span className="w-[15px] h-[15px] text-red-600 shrink-0 flex items-center justify-center font-black text-xs">✕</span>}
                     <span className="flex-1">
-                      {q.question} — {chosenLabel}. {optionText}
+                      {q.question} — {chosenLabel}
                     </span>
                     {!correct && correctAns && (
                       <span className="text-[11px] text-red-600 shrink-0">
-                        Đáp án đúng: {String.fromCharCode(65 + Number(correctAns))}
+                        Đáp án đúng: {isFill ? correctAns : String.fromCharCode(65 + Number(correctAns))}
                       </span>
                     )}
                   </div>
@@ -537,6 +541,7 @@ const ReadingExerciseSetBody: React.FC<{
   };
 
   const isMultiPassage = built.layout === "multi_passage";
+  const fillOnly = screens.length === 1 && screens[0]?.kind === "single_fill";
   const slideShare = screens.length > 0 ? 100 / screens.length : 100;
   const introText = sortedGroups[0]?.questionIntro?.trim() ?? "";
   const singlePassageId = screens[0]?.passageId ?? sortedGroups[0]?.passageId ?? "";
@@ -563,9 +568,11 @@ const ReadingExerciseSetBody: React.FC<{
               <MarkdownBlock content={passagesById[singlePassageId]?.textDe ?? ""} lessonId={lesson.id} large />
             </div>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            CÂU {currentScreenIndex + 1}/{screens.length}
-          </span>
+          {!fillOnly && (
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              CÂU {currentScreenIndex + 1}/{screens.length}
+            </span>
+          )}
         </>
       )}
 
@@ -610,22 +617,23 @@ const ReadingExerciseSetBody: React.FC<{
             if (screen.kind === "single_fill") {
               return (
                 <div key={screen.groupId} style={slideStyle}>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-                    <p className="text-xs font-bold text-slate-500">Điền cụm từ thích hợp vào đúng ô trống</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm text-slate-600">Điền cụm từ thích hợp vào từng ô trống:</p>
+                      <p className="shrink-0 text-xs text-slate-400">Nhập trực tiếp vào ô trả lời</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {screen.items.map((item, index) => (
-                        <label key={item.key} className="flex items-center gap-2 text-sm text-slate-700">
-                          <span className="w-8 shrink-0 text-xs font-bold text-slate-400">{index + 1}.</span>
-                          <select
+                        <label key={item.key} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
+                          <span className="shrink-0 text-xs font-bold text-slate-400">1.{index + 1}</span>
+                          <span className="shrink-0">{item.label}</span>
+                          <span className="text-slate-300">→</span>
+                          <input
+                            type="text"
                             value={answersByKey[item.key] ?? ""}
                             onChange={(e) => setAnswersByKey((prev) => ({ ...prev, [item.key]: e.target.value }))}
-                            className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white"
-                          >
-                            <option value="">Chọn cụm từ</option>
-                            {item.options.map((opt, oi) => (
-                              <option key={oi} value={String(oi)}>{opt}</option>
-                            ))}
-                          </select>
+                            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                          />
                         </label>
                       ))}
                     </div>
@@ -671,6 +679,7 @@ const ReadingExerciseSetBody: React.FC<{
         </div>
       </div>
 
+      {!fillOnly && (
       <div className="flex items-center justify-center gap-1.5 pt-1">
         {screens.map((screen, index) => (
           <button
@@ -682,13 +691,20 @@ const ReadingExerciseSetBody: React.FC<{
           />
         ))}
       </div>
+      )}
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
-      <div className="flex flex-wrap justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {currentScreen?.kind === "single_fill" && !currentAnswered && (
+          <p className="mr-auto text-sm text-slate-500">
+            Còn {currentScreen.items.filter((item) => !answersByKey[item.key]?.trim()).length} câu chưa trả lời.
+          </p>
+        )}
         <Button variant="secondary" onClick={handleSaveDraft}>
           Lưu
         </Button>
+        {!fillOnly && (
         <Button
           variant="secondary"
           disabled={currentScreenIndex === 0}
@@ -696,6 +712,7 @@ const ReadingExerciseSetBody: React.FC<{
         >
           Quay lại
         </Button>
+        )}
         {isLastScreen ? (
           <Button variant="primary" disabled={!currentAnswered || submitting} onClick={handleSubmit}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

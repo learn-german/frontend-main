@@ -14,6 +14,7 @@ export interface SubQuestionForm {
   question: string;
   options: string[];
   correctIndex: number;
+  acceptedAnswer: string;
 }
 
 export interface ReadingQuestionGroupForm {
@@ -74,7 +75,7 @@ export const addSubQuestion = (form: ReadingQuestionGroupForm): ReadingQuestionG
   ...form,
   subQuestions: [
     ...form.subQuestions,
-    { id: newId(), textSnippet: "", imageKey: null, question: "", options: ["", "", ""], correctIndex: -1 },
+    { id: newId(), textSnippet: "", imageKey: null, question: "", options: ["", "", ""], correctIndex: -1, acceptedAnswer: "" },
   ],
 });
 
@@ -83,7 +84,7 @@ export const removeSubQuestion = (form: ReadingQuestionGroupForm, id: string): R
   subQuestions: form.subQuestions.filter((q) => q.id !== id),
 });
 
-export const setSubQuestionField = <K extends "textSnippet" | "imageKey" | "question">(
+export const setSubQuestionField = <K extends "textSnippet" | "imageKey" | "question" | "acceptedAnswer">(
   form: ReadingQuestionGroupForm,
   id: string,
   field: K,
@@ -122,6 +123,13 @@ export const validateReadingForm = (form: ReadingQuestionGroupForm): string | nu
     return null;
   }
 
+  if (form.questionType === "fill_in_the_blank") {
+    if (form.subQuestions.length === 0) return "Cần ít nhất 1 câu hỏi.";
+    if (form.subQuestions.some((q) => !q.question.trim())) return "Mỗi câu cần có cụm gợi ý.";
+    if (form.subQuestions.some((q) => !q.acceptedAnswer.trim())) return "Mỗi câu cần có đáp án.";
+    return null;
+  }
+
   if (form.subQuestions.length === 0) return "Cần ít nhất 1 câu hỏi.";
   for (const q of form.subQuestions) {
     if (!q.question.trim()) return "Mỗi câu hỏi cần có nội dung.";
@@ -141,6 +149,7 @@ export interface ReadingQuestionGroupPayload {
   statements: { text: string; correct_answer: "richtig" | "falsch" }[] | null;
   sub_questions:
     | { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string }[]
+    | { question: string; accepted_answers: string[] }[]
     | null;
   explanation: string;
 }
@@ -161,18 +170,23 @@ export const buildReadingPayload = (
       ? form.statements.map((s) => ({ text: s.text, correct_answer: s.correctAnswer as "richtig" | "falsch" }))
       : null,
   sub_questions:
-    form.questionType !== "richtig_falsch"
-      ? form.subQuestions.map((q) => {
-          const choicePayload = buildMultipleChoicePayload({ options: q.options, correctIndex: q.correctIndex });
-          return {
-            text_snippet: q.textSnippet.trim() || null,
-            image_key: q.imageKey,
-            question: q.question,
-            options: choicePayload.options ?? q.options,
-            correct_option_id: choicePayload.correct_answer,
-          };
-        })
-      : null,
+    form.questionType === "fill_in_the_blank"
+      ? form.subQuestions.map((q) => ({
+          question: q.question.trim(),
+          accepted_answers: [q.acceptedAnswer.trim()],
+        }))
+      : form.questionType === "multiple_choice"
+        ? form.subQuestions.map((q) => {
+            const choicePayload = buildMultipleChoicePayload({ options: q.options, correctIndex: q.correctIndex });
+            return {
+              text_snippet: q.textSnippet.trim() || null,
+              image_key: q.imageKey,
+              question: q.question,
+              options: choicePayload.options ?? q.options,
+              correct_option_id: choicePayload.correct_answer,
+            };
+          })
+        : null,
   explanation: form.explanation,
 });
 
@@ -183,7 +197,14 @@ export interface ReadingQuestionGroupRow {
   question_type: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
   statements: { text: string; correct_answer: "richtig" | "falsch" }[] | null;
   sub_questions:
-    | { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string }[]
+    | {
+        text_snippet?: string | null;
+        image_key?: string | null;
+        question: string;
+        options?: string[];
+        correct_option_id?: string;
+        accepted_answers?: string[];
+      }[]
     | null;
   explanation: string | null;
 }
@@ -194,13 +215,17 @@ export const parseReadingRow = (row: ReadingQuestionGroupRow): ReadingQuestionGr
   questionIntro: row.question_intro ?? "",
   questionType: row.question_type,
   statements: (row.statements ?? []).map((s) => ({ id: newId(), text: s.text, correctAnswer: s.correct_answer })),
-  subQuestions: (row.sub_questions ?? []).map((q) => ({
-    id: newId(),
-    textSnippet: q.text_snippet ?? "",
-    imageKey: q.image_key,
-    question: q.question,
-    options: q.options,
-    correctIndex: q.options.findIndex((_, i) => String(i) === q.correct_option_id),
-  })),
+  subQuestions: (row.sub_questions ?? []).map((q) => {
+    const options = q.options ?? [];
+    return {
+      id: newId(),
+      textSnippet: q.text_snippet ?? "",
+      imageKey: q.image_key ?? null,
+      question: q.question,
+      options,
+      correctIndex: options.findIndex((_, i) => String(i) === q.correct_option_id),
+      acceptedAnswer: q.accepted_answers?.[0] ?? "",
+    };
+  }),
   explanation: row.explanation ?? "",
 });

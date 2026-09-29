@@ -32,7 +32,7 @@ export type ReadingCarouselScreen =
       kind: "single_fill";
       passageId: string;
       groupId: string;
-      items: { key: string; label: string; options: string[] }[];
+      items: { key: string; label: string }[];
       slideIndex: number;
       slideCount: number;
     };
@@ -137,7 +137,6 @@ function buildSinglePassageScreens(sortedGroups: ReadingQuestionGroupPublic[]): 
       items: group.subQuestions.map((q, i) => ({
         key: itemKey(group.id, i),
         label: q.question,
-        options: q.options,
       })),
       slideIndex: 0,
       slideCount: 0,

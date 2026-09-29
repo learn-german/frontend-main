@@ -198,3 +198,24 @@ test("parseReadingRow: round-trip đúng ngược lại buildReadingPayload cho 
   assert.equal(form.statements[0].text, "Er ist Lehrer.");
   assert.equal(form.statements[0].correctAnswer, "richtig");
 });
+
+test("validateReadingForm: fill_in_the_blank thiếu đáp án thì báo lỗi", () => {
+  let form: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
+  form = addSubQuestion(form);
+  form = setSubQuestionField(form, form.subQuestions[0].id, "question", "Lea und Tom");
+  assert.equal(validateReadingForm(form), "Mỗi câu cần có đáp án.");
+});
+
+test("buildReadingPayload: fill_in_the_blank lưu đáp án chữ, không có phương án", () => {
+  let form: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
+  form = addSubQuestion(form);
+  const id = form.subQuestions[0].id;
+  form = setSubQuestionField(form, id, "question", "Lea und Tom");
+  form = setSubQuestionField(form, id, "acceptedAnswer", "arbeiten im Café");
+  const payload = buildReadingPayload(form, "set1", 0);
+  assert.equal(payload.question_type, "fill_in_the_blank");
+  assert.equal(payload.statements, null);
+  assert.deepEqual(payload.sub_questions, [
+    { question: "Lea und Tom", accepted_answers: ["arbeiten im Café"] },
+  ]);
+});

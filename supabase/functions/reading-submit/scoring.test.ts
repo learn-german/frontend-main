@@ -111,3 +111,31 @@ test("deriveExplanations: 1 explanation/nhóm, không phải theo item", () => {
   const groups = [{ id: "g1", explanation: "vì..." }, { id: "g2", explanation: null }];
   assert.deepEqual(deriveExplanations(groups), { g1: "vì...", g2: "" });
 });
+
+const fillBlankGroup = (): ScorableReadingGroup => ({
+  id: "g3",
+  question_type: "fill_in_the_blank",
+  statements: null,
+  sub_questions: [{ accepted_answers: ["arbeiten im Café"] }],
+});
+
+test("computeReadingScore: fill_in_the_blank khớp chữ, bỏ qua hoa thường và khoảng trắng thừa", () => {
+  const result = computeReadingScore([fillBlankGroup()], { "g3:0": "  Arbeiten   im Café " });
+  assert.equal(result.correct, 1);
+  assert.equal(result.itemResults["g3:0"], true);
+});
+
+test("computeReadingScore: fill_in_the_blank sai nếu không khớp đáp án", () => {
+  const result = computeReadingScore([fillBlankGroup()], { "g3:0": "wohnen in Berlin" });
+  assert.equal(result.correct, 0);
+  assert.equal(result.itemResults["g3:0"], false);
+});
+
+test("projectAnswers: fill_in_the_blank giữ cụm dài hơn giới hạn đáp án trắc nghiệm", () => {
+  const projected = projectAnswers([fillBlankGroup()], { "g3:0": "a".repeat(80) });
+  assert.equal(projected["g3:0"].length, 80);
+});
+
+test("deriveCorrectAnswers: fill_in_the_blank trả cụm đáp án, không phải index", () => {
+  assert.equal(deriveCorrectAnswers([fillBlankGroup()])["g3:0"], "arbeiten im Café");
+});

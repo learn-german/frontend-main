@@ -38,7 +38,14 @@ interface LessonGroup {
 }
 
 type ReadingStatementRow = { text: string; correct_answer: "richtig" | "falsch" };
-type ReadingSubQuestionRow = { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string };
+type ReadingSubQuestionRow = {
+  text_snippet?: string | null;
+  image_key?: string | null;
+  question: string;
+  options?: string[];
+  correct_option_id?: string;
+  accepted_answers?: string[];
+};
 
 interface ReadingQuestionGroupRowData {
   id: string;
@@ -55,7 +62,7 @@ interface ReadingQuestionGroupRowData {
 
 const QUESTION_TYPE_LABEL: Record<ReadingQuestionType, string> = {
   richtig_falsch: "Đúng / Sai",
-  multiple_choice: "Trắc nghiệm",
+  multiple_choice: "Trắc nghiệm một đáp án",
   fill_in_the_blank: "Điền vào ô trống",
 };
 
@@ -83,28 +90,23 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
       ))}
       {(group.question_type === "multiple_choice" || group.question_type === "fill_in_the_blank") && (group.sub_questions ?? []).map((q, qi) => (
         group.question_type === "fill_in_the_blank" ? (
-          <label key={qi} className="flex items-center gap-2 text-sm text-slate-700">
-            <span className="w-8 shrink-0 text-xs font-bold text-slate-400">{qi + 1}.</span>
-            <select
-              value={chosenOption[qi] ?? ""}
-              onChange={(e) => {
-                if (e.target.value === "") return;
-                setChosenOption((prev) => ({ ...prev, [qi]: Number(e.target.value) }));
-              }}
-              className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white"
-            >
-              <option value="" disabled>Chọn cụm từ</option>
-              {q.options.map((opt, oi) => (
-                <option key={oi} value={oi}>{opt}</option>
-              ))}
-            </select>
+          <label key={qi} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+            <span className="shrink-0 text-xs font-bold text-slate-400">1.{qi + 1}</span>
+            <span className="shrink-0">{q.question}</span>
+            <span className="text-slate-300">→</span>
+            <input
+              type="text"
+              readOnly
+              placeholder="Nhập trực tiếp"
+              className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-sm"
+            />
           </label>
         ) : (
         <div key={qi} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
           {q.text_snippet && <p className="text-xs text-slate-500">{q.text_snippet}</p>}
           <p className="text-sm font-medium text-slate-700">{q.question}</p>
           <div className="space-y-1">
-            {q.options.map((opt, oi) => (
+            {(q.options ?? []).map((opt, oi) => (
               <button
                 key={oi}
                 onClick={() => setChosenOption((prev) => ({ ...prev, [qi]: oi }))}
@@ -426,15 +428,23 @@ export const AdminReadingExerciseSection: React.FC = () => {
       const id = f.statements[0].id;
       f = setStatementText(f, id, s.text);
       f = setStatementAnswer(f, id, s.correct_answer);
+    } else if (group.question_type === "fill_in_the_blank") {
+      const q = (group.sub_questions ?? [])[index];
+      f = addSubQuestion(f);
+      const id = f.subQuestions[0].id;
+      const legacyAnswer = q.options?.[Number(q.correct_option_id)] ?? "";
+      f = setSubQuestionField(f, id, "question", q.question);
+      f = setSubQuestionField(f, id, "acceptedAnswer", q.accepted_answers?.[0] ?? legacyAnswer);
     } else {
       const q = (group.sub_questions ?? [])[index];
       f = addSubQuestion(f);
       const id = f.subQuestions[0].id;
+      const options = q.options ?? [];
       f = setSubQuestionField(f, id, "textSnippet", q.text_snippet ?? "");
-      f = setSubQuestionField(f, id, "imageKey", q.image_key);
+      f = setSubQuestionField(f, id, "imageKey", q.image_key ?? null);
       f = setSubQuestionField(f, id, "question", q.question);
-      const correctIndex = q.options.findIndex((_, i) => String(i) === q.correct_option_id);
-      f = setSubQuestionOptions(f, id, { options: q.options, correctIndex });
+      const correctIndex = options.findIndex((_, i) => String(i) === q.correct_option_id);
+      f = setSubQuestionOptions(f, id, { options, correctIndex });
     }
     setItemForm(f);
     setItemModal({ setId: group.set_id, lessonId, questionType: group.question_type, groupId: group.id, itemIndex: index });
@@ -459,6 +469,10 @@ export const AdminReadingExerciseSection: React.FC = () => {
       const s = itemForm.statements[0];
       if (!s?.text.trim()) { showToast("Nhận định không được để trống.", "warning"); return; }
       if (!s.correctAnswer) { showToast("Cần chọn Đúng hoặc Sai.", "warning"); return; }
+    } else if (itemModal.questionType === "fill_in_the_blank") {
+      const q = itemForm.subQuestions[0];
+      if (!q?.question.trim()) { showToast("Cụm gợi ý không được để trống.", "warning"); return; }
+      if (!q.acceptedAnswer.trim()) { showToast("Đáp án không được để trống.", "warning"); return; }
     } else {
       const q = itemForm.subQuestions[0];
       if (!q?.question.trim()) { showToast("Câu hỏi không được để trống.", "warning"); return; }
@@ -486,6 +500,17 @@ export const AdminReadingExerciseSection: React.FC = () => {
           ? [...current, newItem]
           : current.map((item, i) => (i === itemModal.itemIndex ? newItem : item));
         updatePayload = { statements: nextArray };
+      } else if (itemModal.questionType === "fill_in_the_blank") {
+        const q = itemForm.subQuestions[0];
+        const newItem: ReadingSubQuestionRow = {
+          question: q.question.trim(),
+          accepted_answers: [q.acceptedAnswer.trim()],
+        };
+        const current = group.sub_questions ?? [];
+        const nextArray = itemModal.itemIndex === null
+          ? [...current, newItem]
+          : current.map((item, i) => (i === itemModal.itemIndex ? newItem : item));
+        updatePayload = { sub_questions: nextArray };
       } else {
         const q = itemForm.subQuestions[0];
         const choicePayload = buildMultipleChoicePayload({ options: q.options, correctIndex: q.correctIndex });
@@ -761,7 +786,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                       >
                                         {group.question_type === "richtig_falsch"
                                           ? <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">✓✗</span>
-                                          : <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">≡</span>}
+                                          : group.question_type === "fill_in_the_blank"
+                                            ? <span className="w-5 h-5 rounded border border-red-200 bg-red-50 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">Aa</span>
+                                            : <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">≡</span>}
                                         <span className="text-sm font-display font-bold text-slate-700">{QUESTION_TYPE_LABEL[group.question_type]}</span>
                                         <span className="text-[11px] font-bold text-slate-400 bg-white border border-slate-200 rounded-full px-2 py-0.5">{itemCount(group)} câu hỏi</span>
                                         <span className="ml-auto flex items-center gap-2">
@@ -794,7 +821,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                   <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
                                                   <span className="text-sm text-slate-700 flex-1 truncate">{i + 1}. {q.question}</span>
                                                   <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0">
-                                                    Đáp án: {optionLabel(Number(q.correct_option_id))}
+                                                    Đáp án: {group.question_type === "fill_in_the_blank"
+                                                      ? (q.accepted_answers?.[0] ?? q.options?.[Number(q.correct_option_id)] ?? "")
+                                                      : optionLabel(Number(q.correct_option_id))}
                                                   </span>
                                                   <button onClick={() => openEditItem(group, i, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => setDeleteItemTarget({ group, index: i })} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -877,7 +906,30 @@ export const AdminReadingExerciseSection: React.FC = () => {
               <button onClick={() => setItemModal(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
             </div>
 
-            {itemModal.questionType === "richtig_falsch" ? (
+            {itemModal.questionType === "fill_in_the_blank" ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500">Cụm gợi ý *</label>
+                  <input
+                    type="text"
+                    value={itemForm.subQuestions[0]?.question ?? ""}
+                    onChange={(e) => setItemForm((prev) => setSubQuestionField(prev, prev.subQuestions[0].id, "question", e.target.value))}
+                    placeholder="Ví dụ: Lea und Tom"
+                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500">Đáp án *</label>
+                  <input
+                    type="text"
+                    value={itemForm.subQuestions[0]?.acceptedAnswer ?? ""}
+                    onChange={(e) => setItemForm((prev) => setSubQuestionField(prev, prev.subQuestions[0].id, "acceptedAnswer", e.target.value))}
+                    placeholder="Cụm từ học viên cần điền"
+                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+            ) : itemModal.questionType === "richtig_falsch" ? (
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-500">Nhận định *</label>
                 <textarea

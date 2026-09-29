@@ -2,7 +2,7 @@ export interface ScorableReadingGroup {
   id: string;
   question_type: string;
   statements: { correct_answer: string }[] | null;
-  sub_questions: { correct_option_id: string }[] | null;
+  sub_questions: { correct_option_id?: string; accepted_answers?: string[] }[] | null;
 }
 
 export interface ReadingScoreResult {
@@ -12,9 +12,16 @@ export interface ReadingScoreResult {
   itemResults: Record<string, boolean>;
 }
 
-// Longest legitimate answer is "richtig"/"falsch" or a small option index —
-// generous cap, anything past it is abuse rather than a real answer.
-const MAX_ANSWER_LENGTH = 20;
+const CHOICE_ANSWER_MAX = 20;
+const FILL_ANSWER_MAX = 200;
+
+function normalizeBlank(s: string): string {
+  return s.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function answerMaxLength(questionType: string): number {
+  return questionType === "fill_in_the_blank" ? FILL_ANSWER_MAX : CHOICE_ANSWER_MAX;
+}
 
 /** Đơn vị chấm điểm của 1 nhóm câu hỏi: statement (richtig_falsch) hoặc
  * sub_question (multiple_choice), khoá `${group.id}:${index}`. */
@@ -41,7 +48,7 @@ export function projectAnswers(
     for (const key of itemKeys(group)) {
       const raw = source[key];
       const value = typeof raw === "string" ? raw : "";
-      projected[key] = value.slice(0, MAX_ANSWER_LENGTH);
+      projected[key] = value.slice(0, answerMaxLength(group.question_type));
     }
   }
   return projected;
@@ -59,6 +66,15 @@ export function computeReadingScore(
       (group.statements ?? []).forEach((s, i) => {
         const key = `${group.id}:${i}`;
         const isCorrect = answers[key] === s.correct_answer;
+        itemResults[key] = isCorrect;
+        total++;
+        if (isCorrect) correct++;
+      });
+    } else if (group.question_type === "fill_in_the_blank") {
+      (group.sub_questions ?? []).forEach((q, i) => {
+        const key = `${group.id}:${i}`;
+        const accepted = (q.accepted_answers ?? []).map(normalizeBlank).filter((answer) => answer.length > 0);
+        const isCorrect = accepted.includes(normalizeBlank(answers[key] ?? ""));
         itemResults[key] = isCorrect;
         total++;
         if (isCorrect) correct++;
@@ -84,8 +100,10 @@ export function deriveCorrectAnswers(groups: ScorableReadingGroup[]): Record<str
   for (const group of groups) {
     if (group.question_type === "richtig_falsch") {
       (group.statements ?? []).forEach((s, i) => { result[`${group.id}:${i}`] = s.correct_answer; });
+    } else if (group.question_type === "fill_in_the_blank") {
+      (group.sub_questions ?? []).forEach((q, i) => { result[`${group.id}:${i}`] = q.accepted_answers?.[0] ?? ""; });
     } else {
-      (group.sub_questions ?? []).forEach((q, i) => { result[`${group.id}:${i}`] = q.correct_option_id; });
+      (group.sub_questions ?? []).forEach((q, i) => { result[`${group.id}:${i}`] = q.correct_option_id ?? ""; });
     }
   }
   return result;
