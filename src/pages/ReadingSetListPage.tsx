@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, CheckCircle2, Loader2, RotateCcw, ArrowRight } from "lucide-react";
 import { Button } from "../components/DesignSystem";
 import { ExercisePageHeader } from "../components/ExercisePageHeader";
-import { MarkdownBlock } from "../components/MarkdownBlock";
+import { MarkdownBlock, PromptMarkdown } from "../components/MarkdownBlock";
 import { Lesson } from "../lib/appTypes";
 import { useExerciseSets, type ExerciseSet } from "../lib/hooks/useExerciseSets";
 import { useExerciseSetAttempt, useExerciseSetAttempts } from "../lib/hooks/useExerciseSetAttempt";
@@ -324,7 +324,7 @@ const ReadingExerciseSetBody: React.FC<{
   const isLastScreen = screens.length > 0 && currentScreenIndex === screens.length - 1;
   const currentAnswered = !currentScreen
     ? false
-    : currentScreen.kind === "single_rf_summary" || currentScreen.kind === "single_fill"
+    : currentScreen.kind === "single_rf_summary" || currentScreen.kind === "single_fill" || currentScreen.kind === "multi_rf"
       ? currentScreen.items.every((item) => !!answersByKey[item.key]?.trim())
       : !!answersByKey[currentScreen.key];
 
@@ -445,7 +445,7 @@ const ReadingExerciseSetBody: React.FC<{
                   return (
                     <div
                       key={key}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
+                      className={`flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
                         correct ? "border-green-200 bg-green-50 text-slate-700" : "border-red-300 bg-red-50 text-slate-700"
                       }`}
                     >
@@ -459,6 +459,9 @@ const ReadingExerciseSetBody: React.FC<{
                         <span className="text-[11px] text-red-600 shrink-0">
                           Đáp án đúng: {correctAns === "richtig" ? "Richtig" : "Falsch"}
                         </span>
+                      )}
+                      {revealed && result.explanations?.[key] && (
+                        <p className="w-full text-[12px] text-slate-600">{result.explanations[key]}</p>
                       )}
                     </div>
                   );
@@ -478,7 +481,7 @@ const ReadingExerciseSetBody: React.FC<{
                 return (
                   <div
                     key={key}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
+                    className={`flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
                       correct ? "border-green-200 bg-green-50 text-slate-700" : "border-red-300 bg-red-50 text-slate-700"
                     }`}
                   >
@@ -492,6 +495,9 @@ const ReadingExerciseSetBody: React.FC<{
                       <span className="text-[11px] text-red-600 shrink-0">
                         Đáp án đúng: {isFill ? correctAns : String.fromCharCode(65 + Number(correctAns))}
                       </span>
+                    )}
+                    {revealed && result.explanations?.[key] && (
+                      <p className="w-full text-[12px] text-slate-600">{result.explanations[key]}</p>
                     )}
                   </div>
                 );
@@ -556,7 +562,7 @@ const ReadingExerciseSetBody: React.FC<{
           {introText && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
               <span className="font-bold">Yêu cầu: </span>
-              {introText}
+              <PromptMarkdown text={introText} />
             </div>
           )}
         </>
@@ -587,7 +593,27 @@ const ReadingExerciseSetBody: React.FC<{
           {screens.map((screen) => {
             const slideStyle = { width: `${slideShare}%`, flex: "0 0 auto" as const };
 
-            if (screen.kind === "multi_passage") {
+            if (screen.kind === "multi_passage" || screen.kind === "multi_rf") {
+              const passageOrder = passagesById[screen.passageId]?.orderIndex ?? screen.slideIndex;
+              const passageLabel = `Văn bản ${passageOrder + 1}`;
+              const passageMarkdown = passagesById[screen.passageId]?.textDe ?? "";
+              if (screen.kind === "multi_rf") {
+                return (
+                  <div key={screen.groupId} style={slideStyle} className="space-y-3">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                      <span className="text-xs font-bold text-slate-500">{passageLabel}</span>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <MarkdownBlock content={passageMarkdown} lessonId={lesson.id} large />
+                      </div>
+                    </div>
+                    <ReadingRfSummarySlide
+                      items={screen.items}
+                      answersByKey={answersByKey}
+                      onAnswer={(key, value) => setAnswersByKey((prev) => ({ ...prev, [key]: value }))}
+                    />
+                  </div>
+                );
+              }
               const group = groupsById[screen.groupId];
               const question = group?.subQuestions[0];
               if (!group || !question) {
@@ -599,7 +625,6 @@ const ReadingExerciseSetBody: React.FC<{
                   </div>
                 );
               }
-              const passageOrder = passagesById[screen.passageId]?.orderIndex ?? screen.slideIndex;
               return (
                 <div key={screen.key} style={slideStyle}>
                   <ReadingMcSlide
@@ -607,8 +632,8 @@ const ReadingExerciseSetBody: React.FC<{
                     question={question}
                     picked={answersByKey[screen.key]}
                     onAnswer={(value) => setAnswersByKey((prev) => ({ ...prev, [screen.key]: value }))}
-                    passageMarkdown={passagesById[screen.passageId]?.textDe ?? ""}
-                    passageLabel={`Văn bản ${passageOrder + 1}`}
+                    passageMarkdown={passageMarkdown}
+                    passageLabel={passageLabel}
                   />
                 </div>
               );

@@ -107,9 +107,22 @@ test("deriveCorrectAnswers: trả đúng đáp án theo khoá group:index cho c�
   });
 });
 
-test("deriveExplanations: 1 explanation/nhóm, không phải theo item", () => {
-  const groups = [{ id: "g1", explanation: "vì..." }, { id: "g2", explanation: null }];
-  assert.deepEqual(deriveExplanations(groups), { g1: "vì...", g2: "" });
+test("deriveExplanations: theo từng câu, bỏ câu không có lời giải", () => {
+  const groups: ScorableReadingGroup[] = [
+    {
+      id: "g1",
+      question_type: "richtig_falsch",
+      statements: [{ correct_answer: "richtig", explanation: " vì định thức " }, { correct_answer: "falsch" }],
+      sub_questions: null,
+    },
+    {
+      id: "g2",
+      question_type: "multiple_choice",
+      statements: null,
+      sub_questions: [{ correct_option_id: "0", explanation: "chọn A" }],
+    },
+  ];
+  assert.deepEqual(deriveExplanations(groups), { "g1:0": "vì định thức", "g2:0": "chọn A" });
 });
 
 const fillBlankGroup = (): ScorableReadingGroup => ({

@@ -20,10 +20,12 @@ import { groupGrammarExercises } from "../lib/grammarExerciseGroups";
 import { GrammarExerciseHint } from "../components/GrammarExerciseHint";
 import {
   LISTENING_QUESTION_TYPES,
+  listeningGroupLayoutClass,
 } from "../lib/listeningExerciseTypes";
 import { GRAMMAR_TYPE_LABELS, GRAMMAR_TYPE_INSTRUCTIONS } from "./GrammarExercisePage";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
+import { PromptMarkdown } from "../components/MarkdownBlock";
 import { openTranscriptionWindow } from "../lib/openTranscriptionWindow";
 import { formatExerciseNumberLabel } from "../lib/exerciseNumberLabel";
 import {
@@ -328,9 +330,7 @@ const QuizExerciseSetBody: React.FC<{
         <div className={
           group.type === "fill_in_the_blank"
             ? fillInBlankGroupClassName(group.exercises.length)
-            : group.type === "classification"
-              ? "grid grid-cols-1 gap-3"
-              : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            : listeningGroupLayoutClass(group.type)
         }>
           {group.exercises.map((exercise, childIndex) => (
             <ExerciseAnswerInput
@@ -556,8 +556,8 @@ const QuizExerciseSetBody: React.FC<{
       )}
 
       {isListening && set.generalInstruction?.trim() && (
-        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap">
-          {set.generalInstruction}
+        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700">
+          <PromptMarkdown text={set.generalInstruction} />
         </div>
       )}
 

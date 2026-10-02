@@ -11,3 +11,9 @@ export const LISTENING_TYPE_LABELS: Record<ListeningQuestionType, string> = {
   multiple_choice: "Trắc nghiệm",
   richtig_falsch: "Richtig / Falsch",
 };
+
+/** Richtig/Falsch và phân loại là 1 cột. Trắc nghiệm giữ lưới 3 cột. */
+export function listeningGroupLayoutClass(type: string): string {
+  if (type === "richtig_falsch" || type === "classification") return "grid grid-cols-1 gap-3";
+  return "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3";
+}

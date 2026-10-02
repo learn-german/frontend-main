@@ -1,8 +1,8 @@
 export interface ScorableReadingGroup {
   id: string;
   question_type: string;
-  statements: { correct_answer: string }[] | null;
-  sub_questions: { correct_option_id?: string; accepted_answers?: string[] }[] | null;
+  statements: { correct_answer: string; explanation?: string | null }[] | null;
+  sub_questions: { correct_option_id?: string; accepted_answers?: string[]; explanation?: string | null }[] | null;
 }
 
 export interface ReadingScoreResult {
@@ -109,8 +109,21 @@ export function deriveCorrectAnswers(groups: ScorableReadingGroup[]): Record<str
   return result;
 }
 
-/** Giải thích theo từng nhóm câu hỏi (không phải từng item) — khớp cấp lưu
- * `explanation` trong schema (1 explanation/nhóm, không phải 1/statement). */
-export function deriveExplanations(groups: { id: string; explanation: string | null }[]): Record<string, string> {
-  return Object.fromEntries(groups.map((g) => [g.id, g.explanation ?? ""]));
+/** Giải thích theo từng câu, cùng khoá `${group.id}:${index}`. Bỏ câu không có lời giải. */
+export function deriveExplanations(groups: ScorableReadingGroup[]): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const group of groups) {
+    if (group.question_type === "richtig_falsch") {
+      (group.statements ?? []).forEach((statement, index) => {
+        const text = statement.explanation?.trim() ?? "";
+        if (text) result[`${group.id}:${index}`] = text;
+      });
+    } else {
+      (group.sub_questions ?? []).forEach((question, index) => {
+        const text = question.explanation?.trim() ?? "";
+        if (text) result[`${group.id}:${index}`] = text;
+      });
+    }
+  }
+  return result;
 }

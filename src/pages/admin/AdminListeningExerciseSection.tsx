@@ -24,6 +24,7 @@ import { useModuleOrder } from "../../lib/hooks/useModuleOrder";
 import { useExerciseSets, type ExerciseSet } from "../../lib/hooks/useExerciseSets";
 import { type ListeningClip, ClipRow } from "./AdminExerciseSetMedia";
 import { uploadMedia } from "../../lib/uploadMedia";
+import { PromptMarkdown } from "../../components/MarkdownBlock";
 import {
   LISTENING_QUESTION_TYPES,
   LISTENING_TYPE_LABELS,
@@ -999,12 +1000,12 @@ const ListeningSetEditor: React.FC<{
             value={instructionDraft}
             onChange={(e) => setInstructionDraft(e.target.value)}
             className={inputCls + " resize-y"}
-            placeholder="Nghe đoạn hội thoại và trả lời các câu hỏi..."
+            placeholder="Nghe đoạn hội thoại. Dùng **đậm** và *nghiêng*."
           />
         ) : (
-          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap min-h-[2.5rem]">
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 min-h-[2.5rem]">
             {set.generalInstruction?.trim()
-              ? set.generalInstruction
+              ? <PromptMarkdown text={set.generalInstruction} />
               : <span className="text-slate-400 italic">Chưa có yêu cầu chung.</span>}
           </div>
         )}
@@ -1256,8 +1257,8 @@ const ListeningSetEditor: React.FC<{
               />
             )}
             {set.generalInstruction?.trim() && (
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap">
-                {set.generalInstruction}
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-700">
+                <PromptMarkdown text={set.generalInstruction} />
               </div>
             )}
             {setExercises.length === 0 ? (
@@ -1341,6 +1342,28 @@ const ListeningSetEditor: React.FC<{
   );
 };
 
+const SortableListeningSet: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className="flex items-stretch gap-1"
+    >
+      <button
+        type="button"
+        className="px-1 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing"
+        title="Kéo để sắp xếp"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+};
+
 export const AdminListeningExerciseSection: React.FC = () => {
   const [lessons, setLessons] = useState<LessonGroup[]>([]);
   const [exercises, setExercises] = useState<GrammarExerciseSummary[]>([]);
@@ -1357,6 +1380,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
   const [createTypeModal, setCreateTypeModal] = useState<{ lessonId: string; nextOrder: number } | null>(null);
   const [pickedQuestionType, setPickedQuestionType] = useState<ListeningQuestionType>("fill_in_the_blank");
   const [creatingSet, setCreatingSet] = useState(false);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
   const {
@@ -1368,6 +1392,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
     updateAudioClipId,
     updateTranscription,
     deleteSets,
+    refetch,
   } = useExerciseSets();
 
   const ngheSets = sets.filter((s) => s.category === "nghe");
@@ -1432,6 +1457,26 @@ export const AdminListeningExerciseSection: React.FC = () => {
     if (setQuestionTypes[setId]) return setQuestionTypes[setId];
     const first = exercises.find((ex) => ex.set_id === setId && isListeningQuestionType(ex.type));
     return first && isListeningQuestionType(first.type) ? first.type : null;
+  };
+
+  const handleReorderSets = async (lessonId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const lessonSets = ngheSets
+      .filter((set) => set.lessonId === lessonId)
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+    const oldIndex = lessonSets.findIndex((set) => set.id === active.id);
+    const newIndex = lessonSets.findIndex((set) => set.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(lessonSets, oldIndex, newIndex);
+    const results = await Promise.all(
+      reordered.map((set, index) =>
+        supabase.from("exercise_sets").update({ order_index: index }).eq("id", set.id),
+      ),
+    );
+    const failed = results.find((result) => result.error);
+    if (failed?.error) showToast("Cập nhật thứ tự thất bại: " + failed.error.message, "warning");
+    refetch();
   };
 
   const handleCreateSet = async () => {
@@ -1589,7 +1634,9 @@ export const AdminListeningExerciseSection: React.FC = () => {
             onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
           >
             {mod.lessonGroups.map((lesson) => {
-              const lessonSets = ngheSets.filter((s) => s.lessonId === lesson.lesson_id);
+              const lessonSets = ngheSets
+                .filter((s) => s.lessonId === lesson.lesson_id)
+                .sort((a, b) => a.orderIndex - b.orderIndex);
               const isExpanded = expanded[lesson.lesson_id] ?? false;
               const lessonQuestionCount = lessonSets.reduce(
                 (sum, set) => sum + questionCountForSet(set.id),
@@ -1690,12 +1737,14 @@ export const AdminListeningExerciseSection: React.FC = () => {
                       {lessonSets.length === 0 && (
                         <p className="text-xs text-slate-400 italic">Chưa có bài tập nghe nào.</p>
                       )}
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => handleReorderSets(lesson.lesson_id, event)}>
+                        <SortableContext items={lessonSets.map((set) => set.id)} strategy={verticalListSortingStrategy}>
                       {lessonSets.map((set) => {
                         const questionType = inferQuestionType(set.id);
                         const questionCount = questionCountForSet(set.id);
                         return (
+                          <SortableListeningSet key={set.id} id={set.id}>
                           <div
-                            key={set.id}
                             className="w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-orange-50/40 hover:border-orange-200 transition-colors text-left"
                           >
                             <input
@@ -1750,8 +1799,11 @@ export const AdminListeningExerciseSection: React.FC = () => {
                               <LessonStatusBadge status={set.status} />
                             </span>
                           </div>
+                          </SortableListeningSet>
                         );
                       })}
+                        </SortableContext>
+                      </DndContext>
                     </div>
                   )}
                 </div>

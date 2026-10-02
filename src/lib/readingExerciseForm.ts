@@ -5,6 +5,7 @@ export interface StatementForm {
   id: string;
   text: string;
   correctAnswer: "richtig" | "falsch" | null;
+  explanation: string;
 }
 
 export interface SubQuestionForm {
@@ -15,6 +16,7 @@ export interface SubQuestionForm {
   options: string[];
   correctIndex: number;
   acceptedAnswer: string;
+  explanation: string;
 }
 
 export interface ReadingQuestionGroupForm {
@@ -39,9 +41,14 @@ export const createEmptyReadingForm = (): ReadingQuestionGroupForm => ({
 
 const newId = (): string => crypto.randomUUID();
 
+const explanationOrOmit = (explanation: string): { explanation: string } | Record<string, never> => {
+  const text = explanation.trim();
+  return text ? { explanation: text } : {};
+};
+
 export const addStatement = (form: ReadingQuestionGroupForm): ReadingQuestionGroupForm => ({
   ...form,
-  statements: [...form.statements, { id: newId(), text: "", correctAnswer: null }],
+  statements: [...form.statements, { id: newId(), text: "", correctAnswer: null, explanation: "" }],
 });
 
 export const removeStatement = (form: ReadingQuestionGroupForm, id: string): ReadingQuestionGroupForm => ({
@@ -52,6 +59,15 @@ export const removeStatement = (form: ReadingQuestionGroupForm, id: string): Rea
 export const setStatementText = (form: ReadingQuestionGroupForm, id: string, text: string): ReadingQuestionGroupForm => ({
   ...form,
   statements: form.statements.map((s) => (s.id === id ? { ...s, text } : s)),
+});
+
+export const setStatementExplanation = (
+  form: ReadingQuestionGroupForm,
+  id: string,
+  explanation: string,
+): ReadingQuestionGroupForm => ({
+  ...form,
+  statements: form.statements.map((s) => (s.id === id ? { ...s, explanation } : s)),
 });
 
 export const setStatementAnswer = (
@@ -75,7 +91,7 @@ export const addSubQuestion = (form: ReadingQuestionGroupForm): ReadingQuestionG
   ...form,
   subQuestions: [
     ...form.subQuestions,
-    { id: newId(), textSnippet: "", imageKey: null, question: "", options: ["", "", ""], correctIndex: -1, acceptedAnswer: "" },
+    { id: newId(), textSnippet: "", imageKey: null, question: "", options: ["", "", ""], correctIndex: -1, acceptedAnswer: "", explanation: "" },
   ],
 });
 
@@ -84,7 +100,7 @@ export const removeSubQuestion = (form: ReadingQuestionGroupForm, id: string): R
   subQuestions: form.subQuestions.filter((q) => q.id !== id),
 });
 
-export const setSubQuestionField = <K extends "textSnippet" | "imageKey" | "question" | "acceptedAnswer">(
+export const setSubQuestionField = <K extends "textSnippet" | "imageKey" | "question" | "acceptedAnswer" | "explanation">(
   form: ReadingQuestionGroupForm,
   id: string,
   field: K,
@@ -146,10 +162,10 @@ export interface ReadingQuestionGroupPayload {
   title: string | null;
   question_intro: string | null;
   question_type: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
-  statements: { text: string; correct_answer: "richtig" | "falsch" }[] | null;
+  statements: { text: string; correct_answer: "richtig" | "falsch"; explanation?: string }[] | null;
   sub_questions:
-    | { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string }[]
-    | { question: string; accepted_answers: string[] }[]
+    | { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string; explanation?: string }[]
+    | { question: string; accepted_answers: string[]; explanation?: string }[]
     | null;
   explanation: string;
 }
@@ -167,13 +183,18 @@ export const buildReadingPayload = (
   question_type: form.questionType,
   statements:
     form.questionType === "richtig_falsch"
-      ? form.statements.map((s) => ({ text: s.text, correct_answer: s.correctAnswer as "richtig" | "falsch" }))
+      ? form.statements.map((s) => ({
+          text: s.text,
+          correct_answer: s.correctAnswer as "richtig" | "falsch",
+          ...explanationOrOmit(s.explanation),
+        }))
       : null,
   sub_questions:
     form.questionType === "fill_in_the_blank"
       ? form.subQuestions.map((q) => ({
           question: q.question.trim(),
           accepted_answers: [q.acceptedAnswer.trim()],
+          ...explanationOrOmit(q.explanation),
         }))
       : form.questionType === "multiple_choice"
         ? form.subQuestions.map((q) => {
@@ -184,6 +205,7 @@ export const buildReadingPayload = (
               question: q.question,
               options: choicePayload.options ?? q.options,
               correct_option_id: choicePayload.correct_answer,
+              ...explanationOrOmit(q.explanation),
             };
           })
         : null,
@@ -195,7 +217,7 @@ export interface ReadingQuestionGroupRow {
   title: string | null;
   question_intro: string | null;
   question_type: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
-  statements: { text: string; correct_answer: "richtig" | "falsch" }[] | null;
+  statements: { text: string; correct_answer: "richtig" | "falsch"; explanation?: string }[] | null;
   sub_questions:
     | {
         text_snippet?: string | null;
@@ -204,6 +226,7 @@ export interface ReadingQuestionGroupRow {
         options?: string[];
         correct_option_id?: string;
         accepted_answers?: string[];
+        explanation?: string;
       }[]
     | null;
   explanation: string | null;
@@ -214,7 +237,12 @@ export const parseReadingRow = (row: ReadingQuestionGroupRow): ReadingQuestionGr
   title: row.title ?? "",
   questionIntro: row.question_intro ?? "",
   questionType: row.question_type,
-  statements: (row.statements ?? []).map((s) => ({ id: newId(), text: s.text, correctAnswer: s.correct_answer })),
+  statements: (row.statements ?? []).map((s) => ({
+    id: newId(),
+    text: s.text,
+    correctAnswer: s.correct_answer,
+    explanation: s.explanation ?? "",
+  })),
   subQuestions: (row.sub_questions ?? []).map((q) => {
     const options = q.options ?? [];
     return {
@@ -225,6 +253,7 @@ export const parseReadingRow = (row: ReadingQuestionGroupRow): ReadingQuestionGr
       options,
       correctIndex: options.findIndex((_, i) => String(i) === q.correct_option_id),
       acceptedAnswer: q.accepted_answers?.[0] ?? "",
+      explanation: q.explanation ?? "",
     };
   }),
   explanation: row.explanation ?? "",

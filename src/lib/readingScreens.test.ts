@@ -145,3 +145,18 @@ test("buildReadingCarouselScreens: fill_in_the_blank là 1 màn, chỉ có gợi
     { key: "g-fill:1", label: "Lea" },
   ]);
 });
+
+test("buildReadingCarouselScreens: multi-passage richtig_falsch là slide multi_rf", () => {
+  const result = buildReadingCarouselScreens(
+    [richtigFalschGroup("g1", "p1", 2), multipleChoiceGroup("g2", "p2", 1)],
+    { p1: passage("p1", 0), p2: passage("p2", 1) },
+    2,
+  );
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.screens[0].kind, "multi_rf");
+  assert.equal(result.screens[1].kind, "multi_passage");
+  if (result.screens[0].kind !== "multi_rf") return;
+  assert.equal(result.screens[0].items.length, 2);
+  assert.equal(result.screens[0].items[0].key, "g1:0");
+});

@@ -13,6 +13,7 @@ import {
   addStatement,
   setStatementText,
   setStatementAnswer,
+  setStatementExplanation,
   addSubQuestion,
   setSubQuestionField,
   setSubQuestionOptions,
@@ -20,7 +21,7 @@ import {
 } from "../../lib/readingExerciseForm";
 import { addOption, setOption, removeOption, optionLabel, validateChoiceForm, buildMultipleChoicePayload } from "../../lib/grammarMultipleChoice";
 import { uploadMedia } from "../../lib/uploadMedia";
-import { MarkdownBlock } from "../../components/MarkdownBlock";
+import { MarkdownBlock, PromptMarkdown } from "../../components/MarkdownBlock";
 import {
   itemCount,
   passagesForSet,
@@ -37,7 +38,7 @@ interface LessonGroup {
   module_title: string;
 }
 
-type ReadingStatementRow = { text: string; correct_answer: "richtig" | "falsch" };
+type ReadingStatementRow = { text: string; correct_answer: "richtig" | "falsch"; explanation?: string };
 type ReadingSubQuestionRow = {
   text_snippet?: string | null;
   image_key?: string | null;
@@ -45,6 +46,7 @@ type ReadingSubQuestionRow = {
   options?: string[];
   correct_option_id?: string;
   accepted_answers?: string[];
+  explanation?: string;
 };
 
 interface ReadingQuestionGroupRowData {
@@ -73,7 +75,7 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
   return (
     <div className="space-y-3">
       {group.title && <p className="text-sm font-display font-bold text-slate-800">{group.title}</p>}
-      {group.question_intro && <p className="text-xs text-slate-500">{group.question_intro}</p>}
+      {group.question_intro && <PromptMarkdown text={group.question_intro} />}
       {group.question_type === "richtig_falsch" && (group.statements ?? []).map((s, i) => (
         <div key={i} className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl">
           <span className="flex-1 text-sm text-slate-700">{s.text}</span>
@@ -125,30 +127,33 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
 
 const SingleQuestionAnswers: React.FC<{
   group: ReadingQuestionGroupRowData;
-  onSaveOptions: (options: string[], correctIndex: number) => Promise<void> | void;
+  onSaveOptions: (options: string[], correctIndex: number, explanation: string) => Promise<void> | void;
 }> = ({ group, onSaveOptions }) => {
   const initial = group.sub_questions?.[0];
   const [options, setOptions] = useState<string[]>(initial?.options ?? ["A", "B", "C"]);
   const [correctIndex, setCorrectIndex] = useState<number>(initial ? Number(initial.correct_option_id) : 0);
+  const [explanation, setExplanation] = useState(initial?.explanation ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const next = group.sub_questions?.[0];
     setOptions(next?.options ?? ["A", "B", "C"]);
     setCorrectIndex(next ? Number(next.correct_option_id) : 0);
+    setExplanation(next?.explanation ?? "");
   }, [group.id, group.sub_questions]);
 
   const initialOptions = initial?.options ?? ["A", "B", "C"];
   const initialCorrectIndex = initial ? Number(initial.correct_option_id) : 0;
   const hasChanges =
     correctIndex !== initialCorrectIndex ||
+    explanation !== (initial?.explanation ?? "") ||
     options.length !== initialOptions.length ||
     options.some((opt, idx) => opt !== (initialOptions[idx] ?? ""));
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSaveOptions(options, correctIndex);
+      await onSaveOptions(options, correctIndex, explanation);
     } finally {
       setSaving(false);
     }
@@ -196,6 +201,14 @@ const SingleQuestionAnswers: React.FC<{
         >
           + Thêm đáp án
         </button>
+        <label className="block text-xs font-bold text-slate-500">Giải thích</label>
+        <textarea
+          rows={2}
+          value={explanation}
+          onChange={(e) => setExplanation(e.target.value)}
+          placeholder="Hiện cho học viên sau khi mở lời giải..."
+          className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg resize-none"
+        />
         <div className="flex justify-end pt-1">
           <button
             type="button"
@@ -331,34 +344,16 @@ export const AdminReadingExerciseSection: React.FC = () => {
     fetchAll();
   };
 
-  const handleAddPassage = async (setId: string, lessonId: string, mode: "multi" | "single") => {
+  const handleAddPassage = async (setId: string, lessonId: string) => {
     const orderIndex = passagesForSet(passages, setId).length;
-    const { data: passageRow, error } = await supabase
+    const { error } = await supabase
       .from("reading_passages")
-      .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex })
-      .select("id")
-      .single();
+      .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex });
     if (error) { showToast("Thêm văn bản thất bại: " + error.message, "warning"); return; }
-    if (mode === "multi" && passageRow?.id) {
-      const { error: groupError } = await supabase.from("reading_question_groups").insert({
-        passage_id: passageRow.id,
-        set_id: setId,
-        order_index: 0,
-        title: null,
-        question_intro: null,
-        question_type: "multiple_choice",
-        sub_questions: [{ text_snippet: null, image_key: null, question: "", options: ["A", "B", "C"], correct_option_id: "0" }],
-        explanation: null,
-      });
-      if (groupError) {
-        showToast("Tạo đáp án thất bại: " + groupError.message, "warning");
-        return;
-      }
-    }
     fetchAll();
   };
 
-  const handleSaveSingleQuestionOptions = async (groupId: string, options: string[], correctIndex: number) => {
+  const handleSaveSingleQuestionOptions = async (groupId: string, options: string[], correctIndex: number, explanation: string) => {
     const choicePayload = buildMultipleChoicePayload({ options, correctIndex });
     const newSubQuestion: ReadingSubQuestionRow = {
       text_snippet: null,
@@ -366,6 +361,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
       question: "",
       options: choicePayload.options ?? options,
       correct_option_id: choicePayload.correct_answer,
+      ...(explanation.trim() ? { explanation: explanation.trim() } : {}),
     };
     const { error } = await supabase.from("reading_question_groups").update({ sub_questions: [newSubQuestion] }).eq("id", groupId);
     if (error) { showToast("Lưu đáp án thất bại: " + error.message, "warning"); return; }
@@ -428,6 +424,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
       const id = f.statements[0].id;
       f = setStatementText(f, id, s.text);
       f = setStatementAnswer(f, id, s.correct_answer);
+      f = setStatementExplanation(f, id, s.explanation ?? "");
     } else if (group.question_type === "fill_in_the_blank") {
       const q = (group.sub_questions ?? [])[index];
       f = addSubQuestion(f);
@@ -435,6 +432,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
       const legacyAnswer = q.options?.[Number(q.correct_option_id)] ?? "";
       f = setSubQuestionField(f, id, "question", q.question);
       f = setSubQuestionField(f, id, "acceptedAnswer", q.accepted_answers?.[0] ?? legacyAnswer);
+      f = setSubQuestionField(f, id, "explanation", q.explanation ?? "");
     } else {
       const q = (group.sub_questions ?? [])[index];
       f = addSubQuestion(f);
@@ -445,6 +443,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
       f = setSubQuestionField(f, id, "question", q.question);
       const correctIndex = options.findIndex((_, i) => String(i) === q.correct_option_id);
       f = setSubQuestionOptions(f, id, { options, correctIndex });
+      f = setSubQuestionField(f, id, "explanation", q.explanation ?? "");
     }
     setItemForm(f);
     setItemModal({ setId: group.set_id, lessonId, questionType: group.question_type, groupId: group.id, itemIndex: index });
@@ -494,7 +493,11 @@ export const AdminReadingExerciseSection: React.FC = () => {
       let updatePayload: Record<string, unknown>;
       if (itemModal.questionType === "richtig_falsch") {
         const s = itemForm.statements[0];
-        const newItem: ReadingStatementRow = { text: s.text, correct_answer: s.correctAnswer as "richtig" | "falsch" };
+        const newItem: ReadingStatementRow = {
+          text: s.text,
+          correct_answer: s.correctAnswer as "richtig" | "falsch",
+          ...(s.explanation.trim() ? { explanation: s.explanation.trim() } : {}),
+        };
         const current = group.statements ?? [];
         const nextArray = itemModal.itemIndex === null
           ? [...current, newItem]
@@ -505,6 +508,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
         const newItem: ReadingSubQuestionRow = {
           question: q.question.trim(),
           accepted_answers: [q.acceptedAnswer.trim()],
+          ...(q.explanation.trim() ? { explanation: q.explanation.trim() } : {}),
         };
         const current = group.sub_questions ?? [];
         const nextArray = itemModal.itemIndex === null
@@ -520,6 +524,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
           question: q.question,
           options: choicePayload.options ?? q.options,
           correct_option_id: choicePayload.correct_answer,
+          ...(q.explanation.trim() ? { explanation: q.explanation.trim() } : {}),
         };
         const current = group.sub_questions ?? [];
         const nextArray = itemModal.itemIndex === null
@@ -687,7 +692,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                               className="w-full min-h-[52px] border border-slate-200 rounded-[10px] px-3 py-2.5 text-[13.5px] resize-y text-slate-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
                               value={sharedTitleDraft}
                               onChange={(e) => setSharedTitleDraftBySet((prev) => ({ ...prev, [set.id]: e.target.value }))}
-                              placeholder="Tiêu đề chung cho các văn bản..."
+                              placeholder="Tiêu đề chung cho các văn bản. Dùng **đậm** và *nghiêng*."
                             />
                           </div>
                         )}
@@ -695,7 +700,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
                           <button
                             type="button"
-                            onClick={() => handleAddPassage(set.id, lesson.lesson_id, setMode)}
+                            onClick={() => handleAddPassage(set.id, lesson.lesson_id)}
                             className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                           >
                             <Plus className="w-3.5 h-3.5" /> Thêm văn bản
@@ -728,7 +733,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                               {isMultiPassage && multiChoiceGroup ? (
                                 <SingleQuestionAnswers
                                   group={multiChoiceGroup}
-                                  onSaveOptions={(options, correctIndex) => handleSaveSingleQuestionOptions(multiChoiceGroup.id, options, correctIndex)}
+                                  onSaveOptions={(options, correctIndex, explanation) => handleSaveSingleQuestionOptions(multiChoiceGroup.id, options, correctIndex, explanation)}
                                 />
                               ) : (
                               <div className="space-y-2">
@@ -838,14 +843,23 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 {passageGroups.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có loại câu hỏi nào.</p>}
                               </div>
                               )}
-                              {isMultiPassage && !multiChoiceGroup && (
-                                <button
-                                  type="button"
-                                  onClick={() => openAddType(set.id, lesson.lesson_id, "multiple_choice", passage.id)}
-                                  className="text-xs font-bold text-red-600 hover:text-red-700"
-                                >
-                                  + Tạo đáp án A/B/C
-                                </button>
+                              {isMultiPassage && passageGroups.length === 0 && (
+                                <div className="flex flex-wrap gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => openAddType(set.id, lesson.lesson_id, "multiple_choice", passage.id)}
+                                    className="text-xs font-bold text-red-600 hover:text-red-700"
+                                  >
+                                    + Trắc nghiệm
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAddType(set.id, lesson.lesson_id, "richtig_falsch", passage.id)}
+                                    className="text-xs font-bold text-red-600 hover:text-red-700"
+                                  >
+                                    + Đúng / Sai
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );
@@ -1018,6 +1032,25 @@ export const AdminReadingExerciseSection: React.FC = () => {
                 </div>
               </div>
             )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500">Giải thích</label>
+              <textarea
+                rows={2}
+                value={
+                  itemModal.questionType === "richtig_falsch"
+                    ? (itemForm.statements[0]?.explanation ?? "")
+                    : (itemForm.subQuestions[0]?.explanation ?? "")
+                }
+                onChange={(e) => setItemForm((prev) => (
+                  itemModal.questionType === "richtig_falsch"
+                    ? setStatementExplanation(prev, prev.statements[0].id, e.target.value)
+                    : setSubQuestionField(prev, prev.subQuestions[0].id, "explanation", e.target.value)
+                ))}
+                placeholder="Hiện cho học viên sau khi mở lời giải..."
+                className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-xl resize-none"
+              />
+            </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button onClick={() => setItemModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Hủy</button>
