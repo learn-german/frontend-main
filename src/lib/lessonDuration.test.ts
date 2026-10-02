@@ -18,4 +18,5 @@ test("formatDurationLabel matches dashboard mockup", () => {
   assert.equal(formatDurationLabel("05:40"), "05:40 phút");
   assert.equal(formatDurationLabel("10 phút"), "10:00 phút");
   assert.equal(formatDurationClock(340), "05:40");
+  assert.equal(formatDurationClock(862), "14:22");
 });

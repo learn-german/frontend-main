@@ -1269,6 +1269,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      sync_lesson_video_duration: {
+        Args: { p_lesson_id: string; p_seconds: number }
+        Returns: string
+      }
       increment_xp: {
         Args: { p_amount: number; p_user_id: string }
         Returns: undefined
