@@ -21,6 +21,7 @@ export interface ReadingPassage {
   lesson_id: string;
   set_id: string | null;
   text_de: string;
+  text_vi?: string | null;
   order_index: number;
 }
 
@@ -53,15 +54,16 @@ export const PassageEditRow: React.FC<{
   lessonId: string;
   index: number;
   saving: boolean;
-  onSave: (id: string, textDe: string) => void;
+  onSave: (id: string, textDe: string, textVi: string) => void;
   onDelete: (p: ReadingPassage) => void;
 }> = ({ passage, lessonId, index, saving, onSave, onDelete }) => {
   const [textDe, setTextDe] = useState(passage.text_de);
+  const [textVi, setTextVi] = useState(passage.text_vi ?? "");
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const baseHeightRef = useRef<number | null>(null);
-  const dirty = textDe !== passage.text_de;
+  const dirty = textDe !== passage.text_de || textVi !== (passage.text_vi ?? "");
 
   // ponytail: mở rộng theo nội dung, tối đa 200% chiều cao mặc định (rows=4);
   // dài hơn thì cuộn trong ô thay vì phình vô hạn.
@@ -134,7 +136,7 @@ export const PassageEditRow: React.FC<{
             {tab === "edit" ? "Xem trước" : "Chỉnh sửa"}
           </button>
           {dirty && (
-            <button onClick={() => onSave(passage.id, textDe)} disabled={saving} className="text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50">
+            <button onClick={() => onSave(passage.id, textDe, textVi)} disabled={saving} className="text-xs font-bold text-orange-600 hover:text-orange-700 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50">
               {saving ? "Đang lưu..." : "Lưu văn bản"}
             </button>
           )}
@@ -158,6 +160,13 @@ export const PassageEditRow: React.FC<{
           {textDe ? <MarkdownBlock content={textDe} lessonId={lessonId} /> : <p className="text-xs text-slate-400 italic">Chưa có nội dung.</p>}
         </div>
       )}
+      <textarea
+        rows={3}
+        value={textVi}
+        onChange={(e) => setTextVi(e.target.value)}
+        placeholder="Bản dịch tiếng Việt (hiện sau khi học viên nộp bài)..."
+        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
+      />
     </div>
   );
 };

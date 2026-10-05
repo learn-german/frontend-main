@@ -27,11 +27,12 @@ import { PackagesPage } from "./pages/PackagesPage";
 import { SupportPage } from "./pages/SupportPage";
 import { RegistrationPage } from "./pages/RegistrationPage";
 import { MeetingPage } from "./pages/MeetingPage";
+import { PostsPage } from "./pages/PostsPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
 import { supabase } from "./lib/supabase";
-import { signOut } from "./lib/auth";
+import { revokeOtherSessions, signOut } from "./lib/auth";
 import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
 import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
@@ -201,7 +202,7 @@ export default function App() {
     if (currentPage === "quiz") {
       return { page: "quiz", lessonId: selectedLessonId, category: activeExerciseCategory };
     }
-    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" };
+    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" | "posts" };
   }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory]);
 
   // State -> URL. So sánh trước khi push để popstate không kích hoạt vòng lặp:
@@ -346,6 +347,8 @@ export default function App() {
       }
 
       if (session?.user) {
+        // Kick mọi phiên khác khi đăng nhập mới (kể cả cùng user ở browser khác).
+        if (event === "SIGNED_IN") void revokeOtherSessions();
         if (previousUserId !== session.user.id) {
           setUser(null);
           setPendingUser(null);
@@ -529,7 +532,7 @@ export default function App() {
 
   // Layout check selectors
   const showNav = effectivePage !== "login" && effectivePage !== "landing";
-  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "meetings" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "meetings" || effectivePage === "posts" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -687,6 +690,7 @@ export default function App() {
                 />
               )}
               {effectivePage === "help" && user && <SupportPage />}
+              {effectivePage === "posts" && user && <PostsPage />}
               {effectivePage === "meetings" && user && (
                 <MeetingPage onMeetingsChanged={() => setMeetingRefreshKey((key) => key + 1)} />
               )}

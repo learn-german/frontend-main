@@ -430,6 +430,18 @@ const ReadingExerciseSetBody: React.FC<{
           )}
         </div>
 
+        {Object.values(passagesById).some((p) => p.textVi) && (
+          <div className="text-left space-y-3 pt-4 border-t border-slate-100">
+            <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">Bản dịch:</h4>
+            {Object.values(passagesById)
+              .filter((p) => p.textVi)
+              .sort((a, b) => a.orderIndex - b.orderIndex)
+              .map((p) => (
+                <MarkdownBlock key={p.id} content={p.textVi ?? ""} lessonId={lesson.id} />
+              ))}
+          </div>
+        )}
+
         <div className="text-left space-y-3 pt-4 border-t border-slate-100">
           <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
             {revealed ? "Giải thích từng bài:" : "Câu đúng / câu sai:"}

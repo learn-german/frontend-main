@@ -804,6 +804,7 @@ export type Database = {
           order_index: number
           set_id: string | null
           text_de: string
+          text_vi: string | null
         }
         Insert: {
           id?: string
@@ -811,6 +812,7 @@ export type Database = {
           order_index?: number
           set_id?: string | null
           text_de: string
+          text_vi?: string | null
         }
         Update: {
           id?: string
@@ -818,6 +820,7 @@ export type Database = {
           order_index?: number
           set_id?: string | null
           text_de?: string
+          text_vi?: string | null
         }
         Relationships: [
           {

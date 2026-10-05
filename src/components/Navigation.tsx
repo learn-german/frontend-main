@@ -19,6 +19,7 @@ import {
   HelpCircle,
   Lock,
   Video,
+  Newspaper,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
@@ -328,6 +329,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
     { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
     { id: "meetings", label: "Lịch học trực tuyến", desc: "Đăng ký buổi hỗ trợ", icon: Video },
+    { id: "posts", label: "Bài viết", desc: "Tin tức & mẹo học", icon: Newspaper },
     { id: "packages", label: "Gói học", desc: "Xem gói & quyền lợi", icon: Gift },
     { id: "leaderboard", label: "Bảng xếp hạng", desc: "Thành tích học tập", icon: Trophy },
     { id: "help", label: "Trợ giúp học tập", desc: "Giải đáp thắc mắc", icon: HelpCircle },

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Loader2, Trash2, Pencil, X, Eye, FileText, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Plus, Loader2, Trash2, Pencil, X, Eye, FileText, Search } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { AdminModuleGroup } from "./AdminModuleGroup";
 import { showToast } from "../../lib/toast";
@@ -306,9 +306,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
   useEffect(() => { fetchAll(); }, []);
 
-  const handleSavePassage = async (passageId: string, textDe: string) => {
+  const handleSavePassage = async (passageId: string, textDe: string, textVi: string) => {
     setSavingPassageId(passageId);
-    const { error } = await supabase.from("reading_passages").update({ text_de: textDe }).eq("id", passageId);
+    const { error } = await supabase.from("reading_passages").update({ text_de: textDe, text_vi: textVi.trim() || null }).eq("id", passageId);
     setSavingPassageId(null);
     if (error) showToast("Lưu thất bại: " + error.message, "warning");
     else { showToast("Đã lưu văn bản.", "success"); fetchAll(); }
@@ -539,6 +539,17 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
     showToast("Đã lưu câu hỏi.", "success");
     setItemModal(null);
+    fetchAll();
+  };
+
+  const handleMoveItem = async (group: ReadingQuestionGroupRowData, from: number, to: number) => {
+    const column = group.question_type === "richtig_falsch" ? "statements" : "sub_questions";
+    const next = [...(group[column] ?? [])];
+    if (to < 0 || to >= next.length) return;
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const { error } = await supabase.from("reading_question_groups").update({ [column]: next }).eq("id", group.id);
+    if (error) { showToast("Đổi thứ tự thất bại: " + error.message, "warning"); return; }
     fetchAll();
   };
 
@@ -817,6 +828,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                   <span className={`text-[11px] font-bold rounded-full px-2 py-0.5 shrink-0 border ${s.correct_answer === "richtig" ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-rose-600 bg-rose-50 border-rose-200"}`}>
                                                     {s.correct_answer === "richtig" ? "Richtig" : "Falsch"}
                                                   </span>
+                                                  <button onClick={() => handleMoveItem(group, i, i - 1)} disabled={i === 0} title="Lên" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                                  <button onClick={() => handleMoveItem(group, i, i + 1)} disabled={i === (group.statements ?? []).length - 1} title="Xuống" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronDown className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => openEditItem(group, i, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => setDeleteItemTarget({ group, index: i })} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
@@ -830,6 +843,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                       ? (q.accepted_answers?.[0] ?? q.options?.[Number(q.correct_option_id)] ?? "")
                                                       : optionLabel(Number(q.correct_option_id))}
                                                   </span>
+                                                  <button onClick={() => handleMoveItem(group, i, i - 1)} disabled={i === 0} title="Lên" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                                  <button onClick={() => handleMoveItem(group, i, i + 1)} disabled={i === (group.sub_questions ?? []).length - 1} title="Xuống" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronDown className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => openEditItem(group, i, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => setDeleteItemTarget({ group, index: i })} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>

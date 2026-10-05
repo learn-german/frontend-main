@@ -1,4 +1,4 @@
-export type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing" | "support" | "meetings";
+export type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing" | "support" | "meetings" | "posts";
 
 export const ALL_ADMIN_SECTIONS: AdminSection[] = [
   "dashboard",
@@ -8,6 +8,7 @@ export const ALL_ADMIN_SECTIONS: AdminSection[] = [
   "writing",
   "support",
   "meetings",
+  "posts",
 ];
 
 export const TUTOR_BLOCKED_ADMIN_SECTIONS: AdminSection[] = ["users", "content"];
