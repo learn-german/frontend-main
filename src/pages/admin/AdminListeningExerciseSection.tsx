@@ -1003,7 +1003,7 @@ const ListeningSetEditor: React.FC<{
             placeholder="Nghe đoạn hội thoại. Dùng **đậm** và *nghiêng*."
           />
         ) : (
-          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 min-h-[2.5rem]">
+          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 min-h-[2.5rem] whitespace-pre-wrap">
             {set.generalInstruction?.trim()
               ? <PromptMarkdown text={set.generalInstruction} />
               : <span className="text-slate-400 italic">Chưa có yêu cầu chung.</span>}

@@ -284,24 +284,34 @@ export const MarkdownBlock: React.FC<{
 /** Inline **bold** / *italic* for exercise prompts. No raw HTML, no tables/links. */
 const promptMarkdownComponents: Components = {
   p: ({ children }) => <>{children}</>,
-  br: () => <br />,
   strong: ({ children }) => <strong className="font-bold">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
 };
 
+const renderPromptLine = (line: string) => (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    skipHtml
+    unwrapDisallowed
+    allowedElements={["p", "strong", "em"]}
+    components={promptMarkdownComponents}
+  >
+    {line}
+  </ReactMarkdown>
+);
+
+/** Preserve Enter from textarea: Markdown alone collapses \\n into spaces. */
 export const PromptMarkdown: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
-  // Markdown collapses single newlines; hard-break so Enter survives after save.
-  const withBreaks = text.replace(/\n/g, "  \n");
+  const lines = text.split("\n");
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      skipHtml
-      unwrapDisallowed
-      allowedElements={["p", "strong", "em", "br"]}
-      components={promptMarkdownComponents}
-    >
-      {withBreaks}
-    </ReactMarkdown>
+    <>
+      {lines.map((line, i) => (
+        <React.Fragment key={i}>
+          {i > 0 ? <br /> : null}
+          {line ? renderPromptLine(line) : null}
+        </React.Fragment>
+      ))}
+    </>
   );
 };
