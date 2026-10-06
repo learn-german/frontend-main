@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { fetchExerciseCategoryRows } from "../../lib/fetchExerciseCategoryRows";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import {
@@ -113,8 +114,9 @@ export const AdminUsersSection: React.FC = () => {
         .order("order_index", { referencedTable: "lessons" }),
       // grammar_exercises_public phủ nguphap/nghe (Nghe đã gộp vào
       // grammar_exercises từ Phase 4). Đọc từ Phase 6 dùng bảng riêng
-      // (reading_question_groups) nên cần query thứ hai.
-      supabase.from("grammar_exercises_public").select("lesson_id, category"),
+      // (reading_question_groups) nên cần query thứ hai. Paged — PostgREST
+      // max-rows 1000 cắt mất category nghe ở các bài sau.
+      fetchExerciseCategoryRows(),
       supabase.from("reading_question_groups_public").select("lesson_id"),
     ]).then(([modulesRes, exercisesRes, readingRes]) => {
       // Nếu query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
@@ -126,7 +128,7 @@ export const AdminUsersSection: React.FC = () => {
         return;
       }
       const quizCategoriesByLesson = new Map<string, Set<string>>();
-      for (const row of (exercisesRes.data ?? []) as { lesson_id: string; category: string }[]) {
+      for (const row of exercisesRes.data ?? []) {
         const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
         categories.add(row.category);
         quizCategoriesByLesson.set(row.lesson_id, categories);
