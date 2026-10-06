@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import { Module, Lesson, Level, GrammarExplanation } from "../appTypes";
 import { filterPublishedLessons } from "../publishedLessons";
+import { fetchExerciseCategoryRows } from "../fetchExerciseCategoryRows";
 
 type SupabaseLesson = {
   id: string;
@@ -119,9 +120,7 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
       // grammar_exercises từ Phase 4). Đọc từ Phase 6 dùng bảng riêng
       // (reading_question_groups) nên cần query thứ hai — gộp kết quả vào
       // cùng quizCategoriesByLesson bên dưới.
-      supabase
-        .from("grammar_exercises_public")
-        .select("lesson_id, category"),
+      fetchExerciseCategoryRows(),
       supabase
         .from("reading_question_groups_public")
         .select("lesson_id"),
@@ -136,7 +135,7 @@ export function useModules(userId: string | null): { modules: Module[]; loading:
         setError(exercisesRes.error?.message ?? readingRes.error?.message ?? "Unknown error");
       } else {
         const quizCategoriesByLesson = new Map<string, Set<string>>();
-        for (const row of (exercisesRes.data ?? []) as { lesson_id: string; category: string }[]) {
+        for (const row of exercisesRes.data ?? []) {
           const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
           categories.add(row.category);
           quizCategoriesByLesson.set(row.lesson_id, categories);
