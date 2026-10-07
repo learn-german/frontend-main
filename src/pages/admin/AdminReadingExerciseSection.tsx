@@ -16,9 +16,12 @@ import {
   setStatementExplanation,
   addSubQuestion,
   setSubQuestionField,
+  setSubQuestionBlanks,
   setSubQuestionOptions,
+  parseReadingRow,
   type ReadingQuestionGroupForm,
 } from "../../lib/readingExerciseForm";
+import { countBlankMarkers, normalizeBlankDefinitions, syncBlankDefinitions } from "../../lib/grammarFillInBlank";
 import { addOption, setOption, removeOption, optionLabel, validateChoiceForm, buildMultipleChoicePayload } from "../../lib/grammarMultipleChoice";
 import { uploadMedia } from "../../lib/uploadMedia";
 import { MarkdownBlock, PromptMarkdown } from "../../components/MarkdownBlock";
@@ -46,6 +49,7 @@ type ReadingSubQuestionRow = {
   options?: string[];
   correct_option_id?: string;
   accepted_answers?: string[];
+  blanks?: { acceptedAnswers?: string[]; accepted_answers?: string[] }[];
   explanation?: string;
 };
 
@@ -92,17 +96,22 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
       ))}
       {(group.question_type === "multiple_choice" || group.question_type === "fill_in_the_blank") && (group.sub_questions ?? []).map((q, qi) => (
         group.question_type === "fill_in_the_blank" ? (
-          <label key={qi} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-            <span className="shrink-0 text-xs font-bold text-slate-400">1.{qi + 1}</span>
-            <span className="shrink-0">{q.question}</span>
-            <span className="text-slate-300">→</span>
-            <input
-              type="text"
-              readOnly
-              placeholder="Nhập trực tiếp"
-              className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-sm"
-            />
-          </label>
+          <div key={qi} className="text-sm leading-9 text-slate-700">
+            <span className="mr-1 text-xs font-bold text-slate-400">{qi + 1}.</span>
+            {q.question.split("___").map((segment, index, segments) => (
+              <React.Fragment key={`${qi}:${index}`}>
+                <span className="whitespace-pre-wrap">{segment}</span>
+                {index < segments.length - 1 && (
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="…"
+                    className="mx-1 inline-block w-[12ch] max-w-full rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         ) : (
         <div key={qi} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
           {q.text_snippet && <p className="text-xs text-slate-500">{q.text_snippet}</p>}
@@ -427,12 +436,16 @@ export const AdminReadingExerciseSection: React.FC = () => {
       f = setStatementExplanation(f, id, s.explanation ?? "");
     } else if (group.question_type === "fill_in_the_blank") {
       const q = (group.sub_questions ?? [])[index];
-      f = addSubQuestion(f);
-      const id = f.subQuestions[0].id;
-      const legacyAnswer = q.options?.[Number(q.correct_option_id)] ?? "";
-      f = setSubQuestionField(f, id, "question", q.question);
-      f = setSubQuestionField(f, id, "acceptedAnswer", q.accepted_answers?.[0] ?? legacyAnswer);
-      f = setSubQuestionField(f, id, "explanation", q.explanation ?? "");
+      const parsed = parseReadingRow({
+        passage_id: group.passage_id,
+        title: group.title,
+        question_intro: group.question_intro,
+        question_type: group.question_type,
+        statements: null,
+        sub_questions: [q],
+        explanation: group.explanation,
+      });
+      f = { ...f, subQuestions: parsed.subQuestions };
     } else {
       const q = (group.sub_questions ?? [])[index];
       f = addSubQuestion(f);
@@ -470,8 +483,10 @@ export const AdminReadingExerciseSection: React.FC = () => {
       if (!s.correctAnswer) { showToast("Cần chọn Đúng hoặc Sai.", "warning"); return; }
     } else if (itemModal.questionType === "fill_in_the_blank") {
       const q = itemForm.subQuestions[0];
-      if (!q?.question.trim()) { showToast("Cụm gợi ý không được để trống.", "warning"); return; }
-      if (!q.acceptedAnswer.trim()) { showToast("Đáp án không được để trống.", "warning"); return; }
+      const blankCount = countBlankMarkers(q?.question ?? "");
+      if (blankCount < 1) { showToast("Cần ít nhất 1 marker ___.", "warning"); return; }
+      if ((q?.blanks.length ?? 0) !== blankCount) { showToast("Số editor đáp án phải khớp số marker ___.", "warning"); return; }
+      if (!q || !normalizeBlankDefinitions(q.blanks)) { showToast("Mỗi ô trống cần ít nhất 1 đáp án hợp lệ.", "warning"); return; }
     } else {
       const q = itemForm.subQuestions[0];
       if (!q?.question.trim()) { showToast("Câu hỏi không được để trống.", "warning"); return; }
@@ -505,9 +520,10 @@ export const AdminReadingExerciseSection: React.FC = () => {
         updatePayload = { statements: nextArray };
       } else if (itemModal.questionType === "fill_in_the_blank") {
         const q = itemForm.subQuestions[0];
+        const blanks = normalizeBlankDefinitions(q.blanks) ?? [];
         const newItem: ReadingSubQuestionRow = {
           question: q.question.trim(),
-          accepted_answers: [q.acceptedAnswer.trim()],
+          blanks: blanks.map((blank) => ({ acceptedAnswers: blank.acceptedAnswers })),
           ...(q.explanation.trim() ? { explanation: q.explanation.trim() } : {}),
         };
         const current = group.sub_questions ?? [];
@@ -681,32 +697,30 @@ export const AdminReadingExerciseSection: React.FC = () => {
                       </div>
 
                       <div className="p-4 space-y-3">
-                        {isMultiPassage && (
-                          <div className="border border-red-200 bg-red-50 rounded-[14px] p-3 space-y-2.5">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
-                                Tiêu đề chung
-                                <span className="normal-case font-medium text-slate-400 text-[11px] ml-1.5">
-                                  Áp dụng cho tất cả văn bản bên dưới
-                                </span>
+                        <div className="border border-red-200 bg-red-50 rounded-[14px] p-3 space-y-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                              Yêu cầu chung
+                              <span className="normal-case font-medium text-slate-400 text-[11px] ml-1.5">
+                                {isMultiPassage ? "Áp dụng cho tất cả văn bản bên dưới" : "Hướng dẫn chung cho bài đọc. Dùng **đậm** và *nghiêng*."}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveSharedTitle(set.id, sharedTitleDraft)}
-                                disabled={!sharedTitleDirty || savingSharedTitleSetId === set.id}
-                                className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
-                              >
-                                {savingSharedTitleSetId === set.id ? "Đang lưu..." : "Lưu"}
-                              </button>
-                            </div>
-                            <textarea
-                              className="w-full min-h-[52px] border border-slate-200 rounded-[10px] px-3 py-2.5 text-[13.5px] resize-y text-slate-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
-                              value={sharedTitleDraft}
-                              onChange={(e) => setSharedTitleDraftBySet((prev) => ({ ...prev, [set.id]: e.target.value }))}
-                              placeholder="Tiêu đề chung cho các văn bản. Dùng **đậm** và *nghiêng*."
-                            />
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSharedTitle(set.id, sharedTitleDraft)}
+                              disabled={!sharedTitleDirty || savingSharedTitleSetId === set.id}
+                              className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                            >
+                              {savingSharedTitleSetId === set.id ? "Đang lưu..." : "Lưu"}
+                            </button>
                           </div>
-                        )}
+                          <textarea
+                            className="w-full min-h-[52px] border border-slate-200 rounded-[10px] px-3 py-2.5 text-[13.5px] resize-y text-slate-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
+                            value={sharedTitleDraft}
+                            onChange={(e) => setSharedTitleDraftBySet((prev) => ({ ...prev, [set.id]: e.target.value }))}
+                            placeholder={"Yêu cầu chung. Enter xuống dòng. Dùng **đậm** và *nghiêng*."}
+                          />
+                        </div>
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
                           <button
@@ -840,7 +854,11 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                   <span className="text-sm text-slate-700 flex-1 truncate">{i + 1}. {q.question}</span>
                                                   <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0">
                                                     Đáp án: {group.question_type === "fill_in_the_blank"
-                                                      ? (q.accepted_answers?.[0] ?? q.options?.[Number(q.correct_option_id)] ?? "")
+                                                      ? (q.blanks?.[0]?.acceptedAnswers?.[0]
+                                                        ?? q.blanks?.[0]?.accepted_answers?.[0]
+                                                        ?? q.accepted_answers?.[0]
+                                                        ?? q.options?.[Number(q.correct_option_id)]
+                                                        ?? "")
                                                       : optionLabel(Number(q.correct_option_id))}
                                                   </span>
                                                   <button onClick={() => handleMoveItem(group, i, i - 1)} disabled={i === 0} title="Lên" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronUp className="w-3.5 h-3.5" /></button>
@@ -938,25 +956,75 @@ export const AdminReadingExerciseSection: React.FC = () => {
             {itemModal.questionType === "fill_in_the_blank" ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500">Cụm gợi ý *</label>
-                  <input
-                    type="text"
+                  <label className="block text-xs font-bold text-slate-500">Câu có ô trống *</label>
+                  <p className="mt-0.5 mb-1.5 text-[11px] text-slate-400">Dùng ___ để đánh dấu từng ô trống.</p>
+                  <textarea
+                    rows={2}
                     value={itemForm.subQuestions[0]?.question ?? ""}
                     onChange={(e) => setItemForm((prev) => setSubQuestionField(prev, prev.subQuestions[0].id, "question", e.target.value))}
-                    placeholder="Ví dụ: Lea und Tom"
-                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-xl"
+                    placeholder="Ich ___ Anna."
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl resize-y"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500">Đáp án *</label>
-                  <input
-                    type="text"
-                    value={itemForm.subQuestions[0]?.acceptedAnswer ?? ""}
-                    onChange={(e) => setItemForm((prev) => setSubQuestionField(prev, prev.subQuestions[0].id, "acceptedAnswer", e.target.value))}
-                    placeholder="Cụm từ học viên cần điền"
-                    className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-xl"
-                  />
-                </div>
+                {(itemForm.subQuestions[0]?.blanks ?? []).map((blank, blankIndex) => (
+                  <div key={blankIndex} className="space-y-1.5 rounded-xl border border-slate-200 p-3">
+                    <label className="block text-xs font-bold text-slate-500">Đáp án ô {blankIndex + 1} *</label>
+                    {blank.acceptedAnswers.map((answer, answerIndex) => (
+                      <div key={answerIndex} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={answer}
+                          onChange={(e) => setItemForm((prev) => {
+                            const id = prev.subQuestions[0].id;
+                            const nextBlanks = prev.subQuestions[0].blanks.map((item, itemIndex) => {
+                              if (itemIndex !== blankIndex) return item;
+                              const acceptedAnswers = item.acceptedAnswers.map((value, valueIndex) =>
+                                valueIndex === answerIndex ? e.target.value : value,
+                              );
+                              return { acceptedAnswers };
+                            });
+                            return setSubQuestionBlanks(prev, id, nextBlanks);
+                          })}
+                          placeholder="heiße"
+                          className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl"
+                        />
+                        {blank.acceptedAnswers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setItemForm((prev) => {
+                              const id = prev.subQuestions[0].id;
+                              const nextBlanks = prev.subQuestions[0].blanks.map((item, itemIndex) => {
+                                if (itemIndex !== blankIndex) return item;
+                                return {
+                                  acceptedAnswers: item.acceptedAnswers.filter((_, valueIndex) => valueIndex !== answerIndex),
+                                };
+                              });
+                              return setSubQuestionBlanks(prev, id, nextBlanks);
+                            })}
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setItemForm((prev) => {
+                        const id = prev.subQuestions[0].id;
+                        const nextBlanks = prev.subQuestions[0].blanks.map((item, itemIndex) =>
+                          itemIndex === blankIndex
+                            ? { acceptedAnswers: [...item.acceptedAnswers, ""] }
+                            : item,
+                        );
+                        return setSubQuestionBlanks(prev, id, nextBlanks);
+                      })}
+                      className="text-[11px] font-bold text-red-600 hover:text-red-700"
+                    >
+                      + Thêm đáp án hợp lệ
+                    </button>
+                  </div>
+                ))}
               </div>
             ) : itemModal.questionType === "richtig_falsch" ? (
               <div className="space-y-2">

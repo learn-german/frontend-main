@@ -1,5 +1,11 @@
 import type { ChoiceForm } from "./grammarMultipleChoice";
 import { buildMultipleChoicePayload, validateChoiceForm } from "./grammarMultipleChoice";
+import {
+  countBlankMarkers,
+  normalizeBlankDefinitions,
+  syncBlankDefinitions,
+  type BlankDefinition,
+} from "./grammarFillInBlank";
 
 export interface StatementForm {
   id: string;
@@ -15,7 +21,7 @@ export interface SubQuestionForm {
   question: string;
   options: string[];
   correctIndex: number;
-  acceptedAnswer: string;
+  blanks: BlankDefinition[];
   explanation: string;
 }
 
@@ -91,7 +97,7 @@ export const addSubQuestion = (form: ReadingQuestionGroupForm): ReadingQuestionG
   ...form,
   subQuestions: [
     ...form.subQuestions,
-    { id: newId(), textSnippet: "", imageKey: null, question: "", options: ["", "", ""], correctIndex: -1, acceptedAnswer: "", explanation: "" },
+    { id: newId(), textSnippet: "", imageKey: null, question: "", options: ["", "", ""], correctIndex: -1, blanks: [], explanation: "" },
   ],
 });
 
@@ -100,14 +106,36 @@ export const removeSubQuestion = (form: ReadingQuestionGroupForm, id: string): R
   subQuestions: form.subQuestions.filter((q) => q.id !== id),
 });
 
-export const setSubQuestionField = <K extends "textSnippet" | "imageKey" | "question" | "acceptedAnswer" | "explanation">(
+export const setSubQuestionField = <K extends "textSnippet" | "imageKey" | "question" | "explanation">(
   form: ReadingQuestionGroupForm,
   id: string,
   field: K,
   value: SubQuestionForm[K],
 ): ReadingQuestionGroupForm => ({
   ...form,
-  subQuestions: form.subQuestions.map((q) => (q.id === id ? { ...q, [field]: value } : q)),
+  subQuestions: form.subQuestions.map((q) => {
+    if (q.id !== id) return q;
+    if (field === "question") {
+      const question = value as string;
+      return {
+        ...q,
+        question,
+        blanks: syncBlankDefinitions(question, q.blanks).map((blank) => ({
+          acceptedAnswers: blank.acceptedAnswers.length > 0 ? blank.acceptedAnswers : [""],
+        })),
+      };
+    }
+    return { ...q, [field]: value };
+  }),
+});
+
+export const setSubQuestionBlanks = (
+  form: ReadingQuestionGroupForm,
+  id: string,
+  blanks: BlankDefinition[],
+): ReadingQuestionGroupForm => ({
+  ...form,
+  subQuestions: form.subQuestions.map((q) => (q.id === id ? { ...q, blanks } : q)),
 });
 
 export const setSubQuestionOptions = (
@@ -141,8 +169,12 @@ export const validateReadingForm = (form: ReadingQuestionGroupForm): string | nu
 
   if (form.questionType === "fill_in_the_blank") {
     if (form.subQuestions.length === 0) return "Cần ít nhất 1 câu hỏi.";
-    if (form.subQuestions.some((q) => !q.question.trim())) return "Mỗi câu cần có cụm gợi ý.";
-    if (form.subQuestions.some((q) => !q.acceptedAnswer.trim())) return "Mỗi câu cần có đáp án.";
+    for (const q of form.subQuestions) {
+      const blankCount = countBlankMarkers(q.question);
+      if (blankCount < 1) return "Mỗi câu cần ít nhất 1 marker ___.";
+      if (q.blanks.length !== blankCount) return "Số editor đáp án phải khớp số marker ___.";
+      if (!normalizeBlankDefinitions(q.blanks)) return "Mỗi ô trống cần ít nhất 1 đáp án hợp lệ.";
+    }
     return null;
   }
 
@@ -165,7 +197,7 @@ export interface ReadingQuestionGroupPayload {
   statements: { text: string; correct_answer: "richtig" | "falsch"; explanation?: string }[] | null;
   sub_questions:
     | { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string; explanation?: string }[]
-    | { question: string; accepted_answers: string[]; explanation?: string }[]
+    | { question: string; blanks: { acceptedAnswers: string[] }[]; explanation?: string }[]
     | null;
   explanation: string;
 }
@@ -193,7 +225,9 @@ export const buildReadingPayload = (
     form.questionType === "fill_in_the_blank"
       ? form.subQuestions.map((q) => ({
           question: q.question.trim(),
-          accepted_answers: [q.acceptedAnswer.trim()],
+          blanks: (normalizeBlankDefinitions(q.blanks) ?? []).map((blank) => ({
+            acceptedAnswers: blank.acceptedAnswers,
+          })),
           ...explanationOrOmit(q.explanation),
         }))
       : form.questionType === "multiple_choice"
@@ -226,10 +260,32 @@ export interface ReadingQuestionGroupRow {
         options?: string[];
         correct_option_id?: string;
         accepted_answers?: string[];
+        blanks?: { acceptedAnswers?: string[]; accepted_answers?: string[] }[];
         explanation?: string;
       }[]
     | null;
   explanation: string | null;
+}
+
+function parseBlanksFromRow(
+  question: string,
+  blanks: { acceptedAnswers?: string[]; accepted_answers?: string[] }[] | undefined,
+  acceptedAnswers: string[] | undefined,
+): BlankDefinition[] {
+  if (blanks && blanks.length > 0) {
+    return syncBlankDefinitions(
+      question,
+      blanks.map((blank) => ({
+        acceptedAnswers: blank.acceptedAnswers ?? blank.accepted_answers ?? [],
+      })),
+    );
+  }
+  if (acceptedAnswers && acceptedAnswers.length > 0) {
+    return syncBlankDefinitions(question.includes("___") ? question : `${question} ___`, [
+      { acceptedAnswers },
+    ]);
+  }
+  return syncBlankDefinitions(question, []);
 }
 
 export const parseReadingRow = (row: ReadingQuestionGroupRow): ReadingQuestionGroupForm => ({
@@ -245,14 +301,15 @@ export const parseReadingRow = (row: ReadingQuestionGroupRow): ReadingQuestionGr
   })),
   subQuestions: (row.sub_questions ?? []).map((q) => {
     const options = q.options ?? [];
+    const question = q.question;
     return {
       id: newId(),
       textSnippet: q.text_snippet ?? "",
       imageKey: q.image_key ?? null,
-      question: q.question,
+      question,
       options,
       correctIndex: options.findIndex((_, i) => String(i) === q.correct_option_id),
-      acceptedAnswer: q.accepted_answers?.[0] ?? "",
+      blanks: parseBlanksFromRow(question, q.blanks, q.accepted_answers),
       explanation: q.explanation ?? "",
     };
   }),

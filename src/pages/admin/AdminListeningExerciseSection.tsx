@@ -1000,7 +1000,7 @@ const ListeningSetEditor: React.FC<{
             value={instructionDraft}
             onChange={(e) => setInstructionDraft(e.target.value)}
             className={inputCls + " resize-y"}
-            placeholder="Nghe đoạn hội thoại. Dùng **đậm** và *nghiêng*."
+            placeholder="Nghe đoạn hội thoại. Enter xuống dòng. Dùng **đậm** và *nghiêng*."
           />
         ) : (
           <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 min-h-[2.5rem] whitespace-pre-wrap">

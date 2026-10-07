@@ -11,6 +11,7 @@ import {
   addSubQuestion,
   removeSubQuestion,
   setSubQuestionField,
+  setSubQuestionBlanks,
   setSubQuestionOptions,
   moveSubQuestion,
   validateReadingForm,
@@ -200,24 +201,24 @@ test("parseReadingRow: round-trip đúng ngược lại buildReadingPayload cho 
   assert.equal(form.statements[0].correctAnswer, "richtig");
 });
 
-test("validateReadingForm: fill_in_the_blank thiếu đáp án thì báo lỗi", () => {
+test("validateReadingForm: fill_in_the_blank thiếu marker ___ thì báo lỗi", () => {
   let form: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
   form = addSubQuestion(form);
   form = setSubQuestionField(form, form.subQuestions[0].id, "question", "Lea und Tom");
-  assert.equal(validateReadingForm(form), "Mỗi câu cần có đáp án.");
+  assert.equal(validateReadingForm(form), "Mỗi câu cần ít nhất 1 marker ___.");
 });
 
-test("buildReadingPayload: fill_in_the_blank lưu đáp án chữ, không có phương án", () => {
+test("buildReadingPayload: fill_in_the_blank lưu blanks theo marker ___", () => {
   let form: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
   form = addSubQuestion(form);
   const id = form.subQuestions[0].id;
-  form = setSubQuestionField(form, id, "question", "Lea und Tom");
-  form = setSubQuestionField(form, id, "acceptedAnswer", "arbeiten im Café");
+  form = setSubQuestionField(form, id, "question", "Ich ___ Anna.");
+  form = setSubQuestionBlanks(form, id, [{ acceptedAnswers: ["heiße"] }]);
   const payload = buildReadingPayload(form, "set1", 0);
   assert.equal(payload.question_type, "fill_in_the_blank");
   assert.equal(payload.statements, null);
   assert.deepEqual(payload.sub_questions, [
-    { question: "Lea und Tom", accepted_answers: ["arbeiten im Café"] },
+    { question: "Ich ___ Anna.", blanks: [{ acceptedAnswers: ["heiße"] }] },
   ]);
 });
 
@@ -236,13 +237,13 @@ test("buildReadingPayload: giải thích từng câu đi kèm nhận định và
 
   let fill: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
   fill = addSubQuestion(fill);
-  fill = setSubQuestionField(fill, fill.subQuestions[0].id, "question", "Lea");
-  fill = setSubQuestionField(fill, fill.subQuestions[0].id, "acceptedAnswer", "verkauft Kaffee");
+  fill = setSubQuestionField(fill, fill.subQuestions[0].id, "question", "Lea ___");
+  fill = setSubQuestionBlanks(fill, fill.subQuestions[0].id, [{ acceptedAnswers: ["verkauft Kaffee"] }]);
   fill = setSubQuestionField(fill, fill.subQuestions[0].id, "explanation", "Lea bán cà phê");
   const fillPayload = buildReadingPayload(fill, "set1", 0);
   assert.deepEqual(fillPayload.sub_questions, [{
-    question: "Lea",
-    accepted_answers: ["verkauft Kaffee"],
+    question: "Lea ___",
+    blanks: [{ acceptedAnswers: ["verkauft Kaffee"] }],
     explanation: "Lea bán cà phê",
   }]);
 });

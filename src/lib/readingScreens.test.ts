@@ -120,7 +120,7 @@ test("buildReadingCarouselScreens: passageCount 0 -> error", () => {
   assert.equal(result.ok, false);
 });
 
-test("buildReadingCarouselScreens: fill_in_the_blank là 1 màn, chỉ có gợi ý", () => {
+test("buildReadingCarouselScreens: fill_in_the_blank là 1 màn với prompt markdown", () => {
   const group: ReadingQuestionGroupPublic = {
     id: "g-fill",
     passageId: "p1",
@@ -129,8 +129,8 @@ test("buildReadingCarouselScreens: fill_in_the_blank là 1 màn, chỉ có gợi
     questionType: "fill_in_the_blank",
     statements: [],
     subQuestions: [
-      { text_snippet: null, image_key: null, question: "Lea und Tom", options: [] },
-      { text_snippet: null, image_key: null, question: "Lea", options: [] },
+      { text_snippet: null, image_key: null, question: "Lea und Tom ___", options: [] },
+      { text_snippet: null, image_key: null, question: "Ich ___ Anna.", options: [] },
     ],
     orderIndex: 0,
   };
@@ -141,8 +141,8 @@ test("buildReadingCarouselScreens: fill_in_the_blank là 1 màn, chỉ có gợi
   assert.equal(result.screens[0].kind, "single_fill");
   if (result.screens[0].kind !== "single_fill") return;
   assert.deepEqual(result.screens[0].items, [
-    { key: "g-fill:0", label: "Lea und Tom" },
-    { key: "g-fill:1", label: "Lea" },
+    { key: "g-fill:0", prompt: "Lea und Tom ___" },
+    { key: "g-fill:1", prompt: "Ich ___ Anna." },
   ]);
 });
 

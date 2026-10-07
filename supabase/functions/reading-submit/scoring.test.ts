@@ -144,6 +144,22 @@ test("computeReadingScore: fill_in_the_blank sai nếu không khớp đáp án",
   assert.equal(result.itemResults["g3:0"], false);
 });
 
+test("computeReadingScore: fill_in_the_blank hỗ trợ blanks[] và JSON answers", () => {
+  const group: ScorableReadingGroup = {
+    id: "g4",
+    question_type: "fill_in_the_blank",
+    statements: null,
+    sub_questions: [{ blanks: [{ acceptedAnswers: ["heiße"] }, { acceptedAnswers: ["bin"] }] }],
+  };
+  const ok = computeReadingScore([group], { "g4:0": JSON.stringify(["Heiße", "bin"]) });
+  assert.equal(ok.correct, 2);
+  assert.equal(ok.total, 2);
+  assert.equal(ok.itemResults["g4:0"], true);
+  const partial = computeReadingScore([group], { "g4:0": JSON.stringify(["heiße", "bist"]) });
+  assert.equal(partial.correct, 1);
+  assert.equal(partial.itemResults["g4:0"], false);
+});
+
 test("projectAnswers: fill_in_the_blank giữ cụm dài hơn giới hạn đáp án trắc nghiệm", () => {
   const projected = projectAnswers([fillBlankGroup()], { "g3:0": "a".repeat(80) });
   assert.equal(projected["g3:0"].length, 80);

@@ -1,8 +1,14 @@
+export interface ScorableReadingFillBlank {
+  accepted_answers?: string[];
+  blanks?: { acceptedAnswers?: string[]; accepted_answers?: string[] }[];
+  explanation?: string | null;
+}
+
 export interface ScorableReadingGroup {
   id: string;
   question_type: string;
   statements: { correct_answer: string; explanation?: string | null }[] | null;
-  sub_questions: { correct_option_id?: string; accepted_answers?: string[]; explanation?: string | null }[] | null;
+  sub_questions: ({ correct_option_id?: string; explanation?: string | null } & ScorableReadingFillBlank)[] | null;
 }
 
 export interface ReadingScoreResult {
@@ -21,6 +27,37 @@ function normalizeBlank(s: string): string {
 
 function answerMaxLength(questionType: string): number {
   return questionType === "fill_in_the_blank" ? FILL_ANSWER_MAX : CHOICE_ANSWER_MAX;
+}
+
+function resolveFillBlanks(q: ScorableReadingFillBlank): string[][] {
+  if (Array.isArray(q.blanks) && q.blanks.length > 0) {
+    return q.blanks.map((blank) => {
+      const answers = blank?.acceptedAnswers ?? blank?.accepted_answers ?? [];
+      return answers
+        .filter((answer): answer is string => typeof answer === "string")
+        .map((answer) => answer.trim())
+        .filter(Boolean);
+    });
+  }
+  const legacy = (q.accepted_answers ?? [])
+    .filter((answer): answer is string => typeof answer === "string")
+    .map((answer) => answer.trim())
+    .filter((answer) => answer.length > 0);
+  return legacy.length > 0 ? [legacy] : [];
+}
+
+function parseFillUserAnswers(raw: string, blankCount: number): string[] {
+  if (blankCount <= 0) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((value) => typeof value === "string")) {
+      return Array.from({ length: blankCount }, (_, index) => String(parsed[index] ?? ""));
+    }
+  } catch {
+    // legacy plain string for single blank
+  }
+  if (blankCount === 1) return [raw];
+  return Array.from({ length: blankCount }, () => "");
 }
 
 /** Đơn vị chấm điểm của 1 nhóm câu hỏi: statement (richtig_falsch) hoặc
@@ -73,11 +110,15 @@ export function computeReadingScore(
     } else if (group.question_type === "fill_in_the_blank") {
       (group.sub_questions ?? []).forEach((q, i) => {
         const key = `${group.id}:${i}`;
-        const accepted = (q.accepted_answers ?? []).map(normalizeBlank).filter((answer) => answer.length > 0);
-        const isCorrect = accepted.includes(normalizeBlank(answers[key] ?? ""));
+        const blanks = resolveFillBlanks(q);
+        const userAnswers = parseFillUserAnswers(answers[key] ?? "", blanks.length);
+        const blankResults = blanks.map((accepted, blankIndex) =>
+          accepted.map(normalizeBlank).includes(normalizeBlank(userAnswers[blankIndex] ?? "")),
+        );
+        const isCorrect = blanks.length > 0 && blankResults.every(Boolean);
         itemResults[key] = isCorrect;
-        total++;
-        if (isCorrect) correct++;
+        total += Math.max(blanks.length, 1);
+        correct += blankResults.filter(Boolean).length;
       });
     } else {
       (group.sub_questions ?? []).forEach((q, i) => {
@@ -101,7 +142,14 @@ export function deriveCorrectAnswers(groups: ScorableReadingGroup[]): Record<str
     if (group.question_type === "richtig_falsch") {
       (group.statements ?? []).forEach((s, i) => { result[`${group.id}:${i}`] = s.correct_answer; });
     } else if (group.question_type === "fill_in_the_blank") {
-      (group.sub_questions ?? []).forEach((q, i) => { result[`${group.id}:${i}`] = q.accepted_answers?.[0] ?? ""; });
+      (group.sub_questions ?? []).forEach((q, i) => {
+        const blanks = resolveFillBlanks(q);
+        if (blanks.length <= 1) {
+          result[`${group.id}:${i}`] = blanks[0]?.[0] ?? "";
+        } else {
+          result[`${group.id}:${i}`] = JSON.stringify(blanks.map((accepted) => accepted[0] ?? ""));
+        }
+      });
     } else {
       (group.sub_questions ?? []).forEach((q, i) => { result[`${group.id}:${i}`] = q.correct_option_id ?? ""; });
     }

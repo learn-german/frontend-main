@@ -19,8 +19,30 @@ import { buildReadingCarouselScreens, itemKey, type ReadingCarouselScreen } from
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
+import { blankInputCharWidth } from "../lib/blankInputSize";
+import { countBlankMarkers } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
+
+function parseReadingFillAnswers(raw: string | undefined, blankCount: number): string[] {
+  if (blankCount <= 0) return [];
+  if (!raw) return Array.from({ length: blankCount }, () => "");
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((value) => typeof value === "string")) {
+      return Array.from({ length: blankCount }, (_, index) => String(parsed[index] ?? ""));
+    }
+  } catch {
+    // legacy plain string
+  }
+  if (blankCount === 1) return [raw];
+  return Array.from({ length: blankCount }, () => "");
+}
+
+function serializeReadingFillAnswers(values: string[]): string {
+  if (values.length <= 1) return values[0] ?? "";
+  return JSON.stringify(values);
+}
 
 interface ReadingSetListPageProps {
   lesson: Lesson;
@@ -170,7 +192,11 @@ const ReadingGroupBody: React.FC<{
 }> = ({ lesson, group, passageText, answersByKey, onAnswer, itemResults, revealed, correctAnswers, explanation }) => (
   <div className="space-y-3">
     {group.title && <p className="text-sm font-display font-bold text-slate-800">{group.title}</p>}
-    {group.questionIntro && <p className="text-xs text-slate-500">{group.questionIntro}</p>}
+    {group.questionIntro && (
+      <div className="text-xs text-slate-500">
+        <PromptMarkdown text={group.questionIntro} />
+      </div>
+    )}
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
       <MarkdownBlock content={passageText} lessonId={lesson.id} large />
     </div>
@@ -324,9 +350,15 @@ const ReadingExerciseSetBody: React.FC<{
   const isLastScreen = screens.length > 0 && currentScreenIndex === screens.length - 1;
   const currentAnswered = !currentScreen
     ? false
-    : currentScreen.kind === "single_rf_summary" || currentScreen.kind === "single_fill" || currentScreen.kind === "multi_rf"
-      ? currentScreen.items.every((item) => !!answersByKey[item.key]?.trim())
-      : !!answersByKey[currentScreen.key];
+    : currentScreen.kind === "single_fill"
+      ? currentScreen.items.every((item) => {
+          const blankCount = countBlankMarkers(item.prompt);
+          const values = parseReadingFillAnswers(answersByKey[item.key], blankCount);
+          return blankCount > 0 && values.every((value) => value.trim().length > 0);
+        })
+      : currentScreen.kind === "single_rf_summary" || currentScreen.kind === "multi_rf"
+        ? currentScreen.items.every((item) => !!answersByKey[item.key]?.trim())
+        : !!answersByKey[currentScreen.key];
 
   React.useEffect(() => {
     setCurrentScreenIndex(0);
@@ -566,18 +598,16 @@ const ReadingExerciseSetBody: React.FC<{
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
+      {introText && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
+          <span className="font-bold">Yêu cầu: </span>
+          <PromptMarkdown text={introText} />
+        </div>
+      )}
       {isMultiPassage ? (
-        <>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            CÂU {currentScreenIndex + 1}/{screens.length}
-          </span>
-          {introText && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-              <span className="font-bold">Yêu cầu: </span>
-              <PromptMarkdown text={introText} />
-            </div>
-          )}
-        </>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          CÂU {currentScreenIndex + 1}/{screens.length}
+        </span>
       ) : (
         <>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
@@ -656,23 +686,40 @@ const ReadingExerciseSetBody: React.FC<{
                 <div key={screen.groupId} style={slideStyle}>
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm text-slate-600">Điền cụm từ thích hợp vào từng ô trống:</p>
+                      <p className="text-sm text-slate-600">Điền từ thích hợp vào từng ô trống:</p>
                       <p className="shrink-0 text-xs text-slate-400">Nhập trực tiếp vào ô trả lời</p>
                     </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {screen.items.map((item, index) => (
-                        <label key={item.key} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
-                          <span className="shrink-0 text-xs font-bold text-slate-400">1.{index + 1}</span>
-                          <span className="shrink-0">{item.label}</span>
-                          <span className="text-slate-300">→</span>
-                          <input
-                            type="text"
-                            value={answersByKey[item.key] ?? ""}
-                            onChange={(e) => setAnswersByKey((prev) => ({ ...prev, [item.key]: e.target.value }))}
-                            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
-                          />
-                        </label>
-                      ))}
+                    <div className="space-y-3">
+                      {screen.items.map((item, index) => {
+                        const blankCount = countBlankMarkers(item.prompt);
+                        const blankValues = parseReadingFillAnswers(answersByKey[item.key], blankCount);
+                        return (
+                          <div key={item.key} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-9 text-slate-700">
+                            <span className="mr-1 text-xs font-bold text-slate-400">1.{index + 1}</span>
+                            {item.prompt.split("___").map((segment, blankIndex, segments) => (
+                              <React.Fragment key={`${item.key}:${blankIndex}`}>
+                                <span className="whitespace-pre-wrap"><PromptMarkdown text={segment} /></span>
+                                {blankIndex < segments.length - 1 && (
+                                  <input
+                                    type="text"
+                                    value={blankValues[blankIndex] ?? ""}
+                                    onChange={(e) => {
+                                      const next = [...blankValues];
+                                      next[blankIndex] = e.target.value;
+                                      setAnswersByKey((prev) => ({
+                                        ...prev,
+                                        [item.key]: serializeReadingFillAnswers(next),
+                                      }));
+                                    }}
+                                    style={{ width: `${blankInputCharWidth(blankValues[blankIndex] ?? "")}ch` }}
+                                    className="mx-1 inline-block max-w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                  />
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -735,7 +782,11 @@ const ReadingExerciseSetBody: React.FC<{
       <div className="flex flex-wrap items-center justify-end gap-3">
         {currentScreen?.kind === "single_fill" && !currentAnswered && (
           <p className="mr-auto text-sm text-slate-500">
-            Còn {currentScreen.items.filter((item) => !answersByKey[item.key]?.trim()).length} câu chưa trả lời.
+            Còn {currentScreen.items.filter((item) => {
+              const blankCount = countBlankMarkers(item.prompt);
+              const values = parseReadingFillAnswers(answersByKey[item.key], blankCount);
+              return blankCount === 0 || values.some((value) => !value.trim());
+            }).length} câu chưa trả lời.
           </p>
         )}
         <Button variant="secondary" onClick={handleSaveDraft}>
