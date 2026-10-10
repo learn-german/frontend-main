@@ -39,9 +39,9 @@ const moduleA2: Module = {
 
 const draftBetween: LessonPosition = { id: "d2", moduleId: "m1", orderIndex: 2, status: "draft" };
 
-// Draft nằm giữa: items giữ đủ 3, orderedLessons chỉ có 2 bài
+// Draft nằm giữa: không render card "Đang chỉnh sửa", orderedLessons chỉ có 2 bài
 const between = buildRoadmapItems([moduleA1], [draftBetween], ["A1"]);
-assert.deepEqual(between.items.map((i) => (i.kind === "lesson" ? i.lesson.id : i.id)), ["l1", "d2", "l3"]);
+assert.deepEqual(between.items.map((i) => (i.kind === "lesson" ? i.lesson.id : i.id)), ["l1", "l3"]);
 assert.deepEqual(between.orderedLessons.map((l) => l.id), ["l1", "l3"]);
 
 // BUG ĐÃ BÁO: draft không được chặn bài phía sau.
@@ -53,7 +53,7 @@ assert.equal(statusesBetween["l3"], "current");
 // Draft nằm đầu: bài lesson đầu tiên vẫn là "current" khi chưa học gì
 const draftFirst: LessonPosition = { id: "d0", moduleId: "m1", orderIndex: 0, status: "draft" };
 const first = buildRoadmapItems([moduleA1], [draftFirst], ["A1"]);
-assert.deepEqual(first.items.map((i) => (i.kind === "lesson" ? i.lesson.id : i.id)), ["d0", "l1", "l3"]);
+assert.deepEqual(first.items.map((i) => (i.kind === "lesson" ? i.lesson.id : i.id)), ["l1", "l3"]);
 assert.equal(computeLessonStatuses(first.orderedLessons, [])["l1"], "current");
 assert.equal(computeLessonStatuses(first.orderedLessons, [])["l3"], "locked");
 

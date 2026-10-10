@@ -202,6 +202,7 @@ export const AdminUsersSection: React.FC = () => {
       role: string;
       subscription_end_date: string | null;
       unlocked_levels?: string[];
+      paid_started_at?: string | null;
     } = {
       full_name: editForm.full_name,
       role: editForm.role,
@@ -211,6 +212,10 @@ export const AdminUsersSection: React.FC = () => {
       profileUpdate.role = "trial";
       profileUpdate.subscription_end_date = null;
       profileUpdate.unlocked_levels = [];
+      profileUpdate.paid_started_at = null;
+    } else if (editUser.role === "trial" && profileUpdate.role === "user") {
+      const today = new Date();
+      profileUpdate.paid_started_at = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     }
 
     // Update full_name + role column in profiles
@@ -299,7 +304,7 @@ export const AdminUsersSection: React.FC = () => {
         ...(isUnlocking
           ? {
               subscription_end_date: newEnd,
-              ...(wasTrial && previousRole === "trial" ? { role: newRole } : {}),
+              ...(wasTrial && previousRole === "trial" ? { role: newRole, paid_started_at: todayIso } : {}),
             }
           : {}),
       })
@@ -336,7 +341,7 @@ export const AdminUsersSection: React.FC = () => {
       .from("level_enrollments")
       .upsert(
         { user_id: user.id, level, started_at: startedAt, planned_completion_date: plannedCompletionDate },
-        { onConflict: "user_id,level", ignoreDuplicates: true },
+        { onConflict: "user_id,level", ignoreDuplicates: !(wasTrial && previousRole === "trial") },
       );
     if (enrollError) {
       showToast("Không tạo được mốc thời gian cho cấp độ: " + enrollError.message, "warning");
@@ -362,7 +367,7 @@ export const AdminUsersSection: React.FC = () => {
 
     const { error } = await supabase
       .from("profiles")
-      .update({ unlocked_levels: [], subscription_end_date: null, role: "trial" })
+      .update({ unlocked_levels: [], subscription_end_date: null, role: "trial", paid_started_at: null })
       .eq("id", user.id);
 
     if (error) {

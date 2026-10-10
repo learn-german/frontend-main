@@ -5,6 +5,8 @@ import {
   computeDailyProgressReport,
   defaultPlannedCompletionDate,
   earliestStudyDate,
+  paceStartDate,
+  resolveEnrollmentStart,
   type DailyProgressReportInput,
 } from "./report.ts";
 
@@ -144,4 +146,18 @@ test("expected_progress > 0 khi start_at là ngày học bài đầu tiên", () 
     reportDate: "2026-08-19", // elapsed 30/90 ngày
   }));
   assert.equal(Math.round(result.expectedProgressPercentage!), 33);
+});
+
+test("paceStartDate bỏ ngày học trial khi đã có ngày chuyển user", () => {
+  assert.equal(paceStartDate("2026-07-04", "2026-10-08", "2026-10-08"), "2026-10-08");
+  assert.equal(paceStartDate(null, null, "2026-10-08"), "2026-10-08");
+  assert.equal(paceStartDate("2026-07-04", null, "2026-10-08"), "2026-07-04");
+});
+
+test("resolveEnrollmentStart đẩy mốc enrollment lên ngày chuyển user", () => {
+  assert.equal(resolveEnrollmentStart("2026-07-04", "2026-07-04", "2026-10-08"), "2026-10-08");
+  assert.equal(resolveEnrollmentStart("2026-10-08", "2026-07-04", "2026-10-08"), null);
+  assert.equal(resolveEnrollmentStart("2026-06-01", "2026-07-04", null), null);
+  assert.equal(resolveEnrollmentStart("2026-08-19", "2026-07-04", null), "2026-07-04");
+  assert.equal(resolveEnrollmentStart(null, "2026-07-04", "2026-10-08"), "2026-10-08");
 });

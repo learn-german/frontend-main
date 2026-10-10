@@ -80,6 +80,7 @@ const routes: AppRoute[] = [
   { page: "packages" },
   { page: "help" },
   { page: "meetings" },
+  { page: "posts" },
   { page: "lesson-detail", lessonId: "a1-l3" },
   { page: "lesson-detail", lessonId: "a1-l3", tab: "tuvung" },
   { page: "quiz", lessonId: "a1-l3", category: "nghe" },
@@ -95,6 +96,7 @@ assert.equal(isProtectedPage("leaderboard"), true);
 assert.equal(isProtectedPage("packages"), true);
 assert.equal(isProtectedPage("help"), true);
 assert.equal(isProtectedPage("meetings"), true);
+assert.equal(isProtectedPage("posts"), false);
 assert.equal(isProtectedPage("lesson-detail"), true);
 assert.equal(isProtectedPage("quiz"), true);
 assert.equal(isProtectedPage("landing"), false);

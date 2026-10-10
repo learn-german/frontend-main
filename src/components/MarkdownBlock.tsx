@@ -303,7 +303,7 @@ const renderPromptLine = (line: string) => (
 /** Preserve Enter from textarea: Markdown alone collapses \\n into spaces. */
 export const PromptMarkdown: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
-  const lines = text.split("\n");
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
   return (
     <>
       {lines.map((line, i) => (

@@ -585,6 +585,7 @@ export default function App() {
                 <LandingPage
                   onStartLearning={() => handleNavigate("login")}
                   onNavigateLogin={() => handleNavigate("login")}
+                  onOpenPosts={() => handleNavigate("posts")}
                 />
               )}
 
@@ -690,7 +691,7 @@ export default function App() {
                 />
               )}
               {effectivePage === "help" && user && <SupportPage />}
-              {effectivePage === "posts" && user && <PostsPage />}
+              {effectivePage === "posts" && <PostsPage />}
               {effectivePage === "meetings" && user && (
                 <MeetingPage onMeetingsChanged={() => setMeetingRefreshKey((key) => key + 1)} />
               )}

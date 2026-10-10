@@ -9,6 +9,7 @@ import { BRAND_LOGO_SRC } from "../components/BrandLogo";
 interface LandingPageProps {
   onStartLearning: () => void;
   onNavigateLogin: () => void;
+  onOpenPosts: () => void;
 }
 
 const CONTACT_FACEBOOK_URL =
@@ -205,6 +206,7 @@ const COURSE_GAP = 14;
 export const LandingPage: React.FC<LandingPageProps> = ({
   onStartLearning,
   onNavigateLogin,
+  onOpenPosts,
 }) => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -275,6 +277,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               Liên hệ
             </a>
+            <button
+              type="button"
+              onClick={onOpenPosts}
+              className={`${BUTTON_DEFAULT} min-h-[38px] px-2.5 text-xs min-[720px]:min-h-[42px] min-[720px]:px-[17px] min-[720px]:text-sm`}
+            >
+              Bài viết
+            </button>
             <button
               type="button"
               onClick={onNavigateLogin}
@@ -741,6 +750,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="grid gap-[14px]">
               <strong className="text-sm font-bold text-white">Bắt đầu</strong>
               <nav className="grid gap-[11px]" aria-label="Bắt đầu">
+                <button
+                  type="button"
+                  onClick={onOpenPosts}
+                  className="text-left text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
+                >
+                  Bài viết
+                </button>
                 <button
                   type="button"
                   onClick={onStartLearning}

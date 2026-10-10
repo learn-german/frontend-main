@@ -105,6 +105,15 @@ export const Navbar: React.FC<NavigationProps> = ({
             >
               Trang chủ
             </span>
+            <span
+              id="nav-link-posts"
+              onClick={() => onNavigate("posts")}
+              className={`text-sm font-display font-medium cursor-pointer transition ${
+                currentPage === "posts" ? "text-orange-600 font-bold" : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              Bài viết
+            </span>
             <span 
               onClick={() => {
                 const el = document.getElementById("features");
@@ -194,6 +203,13 @@ export const Navbar: React.FC<NavigationProps> = ({
                 className="text-left py-2 text-sm font-display font-semibold text-gray-700 border-b border-gray-50"
               >
                 Trang chủ
+              </button>
+              <button
+                id="mob-posts"
+                onClick={() => { onNavigate("posts"); setMobileMenuOpen(false); }}
+                className="text-left py-2 text-sm font-display font-semibold text-gray-700 border-b border-gray-50"
+              >
+                Bài viết
               </button>
               <button 
                 onClick={() => {

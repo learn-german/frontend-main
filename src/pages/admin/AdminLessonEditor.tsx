@@ -71,7 +71,9 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
   const [imageUploadPct, setImageUploadPct] = useState<number | null>(null);
   const grammarTextareaRef = useRef<HTMLTextAreaElement>(null);
   const vocabTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const speakingTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [vocabImageUploadPct, setVocabImageUploadPct] = useState<number | null>(null);
+  const [speakingImageUploadPct, setSpeakingImageUploadPct] = useState<number | null>(null);
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
 
@@ -175,6 +177,47 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
     e.preventDefault();
     const file = item.getAsFile();
     if (file) handleGrammarImageUpload(file);
+  };
+
+  const insertSpeakingImage = (objectKey: string) => {
+    const textarea = speakingTextareaRef.current;
+    const snippet = `![](r2img:${objectKey})`;
+    setData(prev => {
+      const current = prev.speaking_md ?? "";
+      const start = textarea?.selectionStart ?? current.length;
+      const end = textarea?.selectionEnd ?? current.length;
+      return { ...prev, speaking_md: `${current.slice(0, start)}${snippet}${current.slice(end)}` };
+    });
+    setSpeakingTab("preview");
+  };
+
+  const handleSpeakingImageUpload = async (file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      showToast("Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP", "warning");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      showToast("Ảnh vượt quá 5MB", "warning");
+      return;
+    }
+    setSpeakingImageUploadPct(0);
+    try {
+      const objectKey = await uploadMedia(file, data.id, "image", setSpeakingImageUploadPct);
+      insertSpeakingImage(objectKey);
+      showToast("Đã thêm ảnh vào phần nói.", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Tải ảnh lên thất bại", "warning");
+    } finally {
+      setSpeakingImageUploadPct(null);
+    }
+  };
+
+  const handleSpeakingPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const item = Array.from(e.clipboardData.items).find(it => it.type.startsWith("image/"));
+    if (!item) return;
+    e.preventDefault();
+    const file = item.getAsFile();
+    if (file) handleSpeakingImageUpload(file);
   };
 
   const handleGrammarKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -451,30 +494,45 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
           {/* Nói — Markdown editor */}
           <div className="bg-slate-50/50 border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="text-[10px] font-display font-bold text-yellow-400 bg-slate-950 border border-slate-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
                 Nói
               </span>
-              <div className="flex rounded-lg overflow-hidden border border-slate-200">
-                {(["edit", "preview"] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setSpeakingTab(tab)}
-                    className={`px-3 py-1 text-[11px] font-bold transition-colors ${speakingTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
-                  >
-                    {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1 cursor-pointer hover:bg-slate-50 transition">
+                  <ImageIcon className="w-3.5 h-3.5 text-orange-500" />
+                  {speakingImageUploadPct !== null ? `Đang tải... ${speakingImageUploadPct}%` : "Thêm ảnh"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={speakingImageUploadPct !== null}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleSpeakingImageUpload(f); e.target.value = ""; }}
+                  />
+                </label>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200">
+                  {(["edit", "preview"] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setSpeakingTab(tab)}
+                      className={`px-3 py-1 text-[11px] font-bold transition-colors ${speakingTab === tab ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                    >
+                      {tab === "edit" ? "Chỉnh sửa" : "Xem trước"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {speakingTab === "edit" ? (
               <>
-                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách (lồng nhau được), - [ ] checkbox, bảng, ```code block```, blockquote, và callout 💡 ⚠️ ❗ ✅ ℹ️</p>
+                <p className="text-[10px] text-slate-400">Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, `code`, - danh sách, bảng, và ảnh (nút Thêm ảnh hoặc dán ảnh). Học viên xem ảnh trong tab Nói.</p>
                 <textarea
+                  ref={speakingTextareaRef}
                   rows={12}
                   value={data.speaking_md ?? ""}
                   onChange={e => upd({ speaking_md: e.target.value })}
+                  onPaste={handleSpeakingPaste}
                   placeholder={"## Luyện nói: Giới thiệu bản thân\n\nHãy tập nói to các câu sau:\n- \"Guten Tag! Ich heiße ...\"\n- \"Ich komme aus ...\""}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono resize-y bg-white"
                 />
@@ -482,7 +540,7 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
             ) : (
               <div className="min-h-32 bg-white border border-slate-200 rounded-xl p-4">
                 {data.speaking_md ? (
-                  <MarkdownBlock content={data.speaking_md} />
+                  <MarkdownBlock content={data.speaking_md} lessonId={data.id} />
                 ) : (
                   <p className="text-xs text-slate-400 italic">Chưa có nội dung luyện nói.</p>
                 )}

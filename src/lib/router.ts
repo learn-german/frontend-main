@@ -26,7 +26,6 @@ const PROTECTED_PAGES: AppPage[] = [
   "packages",
   "help",
   "meetings",
-  "posts",
   "lesson-detail",
   "quiz",
 ];

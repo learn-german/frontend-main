@@ -285,7 +285,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
               speakingMd is empty, so no "Sắp có" fallback needed. */}
           {bottomTab === "noi" && lesson.speakingMd && (
             <div className="space-y-4">
-              <MarkdownBlock content={lesson.speakingMd} />
+              <MarkdownBlock content={lesson.speakingMd} lessonId={lesson.id} />
             </div>
           )}
 

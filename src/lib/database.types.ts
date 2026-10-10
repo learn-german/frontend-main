@@ -771,6 +771,7 @@ export type Database = {
           is_premium: boolean
           role: string
           subscription_end_date: string | null
+          paid_started_at: string | null
           unlocked_levels: string[]
         }
         Insert: {
@@ -782,6 +783,7 @@ export type Database = {
           is_premium?: boolean
           role?: string
           subscription_end_date?: string | null
+          paid_started_at?: string | null
           unlocked_levels?: string[]
         }
         Update: {
@@ -793,6 +795,7 @@ export type Database = {
           is_premium?: boolean
           role?: string
           subscription_end_date?: string | null
+          paid_started_at?: string | null
           unlocked_levels?: string[]
         }
         Relationships: []
