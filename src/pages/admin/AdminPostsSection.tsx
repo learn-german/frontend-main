@@ -166,7 +166,7 @@ export const AdminPostsSection: React.FC = () => {
               <div key={post.id} className="flex items-center gap-3 p-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-display font-bold text-slate-800 truncate">{post.title}</p>
-                  <p className="text-[11px] text-slate-400 truncate">/{post.slug}</p>
+                  <a href={`/posts/${post.slug}`} target="_blank" rel="noreferrer" className="text-[11px] text-slate-400 truncate hover:text-red-600">/posts/{post.slug}</a>
                 </div>
                 <LessonStatusBadge status={post.status} />
                 <button onClick={() => startEdit(post)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0" title="Sửa">

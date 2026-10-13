@@ -38,6 +38,7 @@ import type { AppNotification } from "./lib/hooks/useNotifications";
 import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
 import { needsProfileOnboarding } from "./lib/profileOnboarding";
 import {
+  capTrialLessonStatuses,
   getTrialLessonLimit,
   getUnlockedLevels,
   hasStaffLearnerAccess,
@@ -110,15 +111,19 @@ export default function App() {
     [modules, positions, roadmapUnlockLevels],
   );
 
-  const lessonStatuses = useMemo(
-    () => computeLessonStatuses(orderedLessons, stats.completedLessons, hasStaffAccess),
-    [orderedLessons, stats.completedLessons, hasStaffAccess],
-  );
+  const lessonStatuses = useMemo(() => {
+    const statuses = computeLessonStatuses(orderedLessons, stats.completedLessons, hasStaffAccess);
+    if (!isTrial) return statuses;
+    return capTrialLessonStatuses(orderedLessons.map((lesson) => lesson.id), statuses);
+  }, [orderedLessons, stats.completedLessons, hasStaffAccess, isTrial]);
 
   // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
   // nhưng lần đầu load thì đọc ngược từ URL để refresh/deep-link giữ đúng trang.
   const initialRoute = useMemo(() => parseRoute(window.location.pathname), []);
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>(initialRoute.page);
+  const [postSlug, setPostSlug] = useState<string | undefined>(
+    initialRoute.page === "posts" ? initialRoute.slug : undefined,
+  );
   const [selectedLessonId, setSelectedLessonId] = useState<string>(
     "lessonId" in initialRoute ? initialRoute.lessonId : "a1-l1",
   );
@@ -202,8 +207,9 @@ export default function App() {
     if (currentPage === "quiz") {
       return { page: "quiz", lessonId: selectedLessonId, category: activeExerciseCategory };
     }
-    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" | "posts" };
-  }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory]);
+    if (currentPage === "posts") return { page: "posts", slug: postSlug };
+    return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" };
+  }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory, postSlug]);
 
   // State -> URL. So sánh trước khi push để popstate không kích hoạt vòng lặp:
   // sau khi popstate set lại state, serializeRoute đã bằng đúng pathname.
@@ -219,6 +225,7 @@ export default function App() {
     const handlePopState = () => {
       const route = parseRoute(window.location.pathname);
       setCurrentPage(route.page);
+      setPostSlug(route.page === "posts" ? route.slug : undefined);
       if ("lessonId" in route) setSelectedLessonId(route.lessonId);
       setInitialLessonTab(route.page === "lesson-detail" ? route.tab : undefined);
       if (route.page === "quiz") setActiveExerciseCategory(route.category);
@@ -430,6 +437,7 @@ export default function App() {
   // Không ép sang "login" nữa: URL đích được giữ nguyên và effectivePage lo
   // việc render màn hình đăng nhập, nhờ đó đăng nhập xong là vào thẳng đích.
   const handleNavigate = (page: AppState["currentPage"]) => {
+    setPostSlug(undefined);
     setCurrentPage(page);
   };
 
@@ -639,9 +647,11 @@ export default function App() {
                   onBack={() => handleNavigate("roadmap")}
                   onMarkComplete={handleMarkComplete}
                   onStartQuiz={(lessonId, category = "nguphap") => {
-                    setSelectedLessonId(lessonId);
-                    setActiveExerciseCategory(category);
-                    setCurrentPage("quiz");
+                    window.open(
+                      serializeRoute({ page: "quiz", lessonId, category }),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
                   }}
                 />
               )}
@@ -691,7 +701,7 @@ export default function App() {
                 />
               )}
               {effectivePage === "help" && user && <SupportPage />}
-              {effectivePage === "posts" && <PostsPage />}
+              {effectivePage === "posts" && <PostsPage slug={postSlug} />}
               {effectivePage === "meetings" && user && (
                 <MeetingPage onMeetingsChanged={() => setMeetingRefreshKey((key) => key + 1)} />
               )}

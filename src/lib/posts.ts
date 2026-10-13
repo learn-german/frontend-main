@@ -46,6 +46,17 @@ const mapPostRow = (row: PostRow): Post => ({
   updatedAt: row.updated_at,
 });
 
+export async function getPublishedPostBySlug(slug: string): Promise<Post | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(POST_COLUMNS)
+    .eq("status", "published")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapPostRow(data as PostRow) : null;
+}
+
 export async function listPublishedPosts(): Promise<Post[]> {
   const { data, error } = await supabase
     .from("posts")

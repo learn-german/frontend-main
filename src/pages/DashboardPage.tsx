@@ -251,7 +251,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-display font-bold text-amber-900">Bạn đang dùng gói Trial</p>
-            <p className="text-xs text-amber-700 mt-0.5">Chỉ bài học đầu tiên khả dụng. Liên hệ admin để nâng cấp gói và mở toàn bộ nội dung.</p>
+            <p className="text-xs text-amber-700 mt-0.5">Chỉ 3 bài học đầu khả dụng. Liên hệ admin để nâng cấp gói và mở toàn bộ nội dung.</p>
           </div>
           <ContactFanpageButton />
         </div>

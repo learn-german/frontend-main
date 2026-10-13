@@ -169,7 +169,7 @@ const FAQS = [
   {
     question: "Có thể học thử khóa A1 trước khi đăng ký không?",
     answer:
-      "Có. Bạn có thể đăng nhập để học miễn phí bài đầu tiên, xem video và làm bài tập trước khi quyết định đăng ký toàn bộ khóa A1.",
+      "Có. Bạn có thể đăng nhập để học miễn phí 3 bài đầu, xem video và làm bài tập trước khi quyết định đăng ký toàn bộ khóa A1.",
   },
   {
     question: "Khóa học có hỗ trợ trực tuyến không?",
@@ -186,8 +186,8 @@ const FAQS = [
 const REGISTER_STEPS = [
   {
     index: "01",
-    title: "Học thử bài đầu tiên",
-    body: "Đăng nhập để xem video và làm bài tập trong bài đầu tiên của khóa A1.",
+    title: "Học thử 3 bài đầu",
+    body: "Đăng nhập để xem video và làm bài tập trong 3 bài đầu của khóa A1.",
   },
   {
     index: "02",
@@ -322,7 +322,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onClick={onStartLearning}
                 className={BUTTON_PRIMARY}
               >
-                Học thử bài đầu tiên
+                Học thử 3 bài đầu
               </button>
               <a
                 href="#courses"
@@ -639,7 +639,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Học thử A1 miễn phí trước khi đăng ký.
                 </h2>
                 <p className="mt-4 max-w-[570px] text-[16px] font-normal leading-[1.62] text-[#667085] text-pretty min-[720px]:mx-auto min-[1080px]:mx-0">
-                  Trải nghiệm bài đầu tiên để xem cách học có phù hợp. Khi muốn
+                  Trải nghiệm 3 bài đầu để xem cách học có phù hợp. Khi muốn
                   học tiếp, liên hệ DeutschSelbst để mở khóa toàn bộ A1.
                 </p>
                 <div className="mt-[26px] grid gap-3 min-[720px]:flex min-[720px]:flex-wrap min-[720px]:items-center min-[720px]:justify-center min-[1080px]:justify-start">
@@ -648,7 +648,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     onClick={onStartLearning}
                     className={`${BUTTON_PRIMARY} w-full min-[720px]:w-auto`}
                   >
-                    Học thử bài đầu tiên
+                    Học thử 3 bài đầu
                   </button>
                   <a
                     href={CONTACT_FACEBOOK_URL}

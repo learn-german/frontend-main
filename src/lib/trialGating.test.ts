@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  capTrialLessonStatuses,
+  getTrialLessonLimit,
   getUnlockedLevels,
   isEffectivelyTrial,
   isExpiredAccess,
@@ -74,6 +76,23 @@ test("stale JWT role=trial with active end → not locked", () => {
   assert.equal(isTrialAccess("trial", "2026-12-31", TODAY), false);
   assert.equal(isExpiredAccess("trial", "2026-12-31", TODAY), false);
   assert.equal(isFeatureLocked("trial", "2026-12-31", "leaderboard", TODAY), false);
+});
+
+test("trial keeps the first 3 sequential statuses and locks the rest", () => {
+  assert.equal(getTrialLessonLimit(), 3);
+  const ids = ["l1", "l2", "l3", "l4"];
+  const capped = capTrialLessonStatuses(ids, {
+    l1: "completed",
+    l2: "current",
+    l3: "locked",
+    l4: "current",
+  });
+  assert.deepEqual(capped, {
+    l1: "completed",
+    l2: "current",
+    l3: "locked",
+    l4: "locked",
+  });
 });
 
 test("isSubscriptionExpired calendar past", () => {

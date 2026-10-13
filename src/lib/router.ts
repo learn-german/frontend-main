@@ -15,7 +15,8 @@ export type AppPage =
   | "quiz";
 
 export type AppRoute =
-  | { page: "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" | "posts" }
+  | { page: "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" }
+  | { page: "posts"; slug?: string }
   | { page: "lesson-detail"; lessonId: string; tab?: BottomTab }
   | { page: "quiz"; lessonId: string; category: QuizCategory };
 
@@ -68,7 +69,7 @@ export function parseRoute(pathname: string): AppRoute {
     case "meetings":
       return { page: "meetings" };
     case "posts":
-      return { page: "posts" };
+      return second ? { page: "posts", slug: decodeURIComponent(second) } : { page: "posts" };
     case "lesson": {
       if (!second) return { page: "landing" };
       const tab = toBottomTab(third);
@@ -90,6 +91,8 @@ export function serializeRoute(route: AppRoute): string {
   switch (route.page) {
     case "landing":
       return "/";
+    case "posts":
+      return route.slug ? `/posts/${encodeURIComponent(route.slug)}` : "/posts";
     case "lesson-detail":
       return route.tab ? `/lesson/${route.lessonId}/${route.tab}` : `/lesson/${route.lessonId}`;
     case "quiz":

@@ -9,7 +9,7 @@ export type LockedFeature = "leaderboard" | "help" | "packages" | "meetings";
 
 export const ALL_LEVELS: Level[] = ["A1", "A2", "B1", "B2"];
 
-const TRIAL_LESSON_LIMIT = 1;
+const TRIAL_LESSON_LIMIT = 3;
 
 /** Admin and tutor bypass trial/expired/sequential locks in the learner app. */
 export function hasStaffLearnerAccess(role: UserRole): boolean {
@@ -75,6 +75,18 @@ export function isFeatureLocked(
 
 export function getTrialLessonLimit(): number {
   return TRIAL_LESSON_LIMIT;
+}
+
+/** First N lessons keep their real status. Everything after stays locked. */
+export function capTrialLessonStatuses(
+  orderedIds: readonly string[],
+  statuses: Record<string, "completed" | "current" | "locked">,
+): Record<string, "completed" | "current" | "locked"> {
+  const capped: Record<string, "completed" | "current" | "locked"> = {};
+  orderedIds.forEach((id, idx) => {
+    capped[id] = idx >= TRIAL_LESSON_LIMIT ? "locked" : (statuses[id] ?? "locked");
+  });
+  return capped;
 }
 
 /** Levels shown on the learner roadmap. Admin sees every level. */

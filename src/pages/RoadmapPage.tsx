@@ -7,6 +7,7 @@ import React, { useEffect, useMemo } from "react";
 import { Check, Lock, Play, ArrowRight, LockKeyhole } from "lucide-react";
 import { ProgressBar } from "../components/DesignSystem";
 import { UserStats, Module, LessonPosition } from "../lib/appTypes";
+import { capTrialLessonStatuses } from "../lib/trialGating";
 import { buildRoadmapItems } from "../lib/lessonOrder";
 import { computeLessonStatuses, type LessonStatus } from "../lib/completion";
 import { formatDurationLabel } from "../lib/lessonDuration";
@@ -49,11 +50,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
       return overridden;
     }
     if (!isTrialRestricted) return lessonStatuses;
-    const overridden: Record<string, LessonStatus> = {};
-    orderedLessons.forEach((lesson, idx) => {
-      overridden[lesson.id] = idx === 0 ? "current" : "locked";
-    });
-    return overridden;
+    return capTrialLessonStatuses(orderedLessons.map((lesson) => lesson.id), lessonStatuses);
   }, [isExpiredRestricted, isTrialRestricted, lessonStatuses, orderedLessons]);
 
   useEffect(() => {
