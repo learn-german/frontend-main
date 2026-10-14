@@ -77,6 +77,23 @@ export function getTrialLessonLimit(): number {
   return TRIAL_LESSON_LIMIT;
 }
 
+/**
+ * Fresh /quiz and /lesson loads render once before modules arrive, while the
+ * loading flag is still false. An id missing from an empty catalog is "wait",
+ * not "outside the first 3".
+ */
+export function trialDeepLinkDecision(
+  lessonId: string,
+  orderedIds: readonly string[],
+  catalogIds: readonly string[],
+): "allow" | "wait" | "block" {
+  const lessonIndex = orderedIds.indexOf(lessonId);
+  if (lessonIndex >= 0) {
+    return lessonIndex < TRIAL_LESSON_LIMIT ? "allow" : "block";
+  }
+  return catalogIds.includes(lessonId) ? "block" : "wait";
+}
+
 /** First N lessons keep their real status. Everything after stays locked. */
 export function capTrialLessonStatuses(
   orderedIds: readonly string[],

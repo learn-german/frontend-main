@@ -39,13 +39,13 @@ import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./li
 import { needsProfileOnboarding } from "./lib/profileOnboarding";
 import {
   capTrialLessonStatuses,
-  getTrialLessonLimit,
   getUnlockedLevels,
   hasStaffLearnerAccess,
   isExpiredAccess,
   isFeatureLocked,
   isSubscriptionExpired,
   isTrialAccess,
+  trialDeepLinkDecision,
   type UserRole,
 } from "./lib/trialGating";
 import { listLearnerMeetings } from "./lib/meetings";
@@ -159,10 +159,17 @@ export default function App() {
       return;
     }
 
-    // Trial restriction: only the configured number of first lessons is allowed
+    // Trial restriction: only the configured number of first lessons is allowed.
+    // A brand-new tab (Bắt đầu bài tập) has an empty catalog for one render
+    // before useModules flips loading on — that must not count as "not allowed".
     if (isTrial) {
-      const lessonIndex = orderedLessons.findIndex((l) => l.id === selectedLessonId);
-      if (lessonIndex < 0 || lessonIndex >= getTrialLessonLimit()) {
+      const decision = trialDeepLinkDecision(
+        selectedLessonId,
+        orderedLessons.map((lesson) => lesson.id),
+        flatLessons.map((lesson) => lesson.id),
+      );
+      if (decision === "wait") return;
+      if (decision === "block") {
         showToast("Nâng cấp gói để truy cập bài học này.", "warning");
         setCurrentPage("roadmap");
         return;

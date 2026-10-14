@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   capTrialLessonStatuses,
   getTrialLessonLimit,
+  trialDeepLinkDecision,
   getUnlockedLevels,
   isEffectivelyTrial,
   isExpiredAccess,
@@ -93,6 +94,13 @@ test("trial keeps the first 3 sequential statuses and locks the rest", () => {
     l3: "locked",
     l4: "locked",
   });
+});
+
+test("trial deep link waits while the catalog is still empty", () => {
+  assert.equal(trialDeepLinkDecision("a1-l24", [], []), "wait");
+  assert.equal(trialDeepLinkDecision("a1-l24", ["a1-l24", "a1-l2", "a1-l3", "a1-l4"], ["a1-l24", "a1-l2", "a1-l3", "a1-l4"]), "allow");
+  assert.equal(trialDeepLinkDecision("a1-l4", ["a1-l24", "a1-l2", "a1-l3", "a1-l4"], ["a1-l24", "a1-l2", "a1-l3", "a1-l4"]), "block");
+  assert.equal(trialDeepLinkDecision("a2-l1", ["a1-l24"], ["a1-l24", "a2-l1"]), "block");
 });
 
 test("isSubscriptionExpired calendar past", () => {
