@@ -450,6 +450,20 @@ export default function App() {
 
   // Select particular lesson to view
   const handleSelectLesson = (lessonId: string, initialTab?: BottomTab) => {
+    if (lessonStatuses[lessonId] === "locked") {
+      const pastTrialWindow = isTrial && trialDeepLinkDecision(
+        lessonId,
+        orderedLessons.map((lesson) => lesson.id),
+        flatLessons.map((lesson) => lesson.id),
+      ) === "block";
+      showToast(
+        pastTrialWindow
+          ? "Nâng cấp gói để truy cập bài học này."
+          : "Hãy hoàn thành bài học trước để mở bài này.",
+        "warning",
+      );
+      return;
+    }
     setSelectedLessonId(lessonId);
     setInitialLessonTab(initialTab);
     setCurrentPage("lesson-detail");

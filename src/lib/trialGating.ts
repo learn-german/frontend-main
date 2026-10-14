@@ -94,14 +94,24 @@ export function trialDeepLinkDecision(
   return catalogIds.includes(lessonId) ? "block" : "wait";
 }
 
-/** First N lessons keep their real status. Everything after stays locked. */
+/**
+ * Inside the trial window, lesson N stays locked until lesson N-1 is completed.
+ * Everything after the window stays locked even if earlier lessons are done.
+ */
 export function capTrialLessonStatuses(
   orderedIds: readonly string[],
   statuses: Record<string, "completed" | "current" | "locked">,
 ): Record<string, "completed" | "current" | "locked"> {
   const capped: Record<string, "completed" | "current" | "locked"> = {};
   orderedIds.forEach((id, idx) => {
-    capped[id] = idx >= TRIAL_LESSON_LIMIT ? "locked" : (statuses[id] ?? "locked");
+    if (idx >= TRIAL_LESSON_LIMIT) {
+      capped[id] = "locked";
+      return;
+    }
+    const previousDone = idx === 0 || capped[orderedIds[idx - 1]] === "completed";
+    if (!previousDone) capped[id] = "locked";
+    else if (statuses[id] === "completed") capped[id] = "completed";
+    else capped[id] = "current";
   });
   return capped;
 }

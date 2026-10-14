@@ -7,7 +7,7 @@ import React, { useEffect, useMemo } from "react";
 import { Check, Lock, Play, ArrowRight, LockKeyhole } from "lucide-react";
 import { ProgressBar } from "../components/DesignSystem";
 import { UserStats, Module, LessonPosition } from "../lib/appTypes";
-import { capTrialLessonStatuses } from "../lib/trialGating";
+import { capTrialLessonStatuses, getTrialLessonLimit } from "../lib/trialGating";
 import { buildRoadmapItems } from "../lib/lessonOrder";
 import { computeLessonStatuses, type LessonStatus } from "../lib/completion";
 import { formatDurationLabel } from "../lib/lessonDuration";
@@ -200,7 +200,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
                       <span className="text-[10px] text-slate-400 font-display font-semibold flex items-center gap-1 select-none">
                         {isExpiredRestricted && status === "locked" ? (
                           <span className="text-[10px] text-red-600 font-display font-semibold">🔒 Gói đã hết hạn</span>
-                        ) : isTrialRestricted && status === "locked" ? (
+                        ) : isTrialRestricted && indexInAll >= getTrialLessonLimit() ? (
                           <span className="text-[10px] text-amber-600 font-display font-semibold">🔒 Nâng cấp gói</span>
                         ) : (
                           <>

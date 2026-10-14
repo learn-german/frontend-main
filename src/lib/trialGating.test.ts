@@ -96,6 +96,32 @@ test("trial keeps the first 3 sequential statuses and locks the rest", () => {
   });
 });
 
+test("trial does not open lesson 2 until lesson 1 is completed", () => {
+  const ids = ["l1", "l2", "l3", "l4"];
+  assert.deepEqual(capTrialLessonStatuses(ids, {
+    l1: "current",
+    l2: "current",
+    l3: "current",
+    l4: "current",
+  }), {
+    l1: "current",
+    l2: "locked",
+    l3: "locked",
+    l4: "locked",
+  });
+  assert.deepEqual(capTrialLessonStatuses(ids, {
+    l1: "completed",
+    l2: "current",
+    l3: "locked",
+    l4: "current",
+  }), {
+    l1: "completed",
+    l2: "current",
+    l3: "locked",
+    l4: "locked",
+  });
+});
+
 test("trial deep link waits while the catalog is still empty", () => {
   assert.equal(trialDeepLinkDecision("a1-l24", [], []), "wait");
   assert.equal(trialDeepLinkDecision("a1-l24", ["a1-l24", "a1-l2", "a1-l3", "a1-l4"], ["a1-l24", "a1-l2", "a1-l3", "a1-l4"]), "allow");
