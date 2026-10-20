@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Video, Loader2 } from "lucide-react";
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
+import { formatDurationClock, parseDurationSeconds } from "../lib/lessonDuration";
+import { syncLessonVideoDuration } from "../lib/syncLessonVideoDuration";
 
 interface VideoPlayerProps {
   lessonId: string;
@@ -8,6 +10,8 @@ interface VideoPlayerProps {
   videoR2Key?: string;
   title: string;
   levelBadge: string;
+  /** Stored lesson.duration — skip RPC when already matching measured length. */
+  storedDuration?: string;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -16,8 +20,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   videoR2Key,
   title,
   levelBadge,
+  storedDuration,
 }) => {
   const { url, loading, error } = useMediaPlaybackUrl(lessonId, "video", videoR2Key);
+  const syncedRef = useRef(false);
 
   if (videoR2Key) {
     if (loading) {
@@ -30,7 +36,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (url) {
       return (
         <div className="rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm">
-          <video controls src={url} title={title} className="w-full aspect-video bg-black">
+          <video
+            controls
+            src={url}
+            title={title}
+            className="w-full aspect-video bg-black"
+            onLoadedMetadata={(event) => {
+              if (syncedRef.current) return;
+              const seconds = event.currentTarget.duration;
+              if (!Number.isFinite(seconds) || seconds <= 0) return;
+              const clock = formatDurationClock(seconds);
+              if (storedDuration && formatDurationClock(parseDurationSeconds(storedDuration)) === clock) {
+                syncedRef.current = true;
+                return;
+              }
+              syncedRef.current = true;
+              void syncLessonVideoDuration(lessonId, seconds);
+            }}
+          >
             Trình duyệt không hỗ trợ video.
           </video>
         </div>
@@ -60,7 +83,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     );
   }
 
-  // Placeholder when no video is available yet
   return (
     <div className="rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm bg-slate-50 aspect-video flex flex-col items-center justify-center gap-3 text-center px-6">
       <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center">
