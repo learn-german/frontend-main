@@ -1,3 +1,4 @@
+import { SpeakingTabPanel } from "../components/SpeakingTabPanel";
 import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
@@ -329,9 +330,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Nói (Sprechen) tab — hidden entirely via visibleTabs when
               speakingMd is empty, so no "Sắp có" fallback needed. */}
           {bottomTab === "noi" && lesson.speakingMd && (
-            <div className="space-y-4">
-              <MarkdownBlock content={lesson.speakingMd} lessonId={lesson.id} />
-            </div>
+            <SpeakingTabPanel key={`${lesson.id}:${userId}`} lessonId={lesson.id} userId={userId} promptMd={lesson.speakingMd} />
           )}
 
           {/* Nghe (Hören) tab — hidden entirely via visibleTabs when

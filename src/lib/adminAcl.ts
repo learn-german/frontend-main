@@ -1,4 +1,4 @@
-export type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing" | "support" | "meetings" | "posts";
+export type AdminSection = "dashboard" | "users" | "content" | "quiz" | "writing" | "speaking" | "support" | "meetings" | "posts";
 
 export const ALL_ADMIN_SECTIONS: AdminSection[] = [
   "dashboard",
@@ -6,6 +6,7 @@ export const ALL_ADMIN_SECTIONS: AdminSection[] = [
   "content",
   "quiz",
   "writing",
+  "speaking",
   "support",
   "meetings",
   "posts",

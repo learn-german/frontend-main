@@ -1,3 +1,4 @@
+import { AdminSpeakingSection } from "./AdminSpeakingSection";
 import React, { useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
@@ -43,6 +44,7 @@ const NAV_META: Record<AdminSection, { label: string; Icon: React.FC<{ className
   content: { label: "Nội dung", Icon: BookOpen },
   quiz: { label: "Bài tập", Icon: HelpCircle },
   writing: { label: "Chấm bài viết", Icon: PenLine },
+  speaking: { label: "Chấm bài nói", Icon: PenLine },
   support: { label: "Hỗ trợ", Icon: MessageSquare },
   meetings: { label: "Lịch meeting", Icon: Video },
   posts: { label: "Bài viết", Icon: Newspaper },
@@ -112,6 +114,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, 
         {section === "content" && !isTutor && <AdminContentSection />}
         {section === "quiz" && <AdminQuizSection />}
         {section === "writing" && <AdminWritingSection />}
+        {section === "speaking" && <AdminSpeakingSection />}
         {section === "support" && <AdminSupportSection />}
         {section === "meetings" && <AdminMeetingSection />}
         {section === "posts" && <AdminPostsSection />}

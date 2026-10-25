@@ -474,6 +474,10 @@ export default function App() {
       handleSelectLesson(n.lessonId, "viet");
       return;
     }
+    if (n.type === "speaking_graded" && n.lessonId) {
+      handleSelectLesson(n.lessonId, "noi");
+      return;
+    }
     if (n.type === "support_replied") {
       setCurrentPage("help");
     }
