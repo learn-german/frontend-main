@@ -1,7 +1,25 @@
 -- Run with supabase test db. All fixtures are rolled back.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(18);
+-- Test the actual DELETE policy without issuing direct SQL DELETE against Storage.
+-- Storage protects direct metadata deletion; binary deletion belongs to its API.
+create function pg_temp.speaking_can_delete(object_path text) returns boolean
+language plpgsql security invoker as $$
+declare predicate text; permitted boolean;
+begin
+  select qual into predicate from pg_policies
+    where schemaname='storage' and tablename='objects'
+      and policyname='speaking audio: remove unused upload';
+  execute 'select (' || predicate || ') from storage.objects where name=$1'
+    into permitted using object_path;
+  return permitted;
+end;
+$$;
+select is(has_function_privilege('anon','public.enforce_speaking_submission()','execute'),false,'anon cannot invoke guard RPC');
+select is(has_function_privilege('authenticated','public.enforce_speaking_submission()','execute'),false,'learner cannot invoke guard RPC');
+select is(has_function_privilege('anon','public.notify_speaking_submission()','execute'),false,'anon cannot invoke notification RPC');
+select is(has_function_privilege('authenticated','public.notify_speaking_submission()','execute'),false,'learner cannot invoke notification RPC');
 insert into auth.users (id, aud, role, email, raw_app_meta_data, raw_user_meta_data)
 values ('11111111-1111-1111-1111-111111111111','authenticated','authenticated','speaking-a@test.local','{}','{"full_name":"A"}'),
 ('22222222-2222-2222-2222-222222222222','authenticated','authenticated','speaking-b@test.local','{}','{"full_name":"B"}');
@@ -24,10 +42,8 @@ values ('speaking-test',auth.uid(),'11111111-1111-1111-1111-111111111111/aaaaaaa
 '23514','speaking attempt limit reached','third attempt rejected');
 update speaking_submissions set score=90,graded_at=now() where lesson_id='speaking-test';
 select is((select count(*) from speaking_submissions where lesson_id='speaking-test' and score is not null),0::bigint,'learner cannot grade');
-delete from storage.objects where name='11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-000000000001.mp3';
-select is((select count(*) from storage.objects where bucket_id='speaking-recordings'),3::bigint,'submitted audio cannot be removed');
-delete from storage.objects where name='11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-000000000003.mp3';
-select is((select count(*) from storage.objects where bucket_id='speaking-recordings'),2::bigint,'unused audio may be removed');
+select is(pg_temp.speaking_can_delete('11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-000000000001.mp3'),false,'submitted audio cannot be removed');
+select is(pg_temp.speaking_can_delete('11111111-1111-1111-1111-111111111111/aaaaaaaa-aaaa-aaaa-aaaa-000000000003.mp3'),true,'unused audio may be removed');
 set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","app_metadata":{"role":"user"}}';
 select is((select count(*) from speaking_submissions where lesson_id='speaking-test'),0::bigint,'other learner cannot read attempts');
 select is((select count(*) from storage.objects where bucket_id='speaking-recordings'),0::bigint,'other learner cannot read audio');
