@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import {
   BookOpen,
+  BookA,
   Map,
   Compass,
   User,
@@ -282,6 +283,9 @@ export const Navbar: React.FC<NavigationProps> = ({
                   <Map className="w-5 h-5 text-gray-400" />
                   Lộ trình học
                 </button>
+                <button id="mob-dictionary" onClick={() => { onNavigate("dictionary"); setMobileMenuOpen(false); }} className="flex items-center gap-2.5 p-3 rounded-xl text-sm font-display font-semibold text-gray-600 hover:bg-gray-50">
+                  <BookA className="w-5 h-5 text-gray-400" />Từ điển
+                </button>
                 <button
                   id="mob-leaderboard"
                   onClick={() => {
@@ -344,6 +348,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "dashboard", label: "Dashboard", desc: "Bảng tổng quan", icon: Compass },
     { id: "roadmap", label: "Lộ trình", desc: "Sơ đồ khóa học", icon: Map },
     { id: "lesson-detail", label: "Bài học hiện tại", desc: currentLessonTitle ? `Đang học: ${currentLessonTitle}` : "Bài học đang xem", icon: BookOpen },
+    { id: "dictionary", label: "Từ điển", desc: "Từ vựng theo chủ đề", icon: BookA },
     { id: "meetings", label: "Lịch học trực tuyến", desc: "Đăng ký buổi hỗ trợ", icon: Video },
     { id: "posts", label: "Bài viết", desc: "Tin tức & mẹo học", icon: Newspaper },
     { id: "packages", label: "Gói học", desc: "Xem gói & quyền lợi", icon: Gift },

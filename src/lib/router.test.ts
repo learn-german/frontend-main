@@ -114,3 +114,8 @@ assert.equal(isProtectedPage("landing"), false);
 assert.equal(isProtectedPage("login"), false);
 
 console.log("router.test.ts OK");
+
+// Dictionary stays protected and survives a direct reload/back-forward parse.
+assert.deepEqual(parseRoute('/dictionary'), {page:'dictionary'});
+assert.equal(serializeRoute({page:'dictionary'}), '/dictionary');
+assert.equal(isProtectedPage('dictionary'), true);

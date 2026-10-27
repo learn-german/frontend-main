@@ -1,3 +1,4 @@
+import { DictionaryPage } from "./pages/DictionaryPage";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -565,7 +566,7 @@ export default function App() {
 
   // Layout check selectors
   const showNav = effectivePage !== "login" && effectivePage !== "landing";
-  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "meetings" || effectivePage === "posts" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "meetings" || effectivePage === "posts" || effectivePage === "dictionary" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -649,6 +650,8 @@ export default function App() {
                   isExpiredRestricted={isExpired}
                 />
               )}
+
+              {effectivePage === "dictionary" && user && <DictionaryPage userId={user.id} onSelectLesson={(id) => handleSelectLesson(id, "tuvung")} />}
 
               {effectivePage === "roadmap" && user && (
                 <RoadmapPage
