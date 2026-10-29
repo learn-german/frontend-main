@@ -622,7 +622,7 @@ const QuizExerciseSetBody: React.FC<{
                   showToast("Không thể lưu, vui lòng thử lại.", "warning");
                   return;
                 }
-                showToast("Đã lưu bài làm dở.", "success");
+                showToast("Đã lưu", "success");
                 onDraftSaved(true);
               }}
             >

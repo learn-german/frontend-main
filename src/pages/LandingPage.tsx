@@ -45,7 +45,7 @@ const BENEFITS = [
     offset: "left-[-100%]",
     body: "Bạn không phải tự xử lý mọi điểm khó khi học online. Người hướng dẫn hỗ trợ đều đặn trong suốt khóa học.",
     points: [
-      "Bài viết được chấm điểm",
+      "Bài viết, bài nói được chấm điểm trực tiếp",
       "Buổi học trực tuyến hàng tuần",
       "Giải đáp bài học và luyện nói",
     ],
@@ -60,21 +60,6 @@ const BENEFITS = [
       "Ôn lại nội dung khi cần",
       "Tiết kiệm thời gian và chi phí",
     ],
-  },
-];
-
-const AUDIENCE = [
-  {
-    title: "Người mới bắt đầu",
-    body: "Học tiếng Đức từ số 0 theo trình tự rõ ràng, không cần tự ghép nhiều nguồn tài liệu.",
-  },
-  {
-    title: "Người có lịch trình bận rộn",
-    body: "Chủ động xem video, làm bài tập và ôn lại kiến thức vào thời gian phù hợp.",
-  },
-  {
-    title: "Người cần hỗ trợ khi tự học",
-    body: "Được chấm bài viết, giải đáp bài học và luyện kỹ năng nói trong buổi hỗ trợ hàng tuần.",
   },
 ];
 
@@ -411,46 +396,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </section>
 
-        {/* Audience */}
-        <section
-          id="audience"
-          aria-labelledby="audience-title"
-          className="scroll-mt-[72px] border-b border-[#e5e9f0] bg-white px-5 pt-[10px] pb-[58px] min-[720px]:px-6 min-[720px]:pb-20"
-        >
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mb-10 max-w-[1200px]">
-              <div className={KICKER}>Đối tượng phù hợp</div>
-              <h2 id="audience-title" className={SECTION_TITLE}>
-                Khóa học tiếng Đức online của DeutschSelbst phù hợp với ai?
-              </h2>
-              <p className="mt-3.5 text-base font-normal leading-[1.65] text-[#667085]">
-                Lộ trình được thiết kế cho người muốn học có hệ thống nhưng vẫn
-                chủ động sắp xếp thời gian.
-              </p>
-            </div>
-
-            <div className="grid border-y border-[#e5e9f0] min-[720px]:grid-cols-3">
-              {AUDIENCE.map((item, index) => (
-                <div
-                  key={item.title}
-                  className={`px-0 py-[22px] min-[720px]:px-7 min-[720px]:py-[26px] ${
-                    index > 0
-                      ? "border-t border-[#e5e9f0] min-[720px]:border-t-0 min-[720px]:border-l"
-                      : ""
-                  }`}
-                >
-                  <strong className="block text-[17px] leading-[1.35] font-bold">
-                    {item.title}
-                  </strong>
-                  <p className="mt-2 text-sm font-normal leading-[1.65] text-[#667085]">
-                    {item.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Method */}
         <section
           id="method"
@@ -722,13 +667,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   className="text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
                 >
                   Điểm đặc biệt
-                </a>
-                <a
-                  href="#audience"
-                  onClick={scrollToSection("audience")}
-                  className="text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
-                >
-                  Phù hợp với ai
                 </a>
                 <a
                   href="#method"

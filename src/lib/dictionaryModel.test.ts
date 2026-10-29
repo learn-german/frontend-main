@@ -20,6 +20,14 @@ test('draft needs a word; publishing requires full associations and paired optio
   content.example='Meine Mutter.';
   assert.ok(validateDictionaryContent(content,true).length);
 });
+test('publishing a noun accepts no article or a valid article but rejects invalid articles', () => {
+  const noun = {...blankDictionaryContent(), word:'Wasser', type:'noun' as const, meaning:'nước', topics:['topic'], lessons:['lesson']};
+  for (const article of ['', 'der', 'die', 'das']) {
+    assert.deepEqual(validateDictionaryContent({...noun, article}, true), [], `article ${article || '(none)'}`);
+  }
+  assert.ok(validateDictionaryContent({...noun, article:'ein'}, true).length > 0);
+  assert.ok(validateDictionaryContent({...noun, meaning:''}, true).length > 0);
+});
 test('duplicate identity includes course, type, article and meaning', () => {
   const value={...blankDictionaryContent(),word:' Mutter ',type:'noun' as const,article:'die',meaning:'mẹ'};
   assert.equal(dictionaryDuplicateKey(value),dictionaryDuplicateKey({...value,word:'mutter'}));

@@ -277,8 +277,8 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
             <div className="space-y-4">
               {lesson.grammarMd ? (
                 <>
-                  <div className="flex justify-end">
-                    <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
+                  <div className="flex justify-start">
+                    <span className="rounded-md bg-orange-50 px-2 py-1 text-[10px] font-semibold text-orange-700">Click từ được tô sáng để nghe phát âm</span>
                   </div>
                   <MarkdownBlock content={lesson.grammarMd} lessonId={lesson.id} onWordClick={handlePronounce} />
                 </>

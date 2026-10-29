@@ -33,7 +33,7 @@ export function validateDictionaryContent(value:DictionaryContent,publish:boolea
   if(value.word.length>240 || value.meaning.length>2000 || value.example.length>2000 || value.translation.length>2000) errors.push('Nội dung vượt quá độ dài cho phép.');
   if(publish){
     if(!(value.type in DICTIONARY_TYPES)) errors.push('Chọn loại từ.');
-    if(value.type==='noun' && !['der','die','das'].includes(value.article)) errors.push('Chọn mạo từ cho danh từ.');
+    if(value.type==='noun' && value.article && !['der','die','das'].includes(value.article)) errors.push('Chọn mạo từ hợp lệ.');
     if(!value.meaning.trim()) errors.push('Nhập nghĩa tiếng Việt.');
     if(!value.topics.length) errors.push('Chọn ít nhất một chủ đề.');
     if(!value.lessons.length) errors.push('Chọn ít nhất một bài học nguồn.');
