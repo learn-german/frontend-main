@@ -1,0 +1,11 @@
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+SELECT plan(3);
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claims"='{"sub":"99999999-9999-9999-9999-999999999999","app_metadata":{"role":"user"}}';
+SELECT throws_ok($$SELECT sync_lesson_video_duration('missing',340)$$,'42501','Admin required','learner cannot change lesson duration');
+SET LOCAL "request.jwt.claims"='{"sub":"99999999-9999-9999-9999-999999999999","app_metadata":{"role":"admin"}}';
+SELECT is(sync_lesson_video_duration('missing',7200),'120:00','two hours keeps three-digit minutes');
+SELECT throws_ok($$SELECT sync_lesson_video_duration('missing',0)$$,'P0001','invalid duration','invalid seconds rejected');
+SELECT * FROM finish();
+ROLLBACK;

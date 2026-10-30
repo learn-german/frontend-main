@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, Save,
   GraduationCap, Video, Loader2,
@@ -14,7 +14,9 @@ import {
   formatDurationClock,
   parseDurationSeconds,
   readVideoFileDurationSeconds,
+  readVideoUrlDurationSeconds,
 } from "../../lib/lessonDuration";
+import { useMediaPlaybackUrl } from "../../lib/hooks/useMediaPlaybackUrl";
 
 interface GrammarExample { de: string; vi: string; }
 interface Grammar { title: string; rule: string; examples: GrammarExample[]; }
@@ -77,7 +79,28 @@ export const AdminLessonEditor: React.FC<Props> = ({ lesson: initial, onBack, on
 
   const upd = (patch: Partial<LessonEditable>) => setData(prev => ({ ...prev, ...patch }));
 
+  const videoRevisionRef = useRef(0);
+  const { url: videoPlaybackUrl } = useMediaPlaybackUrl(data.id, "video", data.video_r2_key ?? undefined);
+
+  useEffect(() => {
+    if (videoRevisionRef.current !== 0 || !data.video_r2_key || data.video_r2_key !== initial.video_r2_key || !videoPlaybackUrl) return;
+    const revision = videoRevisionRef.current;
+    let cancelled = false;
+    void (async () => {
+      const seconds = await readVideoUrlDurationSeconds(videoPlaybackUrl);
+      if (cancelled || revision !== videoRevisionRef.current || seconds == null) return;
+      const clock = formatDurationClock(seconds);
+      if (formatDurationClock(parseDurationSeconds(data.duration)) === clock) return;
+      upd({ duration: clock });
+      showToast(`Đã cập nhật thời lượng video: ${clock}. Bấm Lưu bài học để lưu.`, "success");
+    })();
+    return () => { cancelled = true; };
+    // Only re-run when the playback URL for this lesson video changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.id, data.video_r2_key, videoPlaybackUrl]);
+
   const handleVideoUpload = async (file: File) => {
+    videoRevisionRef.current++;
     setVideoUploadPct(0);
     try {
       const objectKey = await uploadMedia(file, data.id, "video", setVideoUploadPct);
