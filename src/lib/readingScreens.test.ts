@@ -119,3 +119,44 @@ test("buildReadingCarouselScreens: passageCount 0 -> error", () => {
   );
   assert.equal(result.ok, false);
 });
+
+test("buildReadingCarouselScreens: fill_in_the_blank là 1 màn với prompt markdown", () => {
+  const group: ReadingQuestionGroupPublic = {
+    id: "g-fill",
+    passageId: "p1",
+    title: null,
+    questionIntro: null,
+    questionType: "fill_in_the_blank",
+    statements: [],
+    subQuestions: [
+      { text_snippet: null, image_key: null, question: "Lea und Tom ___", options: [] },
+      { text_snippet: null, image_key: null, question: "Ich ___ Anna.", options: [] },
+    ],
+    orderIndex: 0,
+  };
+  const result = buildReadingCarouselScreens([group], { p1: passage("p1", 0) }, 1);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.screens.length, 1);
+  assert.equal(result.screens[0].kind, "single_fill");
+  if (result.screens[0].kind !== "single_fill") return;
+  assert.deepEqual(result.screens[0].items, [
+    { key: "g-fill:0", prompt: "Lea und Tom ___" },
+    { key: "g-fill:1", prompt: "Ich ___ Anna." },
+  ]);
+});
+
+test("buildReadingCarouselScreens: multi-passage richtig_falsch là slide multi_rf", () => {
+  const result = buildReadingCarouselScreens(
+    [richtigFalschGroup("g1", "p1", 2), multipleChoiceGroup("g2", "p2", 1)],
+    { p1: passage("p1", 0), p2: passage("p2", 1) },
+    2,
+  );
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.screens[0].kind, "multi_rf");
+  assert.equal(result.screens[1].kind, "multi_passage");
+  if (result.screens[0].kind !== "multi_rf") return;
+  assert.equal(result.screens[0].items.length, 2);
+  assert.equal(result.screens[0].items[0].key, "g1:0");
+});

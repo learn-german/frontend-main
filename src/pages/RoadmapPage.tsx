@@ -4,10 +4,10 @@
  */
 
 import React, { useEffect, useMemo } from "react";
-import { Check, Lock, Play, ArrowRight, LockKeyhole, Clock } from "lucide-react";
+import { Check, Lock, Play, ArrowRight, LockKeyhole } from "lucide-react";
 import { ProgressBar } from "../components/DesignSystem";
 import { UserStats, Module, LessonPosition } from "../lib/appTypes";
-import { showToast } from "../lib/toast";
+import { capTrialLessonStatuses, getTrialLessonLimit } from "../lib/trialGating";
 import { buildRoadmapItems } from "../lib/lessonOrder";
 import { computeLessonStatuses, type LessonStatus } from "../lib/completion";
 import { formatDurationLabel } from "../lib/lessonDuration";
@@ -50,11 +50,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
       return overridden;
     }
     if (!isTrialRestricted) return lessonStatuses;
-    const overridden: Record<string, LessonStatus> = {};
-    orderedLessons.forEach((lesson, idx) => {
-      overridden[lesson.id] = idx === 0 ? "current" : "locked";
-    });
-    return overridden;
+    return capTrialLessonStatuses(orderedLessons.map((lesson) => lesson.id), lessonStatuses);
   }, [isExpiredRestricted, isTrialRestricted, lessonStatuses, orderedLessons]);
 
   useEffect(() => {
@@ -119,38 +115,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
         ) : (
           <div className="grid grid-cols-1 gap-6 pl-0 sm:pl-11 relative z-10">
             {items.map((item, indexInAll) => {
-              if (item.kind === "draft") {
-                return (
-                  <div
-                    key={item.id}
-                    className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 opacity-75 flex flex-col justify-between min-h-[170px] relative overflow-hidden"
-                  >
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-display font-bold text-slate-400 uppercase tracking-wider">
-                          Bài {indexInAll + 1}
-                        </span>
-                        <h3 className="text-sm font-display font-bold text-slate-500 font-sans">
-                          Đang chỉnh sửa
-                        </h3>
-                      </div>
-                      <div className="shrink-0 pt-0.5 select-none">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-200" title="Bài học đang được chỉnh sửa">
-                          <Clock className="w-3.5 h-3.5" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="pt-3 border-t border-slate-100 mt-1 flex justify-end items-center">
-                      <button
-                        onClick={() => showToast("Bài học đang được chỉnh sửa. Hãy quay lại sau.", "warning")}
-                        className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-display font-bold text-slate-400 cursor-not-allowed"
-                      >
-                        Chưa khả dụng
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
+              if (item.kind === "draft") return null;
 
               const lesson = item.lesson;
               const status = effectiveStatuses[lesson.id] ?? "locked";
@@ -235,7 +200,7 @@ export const RoadmapPage: React.FC<RoadmapPageProps> = ({
                       <span className="text-[10px] text-slate-400 font-display font-semibold flex items-center gap-1 select-none">
                         {isExpiredRestricted && status === "locked" ? (
                           <span className="text-[10px] text-red-600 font-display font-semibold">🔒 Gói đã hết hạn</span>
-                        ) : isTrialRestricted && status === "locked" ? (
+                        ) : isTrialRestricted && indexInAll >= getTrialLessonLimit() ? (
                           <span className="text-[10px] text-amber-600 font-display font-semibold">🔒 Nâng cấp gói</span>
                         ) : (
                           <>

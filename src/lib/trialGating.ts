@@ -9,7 +9,7 @@ export type LockedFeature = "leaderboard" | "help" | "packages" | "meetings";
 
 export const ALL_LEVELS: Level[] = ["A1", "A2", "B1", "B2"];
 
-const TRIAL_LESSON_LIMIT = 1;
+const TRIAL_LESSON_LIMIT = 3;
 
 /** Admin and tutor bypass trial/expired/sequential locks in the learner app. */
 export function hasStaffLearnerAccess(role: UserRole): boolean {
@@ -75,6 +75,45 @@ export function isFeatureLocked(
 
 export function getTrialLessonLimit(): number {
   return TRIAL_LESSON_LIMIT;
+}
+
+/**
+ * Fresh /quiz and /lesson loads render once before modules arrive, while the
+ * loading flag is still false. An id missing from an empty catalog is "wait",
+ * not "outside the first 3".
+ */
+export function trialDeepLinkDecision(
+  lessonId: string,
+  orderedIds: readonly string[],
+  catalogIds: readonly string[],
+): "allow" | "wait" | "block" {
+  const lessonIndex = orderedIds.indexOf(lessonId);
+  if (lessonIndex >= 0) {
+    return lessonIndex < TRIAL_LESSON_LIMIT ? "allow" : "block";
+  }
+  return catalogIds.includes(lessonId) ? "block" : "wait";
+}
+
+/**
+ * Inside the trial window, lesson N stays locked until lesson N-1 is completed.
+ * Everything after the window stays locked even if earlier lessons are done.
+ */
+export function capTrialLessonStatuses(
+  orderedIds: readonly string[],
+  statuses: Record<string, "completed" | "current" | "locked">,
+): Record<string, "completed" | "current" | "locked"> {
+  const capped: Record<string, "completed" | "current" | "locked"> = {};
+  orderedIds.forEach((id, idx) => {
+    if (idx >= TRIAL_LESSON_LIMIT) {
+      capped[id] = "locked";
+      return;
+    }
+    const previousDone = idx === 0 || capped[orderedIds[idx - 1]] === "completed";
+    if (!previousDone) capped[id] = "locked";
+    else if (statuses[id] === "completed") capped[id] = "completed";
+    else capped[id] = "current";
+  });
+  return capped;
 }
 
 /** Levels shown on the learner roadmap. Admin sees every level. */

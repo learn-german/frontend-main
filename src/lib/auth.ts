@@ -25,6 +25,11 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
+/** Đăng xuất mọi phiên khác, giữ phiên hiện tại (single active session). */
+export async function revokeOtherSessions() {
+  return supabase.auth.signOut({ scope: 'others' })
+}
+
 export async function resetPassword(email: string) {
   return supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/reset-password`

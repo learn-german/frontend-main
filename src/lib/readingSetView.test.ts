@@ -51,24 +51,25 @@ test("groupsForPassage: lọc đúng theo passage_id, sort theo order_index", ()
   assert.deepEqual(result.map((g) => g.id), ["g1", "g2"]);
 });
 
-test("missingQuestionTypesForPassage: cả 2 loại chưa có -> trả cả 2", () => {
-  assert.deepEqual(missingQuestionTypesForPassage([], "p1"), ["multiple_choice", "richtig_falsch"]);
+test("missingQuestionTypesForPassage: chưa có loại nào -> trả cả 3", () => {
+  assert.deepEqual(missingQuestionTypesForPassage([], "p1"), ["multiple_choice", "richtig_falsch", "fill_in_the_blank"]);
 });
 
-test("missingQuestionTypesForPassage: đã có richtig_falsch -> chỉ còn multiple_choice", () => {
+test("missingQuestionTypesForPassage: đã có richtig_falsch -> còn multiple_choice và fill_in_the_blank", () => {
   const groups = [{ passage_id: "p1", question_type: "richtig_falsch" as const }];
-  assert.deepEqual(missingQuestionTypesForPassage(groups, "p1"), ["multiple_choice"]);
+  assert.deepEqual(missingQuestionTypesForPassage(groups, "p1"), ["multiple_choice", "fill_in_the_blank"]);
 });
 
 test("missingQuestionTypesForPassage: nhóm của văn bản khác không ảnh hưởng", () => {
   const groups = [{ passage_id: "p2", question_type: "richtig_falsch" as const }];
-  assert.deepEqual(missingQuestionTypesForPassage(groups, "p1"), ["multiple_choice", "richtig_falsch"]);
+  assert.deepEqual(missingQuestionTypesForPassage(groups, "p1"), ["multiple_choice", "richtig_falsch", "fill_in_the_blank"]);
 });
 
-test("missingQuestionTypesForPassage: đủ cả 2 loại -> mảng rỗng", () => {
+test("missingQuestionTypesForPassage: đủ cả 3 loại -> mảng rỗng", () => {
   const groups = [
     { passage_id: "p1", question_type: "richtig_falsch" as const },
     { passage_id: "p1", question_type: "multiple_choice" as const },
+    { passage_id: "p1", question_type: "fill_in_the_blank" as const },
   ];
   assert.deepEqual(missingQuestionTypesForPassage(groups, "p1"), []);
 });

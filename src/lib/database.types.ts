@@ -771,6 +771,7 @@ export type Database = {
           is_premium: boolean
           role: string
           subscription_end_date: string | null
+          paid_started_at: string | null
           unlocked_levels: string[]
         }
         Insert: {
@@ -782,6 +783,7 @@ export type Database = {
           is_premium?: boolean
           role?: string
           subscription_end_date?: string | null
+          paid_started_at?: string | null
           unlocked_levels?: string[]
         }
         Update: {
@@ -793,6 +795,7 @@ export type Database = {
           is_premium?: boolean
           role?: string
           subscription_end_date?: string | null
+          paid_started_at?: string | null
           unlocked_levels?: string[]
         }
         Relationships: []
@@ -804,6 +807,7 @@ export type Database = {
           order_index: number
           set_id: string | null
           text_de: string
+          text_vi: string | null
         }
         Insert: {
           id?: string
@@ -811,6 +815,7 @@ export type Database = {
           order_index?: number
           set_id?: string | null
           text_de: string
+          text_vi?: string | null
         }
         Update: {
           id?: string
@@ -818,6 +823,7 @@ export type Database = {
           order_index?: number
           set_id?: string | null
           text_de?: string
+          text_vi?: string | null
         }
         Relationships: [
           {

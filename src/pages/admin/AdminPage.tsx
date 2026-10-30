@@ -1,3 +1,5 @@
+import { AdminDictionarySection } from "./AdminDictionarySection";
+import { AdminSpeakingSection } from "./AdminSpeakingSection";
 import React, { useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
@@ -10,6 +12,7 @@ import {
   PenLine,
   MessageSquare,
   Video,
+  Newspaper,
 } from "lucide-react";
 import { Button } from "../../components/DesignSystem";
 import {
@@ -25,6 +28,7 @@ import { AdminQuizSection } from "./AdminQuizSection";
 import { AdminWritingSection } from "./AdminWritingSection";
 import { AdminSupportSection } from "./AdminSupportSection";
 import { AdminMeetingSection } from "./AdminMeetingSection";
+import { AdminPostsSection } from "./AdminPostsSection";
 
 export type { AdminSection };
 
@@ -39,10 +43,13 @@ const NAV_META: Record<AdminSection, { label: string; Icon: React.FC<{ className
   dashboard: { label: "Tổng quan", Icon: LayoutDashboard },
   users: { label: "Người dùng", Icon: Users },
   content: { label: "Nội dung", Icon: BookOpen },
+  dictionary: { label: "Từ điển", Icon: BookOpen },
   quiz: { label: "Bài tập", Icon: HelpCircle },
   writing: { label: "Chấm bài viết", Icon: PenLine },
+  speaking: { label: "Chấm bài nói", Icon: PenLine },
   support: { label: "Hỗ trợ", Icon: MessageSquare },
   meetings: { label: "Lịch meeting", Icon: Video },
+  posts: { label: "Bài viết", Icon: Newspaper },
 };
 
 export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, section, onSectionChange }) => {
@@ -107,10 +114,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, 
         {section === "dashboard" && <AdminDashboardSection />}
         {section === "users" && !isTutor && <AdminUsersSection />}
         {section === "content" && !isTutor && <AdminContentSection />}
+        {section === "dictionary" && !isTutor && <AdminDictionarySection />}
         {section === "quiz" && <AdminQuizSection />}
         {section === "writing" && <AdminWritingSection />}
+        {section === "speaking" && <AdminSpeakingSection />}
         {section === "support" && <AdminSupportSection />}
         {section === "meetings" && <AdminMeetingSection />}
+        {section === "posts" && <AdminPostsSection />}
       </main>
     </div>
   );

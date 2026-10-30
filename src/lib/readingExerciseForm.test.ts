@@ -6,10 +6,12 @@ import {
   removeStatement,
   setStatementText,
   setStatementAnswer,
+  setStatementExplanation,
   moveStatement,
   addSubQuestion,
   removeSubQuestion,
   setSubQuestionField,
+  setSubQuestionBlanks,
   setSubQuestionOptions,
   moveSubQuestion,
   validateReadingForm,
@@ -197,4 +199,51 @@ test("parseReadingRow: round-trip đúng ngược lại buildReadingPayload cho 
   assert.equal(form.statements.length, 1);
   assert.equal(form.statements[0].text, "Er ist Lehrer.");
   assert.equal(form.statements[0].correctAnswer, "richtig");
+});
+
+test("validateReadingForm: fill_in_the_blank thiếu marker ___ thì báo lỗi", () => {
+  let form: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
+  form = addSubQuestion(form);
+  form = setSubQuestionField(form, form.subQuestions[0].id, "question", "Lea und Tom");
+  assert.equal(validateReadingForm(form), "Mỗi câu cần ít nhất 1 marker ___.");
+});
+
+test("buildReadingPayload: fill_in_the_blank lưu blanks theo marker ___", () => {
+  let form: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
+  form = addSubQuestion(form);
+  const id = form.subQuestions[0].id;
+  form = setSubQuestionField(form, id, "question", "Ich ___ Anna.");
+  form = setSubQuestionBlanks(form, id, [{ acceptedAnswers: ["heiße"] }]);
+  const payload = buildReadingPayload(form, "set1", 0);
+  assert.equal(payload.question_type, "fill_in_the_blank");
+  assert.equal(payload.statements, null);
+  assert.deepEqual(payload.sub_questions, [
+    { question: "Ich ___ Anna.", blanks: [{ acceptedAnswers: ["heiße"] }] },
+  ]);
+});
+
+test("buildReadingPayload: giải thích từng câu đi kèm nhận định và câu điền", () => {
+  let rf: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "richtig_falsch" };
+  rf = addStatement(rf);
+  rf = setStatementText(rf, rf.statements[0].id, "Er ist Lehrer.");
+  rf = setStatementAnswer(rf, rf.statements[0].id, "richtig");
+  rf = setStatementExplanation(rf, rf.statements[0].id, "vì là danh từ nghề nghiệp");
+  const rfPayload = buildReadingPayload(rf, "set1", 0);
+  assert.deepEqual(rfPayload.statements, [{
+    text: "Er ist Lehrer.",
+    correct_answer: "richtig",
+    explanation: "vì là danh từ nghề nghiệp",
+  }]);
+
+  let fill: ReadingQuestionGroupForm = { ...createEmptyReadingForm(), passageId: "p1", questionType: "fill_in_the_blank" };
+  fill = addSubQuestion(fill);
+  fill = setSubQuestionField(fill, fill.subQuestions[0].id, "question", "Lea ___");
+  fill = setSubQuestionBlanks(fill, fill.subQuestions[0].id, [{ acceptedAnswers: ["verkauft Kaffee"] }]);
+  fill = setSubQuestionField(fill, fill.subQuestions[0].id, "explanation", "Lea bán cà phê");
+  const fillPayload = buildReadingPayload(fill, "set1", 0);
+  assert.deepEqual(fillPayload.sub_questions, [{
+    question: "Lea ___",
+    blanks: [{ acceptedAnswers: ["verkauft Kaffee"] }],
+    explanation: "Lea bán cà phê",
+  }]);
 });

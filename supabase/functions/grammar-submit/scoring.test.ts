@@ -211,6 +211,16 @@ const classify = (over: Partial<ScorableGrammarExercise> = {}): ScorableGrammarE
   ...over,
 });
 
+test("word_reorder: chấp nhận acceptable_answers và bỏ marker in đậm", () => {
+  const ex = reorder({
+    correct_answer: "**Ich** lerne Deutsch",
+    acceptable_answers: ["Deutsch lerne Ich"],
+  });
+  assert.equal(computeGrammarScore([ex], { w1: "Ich lerne Deutsch" }).exerciseResults.w1, true);
+  assert.equal(computeGrammarScore([ex], { w1: "Deutsch lerne Ich" }).exerciseResults.w1, true);
+  assert.equal(computeGrammarScore([ex], { w1: "lerne Ich Deutsch" }).exerciseResults.w1, false);
+});
+
 test("exerciseResults: loại text được chấm đúng/sai theo từng bài", () => {
   const r = computeGrammarScore([reorder()], { w1: "Ich lerne Deutsch" });
   assert.equal(r.exerciseResults.w1, true);

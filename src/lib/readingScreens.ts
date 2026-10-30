@@ -13,6 +13,14 @@ export type ReadingCarouselScreen =
       key: string;
     }
   | {
+      kind: "multi_rf";
+      passageId: string;
+      groupId: string;
+      items: { key: string; text: string }[];
+      slideIndex: number;
+      slideCount: number;
+    }
+  | {
       kind: "single_mc";
       passageId: string;
       groupId: string;
@@ -25,6 +33,14 @@ export type ReadingCarouselScreen =
       kind: "single_rf_summary";
       passageId: string;
       items: { key: string; text: string }[];
+      slideIndex: number;
+      slideCount: number;
+    }
+  | {
+      kind: "single_fill";
+      passageId: string;
+      groupId: string;
+      items: { key: string; prompt: string }[];
       slideIndex: number;
       slideCount: number;
     };
@@ -55,8 +71,15 @@ function validateMultiPassage(groups: ReadingQuestionGroupPublic[], passageCount
     const passageGroups = groups.filter((g) => g.passageId === passageId);
     if (passageGroups.length !== 1) return false;
     const group = passageGroups[0];
-    if (group.questionType !== "multiple_choice") return false;
-    if (group.subQuestions.length !== 1) return false;
+    if (group.questionType === "multiple_choice") {
+      if (group.subQuestions.length !== 1) return false;
+      continue;
+    }
+    if (group.questionType === "richtig_falsch") {
+      if (group.statements.length < 1) return false;
+      continue;
+    }
+    return false;
   }
   return true;
 }
@@ -68,14 +91,29 @@ function validateSinglePassage(groups: ReadingQuestionGroupPublic[]): boolean {
 
 function buildMultiPassageScreens(sortedGroups: ReadingQuestionGroupPublic[]): ReadingCarouselScreen[] {
   const slideCount = sortedGroups.length;
-  return sortedGroups.map((group, slideIndex) => ({
-    kind: "multi_passage" as const,
-    passageId: group.passageId,
-    groupId: group.id,
-    slideIndex,
-    slideCount,
-    key: itemKey(group.id, 0),
-  }));
+  return sortedGroups.map((group, slideIndex) => {
+    if (group.questionType === "richtig_falsch") {
+      return {
+        kind: "multi_rf" as const,
+        passageId: group.passageId,
+        groupId: group.id,
+        items: group.statements.map((statement, index) => ({
+          key: itemKey(group.id, index),
+          text: statement.text,
+        })),
+        slideIndex,
+        slideCount,
+      };
+    }
+    return {
+      kind: "multi_passage" as const,
+      passageId: group.passageId,
+      groupId: group.id,
+      slideIndex,
+      slideCount,
+      key: itemKey(group.id, 0),
+    };
+  });
 }
 
 function buildSinglePassageScreens(sortedGroups: ReadingQuestionGroupPublic[]): ReadingCarouselScreen[] {
@@ -115,6 +153,21 @@ function buildSinglePassageScreens(sortedGroups: ReadingQuestionGroupPublic[]): 
       kind: "single_rf_summary",
       passageId,
       items: rfItems,
+      slideIndex: 0,
+      slideCount: 0,
+    });
+  }
+
+  for (const group of sortedGroups) {
+    if (group.questionType !== "fill_in_the_blank" || group.subQuestions.length === 0) continue;
+    screens.push({
+      kind: "single_fill",
+      passageId: group.passageId,
+      groupId: group.id,
+      items: group.subQuestions.map((q, i) => ({
+        key: itemKey(group.id, i),
+        prompt: q.question,
+      })),
       slideIndex: 0,
       slideCount: 0,
     });

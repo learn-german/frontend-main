@@ -1,3 +1,4 @@
+import { DictionaryPage } from "./pages/DictionaryPage";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -27,23 +28,25 @@ import { PackagesPage } from "./pages/PackagesPage";
 import { SupportPage } from "./pages/SupportPage";
 import { RegistrationPage } from "./pages/RegistrationPage";
 import { MeetingPage } from "./pages/MeetingPage";
+import { PostsPage } from "./pages/PostsPage";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
 import { showToast, ToastType } from "./lib/toast";
 import { supabase } from "./lib/supabase";
-import { signOut } from "./lib/auth";
+import { revokeOtherSessions, signOut } from "./lib/auth";
 import { BottomTab } from "./pages/lessonBottomTabs";
 import type { AppNotification } from "./lib/hooks/useNotifications";
 import { parseRoute, serializeRoute, isProtectedPage, type AppRoute } from "./lib/router";
 import { needsProfileOnboarding } from "./lib/profileOnboarding";
 import {
-  getTrialLessonLimit,
+  capTrialLessonStatuses,
   getUnlockedLevels,
   hasStaffLearnerAccess,
   isExpiredAccess,
   isFeatureLocked,
   isSubscriptionExpired,
   isTrialAccess,
+  trialDeepLinkDecision,
   type UserRole,
 } from "./lib/trialGating";
 import { listLearnerMeetings } from "./lib/meetings";
@@ -109,15 +112,19 @@ export default function App() {
     [modules, positions, roadmapUnlockLevels],
   );
 
-  const lessonStatuses = useMemo(
-    () => computeLessonStatuses(orderedLessons, stats.completedLessons, hasStaffAccess),
-    [orderedLessons, stats.completedLessons, hasStaffAccess],
-  );
+  const lessonStatuses = useMemo(() => {
+    const statuses = computeLessonStatuses(orderedLessons, stats.completedLessons, hasStaffAccess);
+    if (!isTrial) return statuses;
+    return capTrialLessonStatuses(orderedLessons.map((lesson) => lesson.id), statuses);
+  }, [orderedLessons, stats.completedLessons, hasStaffAccess, isTrial]);
 
   // URL là hình chiếu của 4 state dưới đây, không phải nguồn sự thật —
   // nhưng lần đầu load thì đọc ngược từ URL để refresh/deep-link giữ đúng trang.
   const initialRoute = useMemo(() => parseRoute(window.location.pathname), []);
   const [currentPage, setCurrentPage] = useState<AppState["currentPage"]>(initialRoute.page);
+  const [postSlug, setPostSlug] = useState<string | undefined>(
+    initialRoute.page === "posts" ? initialRoute.slug : undefined,
+  );
   const [selectedLessonId, setSelectedLessonId] = useState<string>(
     "lessonId" in initialRoute ? initialRoute.lessonId : "a1-l1",
   );
@@ -153,10 +160,17 @@ export default function App() {
       return;
     }
 
-    // Trial restriction: only the configured number of first lessons is allowed
+    // Trial restriction: only the configured number of first lessons is allowed.
+    // A brand-new tab (Bắt đầu bài tập) has an empty catalog for one render
+    // before useModules flips loading on — that must not count as "not allowed".
     if (isTrial) {
-      const lessonIndex = orderedLessons.findIndex((l) => l.id === selectedLessonId);
-      if (lessonIndex < 0 || lessonIndex >= getTrialLessonLimit()) {
+      const decision = trialDeepLinkDecision(
+        selectedLessonId,
+        orderedLessons.map((lesson) => lesson.id),
+        flatLessons.map((lesson) => lesson.id),
+      );
+      if (decision === "wait") return;
+      if (decision === "block") {
         showToast("Nâng cấp gói để truy cập bài học này.", "warning");
         setCurrentPage("roadmap");
         return;
@@ -201,8 +215,9 @@ export default function App() {
     if (currentPage === "quiz") {
       return { page: "quiz", lessonId: selectedLessonId, category: activeExerciseCategory };
     }
+    if (currentPage === "posts") return { page: "posts", slug: postSlug };
     return { page: currentPage as "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" };
-  }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory]);
+  }, [currentPage, selectedLessonId, initialLessonTab, activeExerciseCategory, postSlug]);
 
   // State -> URL. So sánh trước khi push để popstate không kích hoạt vòng lặp:
   // sau khi popstate set lại state, serializeRoute đã bằng đúng pathname.
@@ -218,6 +233,7 @@ export default function App() {
     const handlePopState = () => {
       const route = parseRoute(window.location.pathname);
       setCurrentPage(route.page);
+      setPostSlug(route.page === "posts" ? route.slug : undefined);
       if ("lessonId" in route) setSelectedLessonId(route.lessonId);
       setInitialLessonTab(route.page === "lesson-detail" ? route.tab : undefined);
       if (route.page === "quiz") setActiveExerciseCategory(route.category);
@@ -346,6 +362,8 @@ export default function App() {
       }
 
       if (session?.user) {
+        // Kick mọi phiên khác khi đăng nhập mới (kể cả cùng user ở browser khác).
+        if (event === "SIGNED_IN") void revokeOtherSessions();
         if (previousUserId !== session.user.id) {
           setUser(null);
           setPendingUser(null);
@@ -427,11 +445,26 @@ export default function App() {
   // Không ép sang "login" nữa: URL đích được giữ nguyên và effectivePage lo
   // việc render màn hình đăng nhập, nhờ đó đăng nhập xong là vào thẳng đích.
   const handleNavigate = (page: AppState["currentPage"]) => {
+    setPostSlug(undefined);
     setCurrentPage(page);
   };
 
   // Select particular lesson to view
   const handleSelectLesson = (lessonId: string, initialTab?: BottomTab) => {
+    if (lessonStatuses[lessonId] === "locked") {
+      const pastTrialWindow = isTrial && trialDeepLinkDecision(
+        lessonId,
+        orderedLessons.map((lesson) => lesson.id),
+        flatLessons.map((lesson) => lesson.id),
+      ) === "block";
+      showToast(
+        pastTrialWindow
+          ? "Nâng cấp gói để truy cập bài học này."
+          : "Hãy hoàn thành bài học trước để mở bài này.",
+        "warning",
+      );
+      return;
+    }
     setSelectedLessonId(lessonId);
     setInitialLessonTab(initialTab);
     setCurrentPage("lesson-detail");
@@ -440,6 +473,10 @@ export default function App() {
   const handleNotificationNavigate = (n: AppNotification) => {
     if (n.type === "writing_graded" && n.lessonId) {
       handleSelectLesson(n.lessonId, "viet");
+      return;
+    }
+    if (n.type === "speaking_graded" && n.lessonId) {
+      handleSelectLesson(n.lessonId, "noi");
       return;
     }
     if (n.type === "support_replied") {
@@ -529,7 +566,7 @@ export default function App() {
 
   // Layout check selectors
   const showNav = effectivePage !== "login" && effectivePage !== "landing";
-  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "meetings" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
+  const showSidebar = user && (effectivePage === "dashboard" || effectivePage === "roadmap" || effectivePage === "lesson-detail" || effectivePage === "meetings" || effectivePage === "posts" || effectivePage === "dictionary" || effectivePage === "packages" || effectivePage === "help" || effectivePage === "leaderboard");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-800 antialiased selection:bg-green-150 selection:text-green-900">
@@ -582,6 +619,7 @@ export default function App() {
                 <LandingPage
                   onStartLearning={() => handleNavigate("login")}
                   onNavigateLogin={() => handleNavigate("login")}
+                  onOpenPosts={() => handleNavigate("posts")}
                 />
               )}
 
@@ -613,6 +651,8 @@ export default function App() {
                 />
               )}
 
+              {effectivePage === "dictionary" && user && <DictionaryPage userId={user.id} onSelectLesson={(id) => handleSelectLesson(id, "tuvung")} />}
+
               {effectivePage === "roadmap" && user && (
                 <RoadmapPage
                   stats={roadmapStats}
@@ -635,9 +675,11 @@ export default function App() {
                   onBack={() => handleNavigate("roadmap")}
                   onMarkComplete={handleMarkComplete}
                   onStartQuiz={(lessonId, category = "nguphap") => {
-                    setSelectedLessonId(lessonId);
-                    setActiveExerciseCategory(category);
-                    setCurrentPage("quiz");
+                    window.open(
+                      serializeRoute({ page: "quiz", lessonId, category }),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
                   }}
                 />
               )}
@@ -687,6 +729,7 @@ export default function App() {
                 />
               )}
               {effectivePage === "help" && user && <SupportPage />}
+              {effectivePage === "posts" && <PostsPage slug={postSlug} />}
               {effectivePage === "meetings" && user && (
                 <MeetingPage onMeetingsChanged={() => setMeetingRefreshKey((key) => key + 1)} />
               )}

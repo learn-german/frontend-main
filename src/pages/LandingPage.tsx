@@ -9,6 +9,7 @@ import { BRAND_LOGO_SRC } from "../components/BrandLogo";
 interface LandingPageProps {
   onStartLearning: () => void;
   onNavigateLogin: () => void;
+  onOpenPosts: () => void;
 }
 
 const CONTACT_FACEBOOK_URL =
@@ -44,7 +45,7 @@ const BENEFITS = [
     offset: "left-[-100%]",
     body: "Bạn không phải tự xử lý mọi điểm khó khi học online. Người hướng dẫn hỗ trợ đều đặn trong suốt khóa học.",
     points: [
-      "Bài viết được chấm điểm",
+      "Bài viết, bài nói được chấm điểm trực tiếp",
       "Buổi học trực tuyến hàng tuần",
       "Giải đáp bài học và luyện nói",
     ],
@@ -59,21 +60,6 @@ const BENEFITS = [
       "Ôn lại nội dung khi cần",
       "Tiết kiệm thời gian và chi phí",
     ],
-  },
-];
-
-const AUDIENCE = [
-  {
-    title: "Người mới bắt đầu",
-    body: "Học tiếng Đức từ số 0 theo trình tự rõ ràng, không cần tự ghép nhiều nguồn tài liệu.",
-  },
-  {
-    title: "Người có lịch trình bận rộn",
-    body: "Chủ động xem video, làm bài tập và ôn lại kiến thức vào thời gian phù hợp.",
-  },
-  {
-    title: "Người cần hỗ trợ khi tự học",
-    body: "Được chấm bài viết, giải đáp bài học và luyện kỹ năng nói trong buổi hỗ trợ hàng tuần.",
   },
 ];
 
@@ -168,7 +154,7 @@ const FAQS = [
   {
     question: "Có thể học thử khóa A1 trước khi đăng ký không?",
     answer:
-      "Có. Bạn có thể đăng nhập để học miễn phí bài đầu tiên, xem video và làm bài tập trước khi quyết định đăng ký toàn bộ khóa A1.",
+      "Có. Bạn có thể đăng nhập để học miễn phí 3 bài đầu, xem video và làm bài tập trước khi quyết định đăng ký toàn bộ khóa A1.",
   },
   {
     question: "Khóa học có hỗ trợ trực tuyến không?",
@@ -185,8 +171,8 @@ const FAQS = [
 const REGISTER_STEPS = [
   {
     index: "01",
-    title: "Học thử bài đầu tiên",
-    body: "Đăng nhập để xem video và làm bài tập trong bài đầu tiên của khóa A1.",
+    title: "Học thử 3 bài đầu",
+    body: "Đăng nhập để xem video và làm bài tập trong 3 bài đầu của khóa A1.",
   },
   {
     index: "02",
@@ -205,6 +191,7 @@ const COURSE_GAP = 14;
 export const LandingPage: React.FC<LandingPageProps> = ({
   onStartLearning,
   onNavigateLogin,
+  onOpenPosts,
 }) => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -277,6 +264,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </a>
             <button
               type="button"
+              onClick={onOpenPosts}
+              className={`${BUTTON_DEFAULT} min-h-[38px] px-2.5 text-xs min-[720px]:min-h-[42px] min-[720px]:px-[17px] min-[720px]:text-sm`}
+            >
+              Bài viết
+            </button>
+            <button
+              type="button"
               onClick={onNavigateLogin}
               className={`${BUTTON_PRIMARY} min-h-[38px] px-2.5 text-xs min-[720px]:min-h-[42px] min-[720px]:px-[17px] min-[720px]:text-sm`}
             >
@@ -313,7 +307,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onClick={onStartLearning}
                 className={BUTTON_PRIMARY}
               >
-                Học thử bài đầu tiên
+                Học thử 3 bài đầu
               </button>
               <a
                 href="#courses"
@@ -397,46 +391,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
                   </div>
                 </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Audience */}
-        <section
-          id="audience"
-          aria-labelledby="audience-title"
-          className="scroll-mt-[72px] border-b border-[#e5e9f0] bg-white px-5 pt-[10px] pb-[58px] min-[720px]:px-6 min-[720px]:pb-20"
-        >
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mb-10 max-w-[1200px]">
-              <div className={KICKER}>Đối tượng phù hợp</div>
-              <h2 id="audience-title" className={SECTION_TITLE}>
-                Khóa học tiếng Đức online của DeutschSelbst phù hợp với ai?
-              </h2>
-              <p className="mt-3.5 text-base font-normal leading-[1.65] text-[#667085]">
-                Lộ trình được thiết kế cho người muốn học có hệ thống nhưng vẫn
-                chủ động sắp xếp thời gian.
-              </p>
-            </div>
-
-            <div className="grid border-y border-[#e5e9f0] min-[720px]:grid-cols-3">
-              {AUDIENCE.map((item, index) => (
-                <div
-                  key={item.title}
-                  className={`px-0 py-[22px] min-[720px]:px-7 min-[720px]:py-[26px] ${
-                    index > 0
-                      ? "border-t border-[#e5e9f0] min-[720px]:border-t-0 min-[720px]:border-l"
-                      : ""
-                  }`}
-                >
-                  <strong className="block text-[17px] leading-[1.35] font-bold">
-                    {item.title}
-                  </strong>
-                  <p className="mt-2 text-sm font-normal leading-[1.65] text-[#667085]">
-                    {item.body}
-                  </p>
-                </div>
               ))}
             </div>
           </div>
@@ -630,7 +584,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Học thử A1 miễn phí trước khi đăng ký.
                 </h2>
                 <p className="mt-4 max-w-[570px] text-[16px] font-normal leading-[1.62] text-[#667085] text-pretty min-[720px]:mx-auto min-[1080px]:mx-0">
-                  Trải nghiệm bài đầu tiên để xem cách học có phù hợp. Khi muốn
+                  Trải nghiệm 3 bài đầu để xem cách học có phù hợp. Khi muốn
                   học tiếp, liên hệ DeutschSelbst để mở khóa toàn bộ A1.
                 </p>
                 <div className="mt-[26px] grid gap-3 min-[720px]:flex min-[720px]:flex-wrap min-[720px]:items-center min-[720px]:justify-center min-[1080px]:justify-start">
@@ -639,7 +593,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     onClick={onStartLearning}
                     className={`${BUTTON_PRIMARY} w-full min-[720px]:w-auto`}
                   >
-                    Học thử bài đầu tiên
+                    Học thử 3 bài đầu
                   </button>
                   <a
                     href={CONTACT_FACEBOOK_URL}
@@ -715,13 +669,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Điểm đặc biệt
                 </a>
                 <a
-                  href="#audience"
-                  onClick={scrollToSection("audience")}
-                  className="text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
-                >
-                  Phù hợp với ai
-                </a>
-                <a
                   href="#method"
                   onClick={scrollToSection("method")}
                   className="text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
@@ -741,6 +688,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="grid gap-[14px]">
               <strong className="text-sm font-bold text-white">Bắt đầu</strong>
               <nav className="grid gap-[11px]" aria-label="Bắt đầu">
+                <button
+                  type="button"
+                  onClick={onOpenPosts}
+                  className="text-left text-[13px] font-semibold text-[#aeb8c7] hover:text-white"
+                >
+                  Bài viết
+                </button>
                 <button
                   type="button"
                   onClick={onStartLearning}

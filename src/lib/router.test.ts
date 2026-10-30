@@ -10,6 +10,11 @@ assert.deepEqual(parseRoute("/leaderboard"), { page: "leaderboard" });
 assert.deepEqual(parseRoute("/packages"), { page: "packages" });
 assert.deepEqual(parseRoute("/help"), { page: "help" });
 assert.deepEqual(parseRoute("/meetings"), { page: "meetings" });
+assert.deepEqual(parseRoute("/posts"), { page: "posts" });
+assert.deepEqual(parseRoute("/posts/du-va-sie-trong-tieng-duc"), {
+  page: "posts",
+  slug: "du-va-sie-trong-tieng-duc",
+});
 
 // bỏ qua dấu / thừa
 assert.deepEqual(parseRoute("/dashboard/"), { page: "dashboard" });
@@ -60,6 +65,11 @@ assert.equal(serializeRoute({ page: "leaderboard" }), "/leaderboard");
 assert.equal(serializeRoute({ page: "packages" }), "/packages");
 assert.equal(serializeRoute({ page: "help" }), "/help");
 assert.equal(serializeRoute({ page: "meetings" }), "/meetings");
+assert.equal(serializeRoute({ page: "posts" }), "/posts");
+assert.equal(
+  serializeRoute({ page: "posts", slug: "du-va-sie-trong-tieng-duc" }),
+  "/posts/du-va-sie-trong-tieng-duc",
+);
 assert.equal(serializeRoute({ page: "lesson-detail", lessonId: "a1-l3" }), "/lesson/a1-l3");
 assert.equal(
   serializeRoute({ page: "lesson-detail", lessonId: "a1-l3", tab: "nghe" }),
@@ -80,6 +90,8 @@ const routes: AppRoute[] = [
   { page: "packages" },
   { page: "help" },
   { page: "meetings" },
+  { page: "posts" },
+  { page: "posts", slug: "du-va-sie-trong-tieng-duc" },
   { page: "lesson-detail", lessonId: "a1-l3" },
   { page: "lesson-detail", lessonId: "a1-l3", tab: "tuvung" },
   { page: "quiz", lessonId: "a1-l3", category: "nghe" },
@@ -95,9 +107,15 @@ assert.equal(isProtectedPage("leaderboard"), true);
 assert.equal(isProtectedPage("packages"), true);
 assert.equal(isProtectedPage("help"), true);
 assert.equal(isProtectedPage("meetings"), true);
+assert.equal(isProtectedPage("posts"), false);
 assert.equal(isProtectedPage("lesson-detail"), true);
 assert.equal(isProtectedPage("quiz"), true);
 assert.equal(isProtectedPage("landing"), false);
 assert.equal(isProtectedPage("login"), false);
 
 console.log("router.test.ts OK");
+
+// Dictionary stays protected and survives a direct reload/back-forward parse.
+assert.deepEqual(parseRoute('/dictionary'), {page:'dictionary'});
+assert.equal(serializeRoute({page:'dictionary'}), '/dictionary');
+assert.equal(isProtectedPage('dictionary'), true);

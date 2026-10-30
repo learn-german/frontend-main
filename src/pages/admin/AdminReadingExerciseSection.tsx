@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Loader2, Trash2, Pencil, X, Eye, FileText, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Plus, Loader2, Trash2, Pencil, X, Eye, FileText, Search } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { AdminModuleGroup } from "./AdminModuleGroup";
 import { showToast } from "../../lib/toast";
@@ -13,14 +13,18 @@ import {
   addStatement,
   setStatementText,
   setStatementAnswer,
+  setStatementExplanation,
   addSubQuestion,
   setSubQuestionField,
+  setSubQuestionBlanks,
   setSubQuestionOptions,
+  parseReadingRow,
   type ReadingQuestionGroupForm,
 } from "../../lib/readingExerciseForm";
+import { countBlankMarkers, normalizeBlankDefinitions, syncBlankDefinitions } from "../../lib/grammarFillInBlank";
 import { addOption, setOption, removeOption, optionLabel, validateChoiceForm, buildMultipleChoicePayload } from "../../lib/grammarMultipleChoice";
 import { uploadMedia } from "../../lib/uploadMedia";
-import { MarkdownBlock } from "../../components/MarkdownBlock";
+import { MarkdownBlock, PromptMarkdown } from "../../components/MarkdownBlock";
 import {
   itemCount,
   passagesForSet,
@@ -37,8 +41,17 @@ interface LessonGroup {
   module_title: string;
 }
 
-type ReadingStatementRow = { text: string; correct_answer: "richtig" | "falsch" };
-type ReadingSubQuestionRow = { text_snippet: string | null; image_key: string | null; question: string; options: string[]; correct_option_id: string };
+type ReadingStatementRow = { text: string; correct_answer: "richtig" | "falsch"; explanation?: string };
+type ReadingSubQuestionRow = {
+  text_snippet?: string | null;
+  image_key?: string | null;
+  question: string;
+  options?: string[];
+  correct_option_id?: string;
+  accepted_answers?: string[];
+  blanks?: { acceptedAnswers?: string[]; accepted_answers?: string[] }[];
+  explanation?: string;
+};
 
 interface ReadingQuestionGroupRowData {
   id: string;
@@ -55,7 +68,8 @@ interface ReadingQuestionGroupRowData {
 
 const QUESTION_TYPE_LABEL: Record<ReadingQuestionType, string> = {
   richtig_falsch: "Đúng / Sai",
-  multiple_choice: "Trắc nghiệm",
+  multiple_choice: "Trắc nghiệm một đáp án",
+  fill_in_the_blank: "Điền vào ô trống",
 };
 
 const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({ group }) => {
@@ -65,7 +79,7 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
   return (
     <div className="space-y-3">
       {group.title && <p className="text-sm font-display font-bold text-slate-800">{group.title}</p>}
-      {group.question_intro && <p className="text-xs text-slate-500">{group.question_intro}</p>}
+      {group.question_intro && <PromptMarkdown text={group.question_intro} />}
       {group.question_type === "richtig_falsch" && (group.statements ?? []).map((s, i) => (
         <div key={i} className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl">
           <span className="flex-1 text-sm text-slate-700">{s.text}</span>
@@ -80,12 +94,30 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
           ))}
         </div>
       ))}
-      {group.question_type === "multiple_choice" && (group.sub_questions ?? []).map((q, qi) => (
+      {(group.question_type === "multiple_choice" || group.question_type === "fill_in_the_blank") && (group.sub_questions ?? []).map((q, qi) => (
+        group.question_type === "fill_in_the_blank" ? (
+          <div key={qi} className="text-sm leading-9 text-slate-700">
+            <span className="mr-1 text-xs font-bold text-slate-400">{qi + 1}.</span>
+            {q.question.split("___").map((segment, index, segments) => (
+              <React.Fragment key={`${qi}:${index}`}>
+                <span className="whitespace-pre-wrap">{segment}</span>
+                {index < segments.length - 1 && (
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="…"
+                    className="mx-1 inline-block w-[12ch] max-w-full rounded-lg border border-slate-200 px-2 py-1 text-center text-sm"
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        ) : (
         <div key={qi} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
           {q.text_snippet && <p className="text-xs text-slate-500">{q.text_snippet}</p>}
           <p className="text-sm font-medium text-slate-700">{q.question}</p>
           <div className="space-y-1">
-            {q.options.map((opt, oi) => (
+            {(q.options ?? []).map((opt, oi) => (
               <button
                 key={oi}
                 onClick={() => setChosenOption((prev) => ({ ...prev, [qi]: oi }))}
@@ -96,6 +128,7 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
             ))}
           </div>
         </div>
+        )
       ))}
     </div>
   );
@@ -103,30 +136,33 @@ const ReadingGroupPreview: React.FC<{ group: ReadingQuestionGroupRowData }> = ({
 
 const SingleQuestionAnswers: React.FC<{
   group: ReadingQuestionGroupRowData;
-  onSaveOptions: (options: string[], correctIndex: number) => Promise<void> | void;
+  onSaveOptions: (options: string[], correctIndex: number, explanation: string) => Promise<void> | void;
 }> = ({ group, onSaveOptions }) => {
   const initial = group.sub_questions?.[0];
   const [options, setOptions] = useState<string[]>(initial?.options ?? ["A", "B", "C"]);
   const [correctIndex, setCorrectIndex] = useState<number>(initial ? Number(initial.correct_option_id) : 0);
+  const [explanation, setExplanation] = useState(initial?.explanation ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const next = group.sub_questions?.[0];
     setOptions(next?.options ?? ["A", "B", "C"]);
     setCorrectIndex(next ? Number(next.correct_option_id) : 0);
+    setExplanation(next?.explanation ?? "");
   }, [group.id, group.sub_questions]);
 
   const initialOptions = initial?.options ?? ["A", "B", "C"];
   const initialCorrectIndex = initial ? Number(initial.correct_option_id) : 0;
   const hasChanges =
     correctIndex !== initialCorrectIndex ||
+    explanation !== (initial?.explanation ?? "") ||
     options.length !== initialOptions.length ||
     options.some((opt, idx) => opt !== (initialOptions[idx] ?? ""));
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSaveOptions(options, correctIndex);
+      await onSaveOptions(options, correctIndex, explanation);
     } finally {
       setSaving(false);
     }
@@ -174,6 +210,14 @@ const SingleQuestionAnswers: React.FC<{
         >
           + Thêm đáp án
         </button>
+        <label className="block text-xs font-bold text-slate-500">Giải thích</label>
+        <textarea
+          rows={2}
+          value={explanation}
+          onChange={(e) => setExplanation(e.target.value)}
+          placeholder="Hiện cho học viên sau khi mở lời giải..."
+          className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg resize-none"
+        />
         <div className="flex justify-end pt-1">
           <button
             type="button"
@@ -271,9 +315,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
   useEffect(() => { fetchAll(); }, []);
 
-  const handleSavePassage = async (passageId: string, textDe: string) => {
+  const handleSavePassage = async (passageId: string, textDe: string, textVi: string) => {
     setSavingPassageId(passageId);
-    const { error } = await supabase.from("reading_passages").update({ text_de: textDe }).eq("id", passageId);
+    const { error } = await supabase.from("reading_passages").update({ text_de: textDe, text_vi: textVi.trim() || null }).eq("id", passageId);
     setSavingPassageId(null);
     if (error) showToast("Lưu thất bại: " + error.message, "warning");
     else { showToast("Đã lưu văn bản.", "success"); fetchAll(); }
@@ -309,34 +353,16 @@ export const AdminReadingExerciseSection: React.FC = () => {
     fetchAll();
   };
 
-  const handleAddPassage = async (setId: string, lessonId: string, mode: "multi" | "single") => {
+  const handleAddPassage = async (setId: string, lessonId: string) => {
     const orderIndex = passagesForSet(passages, setId).length;
-    const { data: passageRow, error } = await supabase
+    const { error } = await supabase
       .from("reading_passages")
-      .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex })
-      .select("id")
-      .single();
+      .insert({ set_id: setId, lesson_id: lessonId, text_de: "", order_index: orderIndex });
     if (error) { showToast("Thêm văn bản thất bại: " + error.message, "warning"); return; }
-    if (mode === "multi" && passageRow?.id) {
-      const { error: groupError } = await supabase.from("reading_question_groups").insert({
-        passage_id: passageRow.id,
-        set_id: setId,
-        order_index: 0,
-        title: null,
-        question_intro: null,
-        question_type: "multiple_choice",
-        sub_questions: [{ text_snippet: null, image_key: null, question: "", options: ["A", "B", "C"], correct_option_id: "0" }],
-        explanation: null,
-      });
-      if (groupError) {
-        showToast("Tạo đáp án thất bại: " + groupError.message, "warning");
-        return;
-      }
-    }
     fetchAll();
   };
 
-  const handleSaveSingleQuestionOptions = async (groupId: string, options: string[], correctIndex: number) => {
+  const handleSaveSingleQuestionOptions = async (groupId: string, options: string[], correctIndex: number, explanation: string) => {
     const choicePayload = buildMultipleChoicePayload({ options, correctIndex });
     const newSubQuestion: ReadingSubQuestionRow = {
       text_snippet: null,
@@ -344,6 +370,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
       question: "",
       options: choicePayload.options ?? options,
       correct_option_id: choicePayload.correct_answer,
+      ...(explanation.trim() ? { explanation: explanation.trim() } : {}),
     };
     const { error } = await supabase.from("reading_question_groups").update({ sub_questions: [newSubQuestion] }).eq("id", groupId);
     if (error) { showToast("Lưu đáp án thất bại: " + error.message, "warning"); return; }
@@ -406,15 +433,30 @@ export const AdminReadingExerciseSection: React.FC = () => {
       const id = f.statements[0].id;
       f = setStatementText(f, id, s.text);
       f = setStatementAnswer(f, id, s.correct_answer);
+      f = setStatementExplanation(f, id, s.explanation ?? "");
+    } else if (group.question_type === "fill_in_the_blank") {
+      const q = (group.sub_questions ?? [])[index];
+      const parsed = parseReadingRow({
+        passage_id: group.passage_id,
+        title: group.title,
+        question_intro: group.question_intro,
+        question_type: group.question_type,
+        statements: null,
+        sub_questions: [q],
+        explanation: group.explanation,
+      });
+      f = { ...f, subQuestions: parsed.subQuestions };
     } else {
       const q = (group.sub_questions ?? [])[index];
       f = addSubQuestion(f);
       const id = f.subQuestions[0].id;
+      const options = q.options ?? [];
       f = setSubQuestionField(f, id, "textSnippet", q.text_snippet ?? "");
-      f = setSubQuestionField(f, id, "imageKey", q.image_key);
+      f = setSubQuestionField(f, id, "imageKey", q.image_key ?? null);
       f = setSubQuestionField(f, id, "question", q.question);
-      const correctIndex = q.options.findIndex((_, i) => String(i) === q.correct_option_id);
-      f = setSubQuestionOptions(f, id, { options: q.options, correctIndex });
+      const correctIndex = options.findIndex((_, i) => String(i) === q.correct_option_id);
+      f = setSubQuestionOptions(f, id, { options, correctIndex });
+      f = setSubQuestionField(f, id, "explanation", q.explanation ?? "");
     }
     setItemForm(f);
     setItemModal({ setId: group.set_id, lessonId, questionType: group.question_type, groupId: group.id, itemIndex: index });
@@ -439,6 +481,12 @@ export const AdminReadingExerciseSection: React.FC = () => {
       const s = itemForm.statements[0];
       if (!s?.text.trim()) { showToast("Nhận định không được để trống.", "warning"); return; }
       if (!s.correctAnswer) { showToast("Cần chọn Đúng hoặc Sai.", "warning"); return; }
+    } else if (itemModal.questionType === "fill_in_the_blank") {
+      const q = itemForm.subQuestions[0];
+      const blankCount = countBlankMarkers(q?.question ?? "");
+      if (blankCount < 1) { showToast("Cần ít nhất 1 marker ___.", "warning"); return; }
+      if ((q?.blanks.length ?? 0) !== blankCount) { showToast("Số editor đáp án phải khớp số marker ___.", "warning"); return; }
+      if (!q || !normalizeBlankDefinitions(q.blanks)) { showToast("Mỗi ô trống cần ít nhất 1 đáp án hợp lệ.", "warning"); return; }
     } else {
       const q = itemForm.subQuestions[0];
       if (!q?.question.trim()) { showToast("Câu hỏi không được để trống.", "warning"); return; }
@@ -460,12 +508,29 @@ export const AdminReadingExerciseSection: React.FC = () => {
       let updatePayload: Record<string, unknown>;
       if (itemModal.questionType === "richtig_falsch") {
         const s = itemForm.statements[0];
-        const newItem: ReadingStatementRow = { text: s.text, correct_answer: s.correctAnswer as "richtig" | "falsch" };
+        const newItem: ReadingStatementRow = {
+          text: s.text,
+          correct_answer: s.correctAnswer as "richtig" | "falsch",
+          ...(s.explanation.trim() ? { explanation: s.explanation.trim() } : {}),
+        };
         const current = group.statements ?? [];
         const nextArray = itemModal.itemIndex === null
           ? [...current, newItem]
           : current.map((item, i) => (i === itemModal.itemIndex ? newItem : item));
         updatePayload = { statements: nextArray };
+      } else if (itemModal.questionType === "fill_in_the_blank") {
+        const q = itemForm.subQuestions[0];
+        const blanks = normalizeBlankDefinitions(q.blanks) ?? [];
+        const newItem: ReadingSubQuestionRow = {
+          question: q.question.trim(),
+          blanks: blanks.map((blank) => ({ acceptedAnswers: blank.acceptedAnswers })),
+          ...(q.explanation.trim() ? { explanation: q.explanation.trim() } : {}),
+        };
+        const current = group.sub_questions ?? [];
+        const nextArray = itemModal.itemIndex === null
+          ? [...current, newItem]
+          : current.map((item, i) => (i === itemModal.itemIndex ? newItem : item));
+        updatePayload = { sub_questions: nextArray };
       } else {
         const q = itemForm.subQuestions[0];
         const choicePayload = buildMultipleChoicePayload({ options: q.options, correctIndex: q.correctIndex });
@@ -475,6 +540,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
           question: q.question,
           options: choicePayload.options ?? q.options,
           correct_option_id: choicePayload.correct_answer,
+          ...(q.explanation.trim() ? { explanation: q.explanation.trim() } : {}),
         };
         const current = group.sub_questions ?? [];
         const nextArray = itemModal.itemIndex === null
@@ -489,6 +555,17 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
     showToast("Đã lưu câu hỏi.", "success");
     setItemModal(null);
+    fetchAll();
+  };
+
+  const handleMoveItem = async (group: ReadingQuestionGroupRowData, from: number, to: number) => {
+    const column = group.question_type === "richtig_falsch" ? "statements" : "sub_questions";
+    const next = [...(group[column] ?? [])];
+    if (to < 0 || to >= next.length) return;
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const { error } = await supabase.from("reading_question_groups").update({ [column]: next }).eq("id", group.id);
+    if (error) { showToast("Đổi thứ tự thất bại: " + error.message, "warning"); return; }
     fetchAll();
   };
 
@@ -620,37 +697,35 @@ export const AdminReadingExerciseSection: React.FC = () => {
                       </div>
 
                       <div className="p-4 space-y-3">
-                        {isMultiPassage && (
-                          <div className="border border-red-200 bg-red-50 rounded-[14px] p-3 space-y-2.5">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
-                                Tiêu đề chung
-                                <span className="normal-case font-medium text-slate-400 text-[11px] ml-1.5">
-                                  Áp dụng cho tất cả văn bản bên dưới
-                                </span>
+                        <div className="border border-red-200 bg-red-50 rounded-[14px] p-3 space-y-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                              Yêu cầu chung
+                              <span className="normal-case font-medium text-slate-400 text-[11px] ml-1.5">
+                                {isMultiPassage ? "Áp dụng cho tất cả văn bản bên dưới" : "Hướng dẫn chung cho bài đọc. Dùng **đậm** và *nghiêng*."}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveSharedTitle(set.id, sharedTitleDraft)}
-                                disabled={!sharedTitleDirty || savingSharedTitleSetId === set.id}
-                                className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
-                              >
-                                {savingSharedTitleSetId === set.id ? "Đang lưu..." : "Lưu"}
-                              </button>
-                            </div>
-                            <textarea
-                              className="w-full min-h-[52px] border border-slate-200 rounded-[10px] px-3 py-2.5 text-[13.5px] resize-y text-slate-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
-                              value={sharedTitleDraft}
-                              onChange={(e) => setSharedTitleDraftBySet((prev) => ({ ...prev, [set.id]: e.target.value }))}
-                              placeholder="Tiêu đề chung cho các văn bản..."
-                            />
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSharedTitle(set.id, sharedTitleDraft)}
+                              disabled={!sharedTitleDirty || savingSharedTitleSetId === set.id}
+                              className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                            >
+                              {savingSharedTitleSetId === set.id ? "Đang lưu..." : "Lưu"}
+                            </button>
                           </div>
-                        )}
+                          <textarea
+                            className="w-full min-h-[52px] border border-slate-200 rounded-[10px] px-3 py-2.5 text-[13.5px] resize-y text-slate-700 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
+                            value={sharedTitleDraft}
+                            onChange={(e) => setSharedTitleDraftBySet((prev) => ({ ...prev, [set.id]: e.target.value }))}
+                            placeholder={"Yêu cầu chung. Enter xuống dòng. Dùng **đậm** và *nghiêng*."}
+                          />
+                        </div>
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-display font-bold text-slate-500 uppercase">Văn bản</span>
                           <button
                             type="button"
-                            onClick={() => handleAddPassage(set.id, lesson.lesson_id, setMode)}
+                            onClick={() => handleAddPassage(set.id, lesson.lesson_id)}
                             className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700"
                           >
                             <Plus className="w-3.5 h-3.5" /> Thêm văn bản
@@ -683,7 +758,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                               {isMultiPassage && multiChoiceGroup ? (
                                 <SingleQuestionAnswers
                                   group={multiChoiceGroup}
-                                  onSaveOptions={(options, correctIndex) => handleSaveSingleQuestionOptions(multiChoiceGroup.id, options, correctIndex)}
+                                  onSaveOptions={(options, correctIndex, explanation) => handleSaveSingleQuestionOptions(multiChoiceGroup.id, options, correctIndex, explanation)}
                                 />
                               ) : (
                               <div className="space-y-2">
@@ -741,7 +816,9 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                       >
                                         {group.question_type === "richtig_falsch"
                                           ? <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">✓✗</span>
-                                          : <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">≡</span>}
+                                          : group.question_type === "fill_in_the_blank"
+                                            ? <span className="w-5 h-5 rounded border border-red-200 bg-red-50 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">Aa</span>
+                                            : <span className="w-5 h-5 rounded border border-red-200 text-red-500 flex items-center justify-center text-[10px] font-black shrink-0">≡</span>}
                                         <span className="text-sm font-display font-bold text-slate-700">{QUESTION_TYPE_LABEL[group.question_type]}</span>
                                         <span className="text-[11px] font-bold text-slate-400 bg-white border border-slate-200 rounded-full px-2 py-0.5">{itemCount(group)} câu hỏi</span>
                                         <span className="ml-auto flex items-center gap-2">
@@ -765,6 +842,8 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                   <span className={`text-[11px] font-bold rounded-full px-2 py-0.5 shrink-0 border ${s.correct_answer === "richtig" ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-rose-600 bg-rose-50 border-rose-200"}`}>
                                                     {s.correct_answer === "richtig" ? "Richtig" : "Falsch"}
                                                   </span>
+                                                  <button onClick={() => handleMoveItem(group, i, i - 1)} disabled={i === 0} title="Lên" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                                  <button onClick={() => handleMoveItem(group, i, i + 1)} disabled={i === (group.statements ?? []).length - 1} title="Xuống" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronDown className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => openEditItem(group, i, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => setDeleteItemTarget({ group, index: i })} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
@@ -774,8 +853,16 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                                   <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
                                                   <span className="text-sm text-slate-700 flex-1 truncate">{i + 1}. {q.question}</span>
                                                   <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0">
-                                                    Đáp án: {optionLabel(Number(q.correct_option_id))}
+                                                    Đáp án: {group.question_type === "fill_in_the_blank"
+                                                      ? (q.blanks?.[0]?.acceptedAnswers?.[0]
+                                                        ?? q.blanks?.[0]?.accepted_answers?.[0]
+                                                        ?? q.accepted_answers?.[0]
+                                                        ?? q.options?.[Number(q.correct_option_id)]
+                                                        ?? "")
+                                                      : optionLabel(Number(q.correct_option_id))}
                                                   </span>
+                                                  <button onClick={() => handleMoveItem(group, i, i - 1)} disabled={i === 0} title="Lên" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                                  <button onClick={() => handleMoveItem(group, i, i + 1)} disabled={i === (group.sub_questions ?? []).length - 1} title="Xuống" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 shrink-0 disabled:opacity-30 disabled:pointer-events-none"><ChevronDown className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => openEditItem(group, i, lesson.lesson_id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                                                   <button onClick={() => setDeleteItemTarget({ group, index: i })} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
@@ -789,14 +876,23 @@ export const AdminReadingExerciseSection: React.FC = () => {
                                 {passageGroups.length === 0 && <p className="text-xs text-slate-400 italic">Chưa có loại câu hỏi nào.</p>}
                               </div>
                               )}
-                              {isMultiPassage && !multiChoiceGroup && (
-                                <button
-                                  type="button"
-                                  onClick={() => openAddType(set.id, lesson.lesson_id, "multiple_choice", passage.id)}
-                                  className="text-xs font-bold text-red-600 hover:text-red-700"
-                                >
-                                  + Tạo đáp án A/B/C
-                                </button>
+                              {isMultiPassage && passageGroups.length === 0 && (
+                                <div className="flex flex-wrap gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => openAddType(set.id, lesson.lesson_id, "multiple_choice", passage.id)}
+                                    className="text-xs font-bold text-red-600 hover:text-red-700"
+                                  >
+                                    + Trắc nghiệm
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAddType(set.id, lesson.lesson_id, "richtig_falsch", passage.id)}
+                                    className="text-xs font-bold text-red-600 hover:text-red-700"
+                                  >
+                                    + Đúng / Sai
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );
@@ -857,7 +953,80 @@ export const AdminReadingExerciseSection: React.FC = () => {
               <button onClick={() => setItemModal(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
             </div>
 
-            {itemModal.questionType === "richtig_falsch" ? (
+            {itemModal.questionType === "fill_in_the_blank" ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500">Câu có ô trống *</label>
+                  <p className="mt-0.5 mb-1.5 text-[11px] text-slate-400">Dùng ___ để đánh dấu từng ô trống.</p>
+                  <textarea
+                    rows={2}
+                    value={itemForm.subQuestions[0]?.question ?? ""}
+                    onChange={(e) => setItemForm((prev) => setSubQuestionField(prev, prev.subQuestions[0].id, "question", e.target.value))}
+                    placeholder="Ich ___ Anna."
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl resize-y"
+                  />
+                </div>
+                {(itemForm.subQuestions[0]?.blanks ?? []).map((blank, blankIndex) => (
+                  <div key={blankIndex} className="space-y-1.5 rounded-xl border border-slate-200 p-3">
+                    <label className="block text-xs font-bold text-slate-500">Đáp án ô {blankIndex + 1} *</label>
+                    {blank.acceptedAnswers.map((answer, answerIndex) => (
+                      <div key={answerIndex} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={answer}
+                          onChange={(e) => setItemForm((prev) => {
+                            const id = prev.subQuestions[0].id;
+                            const nextBlanks = prev.subQuestions[0].blanks.map((item, itemIndex) => {
+                              if (itemIndex !== blankIndex) return item;
+                              const acceptedAnswers = item.acceptedAnswers.map((value, valueIndex) =>
+                                valueIndex === answerIndex ? e.target.value : value,
+                              );
+                              return { acceptedAnswers };
+                            });
+                            return setSubQuestionBlanks(prev, id, nextBlanks);
+                          })}
+                          placeholder="heiße"
+                          className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl"
+                        />
+                        {blank.acceptedAnswers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setItemForm((prev) => {
+                              const id = prev.subQuestions[0].id;
+                              const nextBlanks = prev.subQuestions[0].blanks.map((item, itemIndex) => {
+                                if (itemIndex !== blankIndex) return item;
+                                return {
+                                  acceptedAnswers: item.acceptedAnswers.filter((_, valueIndex) => valueIndex !== answerIndex),
+                                };
+                              });
+                              return setSubQuestionBlanks(prev, id, nextBlanks);
+                            })}
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setItemForm((prev) => {
+                        const id = prev.subQuestions[0].id;
+                        const nextBlanks = prev.subQuestions[0].blanks.map((item, itemIndex) =>
+                          itemIndex === blankIndex
+                            ? { acceptedAnswers: [...item.acceptedAnswers, ""] }
+                            : item,
+                        );
+                        return setSubQuestionBlanks(prev, id, nextBlanks);
+                      })}
+                      className="text-[11px] font-bold text-red-600 hover:text-red-700"
+                    >
+                      + Thêm đáp án hợp lệ
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : itemModal.questionType === "richtig_falsch" ? (
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-500">Nhận định *</label>
                 <textarea
@@ -946,6 +1115,25 @@ export const AdminReadingExerciseSection: React.FC = () => {
                 </div>
               </div>
             )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500">Giải thích</label>
+              <textarea
+                rows={2}
+                value={
+                  itemModal.questionType === "richtig_falsch"
+                    ? (itemForm.statements[0]?.explanation ?? "")
+                    : (itemForm.subQuestions[0]?.explanation ?? "")
+                }
+                onChange={(e) => setItemForm((prev) => (
+                  itemModal.questionType === "richtig_falsch"
+                    ? setStatementExplanation(prev, prev.statements[0].id, e.target.value)
+                    : setSubQuestionField(prev, prev.subQuestions[0].id, "explanation", e.target.value)
+                ))}
+                placeholder="Hiện cho học viên sau khi mở lời giải..."
+                className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-xl resize-none"
+              />
+            </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button onClick={() => setItemModal(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Hủy</button>

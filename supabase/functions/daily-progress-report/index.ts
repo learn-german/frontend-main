@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeCompletedLessons, computeLessonStatuses, type LessonQuizFlags, type LessonProgressRow } from "./completion.ts";
-import { computeDailyProgressReport, defaultPlannedCompletionDate, earliestStudyDate } from "./report.ts";
+import { computeDailyProgressReport, defaultPlannedCompletionDate, earliestStudyDate, resolveEnrollmentStart } from "./report.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,17 +20,18 @@ interface LevelEnrollmentDates {
   planned_completion_date: string;
 }
 
-/** Tạo enrollment nếu chưa có, dùng `startedAt` = ngày học bài đầu tiên của level.
- * ON CONFLICT DO NOTHING — không ghi đè mốc admin đã set.
- * Enrollment sẵn có mà started_at trễ hơn ngày học thật (mốc auto tạo bằng
- * report_date của lần chạy đầu) thì kéo về ngày học thật, nếu không tiến độ
- * kỳ vọng đứng ở 0% dù user đã học. planned_completion_date chỉ dời theo khi
- * nó vẫn là mốc mặc định — admin đặt tay thì giữ nguyên. */
+/** Tạo enrollment nếu chưa có.
+ * Không có paid_started_at: started_at = ngày học bài đầu tiên; mốc auto tạo
+ * trễ hơn ngày học thật thì kéo về ngày học thật.
+ * Có paid_started_at (ngày chuyển role trial → user): không được sớm hơn
+ * mốc đó, kể cả khi học viên đã làm bài lúc còn trial. planned_completion_date
+ * chỉ dời theo khi nó vẫn là mốc mặc định. */
 async function ensureLevelEnrollment(
   supabase: SupabaseClient,
   userId: string,
   level: string,
-  startedAt: string,
+  studyStartedAt: string,
+  paidStartedAt: string | null,
 ): Promise<LevelEnrollmentDates | null> {
   const { data: existing } = await supabase
     .from("level_enrollments")
@@ -39,23 +40,28 @@ async function ensureLevelEnrollment(
     .eq("level", level)
     .maybeSingle();
 
+  const nextStart = resolveEnrollmentStart(existing?.started_at ?? null, studyStartedAt, paidStartedAt);
+
   if (existing?.started_at && existing?.planned_completion_date) {
-    if (existing.started_at <= startedAt) return existing;
+    if (!nextStart || nextStart === existing.started_at) return existing;
 
     const plannedCompletionDate =
       existing.planned_completion_date === defaultPlannedCompletionDate(existing.started_at, level)
-        ? defaultPlannedCompletionDate(startedAt, level)
-        : existing.planned_completion_date;
+        ? defaultPlannedCompletionDate(nextStart, level)
+        : existing.planned_completion_date > nextStart
+          ? existing.planned_completion_date
+          : defaultPlannedCompletionDate(nextStart, level);
     const { data: repaired } = await supabase
       .from("level_enrollments")
-      .update({ started_at: startedAt, planned_completion_date: plannedCompletionDate })
+      .update({ started_at: nextStart, planned_completion_date: plannedCompletionDate })
       .eq("user_id", userId)
       .eq("level", level)
       .select("started_at, planned_completion_date")
       .maybeSingle();
-    return repaired ?? { started_at: startedAt, planned_completion_date: plannedCompletionDate };
+    return repaired ?? { started_at: nextStart, planned_completion_date: plannedCompletionDate };
   }
 
+  const startedAt = nextStart ?? studyStartedAt;
   const plannedCompletionDate = defaultPlannedCompletionDate(startedAt, level);
   await supabase.from("level_enrollments").upsert(
     { user_id: userId, level, started_at: startedAt, planned_completion_date: plannedCompletionDate },
@@ -84,7 +90,7 @@ interface LessonRow extends LessonQuizFlags {
 async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, reportDate: string) {
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_end_date, unlocked_levels")
+    .select("subscription_end_date, unlocked_levels, paid_started_at, role")
     .eq("id", userId)
     .single();
 
@@ -158,11 +164,14 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
 
   // Mốc bắt đầu level = ngày học bài đầu tiên trong level; chưa học gì thì tính từ hôm nay.
   const levelLessonIds = new Set(chosenLessons.map((l) => l.id));
-  const levelStartedAt = earliestStudyDate(
+  const studyStartedAt = earliestStudyDate(
     progress.filter((p) => levelLessonIds.has(p.lesson_id)).map((p) => p.completed_at),
   ) ?? reportDate;
+  const paidStartedAt = profile.role === "user" && profile.paid_started_at
+    ? String(profile.paid_started_at).slice(0, 10)
+    : null;
 
-  const enrollment = await ensureLevelEnrollment(supabase, userId, chosenLevel, levelStartedAt);
+  const enrollment = await ensureLevelEnrollment(supabase, userId, chosenLevel, studyStartedAt, paidStartedAt);
 
   const computed = computeDailyProgressReport({
     reportDate,

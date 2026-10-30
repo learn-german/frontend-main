@@ -5,21 +5,25 @@ export type AppPage =
   | "landing"
   | "login"
   | "dashboard"
+  | "dictionary"
   | "roadmap"
   | "leaderboard"
   | "packages"
   | "help"
   | "meetings"
+  | "posts"
   | "lesson-detail"
   | "quiz";
 
 export type AppRoute =
-  | { page: "landing" | "login" | "dashboard" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" }
+  | { page: "landing" | "login" | "dashboard" | "dictionary" | "roadmap" | "leaderboard" | "packages" | "help" | "meetings" }
+  | { page: "posts"; slug?: string }
   | { page: "lesson-detail"; lessonId: string; tab?: BottomTab }
   | { page: "quiz"; lessonId: string; category: QuizCategory };
 
 const PROTECTED_PAGES: AppPage[] = [
   "dashboard",
+  "dictionary",
   "roadmap",
   "leaderboard",
   "packages",
@@ -56,6 +60,8 @@ export function parseRoute(pathname: string): AppRoute {
       return { page: "login" };
     case "dashboard":
       return { page: "dashboard" };
+    case "dictionary":
+      return { page: "dictionary" };
     case "roadmap":
       return { page: "roadmap" };
     case "leaderboard":
@@ -66,6 +72,8 @@ export function parseRoute(pathname: string): AppRoute {
       return { page: "help" };
     case "meetings":
       return { page: "meetings" };
+    case "posts":
+      return second ? { page: "posts", slug: decodeURIComponent(second) } : { page: "posts" };
     case "lesson": {
       if (!second) return { page: "landing" };
       const tab = toBottomTab(third);
@@ -87,6 +95,8 @@ export function serializeRoute(route: AppRoute): string {
   switch (route.page) {
     case "landing":
       return "/";
+    case "posts":
+      return route.slug ? `/posts/${encodeURIComponent(route.slug)}` : "/posts";
     case "lesson-detail":
       return route.tab ? `/lesson/${route.lessonId}/${route.tab}` : `/lesson/${route.lessonId}`;
     case "quiz":

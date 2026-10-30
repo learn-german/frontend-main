@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { fetchExerciseCategoryRows } from "../../lib/fetchExerciseCategoryRows";
 import { Button } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
 import {
@@ -113,8 +114,9 @@ export const AdminUsersSection: React.FC = () => {
         .order("order_index", { referencedTable: "lessons" }),
       // grammar_exercises_public phủ nguphap/nghe (Nghe đã gộp vào
       // grammar_exercises từ Phase 4). Đọc từ Phase 6 dùng bảng riêng
-      // (reading_question_groups) nên cần query thứ hai.
-      supabase.from("grammar_exercises_public").select("lesson_id, category"),
+      // (reading_question_groups) nên cần query thứ hai. Paged — PostgREST
+      // max-rows 1000 cắt mất category nghe ở các bài sau.
+      fetchExerciseCategoryRows(),
       supabase.from("reading_question_groups_public").select("lesson_id"),
     ]).then(([modulesRes, exercisesRes, readingRes]) => {
       // Nếu query cờ câu hỏi lỗi, "không có cờ" sẽ bị hiểu nhầm là "mục
@@ -126,7 +128,7 @@ export const AdminUsersSection: React.FC = () => {
         return;
       }
       const quizCategoriesByLesson = new Map<string, Set<string>>();
-      for (const row of (exercisesRes.data ?? []) as { lesson_id: string; category: string }[]) {
+      for (const row of exercisesRes.data ?? []) {
         const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
         categories.add(row.category);
         quizCategoriesByLesson.set(row.lesson_id, categories);
@@ -200,6 +202,7 @@ export const AdminUsersSection: React.FC = () => {
       role: string;
       subscription_end_date: string | null;
       unlocked_levels?: string[];
+      paid_started_at?: string | null;
     } = {
       full_name: editForm.full_name,
       role: editForm.role,
@@ -209,6 +212,10 @@ export const AdminUsersSection: React.FC = () => {
       profileUpdate.role = "trial";
       profileUpdate.subscription_end_date = null;
       profileUpdate.unlocked_levels = [];
+      profileUpdate.paid_started_at = null;
+    } else if (editUser.role === "trial" && profileUpdate.role === "user") {
+      const today = new Date();
+      profileUpdate.paid_started_at = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     }
 
     // Update full_name + role column in profiles
@@ -297,7 +304,7 @@ export const AdminUsersSection: React.FC = () => {
         ...(isUnlocking
           ? {
               subscription_end_date: newEnd,
-              ...(wasTrial && previousRole === "trial" ? { role: newRole } : {}),
+              ...(wasTrial && previousRole === "trial" ? { role: newRole, paid_started_at: todayIso } : {}),
             }
           : {}),
       })
@@ -334,7 +341,7 @@ export const AdminUsersSection: React.FC = () => {
       .from("level_enrollments")
       .upsert(
         { user_id: user.id, level, started_at: startedAt, planned_completion_date: plannedCompletionDate },
-        { onConflict: "user_id,level", ignoreDuplicates: true },
+        { onConflict: "user_id,level", ignoreDuplicates: !(wasTrial && previousRole === "trial") },
       );
     if (enrollError) {
       showToast("Không tạo được mốc thời gian cho cấp độ: " + enrollError.message, "warning");
@@ -360,7 +367,7 @@ export const AdminUsersSection: React.FC = () => {
 
     const { error } = await supabase
       .from("profiles")
-      .update({ unlocked_levels: [], subscription_end_date: null, role: "trial" })
+      .update({ unlocked_levels: [], subscription_end_date: null, role: "trial", paid_started_at: null })
       .eq("id", user.id);
 
     if (error) {

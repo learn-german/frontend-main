@@ -107,7 +107,64 @@ test("deriveCorrectAnswers: trả đúng đáp án theo khoá group:index cho c�
   });
 });
 
-test("deriveExplanations: 1 explanation/nhóm, không phải theo item", () => {
-  const groups = [{ id: "g1", explanation: "vì..." }, { id: "g2", explanation: null }];
-  assert.deepEqual(deriveExplanations(groups), { g1: "vì...", g2: "" });
+test("deriveExplanations: theo từng câu, bỏ câu không có lời giải", () => {
+  const groups: ScorableReadingGroup[] = [
+    {
+      id: "g1",
+      question_type: "richtig_falsch",
+      statements: [{ correct_answer: "richtig", explanation: " vì định thức " }, { correct_answer: "falsch" }],
+      sub_questions: null,
+    },
+    {
+      id: "g2",
+      question_type: "multiple_choice",
+      statements: null,
+      sub_questions: [{ correct_option_id: "0", explanation: "chọn A" }],
+    },
+  ];
+  assert.deepEqual(deriveExplanations(groups), { "g1:0": "vì định thức", "g2:0": "chọn A" });
+});
+
+const fillBlankGroup = (): ScorableReadingGroup => ({
+  id: "g3",
+  question_type: "fill_in_the_blank",
+  statements: null,
+  sub_questions: [{ accepted_answers: ["arbeiten im Café"] }],
+});
+
+test("computeReadingScore: fill_in_the_blank khớp chữ, bỏ qua hoa thường và khoảng trắng thừa", () => {
+  const result = computeReadingScore([fillBlankGroup()], { "g3:0": "  Arbeiten   im Café " });
+  assert.equal(result.correct, 1);
+  assert.equal(result.itemResults["g3:0"], true);
+});
+
+test("computeReadingScore: fill_in_the_blank sai nếu không khớp đáp án", () => {
+  const result = computeReadingScore([fillBlankGroup()], { "g3:0": "wohnen in Berlin" });
+  assert.equal(result.correct, 0);
+  assert.equal(result.itemResults["g3:0"], false);
+});
+
+test("computeReadingScore: fill_in_the_blank hỗ trợ blanks[] và JSON answers", () => {
+  const group: ScorableReadingGroup = {
+    id: "g4",
+    question_type: "fill_in_the_blank",
+    statements: null,
+    sub_questions: [{ blanks: [{ acceptedAnswers: ["heiße"] }, { acceptedAnswers: ["bin"] }] }],
+  };
+  const ok = computeReadingScore([group], { "g4:0": JSON.stringify(["Heiße", "bin"]) });
+  assert.equal(ok.correct, 2);
+  assert.equal(ok.total, 2);
+  assert.equal(ok.itemResults["g4:0"], true);
+  const partial = computeReadingScore([group], { "g4:0": JSON.stringify(["heiße", "bist"]) });
+  assert.equal(partial.correct, 1);
+  assert.equal(partial.itemResults["g4:0"], false);
+});
+
+test("projectAnswers: fill_in_the_blank giữ cụm dài hơn giới hạn đáp án trắc nghiệm", () => {
+  const projected = projectAnswers([fillBlankGroup()], { "g3:0": "a".repeat(80) });
+  assert.equal(projected["g3:0"].length, 80);
+});
+
+test("deriveCorrectAnswers: fill_in_the_blank trả cụm đáp án, không phải index", () => {
+  assert.equal(deriveCorrectAnswers([fillBlankGroup()])["g3:0"], "arbeiten im Café");
 });

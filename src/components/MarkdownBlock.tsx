@@ -288,17 +288,30 @@ const promptMarkdownComponents: Components = {
   em: ({ children }) => <em className="italic">{children}</em>,
 };
 
+const renderPromptLine = (line: string) => (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    skipHtml
+    unwrapDisallowed
+    allowedElements={["p", "strong", "em"]}
+    components={promptMarkdownComponents}
+  >
+    {line}
+  </ReactMarkdown>
+);
+
+/** Preserve Enter from textarea: Markdown alone collapses \\n into spaces. */
 export const PromptMarkdown: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      skipHtml
-      unwrapDisallowed
-      allowedElements={["p", "strong", "em"]}
-      components={promptMarkdownComponents}
-    >
-      {text}
-    </ReactMarkdown>
+    <>
+      {lines.map((line, i) => (
+        <React.Fragment key={i}>
+          {i > 0 ? <br /> : null}
+          {line ? renderPromptLine(line) : null}
+        </React.Fragment>
+      ))}
+    </>
   );
 };

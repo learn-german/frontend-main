@@ -37,6 +37,29 @@ export function defaultPlannedCompletionDate(startedAtIso: string, level: string
   return addCalendarDaysUtc(startedAtIso, PLANNED_LEVEL_DAYS[level] ?? 90);
 }
 
+/** Mốc tiến độ kỳ vọng. User đã trả phí: tính từ ngày chuyển role user,
+ *  không lấy ngày học lúc còn trial. Chưa có mốc đó thì giữ ngày học đầu. */
+export function paceStartDate(
+  studyStart: string | null,
+  paidStartedAt: string | null,
+  reportDate: string,
+): string {
+  if (paidStartedAt) return paidStartedAt.slice(0, 10);
+  return studyStart ?? reportDate;
+}
+
+/** null = giữ started_at đang lưu. */
+export function resolveEnrollmentStart(
+  existingStartedAt: string | null,
+  studyStartedAt: string,
+  paidStartedAt: string | null,
+): string | null {
+  if (!existingStartedAt) return paidStartedAt ?? studyStartedAt;
+  if (paidStartedAt && existingStartedAt < paidStartedAt) return paidStartedAt;
+  if (!paidStartedAt && existingStartedAt > studyStartedAt) return studyStartedAt;
+  return null;
+}
+
 function computeRemainingDays(subscriptionEndDate: string | null, reportDate: string): number | null {
   if (!subscriptionEndDate) return null;
   const diffDays = (new Date(subscriptionEndDate).getTime() - new Date(reportDate).getTime()) / MS_PER_DAY;

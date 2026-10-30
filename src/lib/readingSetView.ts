@@ -1,6 +1,6 @@
-export type ReadingQuestionType = "richtig_falsch" | "multiple_choice";
+export type ReadingQuestionType = "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
 
-export const READING_QUESTION_TYPES: readonly ReadingQuestionType[] = ["multiple_choice", "richtig_falsch"];
+export const READING_QUESTION_TYPES: readonly ReadingQuestionType[] = ["multiple_choice", "richtig_falsch", "fill_in_the_blank"];
 
 interface PassageLite {
   set_id: string | null;

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, CheckCircle2, Loader2, RotateCcw, ArrowRight } from "lucide-react";
 import { Button } from "../components/DesignSystem";
 import { ExercisePageHeader } from "../components/ExercisePageHeader";
-import { MarkdownBlock } from "../components/MarkdownBlock";
+import { MarkdownBlock, PromptMarkdown } from "../components/MarkdownBlock";
 import { Lesson } from "../lib/appTypes";
 import { useExerciseSets, type ExerciseSet } from "../lib/hooks/useExerciseSets";
 import { useExerciseSetAttempt, useExerciseSetAttempts } from "../lib/hooks/useExerciseSetAttempt";
@@ -19,8 +19,30 @@ import { buildReadingCarouselScreens, itemKey, type ReadingCarouselScreen } from
 import { useMediaPlaybackUrl } from "../lib/hooks/useMediaPlaybackUrl";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 import { computeSetStatus, SET_STATUS_LABEL, SET_STATUS_BADGE_CLASS, type SetStatus } from "../lib/exerciseSetStatus";
+import { blankInputCharWidth } from "../lib/blankInputSize";
+import { countBlankMarkers } from "../lib/grammarFillInBlank";
 import { supabase } from "../lib/supabase";
 import { showToast } from "../lib/toast";
+
+function parseReadingFillAnswers(raw: string | undefined, blankCount: number): string[] {
+  if (blankCount <= 0) return [];
+  if (!raw) return Array.from({ length: blankCount }, () => "");
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((value) => typeof value === "string")) {
+      return Array.from({ length: blankCount }, (_, index) => String(parsed[index] ?? ""));
+    }
+  } catch {
+    // legacy plain string
+  }
+  if (blankCount === 1) return [raw];
+  return Array.from({ length: blankCount }, () => "");
+}
+
+function serializeReadingFillAnswers(values: string[]): string {
+  if (values.length <= 1) return values[0] ?? "";
+  return JSON.stringify(values);
+}
 
 interface ReadingSetListPageProps {
   lesson: Lesson;
@@ -170,7 +192,11 @@ const ReadingGroupBody: React.FC<{
 }> = ({ lesson, group, passageText, answersByKey, onAnswer, itemResults, revealed, correctAnswers, explanation }) => (
   <div className="space-y-3">
     {group.title && <p className="text-sm font-display font-bold text-slate-800">{group.title}</p>}
-    {group.questionIntro && <p className="text-xs text-slate-500">{group.questionIntro}</p>}
+    {group.questionIntro && (
+      <div className="text-xs text-slate-500">
+        <PromptMarkdown text={group.questionIntro} />
+      </div>
+    )}
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
       <MarkdownBlock content={passageText} lessonId={lesson.id} large />
     </div>
@@ -324,9 +350,15 @@ const ReadingExerciseSetBody: React.FC<{
   const isLastScreen = screens.length > 0 && currentScreenIndex === screens.length - 1;
   const currentAnswered = !currentScreen
     ? false
-    : currentScreen.kind === "single_rf_summary"
-      ? currentScreen.items.every((item) => !!answersByKey[item.key])
-      : !!answersByKey[currentScreen.key];
+    : currentScreen.kind === "single_fill"
+      ? currentScreen.items.every((item) => {
+          const blankCount = countBlankMarkers(item.prompt);
+          const values = parseReadingFillAnswers(answersByKey[item.key], blankCount);
+          return blankCount > 0 && values.every((value) => value.trim().length > 0);
+        })
+      : currentScreen.kind === "single_rf_summary" || currentScreen.kind === "multi_rf"
+        ? currentScreen.items.every((item) => !!answersByKey[item.key]?.trim())
+        : !!answersByKey[currentScreen.key];
 
   React.useEffect(() => {
     setCurrentScreenIndex(0);
@@ -430,6 +462,18 @@ const ReadingExerciseSetBody: React.FC<{
           )}
         </div>
 
+        {Object.values(passagesById).some((p) => p.textVi) && (
+          <div className="text-left space-y-3 pt-4 border-t border-slate-100">
+            <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">Bản dịch:</h4>
+            {Object.values(passagesById)
+              .filter((p) => p.textVi)
+              .sort((a, b) => a.orderIndex - b.orderIndex)
+              .map((p) => (
+                <MarkdownBlock key={p.id} content={p.textVi ?? ""} lessonId={lesson.id} />
+              ))}
+          </div>
+        )}
+
         <div className="text-left space-y-3 pt-4 border-t border-slate-100">
           <h4 className="text-xs font-display font-bold text-slate-400 uppercase tracking-widest">
             {revealed ? "Giải thích từng bài:" : "Câu đúng / câu sai:"}
@@ -445,7 +489,7 @@ const ReadingExerciseSetBody: React.FC<{
                   return (
                     <div
                       key={key}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
+                      className={`flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
                         correct ? "border-green-200 bg-green-50 text-slate-700" : "border-red-300 bg-red-50 text-slate-700"
                       }`}
                     >
@@ -460,6 +504,9 @@ const ReadingExerciseSetBody: React.FC<{
                           Đáp án đúng: {correctAns === "richtig" ? "Richtig" : "Falsch"}
                         </span>
                       )}
+                      {revealed && result.explanations?.[key] && (
+                        <p className="w-full text-[12px] text-slate-600">{result.explanations[key]}</p>
+                      )}
                     </div>
                   );
                 });
@@ -469,12 +516,16 @@ const ReadingExerciseSetBody: React.FC<{
                 const correct = result.itemResults?.[key];
                 const chosen = answersByKey[key];
                 const correctAns = result.correctAnswers?.[key];
-                const chosenLabel = chosen !== undefined ? String.fromCharCode(65 + Number(chosen)) : "—";
-                const optionText = chosen !== undefined ? q.options[Number(chosen)] : "";
+                const isFill = group.questionType === "fill_in_the_blank";
+                const chosenLabel = isFill
+                  ? (chosen?.trim() || "—")
+                  : chosen !== undefined && chosen !== ""
+                    ? `${String.fromCharCode(65 + Number(chosen))}. ${q.options[Number(chosen)] ?? ""}`
+                    : "—";
                 return (
                   <div
                     key={key}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
+                    className={`flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] ${
                       correct ? "border-green-200 bg-green-50 text-slate-700" : "border-red-300 bg-red-50 text-slate-700"
                     }`}
                   >
@@ -482,12 +533,15 @@ const ReadingExerciseSetBody: React.FC<{
                       ? <CheckCircle2 className="w-[15px] h-[15px] text-green-600 shrink-0" />
                       : <span className="w-[15px] h-[15px] text-red-600 shrink-0 flex items-center justify-center font-black text-xs">✕</span>}
                     <span className="flex-1">
-                      {q.question} — {chosenLabel}. {optionText}
+                      {q.question} — {chosenLabel}
                     </span>
                     {!correct && correctAns && (
                       <span className="text-[11px] text-red-600 shrink-0">
-                        Đáp án đúng: {String.fromCharCode(65 + Number(correctAns))}
+                        Đáp án đúng: {isFill ? correctAns : String.fromCharCode(65 + Number(correctAns))}
                       </span>
+                    )}
+                    {revealed && result.explanations?.[key] && (
+                      <p className="w-full text-[12px] text-slate-600">{result.explanations[key]}</p>
                     )}
                   </div>
                 );
@@ -537,24 +591,23 @@ const ReadingExerciseSetBody: React.FC<{
   };
 
   const isMultiPassage = built.layout === "multi_passage";
+  const fillOnly = screens.length === 1 && screens[0]?.kind === "single_fill";
   const slideShare = screens.length > 0 ? 100 / screens.length : 100;
   const introText = sortedGroups[0]?.questionIntro?.trim() ?? "";
   const singlePassageId = screens[0]?.passageId ?? sortedGroups[0]?.passageId ?? "";
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
+      {introText && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
+          <span className="font-bold">Yêu cầu: </span>
+          <PromptMarkdown text={introText} />
+        </div>
+      )}
       {isMultiPassage ? (
-        <>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            CÂU {currentScreenIndex + 1}/{screens.length}
-          </span>
-          {introText && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-              <span className="font-bold">Yêu cầu: </span>
-              {introText}
-            </div>
-          )}
-        </>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          CÂU {currentScreenIndex + 1}/{screens.length}
+        </span>
       ) : (
         <>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
@@ -563,9 +616,11 @@ const ReadingExerciseSetBody: React.FC<{
               <MarkdownBlock content={passagesById[singlePassageId]?.textDe ?? ""} lessonId={lesson.id} large />
             </div>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            CÂU {currentScreenIndex + 1}/{screens.length}
-          </span>
+          {!fillOnly && (
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              CÂU {currentScreenIndex + 1}/{screens.length}
+            </span>
+          )}
         </>
       )}
 
@@ -580,7 +635,27 @@ const ReadingExerciseSetBody: React.FC<{
           {screens.map((screen) => {
             const slideStyle = { width: `${slideShare}%`, flex: "0 0 auto" as const };
 
-            if (screen.kind === "multi_passage") {
+            if (screen.kind === "multi_passage" || screen.kind === "multi_rf") {
+              const passageOrder = passagesById[screen.passageId]?.orderIndex ?? screen.slideIndex;
+              const passageLabel = `Văn bản ${passageOrder + 1}`;
+              const passageMarkdown = passagesById[screen.passageId]?.textDe ?? "";
+              if (screen.kind === "multi_rf") {
+                return (
+                  <div key={screen.groupId} style={slideStyle} className="space-y-3">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                      <span className="text-xs font-bold text-slate-500">{passageLabel}</span>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <MarkdownBlock content={passageMarkdown} lessonId={lesson.id} large />
+                      </div>
+                    </div>
+                    <ReadingRfSummarySlide
+                      items={screen.items}
+                      answersByKey={answersByKey}
+                      onAnswer={(key, value) => setAnswersByKey((prev) => ({ ...prev, [key]: value }))}
+                    />
+                  </div>
+                );
+              }
               const group = groupsById[screen.groupId];
               const question = group?.subQuestions[0];
               if (!group || !question) {
@@ -592,7 +667,6 @@ const ReadingExerciseSetBody: React.FC<{
                   </div>
                 );
               }
-              const passageOrder = passagesById[screen.passageId]?.orderIndex ?? screen.slideIndex;
               return (
                 <div key={screen.key} style={slideStyle}>
                   <ReadingMcSlide
@@ -600,9 +674,54 @@ const ReadingExerciseSetBody: React.FC<{
                     question={question}
                     picked={answersByKey[screen.key]}
                     onAnswer={(value) => setAnswersByKey((prev) => ({ ...prev, [screen.key]: value }))}
-                    passageMarkdown={passagesById[screen.passageId]?.textDe ?? ""}
-                    passageLabel={`Văn bản ${passageOrder + 1}`}
+                    passageMarkdown={passageMarkdown}
+                    passageLabel={passageLabel}
                   />
+                </div>
+              );
+            }
+
+            if (screen.kind === "single_fill") {
+              return (
+                <div key={screen.groupId} style={slideStyle}>
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm text-slate-600">Điền từ thích hợp vào từng ô trống:</p>
+                      <p className="shrink-0 text-xs text-slate-400">Nhập trực tiếp vào ô trả lời</p>
+                    </div>
+                    <div className="space-y-3">
+                      {screen.items.map((item, index) => {
+                        const blankCount = countBlankMarkers(item.prompt);
+                        const blankValues = parseReadingFillAnswers(answersByKey[item.key], blankCount);
+                        return (
+                          <div key={item.key} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-9 text-slate-700">
+                            <span className="mr-1 text-xs font-bold text-slate-400">1.{index + 1}</span>
+                            {item.prompt.split("___").map((segment, blankIndex, segments) => (
+                              <React.Fragment key={`${item.key}:${blankIndex}`}>
+                                <span className="whitespace-pre-wrap"><PromptMarkdown text={segment} /></span>
+                                {blankIndex < segments.length - 1 && (
+                                  <input
+                                    type="text"
+                                    value={blankValues[blankIndex] ?? ""}
+                                    onChange={(e) => {
+                                      const next = [...blankValues];
+                                      next[blankIndex] = e.target.value;
+                                      setAnswersByKey((prev) => ({
+                                        ...prev,
+                                        [item.key]: serializeReadingFillAnswers(next),
+                                      }));
+                                    }}
+                                    style={{ width: `${blankInputCharWidth(blankValues[blankIndex] ?? "")}ch` }}
+                                    className="mx-1 inline-block max-w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                  />
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               );
             }
@@ -644,6 +763,7 @@ const ReadingExerciseSetBody: React.FC<{
         </div>
       </div>
 
+      {!fillOnly && (
       <div className="flex items-center justify-center gap-1.5 pt-1">
         {screens.map((screen, index) => (
           <button
@@ -655,13 +775,24 @@ const ReadingExerciseSetBody: React.FC<{
           />
         ))}
       </div>
+      )}
 
       {submitError && <p className="text-sm text-red-500 text-center">{submitError}</p>}
 
-      <div className="flex flex-wrap justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {currentScreen?.kind === "single_fill" && !currentAnswered && (
+          <p className="mr-auto text-sm text-slate-500">
+            Còn {currentScreen.items.filter((item) => {
+              const blankCount = countBlankMarkers(item.prompt);
+              const values = parseReadingFillAnswers(answersByKey[item.key], blankCount);
+              return blankCount === 0 || values.some((value) => !value.trim());
+            }).length} câu chưa trả lời.
+          </p>
+        )}
         <Button variant="secondary" onClick={handleSaveDraft}>
           Lưu
         </Button>
+        {!fillOnly && (
         <Button
           variant="secondary"
           disabled={currentScreenIndex === 0}
@@ -669,6 +800,7 @@ const ReadingExerciseSetBody: React.FC<{
         >
           Quay lại
         </Button>
+        )}
         {isLastScreen ? (
           <Button variant="primary" disabled={!currentAnswered || submitting} onClick={handleSubmit}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

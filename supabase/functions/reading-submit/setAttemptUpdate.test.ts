@@ -90,3 +90,12 @@ test("77.78% (7/9) không được làm tròn thành pass — BR-02", () => {
   assert.equal(r.isPassed, false);
   assert.equal(r.revealed, false);
 });
+
+for (const attemptCount of [1, 2]) {
+  test(`attempt ${attemptCount + 1}: reveal only from third failed attempt`, () => {
+    const r = computeSetAttemptUpdate({ bestScore: 60, attemptCount, isPassed: false, revealed: false }, 3, 5, XP);
+    assert.equal(r.revealed, attemptCount === 2);
+    assert.equal(r.isPassed, false);
+    assert.equal(r.xpEarned, 0);
+  });
+}

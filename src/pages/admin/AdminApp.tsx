@@ -116,6 +116,7 @@ export const AdminApp: React.FC = () => {
 
   const handleNotificationNavigate = (n: AppNotification) => {
     if (n.type === "writing_submitted") setSection("writing");
+    if (n.type === "speaking_submitted") setSection("speaking");
     if (n.type.startsWith("support_")) setSection("support");
   };
 

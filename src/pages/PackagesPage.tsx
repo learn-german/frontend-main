@@ -38,7 +38,7 @@ const COURSES: {
     price: "Miễn phí",
     priceHint: "không giới hạn thời gian",
     points: [
-      "Video bài học đầu tiên",
+      "Video 3 bài học đầu",
       "Bài tập thực hành ngay trong bài",
       "Xem kết quả sau khi hoàn thành",
     ],
@@ -120,7 +120,7 @@ export const PackagesPage: React.FC<{
           Chọn cách học phù hợp
         </h1>
         <p className="mt-2 text-sm text-slate-500">
-          Bắt đầu miễn phí với bài học đầu tiên hoặc mở toàn bộ lộ trình A1 cùng các buổi hỗ trợ trực tuyến hàng tuần.
+          Bắt đầu miễn phí với 3 bài học đầu hoặc mở toàn bộ lộ trình A1 cùng các buổi hỗ trợ trực tuyến hàng tuần.
         </p>
       </div>
 

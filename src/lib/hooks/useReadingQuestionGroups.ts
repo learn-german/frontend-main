@@ -17,7 +17,7 @@ export interface ReadingQuestionGroupPublic {
   passageId: string;
   title: string | null;
   questionIntro: string | null;
-  questionType: "richtig_falsch" | "multiple_choice";
+  questionType: "richtig_falsch" | "multiple_choice" | "fill_in_the_blank";
   statements: ReadingStatement[];
   subQuestions: ReadingSubQuestion[];
   orderIndex: number;
@@ -26,6 +26,7 @@ export interface ReadingQuestionGroupPublic {
 export interface ReadingPassageLite {
   id: string;
   textDe: string;
+  textVi?: string | null;
   orderIndex: number;
 }
 
@@ -77,7 +78,7 @@ export function useReadingQuestionGroups(setId: string): {
           passageId: row.passage_id as string,
           title: row.title as string | null,
           questionIntro: row.question_intro as string | null,
-          questionType: row.question_type as "richtig_falsch" | "multiple_choice",
+          questionType: row.question_type as ReadingQuestionGroupPublic["questionType"],
           statements: (row.statements as ReadingStatement[] | null) ?? [],
           subQuestions: (row.sub_questions as ReadingSubQuestion[] | null) ?? [],
           orderIndex: row.order_index as number,
@@ -88,7 +89,7 @@ export function useReadingQuestionGroups(setId: string): {
         if (passageIds.length > 0) {
           const { data: passages, error: passagesError } = await supabase
             .from("reading_passages")
-            .select("id, text_de, order_index")
+            .select("id, text_de, text_vi, order_index")
             .in("id", passageIds);
           if (cancelled) return;
           if (passagesError) {
@@ -97,7 +98,7 @@ export function useReadingQuestionGroups(setId: string): {
             return;
           }
           for (const p of passages ?? []) {
-            passageMap[p.id as string] = { id: p.id as string, textDe: p.text_de as string, orderIndex: p.order_index as number };
+            passageMap[p.id as string] = { id: p.id as string, textDe: p.text_de as string, textVi: p.text_vi as string | null, orderIndex: p.order_index as number };
           }
         }
 

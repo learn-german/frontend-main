@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { SpeakingTabPanel } from "../components/SpeakingTabPanel";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   BookOpen,
   CheckCircle,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   GraduationCap,
   PlayCircle,
   Video,
@@ -130,6 +133,34 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
     onTabChange?.(tab);
   };
 
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  const [tabBarOverflows, setTabBarOverflows] = useState(false);
+  const visibleTabKey = visibleTabs.map((tab) => tab.id).join(",");
+
+  useEffect(() => {
+    const bar = tabBarRef.current;
+    if (!bar) return;
+    const update = () => setTabBarOverflows(bar.scrollWidth > bar.clientWidth + 1);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, [visibleTabKey]);
+
+  useEffect(() => {
+    const bar = tabBarRef.current;
+    const active = bar?.querySelector<HTMLElement>("[data-active='true']");
+    if (!bar || !active) return;
+    const left = active.offsetLeft - (bar.clientWidth - active.offsetWidth) / 2;
+    bar.scrollTo({ left: Math.max(0, left) });
+  }, [bottomTab, visibleTabKey]);
+
+  const scrollTabs = (direction: -1 | 1) => {
+    const bar = tabBarRef.current;
+    if (!bar) return;
+    bar.scrollBy({ left: direction * Math.max(120, bar.clientWidth * 0.6) });
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
 
@@ -198,19 +229,22 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
       {/* Bottom tabbed section: Bài tập ngữ pháp / Nghe / Đọc / Từ vựng */}
       <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl overflow-hidden">
         {/* Tab bar */}
-        <div className="flex border-b border-slate-200/60 bg-white">
+        <div className="border-b border-slate-200/60 bg-white">
+          <div ref={tabBarRef} className="flex overflow-x-auto overscroll-x-contain">
           {visibleTabs.map(({ id, label, labelVi, Icon }) => (
             <button
               key={id}
+              type="button"
+              data-active={bottomTab === id ? "true" : undefined}
               onClick={() => handleSelectTab(id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-display font-bold transition-colors border-b-2 ${
+              className={`flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-display font-bold transition-colors border-b-2 ${
                 bottomTab === id
                   ? "border-orange-500 text-orange-600 bg-orange-50/50"
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              <span className="flex flex-col items-start leading-tight">
+              <span className="flex flex-col items-start leading-tight whitespace-nowrap">
                 <span>{label}</span>
                 <span
                   className={`text-[10px] font-sans font-normal ${
@@ -222,6 +256,18 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
               </span>
             </button>
           ))}
+          </div>
+          {tabBarOverflows && (
+            <div className="flex items-center gap-2 px-3 py-1.5 border-t border-slate-100">
+              <p className="flex-1 text-[10px] text-slate-400">Vuốt ngang để xem các mục</p>
+              <button type="button" aria-label="Xem tab phía trước" onClick={() => scrollTabs(-1)} className="p-1 text-slate-500">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button type="button" aria-label="Xem tab phía sau" onClick={() => scrollTabs(1)} className="p-1 text-slate-500">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tab content */}
@@ -231,8 +277,8 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
             <div className="space-y-4">
               {lesson.grammarMd ? (
                 <>
-                  <div className="flex justify-end">
-                    <span className="text-[10px] text-slate-400">Click từ được tô sáng để nghe phát âm</span>
+                  <div className="flex justify-start">
+                    <span className="rounded-md bg-orange-50 px-2 py-1 text-[10px] font-semibold text-orange-700">Click từ được tô sáng để nghe phát âm</span>
                   </div>
                   <MarkdownBlock content={lesson.grammarMd} lessonId={lesson.id} onWordClick={handlePronounce} />
                 </>
@@ -284,9 +330,7 @@ export const LessonDetailPage: React.FC<LessonDetailPageProps> = ({
           {/* Nói (Sprechen) tab — hidden entirely via visibleTabs when
               speakingMd is empty, so no "Sắp có" fallback needed. */}
           {bottomTab === "noi" && lesson.speakingMd && (
-            <div className="space-y-4">
-              <MarkdownBlock content={lesson.speakingMd} />
-            </div>
+            <SpeakingTabPanel key={`${lesson.id}:${userId}`} lessonId={lesson.id} userId={userId} promptMd={lesson.speakingMd} />
           )}
 
           {/* Nghe (Hören) tab — hidden entirely via visibleTabs when
