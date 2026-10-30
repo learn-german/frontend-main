@@ -3,11 +3,8 @@
 
 UPDATE lessons
 SET duration = '14:22'
-WHERE (
-  title ILIKE '%Deutsch kennenlernen%'
-  OR title_vi ILIKE '%Làm quen với tiếng Đức%'
-)
-AND duration IS DISTINCT FROM '14:22';
+WHERE title = 'Deutsch kennenlernen'
+  AND duration = '05:40';
 
 CREATE OR REPLACE FUNCTION public.sync_lesson_video_duration(
   p_lesson_id text,
