@@ -1,7 +1,7 @@
 -- Run with supabase test db; every fixture is rolled back.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(25);
+SELECT plan(27);
 INSERT INTO auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data) VALUES
  ('11111111-1111-1111-1111-111111111111','authenticated','authenticated','dictionary-paid@test.local','{}','{"full_name":"Paid"}'),
  ('22222222-2222-2222-2222-222222222222','authenticated','authenticated','dictionary-trial@test.local','{}','{"full_name":"Trial"}'),
@@ -31,6 +31,8 @@ SELECT is((SELECT meaning FROM dictionary_entries WHERE id='bbbbbbbb-bbbb-bbbb-b
 SELECT throws_ok($$SELECT save_dictionary_entry('{"word":"Bad","course":"A1"}','published')$$,'23514',NULL,'publication validates content');
 SELECT throws_ok($$SELECT save_dictionary_entry('{"word":"Bad","course":"A1","lessons":["dictionary-test-a2"]}','published')$$,'23514',NULL,'source must match course');
 SELECT throws_ok($$SELECT save_dictionary_entry('{"word":"Bad","course":"A1","lessons":["dictionary-test-draft"]}','published')$$,'23514',NULL,'source must be published');
+SELECT lives_ok($$SELECT save_dictionary_entry('{"word":"Wasser","type":"noun","article":"","meaning":"nước","course":"A1","topics":["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],"lessons":["dictionary-test-1"]}','published')$$,'published noun may omit an article');
+SELECT throws_ok($$SELECT save_dictionary_entry('{"word":"Invalid article","type":"noun","article":"ein","meaning":"không hợp lệ","course":"A1","topics":["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],"lessons":["dictionary-test-1"]}','published')$$,'23514',NULL,'invalid article remains rejected');
 SELECT throws_ok($$SELECT save_dictionary_entry('{"word":"Bad","type":"phrase","meaning":"x","course":"A1","topics":["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],"lessons":["dictionary-test-1"],"example":"Unpaired"}','published')$$,'23514',NULL,'example requires translation');
 SELECT throws_ok($$SELECT save_dictionary_entry('{"word":" mutter ","type":"noun","article":"die","meaning":"mẹ","course":"A1","topics":["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],"lessons":["dictionary-test-1"]}','published')$$,'23505',NULL,'duplicate identity rejected');
 SET LOCAL "request.jwt.claims"='{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"user"}}';
