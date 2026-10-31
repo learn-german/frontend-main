@@ -1,0 +1,3 @@
+# Actual exercise scores on admin
+
+The ticket requires (80+80)/2 = 80 for grammar, listening and reading rather than the completion sentinel 100. Preserve lesson_progress, XP and learner progression. Add an admin/tutor-only RPC returning the average best_score across published, nonempty sets per lesson/category; unattempted sets count as zero and an untouched category has no result. Keep raw attempts protected by their existing own-read RLS. Load only the selected user with paging; show loading/error rather than stale or fabricated scores. Test all three categories, empty/draft sets, unattempted sets, authorization and unchanged completion data.
