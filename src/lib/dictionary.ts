@@ -93,3 +93,12 @@ export async function adminImportLessonVocabulary():Promise<{added:number;skippe
   }
   return {added:inserts.length,skipped,topics:newTopics};
 }
+
+export async function adminDeleteDictionaryEntry(id:string):Promise<void> {
+  const {error}=await supabase.from('dictionary_entries').delete().eq('id',id).select('id').single();
+  if(error)throw error;
+}
+export async function adminDeleteDictionaryTopic(id:string):Promise<void> {
+  const {error}=await supabase.from('dictionary_topics').delete().eq('id',id).select('id').single();
+  if(error)throw error;
+}
