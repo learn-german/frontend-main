@@ -70,6 +70,30 @@ export const AdminUsersSection: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [progressUser, setProgressUser] = useState<AdminUser | null>(null);
 
+  const [scoreDetails, setScoreDetails] = useState<{userId:string;rows:LessonProgressRow[];loading:boolean;error:string} | null>(null);
+  useEffect(() => {
+    if (!progressUser) return;
+    const userId = progressUser.id;
+    let cancelled = false;
+    setScoreDetails({userId,rows:[],loading:true,error:''});
+    void (async () => {
+      try {
+        const rows:LessonProgressRow[] = [];
+        for (let offset=0;;offset+=500) {
+          const {data,error} = await supabase.rpc('admin_exercise_score_summary',{p_user_id:userId})
+            .order('lesson_id').order('category').range(offset,offset+499);
+          if (error) throw error;
+          rows.push(...(data ?? []) as LessonProgressRow[]);
+          if (!data || data.length<500) break;
+        }
+        if (!cancelled) setScoreDetails({userId,rows,loading:false,error:''});
+      } catch {
+        if (!cancelled) setScoreDetails({userId,rows:[],loading:false,error:'Không tải được điểm bài tập. Đóng và mở lại tiến độ để thử lại.'});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [progressUser?.id]);
+
   const fetchUsers = () => {
     supabase
       .from("profiles")
@@ -764,7 +788,7 @@ export const AdminUsersSection: React.FC = () => {
         const userProgress = progressByUser[progressUser.id] ?? [];
         const completed = computeCompletedLessons(unlockedLessons, userProgress);
         const statuses = computeLessonStatuses(unlockedLessons, completed);
-        const scoresByLesson = buildScoresByLesson(userProgress);
+        const scoresByLesson = buildScoresByLesson(scoreDetails?.userId === progressUser.id ? scoreDetails.rows : []);
         const statusLabel: Record<string, string> = { completed: "Hoàn thành", current: "Đang học", locked: "Chưa học" };
         const statusColor: Record<string, string> = {
           completed: "bg-green-50 text-green-700 border-green-200",
@@ -774,6 +798,8 @@ export const AdminUsersSection: React.FC = () => {
 
         const scoreCell = (lessonId: string, category: "nguphap" | "nghe" | "doc", applicable: boolean) => {
           if (!applicable) return <span className="text-slate-300">—</span>;
+          if (scoreDetails?.userId !== progressUser.id || scoreDetails.loading) return <span className="text-slate-400">Đang tải…</span>;
+          if (scoreDetails.error) return <span className="text-slate-400">—</span>;
           const score = scoresByLesson[lessonId]?.[category];
           if (score === undefined) return <span className="text-slate-400">Chưa làm</span>;
           return (
@@ -798,6 +824,7 @@ export const AdminUsersSection: React.FC = () => {
                 </button>
               </div>
 
+              {scoreDetails?.userId === progressUser.id && scoreDetails.error && <p role="alert" className="text-sm text-red-600">{scoreDetails.error}</p>}
               {unlockedLessons.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-6">Người dùng chưa mở khóa cấp độ nào.</p>
               ) : (
