@@ -55,8 +55,7 @@ export async function adminSaveDictionaryEntry(content:DictionaryContent,status:
 export async function adminSaveDictionaryTopic(value:{vi:string;de:string;order:number},id?:string):Promise<DictionaryTopic> {
   const content={vi:value.vi.trim(),de:value.de.trim(),order:value.order};
   if(!content.vi || content.vi.length>160 || content.de.length>160 || !Number.isInteger(content.order)||content.order<1||content.order>9999)throw new Error('Kiểm tra tên và thứ tự chủ đề (1–9999).');
-  const query=id?supabase.from('dictionary_topics').update(content).eq('id',id):supabase.from('dictionary_topics').insert(content);
-  const {data,error}=await query.select('*').single();if(error)throw error;return data as DictionaryTopic;
+  const {data,error}=await supabase.rpc('save_dictionary_topic',{p_vi:content.vi,p_de:content.de,p_order:content.order,p_id:id??null}).single();if(error)throw error;return data as DictionaryTopic;
 }
 export async function adminUploadDictionaryAudio(file:File):Promise<string> {
   const validation=validateSpeakingFile(file);if(validation)throw new Error(validation);
@@ -99,6 +98,6 @@ export async function adminDeleteDictionaryEntry(id:string):Promise<void> {
   if(error)throw error;
 }
 export async function adminDeleteDictionaryTopic(id:string):Promise<void> {
-  const {error}=await supabase.from('dictionary_topics').delete().eq('id',id).select('id').single();
+  const {error}=await supabase.rpc('delete_dictionary_topic',{p_id:id});
   if(error)throw error;
 }

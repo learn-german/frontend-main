@@ -1,0 +1,3 @@
+# Dictionary topic order
+
+Use 1..N positions after create, move and delete. Moving a topic inserts it at the requested position and shifts its peers; deleting closes the gap. Keep topic IDs and associations. Use two admin-only SECURITY INVOKER RPCs with a table lock so ordering changes are atomic, retaining existing validation and deletion guards. Existing client helpers keep their signatures; topic forms reload persisted topic order after saving. Normalize existing duplicate/gapped positions deterministically by order/name/id in the migration. Test moving up/down, insert/delete, clamping, authorization and preservation of linked-topic deletion guard in rollback transactions.
