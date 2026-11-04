@@ -73,12 +73,14 @@ export function useExerciseSetAttempt(setId: string): {
 }
 
 export interface SetAttemptStatus {
+  score?: number;
+  total?: number;
   isPassed: boolean;
   attemptCount: number;
 }
 
 /** Badge trạng thái cho danh sách set — chỉ cần isPassed/attemptCount. */
-export function useExerciseSetAttempts(setIds: string[]): {
+export function useExerciseSetAttempts(setIds: string[], refreshKey = 0): {
   attemptsBySetId: Record<string, SetAttemptStatus>;
   loading: boolean;
   updateAttempt: (setId: string, status: SetAttemptStatus) => void;
@@ -98,12 +100,14 @@ export function useExerciseSetAttempts(setIds: string[]): {
 
     supabase
       .from("exercise_set_attempts")
-      .select("set_id, is_passed, attempt_count")
+      .select("set_id, is_passed, attempt_count, score, total")
       .in("set_id", setIds)
       .then(({ data }) => {
         const map: Record<string, SetAttemptStatus> = {};
         for (const row of data ?? []) {
           map[row.set_id as string] = {
+            score: row.score as number,
+            total: row.total as number,
             isPassed: row.is_passed as boolean,
             attemptCount: row.attempt_count as number,
           };
@@ -112,7 +116,7 @@ export function useExerciseSetAttempts(setIds: string[]): {
         setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, refreshKey]);
 
   // Cho phép cập nhật lạc quan ngay sau khi nộp bài — fetch ở trên chỉ chạy
   // 1 lần theo setIds nên không tự phản ánh kết quả vừa nộp trong cùng phiên.

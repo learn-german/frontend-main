@@ -9,6 +9,7 @@ async function rows<T>(table:string,columns='*',published=false):Promise<T[]> {
   for(let offset=0;;offset+=500){
     let query=supabase.from(table).select(columns).order(table==='dictionary_entry_drafts'?'entry_id':'id').range(offset,offset+499);
     if(published)query=query.eq('status','published');
+    if(table==='lessons')query=query.eq('content_scope','lesson');
     const {data,error}=await query;if(error)throw error;
     result.push(...(data??[]) as T[]);if(!data||data.length<500)return result;
   }

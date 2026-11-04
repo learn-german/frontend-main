@@ -16,6 +16,7 @@ import {
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { PracticeSetControls, type PracticeTopic } from "./AdminPracticeSection";
 import { supabase } from "../../lib/supabase";
 import { AdminModuleGroup } from "./AdminModuleGroup";
 import { showToast } from "../../lib/toast";
@@ -428,6 +429,7 @@ const ListeningSetEditor: React.FC<{
   lesson: LessonGroup;
   level: string;
   lessonCountInModule: number;
+  practice?: boolean;
   setCountInLesson: number;
   questionType: ListeningQuestionType | null;
   onBack: () => void;
@@ -443,6 +445,7 @@ const ListeningSetEditor: React.FC<{
   lesson,
   level,
   lessonCountInModule,
+  practice,
   setCountInLesson,
   questionType,
   onBack,
@@ -855,7 +858,7 @@ const ListeningSetEditor: React.FC<{
         </button>
         <span className="text-sm text-slate-500">
           <span className="font-display font-black text-slate-800">{level}</span>
-          <span className="text-slate-400"> ({lessonCountInModule} bài học) › </span>
+          <span className="text-slate-400"> ({lessonCountInModule} {practice ? "chủ đề" : "bài học"}) › </span>
           <span className="font-display font-bold text-slate-800">{lesson.lesson_title}</span>
           <span className="text-slate-400">
             {" "}
@@ -1364,7 +1367,7 @@ const SortableListeningSet: React.FC<{ id: string; children: React.ReactNode }> 
   );
 };
 
-export const AdminListeningExerciseSection: React.FC = () => {
+export const AdminListeningExerciseSection: React.FC<{ practiceTopic?: PracticeTopic }> = ({ practiceTopic }) => {
   const [lessons, setLessons] = useState<LessonGroup[]>([]);
   const [exercises, setExercises] = useState<GrammarExerciseSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1382,29 +1385,33 @@ export const AdminListeningExerciseSection: React.FC = () => {
   const [creatingSet, setCreatingSet] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
+  const { modules: courseModuleOrder, loading: courseModuleOrderLoading } = useModuleOrder();
+  const moduleOrder = practiceTopic ? [{ id: practiceTopic.id, level: practiceTopic.level, lessonIds: [practiceTopic.id] }] : courseModuleOrder;
+  const moduleOrderLoading = !practiceTopic && courseModuleOrderLoading;
   const {
     sets,
     loading: setsLoading,
     createSet,
+    updateTitle,
+    reorderSets,
     toggleSetStatus,
     updateGeneralInstruction,
     updateAudioClipId,
     updateTranscription,
     deleteSets,
     refetch,
-  } = useExerciseSets();
+  } = useExerciseSets({ practice: !!practiceTopic });
 
   const ngheSets = sets.filter((s) => s.category === "nghe");
 
   const fetchAll = async () => {
     setLoading(true);
     const [lessonsRes, setsRes] = await Promise.all([
-      supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").order("order_index"),
+      supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").eq("content_scope", practiceTopic ? "practice" : "lesson").order("order_index"),
       supabase.from("exercise_sets").select("id").eq("category", "nghe"),
     ]);
     setLessons(
-      (lessonsRes.data ?? []).map((l) => ({
+      (lessonsRes.data ?? []).filter((l) => !practiceTopic || l.id === practiceTopic.id).map((l) => ({
         lesson_id: l.id,
         lesson_title: l.title_vi,
         module_title: (l.modules as unknown as { title_vi: string } | null)?.title_vi ?? "",
@@ -1570,6 +1577,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
         lesson={selectedLesson}
         level={mod?.level ?? selectedLesson.module_title}
         lessonCountInModule={mod?.lessonIds.length ?? 0}
+        practice={!!practiceTopic}
         setCountInLesson={setCountInLesson}
         questionType={inferQuestionType(selectedSetId)}
         onBack={() => {
@@ -1599,7 +1607,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
         >
           ← Quay lại danh sách
         </button>
-        <p className="text-sm text-slate-500">Không tìm thấy bài học cho bộ bài tập này.</p>
+        <p className="text-sm text-slate-500">Không tìm thấy mục chứa bộ bài tập này.</p>
       </div>
     );
   }
@@ -1622,22 +1630,23 @@ export const AdminListeningExerciseSection: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <AdminListeningPageHeader search={search} onSearchChange={setSearch} />
+      {practiceTopic && <PracticeSetControls topic={practiceTopic} sets={sets} onRename={updateTitle} onReorder={reorderSets} />}
+      {!practiceTopic && <AdminListeningPageHeader search={search} onSearchChange={setSearch} />}
 
       <div className="space-y-3">
         {moduleSections.map((mod) => (
           <AdminModuleGroup
             key={mod.id}
             title={mod.level}
-            subtitle={`${mod.lessonGroups.length} bài học`}
-            expanded={!!moduleExpanded[mod.id]}
-            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+            subtitle={`${mod.lessonGroups.length} ${practiceTopic ? "chủ đề" : "bài học"}`}
+            expanded={moduleExpanded[mod.id] ?? !!practiceTopic}
+            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !(prev[mod.id] ?? !!practiceTopic) }))}
           >
             {mod.lessonGroups.map((lesson) => {
               const lessonSets = ngheSets
                 .filter((s) => s.lessonId === lesson.lesson_id)
                 .sort((a, b) => a.orderIndex - b.orderIndex);
-              const isExpanded = expanded[lesson.lesson_id] ?? false;
+              const isExpanded = expanded[lesson.lesson_id] ?? !!practiceTopic;
               const lessonQuestionCount = lessonSets.reduce(
                 (sum, set) => sum + questionCountForSet(set.id),
                 0,
@@ -1791,8 +1800,14 @@ export const AdminListeningExerciseSection: React.FC = () => {
                             </div>
                             <span
                               role="presentation"
+                              title={practiceTopic && set.status === "draft" ? "Mở bài tập và chọn Xuất bản sau khi kiểm tra nội dung." : undefined}
                               onClick={(e) => {
                                 e.stopPropagation();
+                                if (practiceTopic && set.status === "draft") {
+                                  setSelectedSetIds(new Set());
+                                  setSelectedSetId(set.id);
+                                  return;
+                                }
                                 toggleSetStatus(set.id, set.status);
                               }}
                             >
@@ -1813,7 +1828,7 @@ export const AdminListeningExerciseSection: React.FC = () => {
         ))}
         {moduleSections.length === 0 && (
           <div className="text-center py-10 text-slate-400 text-sm">
-            Không tìm thấy bài học nào khớp với &quot;{search}&quot;.
+            Không tìm thấy mục nào khớp với &quot;{search}&quot;.
           </div>
         )}
       </div>

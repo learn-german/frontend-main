@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, Search, Eye, GripVertical } from "lucide-react";
+import { ArrowUp, ArrowDown, Loader2, Pencil, Trash2, Plus, ChevronDown, ChevronRight, X, Search, Eye, GripVertical } from "lucide-react";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { PracticeSetControls, type PracticeTopic } from "./AdminPracticeSection";
 import { supabase } from "../../lib/supabase";
 import { Button, LessonStatusBadge } from "../../components/DesignSystem";
 import { showToast } from "../../lib/toast";
@@ -223,6 +224,7 @@ interface ExerciseGroupRowProps {
   onEdit: (ex: GrammarExercise) => void;
   onDelete: (ex: GrammarExercise) => void;
   onPreview: (ex: GrammarExercise) => void;
+  onMoveExercise?: (ex: GrammarExercise, direction: -1 | 1) => void;
   onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
   findSet: (setId: string) => ExerciseSet | undefined;
   onToggleSetStatus: (id: string, current: "draft" | "published") => void;
@@ -230,7 +232,7 @@ interface ExerciseGroupRowProps {
 
 const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
   exerciseGroup, groupIndex, isExpanded, selectedIds, disabled, onToggleExpanded,
-  onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onAddChildren,
+  onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onMoveExercise, onAddChildren,
   findSet, onToggleSetStatus,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -250,7 +252,7 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
         <button type="button" onClick={() => onToggleExpanded(exerciseGroup.key)} className="flex flex-1 items-center gap-3 text-left">
           {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
           <span className="text-sm font-black text-slate-700">
-            {`Bài ${groupIndex + 1}`}
+            {onMoveExercise ? set?.title || `Bài ${groupIndex + 1}` : `Bài ${groupIndex + 1}`}
           </span>
           <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${TYPE_COLORS[exerciseGroup.type]}`}>{TYPE_LABELS[exerciseGroup.type]}</span>
           <span className="text-xs text-slate-400">{exerciseGroup.exercises.length} câu</span>
@@ -284,7 +286,8 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
               <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => onToggleExercise(ex.id)} className="h-4 w-4 accent-orange-500" />
               <span className="w-10 shrink-0 text-xs font-bold text-slate-400">{groupIndex + 1}.{childIndex + 1}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{previewContent(ex)}</span>
-              <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className={`flex items-center justify-end gap-1 ${onMoveExercise ? "" : "opacity-0 transition-opacity group-hover:opacity-100"}`}>
+                {onMoveExercise && ([-1, 1] as const).map((direction) => <button key={direction} type="button" aria-label={direction < 0 ? "Đưa câu lên" : "Đưa câu xuống"} disabled={disabled || childIndex + direction < 0 || childIndex + direction >= exerciseGroup.exercises.length} onClick={() => onMoveExercise(ex, direction)} className="p-1.5 text-slate-400 disabled:opacity-30">{direction < 0 ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}</button>)}
                 <button onClick={() => onPreview(ex)} className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600" title="Preview"><Eye className="w-3.5 h-3.5" /></button>
                 <button onClick={() => onEdit(ex)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600" title="Chỉnh sửa"><Pencil className="w-3.5 h-3.5" /></button>
                 <button onClick={() => onDelete(ex)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600" title="Xóa"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -299,6 +302,7 @@ const SortableExerciseGroupRow: React.FC<ExerciseGroupRowProps> = ({
 
 const ExerciseGroupList: React.FC<{
   exercises: GrammarExercise[];
+  practice?: boolean;
   expandedKeys: ReadonlySet<string>;
   selectedIds: ReadonlySet<string>;
   onToggleExpanded: (key: string) => void;
@@ -307,13 +311,15 @@ const ExerciseGroupList: React.FC<{
   onEdit: (ex: GrammarExercise) => void;
   onDelete: (ex: GrammarExercise) => void;
   onPreview: (ex: GrammarExercise) => void;
+  onMoveExercise?: (ex: GrammarExercise, direction: -1 | 1) => void;
   onReorder: (activeKey: string, overKey: string) => void;
   reorderSaving: boolean;
   onAddChildren: (group: GrammarExerciseGroup<GrammarExercise>, groupIndex: number) => void;
   findSet: (setId: string) => ExerciseSet | undefined;
   onToggleSetStatus: (id: string, current: "draft" | "published") => void;
-}> = ({ exercises, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onReorder, reorderSaving, onAddChildren, findSet, onToggleSetStatus }) => {
+}> = ({ exercises, practice, expandedKeys, selectedIds, onToggleExpanded, onToggleGroup, onToggleExercise, onEdit, onDelete, onPreview, onMoveExercise, onReorder, reorderSaving, onAddChildren, findSet, onToggleSetStatus }) => {
   const exerciseGroups = groupGrammarExercises(exercises);
+  if (practice) exerciseGroups.sort((a, b) => (findSet(a.exercises[0]?.setId)?.orderIndex ?? 0) - (findSet(b.exercises[0]?.setId)?.orderIndex ?? 0));
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && active.id !== over.id) onReorder(String(active.id), String(over.id));
@@ -323,7 +329,7 @@ const ExerciseGroupList: React.FC<{
       <SortableContext items={exerciseGroups.map((group) => group.key)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {exerciseGroups.map((exerciseGroup, groupIndex) => (
-            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} onAddChildren={onAddChildren} findSet={findSet} onToggleSetStatus={onToggleSetStatus} />
+            <SortableExerciseGroupRow key={exerciseGroup.key} exerciseGroup={exerciseGroup} groupIndex={groupIndex} isExpanded={expandedKeys.has(exerciseGroup.key)} selectedIds={selectedIds} disabled={reorderSaving} onToggleExpanded={onToggleExpanded} onToggleGroup={onToggleGroup} onToggleExercise={onToggleExercise} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} onMoveExercise={onMoveExercise} onAddChildren={onAddChildren} findSet={findSet} onToggleSetStatus={onToggleSetStatus} />
           ))}
         </div>
       </SortableContext>
@@ -807,13 +813,15 @@ export const ExerciseEntryFields: React.FC<{
   );
 };
 
-export const AdminGrammarExerciseSection: React.FC = () => {
+export const AdminGrammarExerciseSection: React.FC<{ practiceTopic?: PracticeTopic }> = ({ practiceTopic }) => {
   const [groups, setGroups] = useState<LessonGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [moduleExpanded, setModuleExpanded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
-  const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
+  const { modules: courseModuleOrder, loading: courseModuleOrderLoading } = useModuleOrder();
+  const moduleOrder = practiceTopic ? [{ id: practiceTopic.id, level: practiceTopic.level, lessonIds: [practiceTopic.id] }] : courseModuleOrder;
+  const moduleOrderLoading = !practiceTopic && courseModuleOrderLoading;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>("create-group");
@@ -821,7 +829,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editLessonId, setEditLessonId] = useState<string>("");
-  const { sets: exerciseSets, createSet, toggleSetStatus, refetch: refetchExerciseSets } = useExerciseSets();
+  const { sets: exerciseSets, createSet, toggleSetStatus, updateTitle, reorderSets, refetch: refetchExerciseSets } = useExerciseSets({ practice: !!practiceTopic });
   const findSet = (setId: string) => exerciseSets.find((s) => s.id === setId);
   const [hint, setHint] = useState("");
   const [wordBankEnabled, setWordBankEnabled] = useState(false);
@@ -841,7 +849,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
   const fetchExercises = async () => {
     const [setsRes, lessonsRes] = await Promise.all([
       supabase.from("exercise_sets").select("id").eq("category", "nguphap"),
-      supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").order("order_index"),
+      supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").eq("content_scope", practiceTopic ? "practice" : "lesson").order("order_index"),
     ]);
     const setIds = (setsRes.data ?? []).map((s) => s.id as string);
     const exercisesRes = setIds.length > 0
@@ -864,7 +872,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
       });
     }
 
-    const grouped: LessonGroup[] = (lessonsRes.data ?? []).map((l) => ({
+    const grouped: LessonGroup[] = (lessonsRes.data ?? []).filter((l) => !practiceTopic || l.id === practiceTopic.id).map((l) => ({
       lesson_id: l.id,
       lesson_title: l.title_vi,
       module_title: (l.modules as unknown as { title_vi: string } | null)?.title_vi ?? "",
@@ -1147,6 +1155,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     if (!lessonGroup || reorderSavingLessonId) return;
     const previousExercises = lessonGroup.exercises;
     const exerciseGroups = groupGrammarExercises(previousExercises);
+    if (practiceTopic) exerciseGroups.sort((a, b) => (findSet(a.exercises[0]?.setId)?.orderIndex ?? 0) - (findSet(b.exercises[0]?.setId)?.orderIndex ?? 0));
     const reorderedKeys = moveGroup(exerciseGroups.map((group) => group.key), activeKey, overKey);
     const reorderedGroups = reorderedKeys
       .map((key) => exerciseGroups.find((group) => group.key === key))
@@ -1199,6 +1208,30 @@ export const AdminGrammarExerciseSection: React.FC = () => {
     showToast("Đã cập nhật thứ tự câu hỏi.", "success");
   };
 
+  const movePracticeQuestion = async (exercise: GrammarExercise, direction: -1 | 1) => {
+    const lesson = groups.find((group) => group.lesson_id === exercise.lesson_id);
+    const exerciseGroup = groupGrammarExercises(lesson?.exercises ?? []).find((group) => group.exercises.some((item) => item.id === exercise.id));
+    const siblings = exerciseGroup?.exercises ?? [];
+    const index = siblings.findIndex((item) => item.id === exercise.id);
+    const neighbor = siblings[index + direction];
+    if (!neighbor || reorderSavingLessonId) return;
+    setReorderSavingLessonId(exercise.lesson_id);
+    const results = await Promise.all([
+      supabase.from("grammar_exercises").update({ order_index: neighbor.order_index }).eq("id", exercise.id),
+      supabase.from("grammar_exercises").update({ order_index: exercise.order_index }).eq("id", neighbor.id),
+    ]);
+    const failure = results.find((result) => result.error)?.error;
+    if (failure) {
+      await Promise.all([
+        supabase.from("grammar_exercises").update({ order_index: exercise.order_index }).eq("id", exercise.id),
+        supabase.from("grammar_exercises").update({ order_index: neighbor.order_index }).eq("id", neighbor.id),
+      ]);
+      showToast("Không thể lưu thứ tự câu hỏi: " + failure.message, "warning");
+    }
+    await fetchExercises();
+    setReorderSavingLessonId(null);
+  };
+
   const filteredGroups = groups.filter(
     (g) =>
       g.lesson_title.toLowerCase().includes(search.toLowerCase()) ||
@@ -1237,13 +1270,14 @@ export const AdminGrammarExerciseSection: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      {practiceTopic && <PracticeSetControls topic={practiceTopic} sets={exerciseSets} onRename={updateTitle} onReorder={reorderSets} />}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-display font-black text-slate-900">Bài tập ngữ pháp</h1>
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Tìm bài học..."
+            placeholder={practiceTopic ? "Tìm chủ đề..." : "Tìm bài học..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
@@ -1265,17 +1299,17 @@ export const AdminGrammarExerciseSection: React.FC = () => {
           <AdminModuleGroup
             key={mod.id}
             title={mod.level}
-            subtitle={`${mod.lessonGroups.length} bài học`}
-            expanded={!!moduleExpanded[mod.id]}
-            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+            subtitle={`${mod.lessonGroups.length} ${practiceTopic ? "chủ đề" : "bài học"}`}
+            expanded={moduleExpanded[mod.id] ?? !!practiceTopic}
+            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !(prev[mod.id] ?? !!practiceTopic) }))}
           >
             {mod.lessonGroups.map((group) => (
               <div key={group.lesson_id} className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
                 <button
-                  onClick={() => setExpanded((prev) => ({ ...prev, [group.lesson_id]: !prev[group.lesson_id] }))}
+                  onClick={() => setExpanded((prev) => ({ ...prev, [group.lesson_id]: !(prev[group.lesson_id] ?? !!practiceTopic) }))}
                   className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors"
                 >
-                  {expanded[group.lesson_id] ? (
+                  {(expanded[group.lesson_id] ?? !!practiceTopic) ? (
                     <ChevronDown className="w-4 h-4 text-slate-400" />
                   ) : (
                     <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -1298,13 +1332,14 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                   </span>
                 </button>
 
-                {expanded[group.lesson_id] && (
+                {(expanded[group.lesson_id] ?? !!practiceTopic) && (
                   <div className="border-t border-slate-100 p-4 space-y-3">
                     {group.exercises.length === 0 ? (
-                      <p className="text-center py-6 text-slate-400 text-sm">Chưa có bài tập nào cho bài học này.</p>
+                      <p className="text-center py-6 text-slate-400 text-sm">Chưa có bài tập nào.</p>
                     ) : (
                       <ExerciseGroupList
                         exercises={group.exercises}
+                        practice={!!practiceTopic}
                         expandedKeys={expandedExerciseGroups}
                         selectedIds={selectedIds}
                         onToggleExpanded={(key) => setExpandedExerciseGroups((previous) => {
@@ -1318,6 +1353,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
                         onEdit={openEdit}
                         onDelete={setDeleteTarget}
                         onPreview={setPreviewTarget}
+                        onMoveExercise={practiceTopic ? movePracticeQuestion : undefined}
                         onReorder={(activeKey, overKey) => handleReorderGroups(group.lesson_id, activeKey, overKey)}
                         reorderSaving={reorderSavingLessonId === group.lesson_id}
                         onAddChildren={(exerciseGroup, groupIndex) => openAppendChildren(group.lesson_id, exerciseGroup, groupIndex + 1)}
@@ -1333,7 +1369,7 @@ export const AdminGrammarExerciseSection: React.FC = () => {
         ))}
         {filteredGroups.length === 0 && (
           <div className="text-center py-10 text-slate-400 text-sm">
-            Không tìm thấy bài học nào khớp với "{search}".
+            Không tìm thấy mục nào khớp với "{search}".
           </div>
         )}
       </div>

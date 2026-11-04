@@ -64,6 +64,27 @@ serve(async (req) => {
       });
     }
 
+    const { data: lesson, error: lessonError } = await supabase.from("lessons")
+      .select("content_scope").eq("id", set.lesson_id).maybeSingle();
+    if (lessonError || !lesson) {
+      return new Response(JSON.stringify({ error: "Lesson not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const isPractice = lesson.content_scope === "practice";
+    // Evaluate access as the learner; service_role is only used for grading/writes.
+    if (isPractice) {
+      const learner = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: allowed, error: accessError } = await learner.rpc("practice_can_read_set", { p_set_id: set_id });
+      if (accessError || allowed !== true) {
+        return new Response(JSON.stringify({ error: "Practice access denied" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const { data: groups, error: groupsErr } = await supabase
       .from("reading_question_groups")
       .select("id, question_type, statements, sub_questions, explanation")
@@ -77,6 +98,7 @@ serve(async (req) => {
     }
 
     const recordLearningActivity = async () => {
+      if (isPractice) return undefined;
       const { data: streakVal, error: streakErr } = await supabase.rpc(
         "record_learning_activity",
         { p_user_id: user.id },
@@ -92,6 +114,20 @@ serve(async (req) => {
 
     const answers = projectAnswers(groups, rawAnswers);
     const { total, correct, itemResults } = computeReadingScore(groups, answers);
+
+    if (isPractice) {
+      const { data: saved, error: saveError } = await supabase.rpc("save_practice_attempt", {
+        p_user_id: user.id, p_set_id: set_id, p_submission_id: submission_id,
+        p_answers: answers, p_correct: correct, p_total: total, p_results: { itemResults },
+      });
+      if (saveError || !saved) throw saveError ?? new Error("Failed to save practice attempt");
+      return new Response(JSON.stringify({
+        score: saved.score, total: saved.total, correct: saved.correct_count,
+        isPassed: saved.is_passed, revealed: saved.revealed, attemptCount: saved.attempt_count,
+        bestScore: saved.best_score, xpEarned: 0, lessonQuizScore: 0, ...saved.results,
+        ...(saved.revealed ? { correctAnswers: deriveCorrectAnswers(groups), explanations: deriveExplanations(groups) } : {}),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { data: existingRow } = await supabase
       .from("exercise_set_attempts")
@@ -139,7 +175,7 @@ serve(async (req) => {
         }
       : null;
 
-    const update = computeSetAttemptUpdate(existing, correct, total, XP_REWARD);
+    const update = computeSetAttemptUpdate(existing, correct, total, isPractice ? 0 : XP_REWARD);
 
     if (update.xpEarned > 0) {
       await supabase.rpc("increment_xp", { p_user_id: user.id, p_amount: update.xpEarned });
@@ -161,6 +197,7 @@ serve(async (req) => {
         classification_results: {},
         score: update.score,
         total,
+        correct_count: correct,
         best_score: update.bestScore,
         attempt_count: update.attemptCount,
         is_passed: update.isPassed,

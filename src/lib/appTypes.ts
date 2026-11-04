@@ -110,7 +110,7 @@ export interface LessonPosition {
 }
 
 export interface AppState {
-  currentPage: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard" | "packages" | "help" | "meetings" | "posts" | "dictionary";
+  currentPage: "landing" | "login" | "dashboard" | "roadmap" | "lesson-detail" | "quiz" | "leaderboard" | "packages" | "help" | "meetings" | "posts" | "dictionary" | "practice";
 }
 
 export type SupportTicketStatus = "pending" | "processing" | "resolved";

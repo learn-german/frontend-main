@@ -119,3 +119,7 @@ console.log("router.test.ts OK");
 assert.deepEqual(parseRoute('/dictionary'), {page:'dictionary'});
 assert.equal(serializeRoute({page:'dictionary'}), '/dictionary');
 assert.equal(isProtectedPage('dictionary'), true);
+
+assert.deepEqual(parseRoute('/practice'), {page:'practice'});
+assert.equal(serializeRoute({page:'practice'}), '/practice');
+assert.equal(isProtectedPage('practice'), true);

@@ -1,3 +1,4 @@
+import { usePracticeResult } from "../lib/hooks/usePracticeResult";
 import React, { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, CheckCircle2, Loader2, RotateCcw, ArrowRight } from "lucide-react";
 import { Button } from "../components/DesignSystem";
@@ -280,15 +281,16 @@ const ReadingGroupBody: React.FC<{
   </div>
 );
 
-const ReadingExerciseSetBody: React.FC<{
+export const ReadingExerciseSetBody: React.FC<{
   lesson: Lesson;
   set: { id: string; title: string };
   passageCount: number;
+  practice?: boolean;
   onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onCollapse: () => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
-}> = ({ lesson, set, passageCount, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
+}> = ({ lesson, set, passageCount, practice = false, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
   const { groups, passagesById, loading: groupsLoading, error: groupsError } = useReadingQuestionGroups(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
@@ -302,6 +304,7 @@ const ReadingExerciseSetBody: React.FC<{
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
 
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
+  usePracticeResult<ReadingResult>(set.id, practice && groups.length > 0 && !draftLoading && hydrateSource === "attempt" && !retrying && !!attempt, "reading-submit", setResult, setSubmitError);
   const sortedGroups = useMemo(
     () =>
       [...groups].sort((a, b) => {

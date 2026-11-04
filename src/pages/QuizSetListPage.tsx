@@ -1,3 +1,4 @@
+import { usePracticeResult } from "../lib/hooks/usePracticeResult";
 import React, { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, CheckCircle2, Loader2, RotateCcw, Headphones } from "lucide-react";
 import { Button } from "../components/DesignSystem";
@@ -69,7 +70,7 @@ interface QuizResult {
   transcription?: string | null;
 }
 
-const QuizExerciseSetBody: React.FC<{
+export const QuizExerciseSetBody: React.FC<{
   lesson: Lesson;
   set: {
     id: string;
@@ -79,11 +80,12 @@ const QuizExerciseSetBody: React.FC<{
     transcription?: string | null;
   };
   isListening?: boolean;
+  practice?: boolean;
   onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onCollapse: () => void;
   onAttemptUpdate: (status: { isPassed: boolean; attemptCount: number }) => void;
   onDraftSaved: (hasDraft: boolean) => void;
-}> = ({ lesson, set, isListening = false, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
+}> = ({ lesson, set, isListening = false, practice = false, onSetFinished, onCollapse, onAttemptUpdate, onDraftSaved }) => {
   const { exercises: rawExercises, loading: exercisesLoading, error: exercisesError } = useGrammarExercises(set.id);
   const { attempt, loading: attemptLoading } = useExerciseSetAttempt(set.id);
   const { draft, loading: draftLoading, saveDraft, deleteDraft } = useExerciseSetDraft(set.id);
@@ -122,6 +124,7 @@ const QuizExerciseSetBody: React.FC<{
   const submissionIdRef = React.useRef(crypto.randomUUID());
 
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
+  usePracticeResult<QuizResult>(set.id, practice && exercises.length > 0 && !draftLoading && hydrateSource === "attempt" && !retrying && !!attempt, "grammar-submit", setResult, setSubmitError);
 
   const applyAnswers = (answers: Record<string, string>) => {
     const parsed = parseAnswersIntoFormState(exercises, answers);

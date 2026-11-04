@@ -1,3 +1,4 @@
+import { AdminPracticeSection } from "./AdminPracticeSection";
 import { AdminDictionarySection } from "./AdminDictionarySection";
 import { AdminSpeakingSection } from "./AdminSpeakingSection";
 import React, { useEffect, useMemo } from "react";
@@ -43,6 +44,7 @@ const NAV_META: Record<AdminSection, { label: string; Icon: React.FC<{ className
   dashboard: { label: "Tổng quan", Icon: LayoutDashboard },
   users: { label: "Người dùng", Icon: Users },
   content: { label: "Nội dung", Icon: BookOpen },
+  practice: { label: "Luyện tập", Icon: HelpCircle },
   dictionary: { label: "Từ điển", Icon: BookOpen },
   quiz: { label: "Bài tập", Icon: HelpCircle },
   writing: { label: "Chấm bài viết", Icon: PenLine },
@@ -114,6 +116,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ userRole, onNavigateHome, 
         {section === "dashboard" && <AdminDashboardSection />}
         {section === "users" && !isTutor && <AdminUsersSection />}
         {section === "content" && !isTutor && <AdminContentSection />}
+        {section === "practice" && !isTutor && <AdminPracticeSection />}
         {section === "dictionary" && !isTutor && <AdminDictionarySection />}
         {section === "quiz" && <AdminQuizSection />}
         {section === "writing" && <AdminWritingSection />}

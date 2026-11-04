@@ -40,3 +40,6 @@ test("tutor nav hides users and content", () => {
   assert.ok(sections.includes("quiz"));
   assert.ok(sections.includes("dashboard"));
 });
+
+assert.equal(canAccessAdminSection('tutor', 'practice'), false);
+assert.equal(canAccessAdminSection('admin', 'practice'), true);
