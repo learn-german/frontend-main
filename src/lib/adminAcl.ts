@@ -1,10 +1,11 @@
-export type AdminSection = "dashboard" | "users" | "content" | "dictionary" | "quiz" | "writing" | "speaking" | "support" | "meetings" | "posts";
+export type AdminSection = "dashboard" | "users" | "content" | "practice" | "dictionary" | "quiz" | "writing" | "speaking" | "support" | "meetings" | "posts";
 
 export const ALL_ADMIN_SECTIONS: AdminSection[] = [
   "dashboard",
   "users",
   "content",
   "dictionary",
+  "practice",
   "quiz",
   "writing",
   "speaking",
@@ -13,7 +14,7 @@ export const ALL_ADMIN_SECTIONS: AdminSection[] = [
   "posts",
 ];
 
-export const TUTOR_BLOCKED_ADMIN_SECTIONS: AdminSection[] = ["users", "content", "dictionary"];
+export const TUTOR_BLOCKED_ADMIN_SECTIONS: AdminSection[] = ["users", "content", "dictionary", "practice"];
 
 export function isAdminPortalRole(role: string): boolean {
   return role === "admin" || role === "tutor";

@@ -47,6 +47,14 @@ serve(async (req) => {
       });
     }
 
+    const { data: lesson, error: lessonError } = await supabase.from("lessons")
+      .select("content_scope").eq("id", lessonId).maybeSingle();
+    if (lessonError || !lesson || lesson.content_scope === "practice") {
+      return new Response(JSON.stringify({ error: "Course lesson required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Idempotency check: already completed? Pinned to 'nguphap' — this is
     // the "mark lesson complete" flow, unaffected by optional Nghe/Đọc
     // exercise attempts, which live in separate category rows.

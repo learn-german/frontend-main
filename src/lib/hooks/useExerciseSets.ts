@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { showToast } from "../toast";
 import { supabase } from "../supabase";
 import { countSetsForCategory, nextDefaultSetTitle, planSetRenumber } from "../exerciseSetTitle";
 
@@ -48,7 +49,7 @@ const fromRow = (row: ExerciseSetRow): ExerciseSet => ({
 // nhau), nên cần tra cứu set theo id cho bất kỳ lesson nào đang render,
 // giống cách fetchExercises() đã tải toàn bộ grammar_exercises không lọc
 // theo lesson.
-export function useExerciseSets() {
+export function useExerciseSets({ practice = false }: { practice?: boolean } = {}) {
   const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,6 +75,7 @@ export function useExerciseSets() {
     const next = current === "draft" ? "published" : "draft";
     const { error } = await supabase.from("exercise_sets").update({ status: next }).eq("id", id);
     if (!error) refetch();
+    else if (practice) showToast(error.message, "warning");
     return { error: error?.message ?? null };
   };
 
@@ -192,7 +194,7 @@ export function useExerciseSets() {
       plan.map((row) =>
         supabase
           .from("exercise_sets")
-          .update({ order_index: row.order_index, title: row.title })
+          .update(practice ? { order_index: row.order_index } : { order_index: row.order_index, title: row.title })
           .eq("id", row.id),
       ),
     );
@@ -209,7 +211,22 @@ export function useExerciseSets() {
     return { error: null, deletedClipIds };
   };
 
+  const updateTitle = async (id: string, title: string): Promise<{ error: string | null }> => {
+    const clean = title.trim();
+    if (!clean || clean.length > 200) return { error: "Tên bài tập phải có từ 1–200 ký tự." };
+    const { error } = await supabase.from("exercise_sets").update({ title: clean }).eq("id", id);
+    if (!error) refetch();
+    return { error: error?.message ?? null };
+  };
+  const reorderSets = async (lessonId: string, _category: string, ids: string[]): Promise<{ error: string | null }> => {
+    const { error } = await supabase.rpc("reorder_practice_sets", { p_topic_id: lessonId, p_ids: ids });
+    if (!error) refetch();
+    return { error: error?.message ?? null };
+  };
+
   return {
+    updateTitle,
+    reorderSets,
     sets,
     loading,
     refetch,

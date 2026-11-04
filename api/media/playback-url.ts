@@ -73,6 +73,17 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     return;
   }
 
+  // Check the parent before signing any media, including inline reading images.
+  const parentRes = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/lessons?id=eq.${encodeURIComponent(lessonId)}&select=id,content_scope`,
+    { headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY! } },
+  );
+  const parentRows = parentRes.ok ? await parentRes.json() as { id: string; content_scope: string }[] : [];
+  if (!parentRows.length) {
+    res.status(404).json({ error: "Lesson not found" });
+    return;
+  }
+
   let objectKey: string | undefined;
 
   if (type === "image") {
@@ -83,6 +94,16 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
     if (!rawKey || !validSuffix) {
       res.status(400).json({ error: "Invalid objectKey" });
       return;
+    }
+    if (parentRows[0].content_scope === "practice") {
+      const accessRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/practice_can_read_image`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY!, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_topic_id: lessonId, p_key: rawKey }),
+      });
+      if (!accessRes.ok || await accessRes.json() !== true) {
+        res.status(404).json({ error: "Image not found" });
+        return;
+      }
     }
     objectKey = rawKey;
   } else if (type === "audio" && clipId) {

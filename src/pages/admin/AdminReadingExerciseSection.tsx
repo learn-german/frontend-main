@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, Plus, Loader2, Trash2, Pencil, X, Eye, FileText, Search } from "lucide-react";
+import { PracticeSetControls, type PracticeTopic } from "./AdminPracticeSection";
 import { supabase } from "../../lib/supabase";
 import { AdminModuleGroup } from "./AdminModuleGroup";
 import { showToast } from "../../lib/toast";
@@ -260,7 +261,7 @@ const AdminReadingPageHeader: React.FC<{
   </div>
 );
 
-export const AdminReadingExerciseSection: React.FC = () => {
+export const AdminReadingExerciseSection: React.FC<{ practiceTopic?: PracticeTopic }> = ({ practiceTopic }) => {
   const [lessons, setLessons] = useState<LessonGroup[]>([]);
   const [passages, setPassages] = useState<ReadingPassage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -270,8 +271,10 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const [savingPassageId, setSavingPassageId] = useState<string | null>(null);
   const [savingSharedTitleSetId, setSavingSharedTitleSetId] = useState<string | null>(null);
   const [sharedTitleDraftBySet, setSharedTitleDraftBySet] = useState<Record<string, string>>({});
-  const { modules: moduleOrder, loading: moduleOrderLoading } = useModuleOrder();
-  const { sets, refetch: refetchSets, toggleSetStatus, createReadingSet } = useExerciseSets();
+  const { modules: courseModuleOrder, loading: courseModuleOrderLoading } = useModuleOrder();
+  const moduleOrder = practiceTopic ? [{ id: practiceTopic.id, level: practiceTopic.level, lessonIds: [practiceTopic.id] }] : courseModuleOrder;
+  const moduleOrderLoading = !practiceTopic && courseModuleOrderLoading;
+  const { sets, refetch: refetchSets, toggleSetStatus, createReadingSet, updateTitle, reorderSets } = useExerciseSets({ practice: !!practiceTopic });
 
   const [groups, setGroups] = useState<ReadingQuestionGroupRowData[]>([]);
   const [previewTarget, setPreviewTarget] = useState<string | null>(null);
@@ -297,12 +300,12 @@ export const AdminReadingExerciseSection: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [lessonsRes, passagesRes, groupsRes] = await Promise.all([
-      supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").order("order_index"),
+      supabase.from("lessons").select("id, title_vi, module_id, modules(title_vi)").eq("content_scope", practiceTopic ? "practice" : "lesson").order("order_index"),
       supabase.from("reading_passages").select("*").order("set_id").order("order_index"),
       supabase.from("reading_question_groups").select("*").order("set_id").order("order_index"),
     ]);
     setLessons(
-      (lessonsRes.data ?? []).map((l) => ({
+      (lessonsRes.data ?? []).filter((l) => !practiceTopic || l.id === practiceTopic.id).map((l) => ({
         lesson_id: l.id,
         lesson_title: l.title_vi,
         module_title: (l.modules as unknown as { title_vi: string } | null)?.title_vi ?? "",
@@ -615,20 +618,21 @@ export const AdminReadingExerciseSection: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <AdminReadingPageHeader search={search} onSearchChange={setSearch} />
+      {practiceTopic && <PracticeSetControls topic={practiceTopic} sets={sets} onRename={updateTitle} onReorder={reorderSets} />}
+      {!practiceTopic && <AdminReadingPageHeader search={search} onSearchChange={setSearch} />}
 
       <div className="space-y-3">
         {moduleSections.map((mod) => (
           <AdminModuleGroup
             key={mod.id}
             title={mod.level}
-            subtitle={`${mod.lessonGroups.length} bài học`}
-            expanded={!!moduleExpanded[mod.id]}
-            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+            subtitle={`${mod.lessonGroups.length} ${practiceTopic ? "chủ đề" : "bài học"}`}
+            expanded={moduleExpanded[mod.id] ?? !!practiceTopic}
+            onToggle={() => setModuleExpanded((prev) => ({ ...prev, [mod.id]: !(prev[mod.id] ?? !!practiceTopic) }))}
           >
       {mod.lessonGroups.map((lesson) => {
         const lessonSets = docSets.filter((s) => s.lessonId === lesson.lesson_id);
-        const isExpanded = expanded[lesson.lesson_id] ?? false;
+        const isExpanded = expanded[lesson.lesson_id] ?? !!practiceTopic;
         return (
           <div key={lesson.lesson_id} className="rounded-2xl border border-slate-200 bg-white">
             <button
@@ -910,7 +914,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
         ))}
         {moduleSections.length === 0 && (
           <div className="text-center py-10 text-slate-400 text-sm">
-            Không tìm thấy bài học nào khớp với "{search}".
+            Không tìm thấy mục nào khớp với "{search}".
           </div>
         )}
       </div>
@@ -1185,7 +1189,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl p-5 max-w-[640px] w-full my-8 space-y-4">
             <div className="flex flex-col items-center text-center gap-1 relative pr-6">
-              <h3 className="text-base font-display font-black text-slate-800">Chọn loại bài học</h3>
+              <h3 className="text-base font-display font-black text-slate-800">Chọn cấu trúc bài đọc</h3>
               <p className="text-xs text-slate-500">Chọn cấu trúc phù hợp với nội dung bạn muốn tạo.</p>
               <button
                 onClick={() => setLessonTypeModal(null)}
@@ -1208,7 +1212,7 @@ export const AdminReadingExerciseSection: React.FC = () => {
                   </span>
                 )}
                 <span className="text-sm font-display font-black text-slate-800">Nhiều văn bản</span>
-                <span className="text-xs text-slate-500">Một bài học có nhiều văn bản. Mỗi văn bản có 1 bộ đáp án riêng.</span>
+                <span className="text-xs text-slate-500">Một bài đọc có nhiều văn bản. Mỗi văn bản có 1 bộ đáp án riêng.</span>
                 <span className="text-[11px] text-slate-400 italic">Ví dụ: Văn bản 1, Văn bản 2, Văn bản 3</span>
               </button>
               <button

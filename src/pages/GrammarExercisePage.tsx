@@ -1,3 +1,4 @@
+import { usePracticeResult } from "../lib/hooks/usePracticeResult";
 import React, { useState, useMemo } from "react";
 import { Loader2, RotateCcw, ChevronDown, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/DesignSystem";
@@ -26,6 +27,7 @@ import { useExerciseSetDraft } from "../lib/hooks/useExerciseSetDraft";
 import { pickHydrateSource } from "../lib/exerciseSetDraftLogic";
 
 interface GrammarExerciseSetBodyProps {
+  practice?: boolean;
   set: { id: string; title: string };
   onSetFinished: (lessonQuizScore: number, xpEarned: number, newStreak?: number) => void;
   onCollapse: () => void;
@@ -82,6 +84,7 @@ export const GRAMMAR_TYPE_INSTRUCTIONS: Record<GrammarExercise["type"], string> 
 
 export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   set,
+  practice = false,
   onSetFinished,
   onCollapse,
   onAttemptUpdate,
@@ -123,6 +126,7 @@ export const GrammarExerciseSetBody: React.FC<GrammarExerciseSetBodyProps> = ({
   // Draft luôn thắng nếu tồn tại — học viên đang làm dở quan trọng hơn kết
   // quả đã nộp trước đó (xem exerciseSetDraftLogic.ts).
   const hydrateSource = pickHydrateSource(draft !== null, attempt !== null);
+  usePracticeResult<GrammarResult>(set.id, practice && exercises.length > 0 && !draftLoading && hydrateSource === "attempt" && !retrying && !!attempt, "grammar-submit", setResult, setSubmitError);
 
   React.useEffect(() => {
     // draftLoading: chờ draft load xong trước khi tin hydrateSource === "attempt"
