@@ -2,13 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeCompletedLessons, computeLessonStatuses, type LessonQuizFlags, type LessonProgressRow } from "./completion.ts";
 import { computeDailyProgressReport, defaultPlannedCompletionDate, earliestStudyDate, resolveEnrollmentStart } from "./report.ts";
+import { computeStudyWorkload, LEVEL_ORDER } from "./workload.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const LEVEL_ORDER = ["A1", "A2", "B1", "B2"];
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -119,7 +118,13 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
   const unlockedLevels: string[] = profile?.unlocked_levels ?? [];
 
   if (unlockedLevels.length === 0) {
-    return { generation_status: "empty" as const };
+    return {
+      generation_status: "empty" as const,
+      study_workload: computeStudyWorkload({
+        unlockedLevels, lessonsByLevel: new Map(), progress: [],
+        subscriptionEndDate: profile.subscription_end_date ?? null, reportDate,
+      }),
+    };
   }
 
   const { data: modulesRes, error: modulesError } = await supabase
@@ -166,6 +171,11 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     supabase, "lesson_progress", "lesson_id, category, quiz_score, completed_at", userId,
   ) as LessonProgressRow[];
 
+  const studyWorkload = computeStudyWorkload({
+    unlockedLevels, lessonsByLevel, progress,
+    subscriptionEndDate: profile.subscription_end_date ?? null, reportDate,
+  });
+
   // Level hiện tại: level đầu tiên (A1→A2→B1→B2) trong unlocked_levels có ít
   // nhất 1 lesson "current"; nếu mọi level unlock đều xong 100%, dùng level
   // cuối cùng trong unlocked_levels.
@@ -185,7 +195,7 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
   }
 
   if (!chosenLevel || chosenLessons.length === 0) {
-    return { generation_status: "empty" as const };
+    return { generation_status: "empty" as const, study_workload: studyWorkload };
   }
 
   const completedIds = computeCompletedLessons(chosenLessons, progress);
@@ -236,7 +246,7 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
   if (error) {
     return { generation_status: "error" as const, error_message: error.message };
   }
-  return upserted;
+  return { ...upserted, study_workload: studyWorkload };
 }
 
 async function handleBatch(supabase: SupabaseClient) {
