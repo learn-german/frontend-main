@@ -4,8 +4,9 @@ import test from 'node:test';
 import ts from 'typescript';
 import * as completion from './completion.ts';
 import * as report from './report.ts';
+import * as workload from './workload.ts';
 
-function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true, grammar = true } = {}) {
+function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true, grammar = true, fixtureOverrides = {} as Record<string, unknown> } = {}) {
   const writes: Record<string, unknown>[] = [];
   const pages: string[] = [];
   const fixtures: Record<string, unknown> = {
@@ -15,14 +16,16 @@ function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true
     reading_question_groups_public: reading ? [{ lesson_id: 'lesson' }] : [],
     lesson_progress: [],
     level_enrollments: { started_at: '2026-01-01', planned_completion_date: '2026-04-01' },
+    ...fixtureOverrides,
   };
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: 'caller', app_metadata: { role } } }, error: null }) },
     from(table: string) {
+      let columns = '';
       let offset = 0, end = Infinity, written: Record<string, unknown> | undefined;
-      const result = () => ({ data: written ?? fixtures[table], error: fail === table ? { message: 'source unavailable' } : null });
+      const result = () => ({ data: written ?? (table === 'profiles' && columns === 'id' ? [{ id: 'learner' }] : fixtures[table]), error: fail === table ? { message: 'source unavailable' } : null });
       const builder = {
-        select() { return builder; }, eq() { return builder; }, in() { return builder; },
+        select(selected = '') { columns = selected; return builder; }, eq() { return builder; }, in() { return builder; }, gte() { return builder; },
         order(column: string) {
           if (table === 'lesson_progress') assert.ok(['lesson_id', 'category'].includes(column));
           return builder;
@@ -38,12 +41,12 @@ function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true
   let handler!: (req: Request) => Promise<Response>;
   const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
   const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  const imports = { ...completion, ...report };
+  const imports = { ...completion, ...report, ...workload };
   new Function('serve', 'createClient', 'Deno', ...Object.keys(imports), compiled)(
     (fn: typeof handler) => { handler = fn; }, () => client, { env: { get: () => 'test' } }, ...Object.values(imports),
   );
   const request = () => handler(new Request('https://test/report', { method: 'POST', headers: { Authorization: 'Bearer user' }, body: JSON.stringify({ user_id: 'learner' }) }));
-  return { request, writes, pages };
+  return { request, handler, writes, pages };
 }
 
 test('admin POST generates report for requested learner and requires reading pass', async () => {
@@ -80,4 +83,70 @@ for (const fail of ['profiles', 'modules', 'grammar_exercises_public', 'reading_
 test('lesson with no authored questions retains existing completion rule', async () => {
   const { request } = loadHandler({ reading: false, grammar: false });
   assert.equal((await (await request()).json()).completed_required_lessons, 1);
+});
+
+
+test('workload aggregates unlocked levels in response without changing persisted current-level row', async () => {
+  const { request, writes } = loadHandler({ fixtureOverrides: {
+    profiles: { subscription_end_date: '2099-11-22', unlocked_levels: ['A2', 'A1', 'A2'], role: 'user' },
+    modules: [
+      { level: 'A1', lessons: [{ id: 'a1-done', order_index: 1, status: 'published' }, { id: 'a1-next', order_index: 2, status: 'published' }] },
+      { level: 'A2', lessons: [{ id: 'a2-next', order_index: 1, status: 'published' }, { id: 'a2-draft', order_index: 2, status: 'draft' }] },
+    ],
+    grammar_exercises_public: ['a1-done', 'a1-next', 'a2-next'].map((lesson_id) => ({ lesson_id, category: 'nguphap' })),
+    reading_question_groups_public: [],
+    lesson_progress: [{ lesson_id: 'a1-done', category: 'nguphap', quiz_score: 80 }],
+  } });
+  const result = await (await request()).json();
+  assert.equal(result.level_id, 'A1');
+  assert.equal(result.total_required_lessons, 2);
+  assert.equal(result.completed_required_lessons, 1);
+  assert.deepEqual(result.study_workload.levels, ['A1', 'A2']);
+  assert.equal(result.study_workload.total_lessons, 3);
+  assert.equal(result.study_workload.completed_lessons, 1);
+  assert.equal(result.study_workload.remaining_lessons, 2);
+  assert.equal('study_workload' in writes[0], false);
+});
+
+test('missing unlocked A2 content remains unknown even if known A1 is complete', async () => {
+  const { request } = loadHandler({ reading: false, grammar: false, fixtureOverrides: {
+    profiles: { subscription_end_date: '2099-11-22', unlocked_levels: ['A1', 'A2'], role: 'user' },
+  } });
+  const result = await (await request()).json();
+  assert.deepEqual(result.study_workload.missing_levels, ['A2']);
+  assert.equal(result.study_workload.remaining_lessons, 0);
+  assert.equal(result.study_workload.daily_lesson_target, null);
+});
+
+test('no published lessons returns empty report with missing workload and no persistence', async () => {
+  const { request, writes } = loadHandler({ fixtureOverrides: { modules: [] } });
+  const result = await (await request()).json();
+  assert.equal(result.generation_status, 'empty');
+  assert.deepEqual(result.study_workload.missing_levels, ['A1']);
+  assert.equal(result.study_workload.daily_lesson_target, null);
+  assert.equal(writes.length, 0);
+});
+
+test('own GET still uses caller id and includes response-only workload', async () => {
+  const { handler, writes } = loadHandler({ role: 'user' });
+  const response = await handler(new Request('https://test/report?user_id=other', { headers: { Authorization: 'Bearer user' } }));
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.user_id, 'caller');
+  assert.deepEqual(result.study_workload.levels, ['A1']);
+  assert.equal('study_workload' in writes[0], false);
+});
+
+test('batch still requires service-role credential and returns processed count only', async () => {
+  const { handler, writes } = loadHandler();
+  const batch = (token: string) => handler(new Request('https://test/report', {
+    method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ mode: 'batch' }),
+  }));
+  assert.equal((await batch('user')).status, 401);
+  assert.equal(writes.length, 0);
+  const response = await batch('test');
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { processed: 1 });
+  assert.equal(writes.length, 1);
+  assert.equal('study_workload' in writes[0], false);
 });

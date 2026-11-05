@@ -4,13 +4,7 @@ import { Button } from '../../components/DesignSystem';
 import { supabase } from '../../lib/supabase';
 import { summarizeLearningPace, type LearningPaceReport } from '../../lib/adminLearningPace';
 
-const BADGES = {
-  ahead: { label:'Nhanh hơn kế hoạch', className:'bg-blue-50 text-blue-700' },
-  on_track: { label:'Đúng tiến độ', className:'bg-green-50 text-green-700' },
-  attention: { label:'Cần chú ý', className:'bg-amber-50 text-amber-700' },
-  behind: { label:'Chậm tiến độ', className:'bg-red-50 text-red-700' },
-};
-const percent = (value:number) => value.toLocaleString('vi-VN',{maximumFractionDigits:1});
+const formatRate = (value:number) => value.toLocaleString('vi-VN',{maximumFractionDigits:2});
 
 export const AdminLearningPace: React.FC<{userId:string}> = ({userId}) => {
   const [report,setReport] = useState<LearningPaceReport|null>(null);
@@ -30,14 +24,13 @@ export const AdminLearningPace: React.FC<{userId:string}> = ({userId}) => {
     return () => { active = false; };
   },[userId,reload]);
   const summary = summarizeLearningPace(report);
-  const badge = summary ? BADGES[summary.status] : null;
-  return <section aria-label="Tốc độ học theo kế hoạch" aria-busy={loading} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-bold text-slate-800">Tốc độ học theo kế hoạch</h4><Button size="sm" variant="ghost" disabled={loading} onClick={() => setReload(value => value+1)}>Tải lại</Button></div>
-    {loading ? <p role="status" className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={15} className="animate-spin" />Đang tính tiến độ…</p> : error ? <p role="alert" className="text-sm text-red-600">{error}</p> : summary && badge ? <>
-      <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span><span className="text-xs text-slate-500">{report?.level_id} · Ngày báo cáo: {report?.report_date ? new Date(report.report_date).toLocaleDateString('vi-VN') : '—'}</span></div>
-      <dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-slate-500">Tiến độ thực tế</dt><dd className="font-bold text-slate-800">{percent(summary.actual)}%</dd></div><div><dt className="text-slate-500">Tiến độ kỳ vọng</dt><dd className="font-bold text-slate-800">{percent(summary.expected)}%</dd></div></dl>
-      <p className="text-xs text-slate-600">{report?.completed_required_lessons}/{report?.total_required_lessons} bài hoàn thành ở level hiện tại. {summary.difference === 0 ? 'Đang bằng kế hoạch.' : `${summary.difference > 0 ? 'Nhanh' : 'Chậm'} hơn kế hoạch ${Math.abs(summary.difference) < 0.1 ? '<0,1' : percent(Math.abs(summary.difference))} điểm phần trăm.`}</p>
-      <p className="text-[11px] text-slate-500">Dùng cùng mốc bắt đầu, ngày hoàn tất dự kiến và cách tính với Dashboard học viên. Chậm dưới 5 điểm: đúng tiến độ; từ 5 đến dưới 10 điểm: cần chú ý; từ 10 điểm: chậm tiến độ.</p>
-    </> : <p className="text-sm text-slate-500">Chưa đủ dữ liệu để đánh giá nhanh/chậm. Cần cấp độ đã mở và kế hoạch học hợp lệ.</p>}
+  return <section aria-label="Khối lượng bài học theo hạn gói" aria-busy={loading} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-bold text-slate-800">Khối lượng cần học</h4><Button size="sm" variant="ghost" disabled={loading} onClick={() => setReload(value => value+1)}>Tải lại</Button></div>
+    {loading ? <p role="status" className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={15} className="animate-spin" />Đang tính số bài cần học…</p> : error ? <p role="alert" className="text-sm text-red-600">{error}</p> : summary ? <>
+      <p className="text-xs text-slate-500">{summary.levels.join(' + ')} · Ngày báo cáo: {report?.report_date ? new Date(report.report_date).toLocaleDateString('vi-VN') : '—'}</p>
+      <dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-slate-500">Đã hoàn thành</dt><dd className="font-bold text-slate-800">{summary.completed_lessons}/{summary.total_lessons} bài</dd></div><div><dt className="text-slate-500">Bài còn lại{summary.missing_levels.length ? ' (đã có nội dung)' : ''}</dt><dd className="font-bold text-slate-800">{summary.remaining_lessons} bài</dd></div><div><dt className="text-slate-500">Gói học còn lại</dt><dd className="font-bold text-slate-800">{summary.remaining_days === null ? 'Chưa có hạn gói' : `${summary.remaining_days} ngày`}</dd></div><div><dt className="text-slate-500">Ngày hết hạn</dt><dd className="font-bold text-slate-800">{summary.deadline_date ? new Date(summary.deadline_date).toLocaleDateString('vi-VN') : '—'}</dd></div></dl>
+      {summary.state === 'missing_levels' ? <p role="status" className="text-sm text-amber-700">Chưa có bài học đã xuất bản cho {summary.missing_levels.join(', ')}. Chưa đủ dữ liệu để tính mục tiêu của toàn khóa.</p> : summary.state === 'complete' ? <p className="text-sm font-semibold text-green-700">Đã hoàn thành toàn bộ bài học ở các level đã mở.</p> : summary.state === 'expired' ? <p className="text-sm text-red-600">Gói đã hết hạn, còn {summary.remaining_lessons} bài chưa hoàn thành. Chưa tính mục tiêu bài/ngày khi chưa có thời hạn học mới.</p> : summary.state === 'no_deadline' ? <p className="text-sm text-slate-500">Chưa có ngày hết hạn gói để tính số bài cần học mỗi ngày.</p> : <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800"><p>{summary.remaining_lessons} bài ÷ {summary.remaining_days} ngày ≈ <b>{formatRate(summary.lessons_per_day!)} bài/ngày</b>.</p><p className="mt-1">Mục tiêu làm tròn lên: <b>{summary.daily_lesson_target} bài/ngày</b> để hoàn thành trước khi hết hạn gói.</p></div>}
+      <p className="text-[11px] text-slate-500">Cộng bài học đã xuất bản của tất cả level đã mở, trừ bài đã hoàn thành, rồi chia số ngày gói học còn lại.</p>
+    </> : <p className="text-sm text-slate-500">Chưa đủ dữ liệu để tính khối lượng bài học của các level đã mở.</p>}
   </section>;
 };
