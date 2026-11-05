@@ -1,3 +1,4 @@
+import { AdminLearningPace } from "./AdminLearningPace";
 import React, { useState, useEffect, useMemo } from "react";
 import { Loader2, Search, Plus, Pencil, Trash2, X, ShieldCheck } from "lucide-react";
 import { supabase } from "../../lib/supabase";
@@ -823,6 +824,8 @@ export const AdminUsersSection: React.FC = () => {
                   <X className="w-4 h-4" />
                 </button>
               </div>
+
+              <AdminLearningPace key={progressUser.id} userId={progressUser.id} />
 
               {scoreDetails?.userId === progressUser.id && scoreDetails.error && <p role="alert" className="text-sm text-red-600">{scoreDetails.error}</p>}
               {unlockedLessons.length === 0 ? (
