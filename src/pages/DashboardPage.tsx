@@ -485,7 +485,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
               <p className="text-[11px] font-sans text-slate-500 leading-relaxed text-center">
                 {stats.xp >= 5000 ? (
-                  <>Bạn đã đạt <b className="text-slate-700">5000 XP</b>, nhận danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!</>
+                  <>🎉 Chúc mừng bạn đã chinh phục mốc <b className="text-slate-700">5.000 XP</b>! Phần thưởng <b className="text-slate-700">300.000đ</b> chính là lời tri ân dành cho sự kiên trì và nỗ lực học tiếng Đức của bạn. Hãy liên hệ tới Admin để nhận quà ^^</>
                 ) : (
                   <>Tích đủ <b className="text-slate-700">5000 XP</b> để nhận danh hiệu <b className="text-slate-700">"Bảo bối nói tiếng Đức"</b> và mở khóa biểu tượng lửa độc quyền!</>
                 )}
