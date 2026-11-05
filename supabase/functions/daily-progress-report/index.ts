@@ -33,12 +33,14 @@ async function ensureLevelEnrollment(
   studyStartedAt: string,
   paidStartedAt: string | null,
 ): Promise<LevelEnrollmentDates | null> {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("level_enrollments")
     .select("started_at, planned_completion_date")
     .eq("user_id", userId)
     .eq("level", level)
     .maybeSingle();
+
+  if (existingError) throw existingError;
 
   const nextStart = resolveEnrollmentStart(existing?.started_at ?? null, studyStartedAt, paidStartedAt);
 
@@ -51,31 +53,49 @@ async function ensureLevelEnrollment(
         : existing.planned_completion_date > nextStart
           ? existing.planned_completion_date
           : defaultPlannedCompletionDate(nextStart, level);
-    const { data: repaired } = await supabase
+    const { data: repaired, error: repairError } = await supabase
       .from("level_enrollments")
       .update({ started_at: nextStart, planned_completion_date: plannedCompletionDate })
       .eq("user_id", userId)
       .eq("level", level)
       .select("started_at, planned_completion_date")
       .maybeSingle();
+    if (repairError) throw repairError;
     return repaired ?? { started_at: nextStart, planned_completion_date: plannedCompletionDate };
   }
 
   const startedAt = nextStart ?? studyStartedAt;
   const plannedCompletionDate = defaultPlannedCompletionDate(startedAt, level);
-  await supabase.from("level_enrollments").upsert(
+  const { error: createError } = await supabase.from("level_enrollments").upsert(
     { user_id: userId, level, started_at: startedAt, planned_completion_date: plannedCompletionDate },
     { onConflict: "user_id,level", ignoreDuplicates: true },
   );
 
-  const { data: created } = await supabase
+  if (createError) throw createError;
+
+  const { data: created, error: createdError } = await supabase
     .from("level_enrollments")
     .select("started_at, planned_completion_date")
     .eq("user_id", userId)
     .eq("level", level)
     .maybeSingle();
 
+  if (createdError) throw createdError;
   return created ?? { started_at: startedAt, planned_completion_date: plannedCompletionDate };
+}
+
+// Continue to an empty page: the server may cap results below the requested range.
+async function readAllRows(supabase: SupabaseClient, table: string, columns: string, userId?: string) {
+  const rows = [];
+  for (;;) {
+    let query = supabase.from(table).select(columns).range(rows.length, rows.length + 999);
+    query = table === "lesson_progress" ? query.order("lesson_id").order("category") : query.order("id");
+    if (userId) query = query.eq("user_id", userId);
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data?.length) return rows;
+    rows.push(...data);
+  }
 }
 
 interface LessonRow extends LessonQuizFlags {
@@ -88,11 +108,13 @@ interface LessonRow extends LessonQuizFlags {
  * Gói hết hạn / chưa có subscription_end_date vẫn tính tiến độ kỳ vọng;
  * package_remaining_days = null → UI hiện "—". */
 async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, reportDate: string) {
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("subscription_end_date, unlocked_levels, paid_started_at, role")
     .eq("id", userId)
     .single();
+
+  if (profileError) throw profileError;
 
   const unlockedLevels: string[] = profile?.unlocked_levels ?? [];
 
@@ -100,18 +122,27 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     return { generation_status: "empty" as const };
   }
 
-  const { data: modulesRes } = await supabase
+  const { data: modulesRes, error: modulesError } = await supabase
     .from("modules")
     .select("level, order_index, lessons(id, order_index, status)")
     .in("level", unlockedLevels)
     .order("order_index")
     .order("order_index", { referencedTable: "lessons" });
 
-  const { data: exercisesRes } = await supabase.from("grammar_exercises_public").select("lesson_id, category");
+  if (modulesError) throw modulesError;
+
+  const exercisesRes = await readAllRows(supabase, "grammar_exercises_public", "lesson_id, category");
+  const readingRes = await readAllRows(supabase, "reading_question_groups_public", "lesson_id");
   const quizCategoriesByLesson = new Map<string, Set<string>>();
   for (const row of (exercisesRes ?? []) as { lesson_id: string; category: string }[]) {
     const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
     categories.add(row.category);
+    quizCategoriesByLesson.set(row.lesson_id, categories);
+  }
+
+  for (const row of readingRes as { lesson_id: string }[]) {
+    const categories = quizCategoriesByLesson.get(row.lesson_id) ?? new Set<string>();
+    categories.add("doc");
     quizCategoriesByLesson.set(row.lesson_id, categories);
   }
 
@@ -131,11 +162,9 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     lessonsByLevel.set(m.level as string, [...existing, ...lessons]);
   }
 
-  const { data: progressRows } = await supabase
-    .from("lesson_progress")
-    .select("lesson_id, category, quiz_score, completed_at")
-    .eq("user_id", userId);
-  const progress = (progressRows ?? []) as LessonProgressRow[];
+  const progress = await readAllRows(
+    supabase, "lesson_progress", "lesson_id, category, quiz_score, completed_at", userId,
+  ) as LessonProgressRow[];
 
   // Level hiện tại: level đầu tiên (A1→A2→B1→B2) trong unlocked_levels có ít
   // nhất 1 lesson "current"; nếu mọi level unlock đều xong 100%, dùng level
