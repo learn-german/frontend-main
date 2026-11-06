@@ -13,6 +13,19 @@ export interface LearningPaceReport {
   generation_status: 'success' | 'insufficient_data' | 'empty' | 'error';
   report_date?: string;
   study_workload?: StudyWorkload;
+  level_id?: string;
+  actual_progress_percentage?: number;
+  expected_progress_percentage?: number | null;
+  progress_gap_percentage_point?: number | null;
+}
+
+export function learningPlanComparison(report: LearningPaceReport | null) {
+  if (report?.generation_status !== 'success' || !report.level_id ||
+      ![report.actual_progress_percentage, report.expected_progress_percentage, report.progress_gap_percentage_point]
+        .every(value => typeof value === 'number' && Number.isFinite(value))) return null;
+  const delta = -report.progress_gap_percentage_point!;
+  return { actual: report.actual_progress_percentage!, expected: report.expected_progress_percentage!, delta,
+    assessment: delta > 0 ? 'Vượt kế hoạch' : delta < 0 ? 'Chậm kế hoạch' : 'Đúng kế hoạch' };
 }
 
 export function summarizeLearningPace(report: LearningPaceReport | null) {

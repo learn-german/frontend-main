@@ -19,6 +19,7 @@ import {
   LessonProgressRow,
 } from "../../lib/completion";
 import { filterUsers, type UserFilterCriteria } from "../../lib/adminUserFilter";
+import { vnCalendarDateIso } from "../../lib/learningStreak";
 
 interface ProgressLesson {
   id: string;
@@ -239,8 +240,7 @@ export const AdminUsersSection: React.FC = () => {
       profileUpdate.unlocked_levels = [];
       profileUpdate.paid_started_at = null;
     } else if (editUser.role === "trial" && profileUpdate.role === "user") {
-      const today = new Date();
-      profileUpdate.paid_started_at = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      profileUpdate.paid_started_at = vnCalendarDateIso();
     }
 
     // Update full_name + role column in profiles
@@ -359,8 +359,8 @@ export const AdminUsersSection: React.FC = () => {
     if (!isUnlocking) return;
 
     const plannedDays = PLANNED_LEVEL_DAYS[level] ?? 90;
-    const startedAt = new Date().toISOString().slice(0, 10);
-    const plannedCompletionDate = new Date(Date.now() + plannedDays * 86400000).toISOString().slice(0, 10);
+    const startedAt = vnCalendarDateIso();
+    const plannedCompletionDate = new Date(Date.parse(`${startedAt}T00:00:00Z`) + plannedDays * 86400000).toISOString().slice(0, 10);
     // ignoreDuplicates: bật/tắt/bật lại level không reset started_at đã có.
     const { error: enrollError } = await supabase
       .from("level_enrollments")

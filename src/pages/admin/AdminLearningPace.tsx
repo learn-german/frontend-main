@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '../../components/DesignSystem';
 import { supabase } from '../../lib/supabase';
-import { summarizeLearningPace, type LearningPaceReport } from '../../lib/adminLearningPace';
+import { learningPlanComparison, summarizeLearningPace, type LearningPaceReport } from '../../lib/adminLearningPace';
 
 const formatRate = (value:number) => value.toLocaleString('vi-VN',{maximumFractionDigits:2});
 
@@ -24,8 +24,15 @@ export const AdminLearningPace: React.FC<{userId:string}> = ({userId}) => {
     return () => { active = false; };
   },[userId,reload]);
   const summary = summarizeLearningPace(report);
+  const comparison = learningPlanComparison(report);
   return <section aria-label="Khối lượng bài học theo hạn gói" aria-busy={loading} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
     <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-bold text-slate-800">Khối lượng cần học</h4><Button size="sm" variant="ghost" disabled={loading} onClick={() => setReload(value => value+1)}>Tải lại</Button></div>
+    {!loading && !error && comparison && <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+      <p className="font-semibold text-slate-800">Tiến độ theo kế hoạch · {report?.level_id}</p>
+      <p className="mt-1 text-slate-600">Thực tế {formatRate(comparison.actual)}% · Kỳ vọng {formatRate(comparison.expected)}%</p>
+      <p className="mt-1 font-medium text-slate-700">{comparison.assessment}: {comparison.delta > 0 ? '+' : ''}{formatRate(comparison.delta)} điểm %</p>
+      <p className="mt-1 text-xs text-slate-500">Đánh giá theo chênh lệch thực tế; nhãn cảnh báo trên Dashboard vẫn áp dụng dung sai 5/10 điểm %.</p>
+    </div>}
     {loading ? <p role="status" className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={15} className="animate-spin" />Đang tính số bài cần học…</p> : error ? <p role="alert" className="text-sm text-red-600">{error}</p> : summary ? <>
       <p className="text-xs text-slate-500">{summary.levels.join(' + ')} · Ngày báo cáo: {report?.report_date ? new Date(report.report_date).toLocaleDateString('vi-VN') : '—'}</p>
       <dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-slate-500">Đã hoàn thành</dt><dd className="font-bold text-slate-800">{summary.completed_lessons}/{summary.total_lessons} bài</dd></div><div><dt className="text-slate-500">Bài còn lại{summary.missing_levels.length ? ' (đã có nội dung)' : ''}</dt><dd className="font-bold text-slate-800">{summary.remaining_lessons} bài</dd></div><div><dt className="text-slate-500">Gói học còn lại</dt><dd className="font-bold text-slate-800">{summary.remaining_days === null ? 'Chưa có hạn gói' : `${summary.remaining_days} ngày`}</dd></div><div><dt className="text-slate-500">Ngày hết hạn</dt><dd className="font-bold text-slate-800">{summary.deadline_date ? new Date(summary.deadline_date).toLocaleDateString('vi-VN') : '—'}</dd></div></dl>

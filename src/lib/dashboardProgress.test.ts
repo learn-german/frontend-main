@@ -21,6 +21,11 @@ test("lessonsNeededToCatchUp: totalRequiredLessons = 0 trả về 0", () => {
   assert.equal(lessonsNeededToCatchUp(10, 0), 0);
 });
 
+test('extension example needs one catch-up lesson despite floating-point percentage error', () => {
+  assert.equal(lessonsNeededToCatchUp(50 - (14 / 30) * 100, 30), 1);
+  assert.equal(lessonsNeededToCatchUp((1.00000001 / 30) * 100, 30), 2);
+});
+
 const lesson = (id: string) => ({ id });
 
 test("selectPlannedLessons: lấy bài current + 2 bài kế tiếp theo thứ tự", () => {
