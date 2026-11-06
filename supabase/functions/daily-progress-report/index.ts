@@ -163,7 +163,20 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
   });
 
   const planColumns = 'id, level, started_at, planned_completion_date, lesson_scope, completed_lesson_ids';
-  let plans = await readAllRows(supabase, 'level_learning_plans', planColumns, userId) as LearningPlan[];
+  let planSchemaAvailable = true;
+  const loadPlans = async (): Promise<LearningPlan[]> => {
+    try {
+      return await readAllRows(supabase, 'level_learning_plans', planColumns, userId) as LearningPlan[];
+    } catch (error) {
+      // Deploy can precede the additive migration; all other source errors must still fail closed.
+      if (error && typeof error === 'object' && 'code' in error && ['42P01', 'PGRST205'].includes(String(error.code))) {
+        planSchemaAvailable = false;
+        return [];
+      }
+      throw error;
+    }
+  };
+  let plans = await loadPlans();
   const planFor = (level: string) => plans.filter(p => p.level === level && p.started_at <= reportDate)
     .sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id)[0];
 
@@ -199,8 +212,8 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     ? String(profile.paid_started_at).slice(0, 10)
     : null;
 
-  await ensureLevelEnrollment(supabase, userId, chosenLevel, studyStartedAt, paidStartedAt);
-  plans = await readAllRows(supabase, 'level_learning_plans', planColumns, userId) as LearningPlan[];
+  const enrollment = await ensureLevelEnrollment(supabase, userId, chosenLevel, studyStartedAt, paidStartedAt);
+  if (planSchemaAvailable) plans = await loadPlans();
   const plan = planFor(chosenLevel);
   if (plan) chosenLessons = plan.lesson_scope;
   const completedIds = [...new Set([...(plan?.completed_lesson_ids ?? []), ...computeCompletedLessons(chosenLessons, progress)])];
@@ -212,8 +225,8 @@ async function computeAndUpsertReport(supabase: SupabaseClient, userId: string, 
     reportDate,
     completedRequiredLessons: completedIds.length,
     totalRequiredLessons: chosenLessons.length,
-    levelStartedAt: plan?.started_at ?? null,
-    plannedCompletionDate: plan?.planned_completion_date ?? null,
+    levelStartedAt: plan?.started_at ?? (planSchemaAvailable ? null : enrollment?.started_at ?? null),
+    plannedCompletionDate: plan?.planned_completion_date ?? (planSchemaAvailable ? null : enrollment?.planned_completion_date ?? null),
     baselineCompletedLessons: plan?.completed_lesson_ids.length ?? 0,
     subscriptionEndDate: profile.subscription_end_date ?? null,
   });

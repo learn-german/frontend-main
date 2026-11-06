@@ -37,9 +37,9 @@ begin
     )), '{}'::text[])
   from (
     select l.id, l.order_index, m.order_index as module_order, array(
-      select distinct g.category from public.grammar_exercises g
+      select distinct x.category from public.grammar_exercises g
         join public.exercise_sets x on x.id = g.set_id
-        where g.lesson_id = l.id and x.status = 'published' and g.category in ('nguphap', 'nghe', 'doc')
+        where g.lesson_id = l.id and x.status = 'published' and x.category in ('nguphap', 'nghe', 'doc')
       union
       select 'doc' from public.reading_question_groups g
         join public.exercise_sets x on x.id = g.set_id

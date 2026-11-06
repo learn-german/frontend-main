@@ -11,4 +11,6 @@
 
 Kết quả: 350 frontend tests + 59 Edge Function tests pass; TypeScript/build pass. Migration chạy qua SQL assertions bằng PGlite với prerequisite schema tối thiểu; chưa chạy full Supabase pgTAP hoặc browser E2E. Build còn cảnh báo bundle size hiện có. Bước bàn giao: commit/push branch `codex/learning-progress-formula` và tạo PR, không merge/deploy.
 
+Rollout follow-up theo yêu cầu merge: đối chiếu schema Deutsch, category nằm ở exercise_sets; sửa query snapshot tương ứng. Thêm chế độ tương thích khi chưa áp dụng migration (42P01/PGRST205), giữ công thức cũ thay vì trả 500. 61 Edge Function tests pass; production migration cần được xác nhận riêng.
+
 Review focus: gia hạn nhiều lần trong ngày; snapshot không drift khi thêm bài; lỗi nguồn không được báo complete; timestamp qua nửa đêm Việt Nam; không đánh giá ngày trước t0 bằng kế hoạch mới.

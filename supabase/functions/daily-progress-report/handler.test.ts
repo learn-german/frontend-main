@@ -6,7 +6,7 @@ import * as completion from './completion.ts';
 import * as report from './report.ts';
 import * as workload from './workload.ts';
 
-function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true, grammar = true, fixtureOverrides = {} as Record<string, unknown> } = {}) {
+function loadHandler({ role = 'admin', fail = '', failCode = '', pageCap = 1000, reading = true, grammar = true, fixtureOverrides = {} as Record<string, unknown> } = {}) {
   const writes: Record<string, unknown>[] = [];
   const pages: string[] = [];
   const fixtures: Record<string, unknown> = {
@@ -25,7 +25,7 @@ function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true
     from(table: string) {
       let columns = '';
       let offset = 0, end = Infinity, written: Record<string, unknown> | undefined;
-      const result = () => ({ data: written ?? (table === 'profiles' && columns === 'id' ? [{ id: 'learner' }] : fixtures[table]), error: fail === table ? { message: 'source unavailable' } : null });
+      const result = () => ({ data: written ?? (table === 'profiles' && columns === 'id' ? [{ id: 'learner' }] : fixtures[table]), error: fail === table ? { message: 'source unavailable', code: failCode } : null });
       const builder = {
         select(selected = '') { columns = selected; return builder; }, eq() { return builder; }, in() { return builder; }, gte() { return builder; },
         order(column: string) {
@@ -144,6 +144,17 @@ test('deleted lesson remains in plan denominator without writing a dangling navi
   assert.equal(result.total_required_lessons, 1);
   assert.equal(result.current_lesson_id, null);
 });
+
+for (const failCode of ['42P01', 'PGRST205']) {
+  test(`deployment before snapshot migration preserves legacy report (${failCode})`, async () => {
+    const { request } = loadHandler({ fail: 'level_learning_plans', failCode });
+    const response = await request();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.generation_status, 'success');
+    assert.equal(result.expected_progress_percentage, 100);
+  });
+}
 
 test('missing unlocked A2 content remains unknown even if known A1 is complete', async () => {
   const { request } = loadHandler({ reading: false, grammar: false, fixtureOverrides: {
