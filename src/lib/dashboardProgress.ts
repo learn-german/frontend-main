@@ -4,8 +4,9 @@ export function lessonsNeededToCatchUp(
   gapPercentagePoint: number | null,
   totalRequiredLessons: number,
 ): number {
-  if (!gapPercentagePoint || gapPercentagePoint <= 0) return 0;
-  return Math.ceil((gapPercentagePoint / 100) * totalRequiredLessons);
+  if (!gapPercentagePoint || gapPercentagePoint <= 0 || totalRequiredLessons <= 0) return 0;
+  // Cancel percentage round-trip noise before ceil (e.g. one lesson becoming 1.000000000000001).
+  return Math.max(1, Math.ceil((gapPercentagePoint / 100) * totalRequiredLessons - Number.EPSILON * totalRequiredLessons * 4));
 }
 
 const PLANNED_LESSON_COUNT = 3;

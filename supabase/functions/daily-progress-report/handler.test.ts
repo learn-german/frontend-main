@@ -6,7 +6,7 @@ import * as completion from './completion.ts';
 import * as report from './report.ts';
 import * as workload from './workload.ts';
 
-function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true, grammar = true, fixtureOverrides = {} as Record<string, unknown> } = {}) {
+function loadHandler({ role = 'admin', fail = '', failCode = '', pageCap = 1000, reading = true, grammar = true, fixtureOverrides = {} as Record<string, unknown> } = {}) {
   const writes: Record<string, unknown>[] = [];
   const pages: string[] = [];
   const fixtures: Record<string, unknown> = {
@@ -16,6 +16,8 @@ function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true
     reading_question_groups_public: reading ? [{ lesson_id: 'lesson' }] : [],
     lesson_progress: [],
     level_enrollments: { started_at: '2026-01-01', planned_completion_date: '2026-04-01' },
+    level_learning_plans: [{ id: 1, level: 'A1', started_at: '2026-01-01', planned_completion_date: '2026-04-01',
+      lesson_scope: [{ id: 'lesson', order_index: 1, level: 'A1', hasNguphapQuestions: false, hasNgheQuestions: grammar, hasDocQuestions: reading }], completed_lesson_ids: [] }],
     ...fixtureOverrides,
   };
   const client = {
@@ -23,7 +25,7 @@ function loadHandler({ role = 'admin', fail = '', pageCap = 1000, reading = true
     from(table: string) {
       let columns = '';
       let offset = 0, end = Infinity, written: Record<string, unknown> | undefined;
-      const result = () => ({ data: written ?? (table === 'profiles' && columns === 'id' ? [{ id: 'learner' }] : fixtures[table]), error: fail === table ? { message: 'source unavailable' } : null });
+      const result = () => ({ data: written ?? (table === 'profiles' && columns === 'id' ? [{ id: 'learner' }] : fixtures[table]), error: fail === table ? { message: 'source unavailable', code: failCode } : null });
       const builder = {
         select(selected = '') { columns = selected; return builder; }, eq() { return builder; }, in() { return builder; }, gte() { return builder; },
         order(column: string) {
@@ -73,7 +75,7 @@ for (const pageCap of [1000, 200]) {
     assert.ok(pages.includes('grammar_exercises_public:1000'));
   });
 }
-for (const fail of ['profiles', 'modules', 'grammar_exercises_public', 'reading_question_groups_public', 'lesson_progress', 'level_enrollments']) {
+for (const fail of ['profiles', 'modules', 'grammar_exercises_public', 'reading_question_groups_public', 'lesson_progress', 'level_enrollments', 'level_learning_plans']) {
   test(`${fail} error cannot generate a false complete report`, async () => {
     const { request, writes } = loadHandler({ fail });
     assert.equal((await request()).status, 500);
@@ -88,6 +90,7 @@ test('lesson with no authored questions retains existing completion rule', async
 
 test('workload aggregates unlocked levels in response without changing persisted current-level row', async () => {
   const { request, writes } = loadHandler({ fixtureOverrides: {
+    level_learning_plans: [],
     profiles: { subscription_end_date: '2099-11-22', unlocked_levels: ['A2', 'A1', 'A2'], role: 'user' },
     modules: [
       { level: 'A1', lessons: [{ id: 'a1-done', order_index: 1, status: 'published' }, { id: 'a1-next', order_index: 2, status: 'published' }] },
@@ -108,6 +111,51 @@ test('workload aggregates unlocked levels in response without changing persisted
   assert.equal('study_workload' in writes[0], false);
 });
 
+test('report keeps frozen scope and baseline after catalog or scores change', async () => {
+  const { request } = loadHandler({ fixtureOverrides: {
+    level_learning_plans: [{ id: 2, level: 'A1', started_at: '2026-01-01', planned_completion_date: '2099-01-01',
+      lesson_scope: [{ id: 'old', level: 'A1', order_index: 1, hasNguphapQuestions: true }, { id: 'lesson', level: 'A1', order_index: 2, hasNgheQuestions: true }],
+      completed_lesson_ids: ['old'] }],
+  } });
+  const result = await (await request()).json();
+  assert.equal(result.total_required_lessons, 2);
+  assert.equal(result.completed_required_lessons, 1);
+  assert.ok(result.expected_progress_percentage >= 50);
+});
+
+test('newest effective plan wins; future plans cannot evaluate earlier days', async () => {
+  const scope = [{ id: 'lesson', level: 'A1', order_index: 1, hasNgheQuestions: true }];
+  const { request } = loadHandler({ fixtureOverrides: { level_learning_plans: [
+    { id: 1, level: 'A1', started_at: '2026-01-01', planned_completion_date: '2026-04-01', lesson_scope: scope, completed_lesson_ids: [] },
+    { id: 2, level: 'A1', started_at: '2026-02-01', planned_completion_date: '2099-01-01', lesson_scope: scope, completed_lesson_ids: ['lesson'] },
+    { id: 3, level: 'A1', started_at: '2099-01-01', planned_completion_date: '2099-04-01', lesson_scope: scope, completed_lesson_ids: [] },
+  ] } });
+  const result = await (await request()).json();
+  assert.equal(result.expected_progress_percentage, 100);
+  assert.equal(result.completed_required_lessons, 1);
+});
+
+test('deleted lesson remains in plan denominator without writing a dangling navigation FK', async () => {
+  const { request } = loadHandler({ fixtureOverrides: {
+    level_learning_plans: [{ id: 1, level: 'A1', started_at: '2026-01-01', planned_completion_date: '2099-01-01',
+      lesson_scope: [{ id: 'deleted', level: 'A1', order_index: 1, hasNguphapQuestions: true }], completed_lesson_ids: [] }],
+  } });
+  const result = await (await request()).json();
+  assert.equal(result.total_required_lessons, 1);
+  assert.equal(result.current_lesson_id, null);
+});
+
+for (const failCode of ['42P01', 'PGRST205']) {
+  test(`deployment before snapshot migration preserves legacy report (${failCode})`, async () => {
+    const { request } = loadHandler({ fail: 'level_learning_plans', failCode });
+    const response = await request();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.generation_status, 'success');
+    assert.equal(result.expected_progress_percentage, 100);
+  });
+}
+
 test('missing unlocked A2 content remains unknown even if known A1 is complete', async () => {
   const { request } = loadHandler({ reading: false, grammar: false, fixtureOverrides: {
     profiles: { subscription_end_date: '2099-11-22', unlocked_levels: ['A1', 'A2'], role: 'user' },
@@ -119,7 +167,7 @@ test('missing unlocked A2 content remains unknown even if known A1 is complete',
 });
 
 test('no published lessons returns empty report with missing workload and no persistence', async () => {
-  const { request, writes } = loadHandler({ fixtureOverrides: { modules: [] } });
+  const { request, writes } = loadHandler({ fixtureOverrides: { modules: [], level_learning_plans: [] } });
   const result = await (await request()).json();
   assert.equal(result.generation_status, 'empty');
   assert.deepEqual(result.study_workload.missing_levels, ['A1']);

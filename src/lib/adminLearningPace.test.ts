@@ -1,8 +1,17 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { summarizeLearningPace, type LearningPaceReport, type StudyWorkload } from './adminLearningPace';
+import { learningPlanComparison, summarizeLearningPace, type LearningPaceReport, type StudyWorkload } from './adminLearningPace';
 const workload = (overrides:Partial<StudyWorkload> = {}):StudyWorkload => ({levels:['A1'],missing_levels:[],total_lessons:23,completed_lessons:4,remaining_lessons:19,remaining_days:17,lessons_per_day:19/17,daily_lesson_target:2,deadline_date:'2026-11-22',...overrides});
 const report = (value:StudyWorkload):LearningPaceReport => ({generation_status:'success',study_workload:value});
+test('comparison shows signed actual-minus-expected independently of warning tolerance', () => {
+  const data: LearningPaceReport = { generation_status: 'success', level_id: 'A1', actual_progress_percentage: 46.6666666667,
+    expected_progress_percentage: 50, progress_gap_percentage_point: 3.3333333333 };
+  assert.equal(learningPlanComparison(data)?.assessment, 'Chậm kế hoạch');
+  assert.equal(learningPlanComparison(data)?.delta, -3.3333333333);
+  assert.equal(learningPlanComparison({ ...data, progress_gap_percentage_point: -5.31 })?.assessment, 'Vượt kế hoạch');
+  assert.equal(learningPlanComparison({ ...data, generation_status: 'insufficient_data' }), null);
+  assert.equal(learningPlanComparison({ ...data, expected_progress_percentage: null }), null);
+});
 test('Phat workload shows 19 remaining lessons over 17 days and a target of 2 per day', () => {
   const summary = summarizeLearningPace(report(workload()));
   assert.equal(summary?.state,'ready');
