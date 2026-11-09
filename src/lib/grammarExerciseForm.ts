@@ -95,7 +95,6 @@ export const validateForm = (f: EditForm): string | null => {
   }
   if (f.type === "sentence_transformation") {
     if (!f.prompt_text.trim()) return "Câu gốc không được để trống.";
-    if (!f.transformation_hint.trim()) return "Yêu cầu biến đổi không được để trống.";
     if (!f.correct_answer.trim()) return "Câu đúng sau biến đổi không được để trống.";
     return null;
   }
@@ -144,7 +143,7 @@ export const buildPayload = (form: EditForm) => {
   return {
     type: form.type,
     prompt_text: form.type === "word_reorder" || form.type === "classification" ? null : form.prompt_text,
-    transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint : null,
+    transformation_hint: form.type === "sentence_transformation" ? form.transformation_hint.trim() || null : null,
     correct_answer:
       form.type === "classification" || form.type === "fill_in_the_blank"
         ? null
