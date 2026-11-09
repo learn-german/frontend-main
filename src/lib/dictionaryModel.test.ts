@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { blankDictionaryContent, validateDictionaryContent, dictionarySearchKey, matchesDictionarySearch, dictionaryDuplicateKey, collectLessonVocabulary } from './dictionaryModel';
+import { DICTIONARY_TYPES, blankDictionaryContent, validateDictionaryContent, dictionarySearchKey, matchesDictionarySearch, dictionaryDuplicateKey, collectLessonVocabulary, type DictionaryContent } from './dictionaryModel';
+
+test('adverbs and prepositions share labels and publication validation; unknown types stay invalid', () => {
+  for (const [type,label] of [['adverb','Trạng từ'],['preposition','Giới từ']] as const) {
+    assert.equal(DICTIONARY_TYPES[type as keyof typeof DICTIONARY_TYPES],label);
+    const content={...blankDictionaryContent(),word:'Test',type,meaning:'nghĩa',topics:['topic'],lessons:['lesson']} as DictionaryContent;
+    assert.deepEqual(validateDictionaryContent(content,true),[]);
+    assert.ok(validateDictionaryContent({...content,type:'invalid' as DictionaryContent['type']},true).includes('Chọn loại từ.'));
+  }
+});
 
 test('search accepts Vietnamese without accents and German umlaut replacements', () => {
   const entry = {...blankDictionaryContent(),word:'Mütter',meaning:'người mẹ'};

@@ -1,6 +1,6 @@
 import type { Level } from './appTypes';
 
-export const DICTIONARY_TYPES = {noun:'Danh từ',verb:'Động từ',adjective:'Tính từ',phrase:'Cụm từ / giao tiếp'} as const;
+export const DICTIONARY_TYPES = {noun:'Danh từ',verb:'Động từ',adjective:'Tính từ',adverb:'Trạng từ',preposition:'Giới từ',phrase:'Cụm từ / giao tiếp'} as const;
 export type DictionaryWordType = keyof typeof DICTIONARY_TYPES;
 export interface DictionaryContent {
   word:string; type:DictionaryWordType|''; article:string; plural:string; inflection:string;
