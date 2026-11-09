@@ -17,6 +17,17 @@ const matchingForm = (overrides: Partial<EditForm> = {}): EditForm => ({
   ...overrides,
 });
 
+test("sentence transformation allows an optional hint but requires source and answer", () => {
+  const form: EditForm = { ...EMPTY_FORM, type: "sentence_transformation", prompt_text: "Du kommst heute.", correct_answer: "Kommst du heute?" };
+  for (const transformation_hint of ["", "   ", "Ja/Nein-Frage"]) {
+    const value = { ...form, transformation_hint };
+    assert.equal(validateForm(value), null);
+    assert.equal(buildPayload(value).transformation_hint, transformation_hint.trim() || null);
+  }
+  assert.equal(validateForm({ ...form, prompt_text: " " }), "Câu gốc không được để trống.");
+  assert.equal(validateForm({ ...form, correct_answer: " " }), "Câu đúng sau biến đổi không được để trống.");
+});
+
 test("validateForm: matching thiếu cặp hợp lệ thì báo lỗi", () => {
   assert.equal(
     validateForm(matchingForm({ matching_pairs: [{ de: "", vi: "" }] })),

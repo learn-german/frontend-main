@@ -482,7 +482,7 @@ export const ExerciseEntryFields: React.FC<{
           />
         </div>
         <div>
-          <label className={labelCls}>Yêu cầu biến đổi *</label>
+          <label className={labelCls}>Yêu cầu biến đổi (không bắt buộc)</label>
           <input
             type="text"
             value={entry.transformation_hint}
@@ -1635,9 +1635,9 @@ export const AdminGrammarExerciseSection: React.FC<{ practiceTopic?: PracticeTop
             {previewTarget.type === "sentence_transformation" && (
               <div className="space-y-2">
                 <p className="text-sm text-slate-700">{previewTarget.prompt_text}</p>
-                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
+                {previewTarget.transformation_hint?.trim() && <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 uppercase">
                   Yêu cầu: {previewTarget.transformation_hint}
-                </span>
+                </span>}
                 <p className="text-sm text-green-700 bg-green-50 rounded-xl px-3 py-2">{previewTarget.correct_answer}</p>
               </div>
             )}
