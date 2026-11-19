@@ -89,10 +89,14 @@ export function SpeakingTabPanel({ lessonId, userId, promptMd }: { lessonId: str
       {attempts.length >= MAX_SPEAKING_ATTEMPTS && <p className="text-sm text-slate-600">Bạn đã dùng hết 2 lần nộp bài nói này.</p>}
       {attempts.map((attempt, index) => <div key={attempt.id} className="border border-slate-200 rounded-xl p-4 space-y-2">
         <p className="text-sm font-bold">Lần {attempts.length - index} · {new Date(attempt.submitted_at).toLocaleString('vi-VN')}</p>
-        <p className="text-xs text-slate-500 break-all">{attempt.file_name}</p>
+        <p className="text-xs text-slate-500 break-all">Bài nói đã nộp: {attempt.file_name}</p>
         <SpeakingAudio objectKey={attempt.object_key} />
         {attempt.note && <p className="text-sm whitespace-pre-wrap">Lời nhắn: {attempt.note}</p>}
         <p className="text-sm font-bold">{attempt.graded_at ? `Điểm: ${attempt.score}/100` : 'Chưa chấm'}</p>
+        {attempt.feedback_object_key && <div className="space-y-2">
+          <p className="text-sm font-bold break-all">File ghi âm phản hồi: {attempt.feedback_file_name}</p>
+          <SpeakingAudio objectKey={attempt.feedback_object_key} label="File ghi âm phản hồi" />
+        </div>}
         {attempt.comment && <p className="text-sm whitespace-pre-wrap">Nhận xét: {attempt.comment}</p>}
       </div>)}
     </>}

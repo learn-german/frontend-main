@@ -25,5 +25,7 @@ export interface SpeakingSubmission {
   score: number | null;
   comment: string | null;
   graded_at: string | null;
+  feedback_object_key: string | null;
+  feedback_file_name: string | null;
   submitted_at: string;
 }
