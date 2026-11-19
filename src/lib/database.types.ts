@@ -643,6 +643,7 @@ export type Database = {
           end_time: string
           id: string
           level: string
+          max_participants: number
           meet_url: string
           note: string | null
           session_date: string
@@ -656,6 +657,7 @@ export type Database = {
           end_time: string
           id?: string
           level: string
+          max_participants?: number
           meet_url: string
           note?: string | null
           session_date: string
@@ -669,6 +671,7 @@ export type Database = {
           end_time?: string
           id?: string
           level?: string
+          max_participants?: number
           meet_url?: string
           note?: string | null
           session_date?: string

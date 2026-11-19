@@ -12,6 +12,7 @@ function session(id: string, isRegistered: boolean): LearnerMeetingSession {
     startTime: "10:00",
     endTime: "11:00",
     note: null,
+    maxParticipants: 10,
     registrationCount: 1,
     isRegistered,
     canRegister: !isRegistered,

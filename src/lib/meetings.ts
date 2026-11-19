@@ -1,3 +1,4 @@
+import { isValidMeetingCapacity } from "./meetingCapacity";
 import { supabase } from "./supabase";
 import type {
   LearnerMeetingSession,
@@ -10,12 +11,13 @@ import type {
 } from "./appTypes";
 
 const SESSION_COLUMNS =
-  "id, title, level, session_date, start_time, end_time, meet_url, note, created_by, created_at, updated_at";
+  "id, title, level, session_date, start_time, end_time, meet_url, note, max_participants, created_by, created_at, updated_at";
 
 const REGISTRATION_COLUMNS =
   "id, session_id, user_id, registered_at, profiles(email, full_name)";
 
 interface SessionRow {
+  max_participants: number;
   id: string;
   title: string;
   level: string;
@@ -52,6 +54,7 @@ function mapSessionRow(row: SessionRow): MeetingSessionAdmin {
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    maxParticipants: row.max_participants,
     registrationCount: count,
   };
 }
@@ -132,7 +135,11 @@ export async function adminListSessions(): Promise<MeetingSessionAdmin[]> {
 export async function adminUpsertSession(
   input: MeetingSessionUpsertInput,
 ): Promise<MeetingSessionAdmin> {
+  if (!isValidMeetingCapacity(input.maxParticipants)) {
+    throw new Error("Số học viên tối đa phải là số nguyên dương hợp lệ.");
+  }
   const payload = {
+    max_participants: input.maxParticipants,
     title: input.title,
     level: input.level,
     session_date: input.sessionDate,

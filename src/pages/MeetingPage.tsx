@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Clock3, Video } from "lucide-react";
 import { Button, LevelBadge, ProgressBar } from "../components/DesignSystem";
 import type { LearnerMeetingSession, LearnerMeetingsResponse } from "../lib/appTypes";
-import { capacityStatus, MAX_MEETING_CAPACITY } from "../lib/meetingCapacity";
+import { capacityStatus } from "../lib/meetingCapacity";
 import { cancelMeeting, listLearnerMeetings, registerMeeting } from "../lib/meetings";
 import { showToast } from "../lib/toast";
 
@@ -96,7 +96,7 @@ export const MeetingPage: React.FC<{ onMeetingsChanged: () => void }> = ({
   const visibleSessions = useMemo(() => {
     if (filter === "open") {
       return sessions.filter(
-        (session) => capacityStatus(session.registrationCount) !== "full",
+        (session) => capacityStatus(session.registrationCount, session.maxParticipants) !== "full",
       );
     }
     if (filter === "registered") {
@@ -159,7 +159,7 @@ export const MeetingPage: React.FC<{ onMeetingsChanged: () => void }> = ({
   }
 
   const availableCount = sessions.filter(
-    (session) => capacityStatus(session.registrationCount) !== "full",
+    (session) => capacityStatus(session.registrationCount, session.maxParticipants) !== "full",
   ).length;
 
   return (
@@ -277,8 +277,8 @@ const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
   onCancel,
 }) => {
   const date = formatDateBlock(session.sessionDate);
-  const status = capacityStatus(session.registrationCount);
-  const remaining = Math.max(0, MAX_MEETING_CAPACITY - session.registrationCount);
+  const status = capacityStatus(session.registrationCount, session.maxParticipants);
+  const remaining = Math.max(0, session.maxParticipants - session.registrationCount);
   const weekLimitReached = !session.canRegister && status !== "full";
   const registrationDisabled = !session.canRegister || busy;
   const styles = STATUS_STYLES[status];
@@ -322,12 +322,12 @@ const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
             {STATUS_LABELS[status]}
           </span>
           <span className="font-mono text-xs font-semibold text-slate-600">
-            {session.registrationCount}/{MAX_MEETING_CAPACITY}
+            {session.registrationCount}/{session.maxParticipants}
           </span>
         </div>
         <ProgressBar
           value={session.registrationCount}
-          max={MAX_MEETING_CAPACITY}
+          max={session.maxParticipants}
           barClassName={styles.bar}
         />
         <p className="mt-2 text-[11px] text-slate-500">
@@ -368,7 +368,7 @@ const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
               {busy
                 ? "Đang đăng ký…"
                 : status === "full"
-                  ? "Đã đủ 10/10"
+                  ? `Đã đủ ${session.maxParticipants}/${session.maxParticipants}`
                   : "Đăng ký lịch này"}
             </Button>
             {weekLimitReached && (

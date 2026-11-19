@@ -33,3 +33,11 @@ test("authorizes registration per session week", () => {
     false,
   );
 });
+
+test("uses saved custom capacity without changing weekly eligibility", () => {
+  const weeks = new Set<string>();
+  assert.equal(canRegisterMeeting("2026-09-12", 5, false, weeks, 5), false);
+  assert.equal(canRegisterMeeting("2026-09-12", 10, false, weeks, 20), true);
+  assert.equal(canRegisterMeeting("2026-09-12", 20, false, weeks, 20), false);
+  assert.equal(canRegisterMeeting("2026-09-12", 1, false, new Set(["2026-09-07"]), 20), false);
+});
