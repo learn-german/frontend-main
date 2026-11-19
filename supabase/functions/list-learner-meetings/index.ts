@@ -27,6 +27,7 @@ function vnToday(): string {
 }
 
 interface SessionRow {
+  max_participants: number;
   id: string;
   title: string;
   level: "A1" | "A2" | "B1" | "B2";
@@ -98,7 +99,7 @@ serve(async (req) => {
     const { data, error: sessionsError } = await supabase
       .from("meeting_sessions")
       .select(
-        "id, title, level, session_date, start_time, end_time, meet_url, note",
+        "id, title, level, session_date, start_time, end_time, meet_url, note, max_participants",
       )
       .gte("session_date", today)
       .order("session_date")
@@ -170,6 +171,7 @@ serve(async (req) => {
           startTime: session.start_time,
           endTime: session.end_time,
           note: session.note,
+          maxParticipants: session.max_participants,
           registrationCount,
           isRegistered,
           canRegister: canRegisterMeeting(
@@ -177,6 +179,7 @@ serve(async (req) => {
             registrationCount,
             isRegistered,
             registeredWeekStarts,
+            session.max_participants,
           ),
           meetUrl: isRegistered ? session.meet_url : null,
         };

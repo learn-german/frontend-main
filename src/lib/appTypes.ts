@@ -173,6 +173,7 @@ export interface MeetingSessionAdmin {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  maxParticipants: number;
   registrationCount: number;
 }
 
@@ -185,6 +186,7 @@ export interface LearnerMeetingSession {
   startTime: string;
   endTime: string;
   note: string | null;
+  maxParticipants: number;
   registrationCount: number;
   isRegistered: boolean;
   canRegister: boolean;
@@ -224,6 +226,7 @@ export interface MeetingRegisterResult {
 }
 
 export type MeetingSessionUpsertInput = {
+  maxParticipants: number;
   id?: string;
   title: string;
   level: Level;

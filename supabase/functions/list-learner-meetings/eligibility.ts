@@ -16,8 +16,9 @@ export function canRegisterMeeting(
   registrationCount: number,
   isRegistered: boolean,
   registeredWeekStarts: ReadonlySet<string>,
+  maxParticipants = 10,
 ): boolean {
-  return registrationCount < 10 &&
+  return registrationCount < maxParticipants &&
     !isRegistered &&
     !registeredWeekStarts.has(vnWeekBounds(sessionDate).start);
 }

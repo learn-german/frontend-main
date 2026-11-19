@@ -19,6 +19,7 @@ import type {
 } from "../../lib/appTypes";
 import {
   capacityStatus,
+  isValidMeetingCapacity,
   MAX_MEETING_CAPACITY,
   type CapacityStatus,
 } from "../../lib/meetingCapacity";
@@ -34,6 +35,7 @@ type SessionForm = Omit<MeetingSessionUpsertInput, "id">;
 type CapacityFilter = "all" | "open" | "full";
 
 const EMPTY_FORM: SessionForm = {
+  maxParticipants: MAX_MEETING_CAPACITY,
   title: "",
   level: "A1",
   sessionDate: "",
@@ -134,7 +136,7 @@ export const AdminMeetingSection: React.FC = () => {
       upcoming: sessions.filter((session) => session.sessionDate >= today).length,
       registrations: sessions.reduce((sum, session) => sum + session.registrationCount, 0),
       full: sessions.filter(
-        (session) => capacityStatus(session.registrationCount) === "full",
+        (session) => capacityStatus(session.registrationCount, session.maxParticipants) === "full",
       ).length,
     };
   }, [sessions]);
@@ -145,7 +147,7 @@ export const AdminMeetingSection: React.FC = () => {
       const matchesSearch =
         !normalizedSearch ||
         session.title.toLocaleLowerCase("vi").includes(normalizedSearch);
-      const status = capacityStatus(session.registrationCount);
+      const status = capacityStatus(session.registrationCount, session.maxParticipants);
       const matchesCapacity =
         capacityFilter === "all" ||
         (capacityFilter === "open" ? status !== "full" : status === "full");
@@ -172,6 +174,10 @@ export const AdminMeetingSection: React.FC = () => {
       showToast("Vui lòng nhập đầy đủ thông tin bắt buộc.", "warning");
       return;
     }
+    if (!isValidMeetingCapacity(form.maxParticipants)) {
+      showToast("Số học viên tối đa phải là số nguyên dương hợp lệ.", "warning");
+      return;
+    }
     if (form.startTime >= form.endTime) {
       showToast("Giờ kết thúc phải muộn hơn giờ bắt đầu.", "warning");
       return;
@@ -193,7 +199,12 @@ export const AdminMeetingSection: React.FC = () => {
       await refresh();
       showToast(editingId ? "Đã cập nhật lịch học." : "Đã tạo lịch học.", "success");
       resetForm();
-    } catch {
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "message" in error &&
+          error.message === "capacity_below_registrations") {
+        showToast("Không thể giảm giới hạn xuống dưới số học viên đã đăng ký.", "warning");
+        return;
+      }
       showToast(editingId ? "Không cập nhật được lịch học." : "Không tạo được lịch học.", "warning");
     } finally {
       setBusy(false);
@@ -203,6 +214,7 @@ export const AdminMeetingSection: React.FC = () => {
   const startEdit = (session: MeetingSessionAdmin) => {
     setEditingId(session.id);
     setForm({
+      maxParticipants: session.maxParticipants,
       title: session.title,
       level: session.level,
       sessionDate: session.sessionDate,
@@ -249,7 +261,7 @@ export const AdminMeetingSection: React.FC = () => {
       <div>
         <h1 className="text-xl font-display font-black text-slate-900">Lịch hỗ trợ học viên</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Tạo buổi học trực tuyến và quản lý tối đa {MAX_MEETING_CAPACITY} học viên mỗi lịch.
+          Tạo buổi học trực tuyến và quản lý số học viên tối đa cho từng lịch.
         </p>
       </div>
 
@@ -338,9 +350,17 @@ export const AdminMeetingSection: React.FC = () => {
                 className={`${inputClass} resize-y`}
               />
             </label>
-            <p className="text-xs text-slate-500">
-              Giới hạn đăng ký: <strong className="text-slate-700">{MAX_MEETING_CAPACITY} học viên</strong>
-            </p>
+            <Input
+              id="meeting-max-participants"
+              label="Số học viên tối đa"
+              type="number"
+              min={1}
+              max={2147483647}
+              step={1}
+              value={Number.isNaN(form.maxParticipants) ? "" : form.maxParticipants}
+              onChange={(event) => updateForm("maxParticipants", event.target.valueAsNumber)}
+              required
+            />
             <Button type="submit" className="w-full" disabled={busy}>
               {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {editingId ? "Lưu thay đổi" : "Tạo lịch học"}
@@ -387,10 +407,10 @@ export const AdminMeetingSection: React.FC = () => {
               </div>
             ) : (
               filteredSessions.map((session) => {
-                const status = capacityStatus(session.registrationCount);
+                const status = capacityStatus(session.registrationCount, session.maxParticipants);
                 const percentage = Math.min(
                   100,
-                  (session.registrationCount / MAX_MEETING_CAPACITY) * 100,
+                  (session.registrationCount / session.maxParticipants) * 100,
                 );
                 return (
                   <article key={session.id} className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm">
@@ -418,7 +438,7 @@ export const AdminMeetingSection: React.FC = () => {
 
                     <div className="flex items-center gap-2 mt-4">
                       <span className="text-xs font-mono font-semibold text-slate-600">
-                        {session.registrationCount}/{MAX_MEETING_CAPACITY}
+                        {session.registrationCount}/{session.maxParticipants}
                       </span>
                       <div className="w-28 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                         <div className={`h-full rounded-full ${CAPACITY_BARS[status]}`} style={{ width: `${percentage}%` }} />
